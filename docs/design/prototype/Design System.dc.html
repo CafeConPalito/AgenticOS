@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@400;500;700&family=Ubuntu+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+html,body{margin:0;background:#0A1A33}*{box-sizing:border-box}button,input{font:inherit;color:inherit}
+a{color:#7AA2FF}a:hover{color:#A9C2FF}
+*:focus-visible{outline:2px solid #7AA2FF;outline-offset:2px}
+[data-theme="dark"]{--background:#0A1A33;--foreground:#FFFFFF;--card:#0F2242;--muted:#122A4E;--muted-foreground:#A8B6CF;--accent:#1A3562;--border:#1E3A66;--input:#24426F;--ring:#7AA2FF;--subtle:#0C1D38;--primary-action:#2E5BD6;--term-bg:#050E1E;--st-queued:#9DB0D0;--st-running:#4CC9F0;--st-waiting:#F5B547;--st-review:#B39CFF;--st-done:#43D392;--st-failed:#FF6B6F;--st-cancelled:#8492AE}
+[data-theme="light"]{--background:#F4F6FA;--foreground:#0A1A33;--card:#FFFFFF;--muted:#EEF2F8;--muted-foreground:#4B5B78;--accent:#E3EAF5;--border:#D6DEEA;--input:#C9D3E3;--ring:#2E5BD6;--subtle:#F8FAFD;--primary-action:#1B3F8F;--term-bg:#0A1A33;--st-queued:#4F6385;--st-running:#0A78A3;--st-waiting:#9A6200;--st-review:#6A4FD1;--st-done:#12805A;--st-failed:#C9302C;--st-cancelled:#647089}
+@keyframes pulse{0%{box-shadow:0 0 0 0 color-mix(in oklch,var(--st-running) 70%,transparent)}100%{box-shadow:0 0 0 7px transparent}}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+@keyframes blink{50%{opacity:0}}
+</style>
+</helmet>
+<div data-theme="dark" style="width:1360px;padding:48px 56px 72px;background:var(--background);color:var(--foreground);font-family:Ubuntu,sans-serif;font-size:13px;line-height:1.45;display:flex;flex-direction:column;gap:48px">
+  <header style="display:flex;align-items:flex-end;gap:16px;border-bottom:1px solid var(--border);padding-bottom:24px">
+    <div style="width:44px;height:44px;border-radius:12px;background:#2E5BD6;display:grid;place-items:center;position:relative"><div style="width:16px;height:16px;border-radius:4px;border:3px solid #fff"></div><div style="position:absolute;right:8px;top:8px;width:7px;height:7px;border-radius:50%;background:#4CC9F0"></div></div>
+    <div style="flex:1"><div style="font-size:30px;font-weight:700;letter-spacing:-.02em">Agentic OS · Design system</div><div style="color:var(--muted-foreground)">Tokens compatibles con shadcn/ui · React + Tailwind + Radix · v0.1</div></div>
+    <a href="Agentic OS.dc.html">Abrir la app →</a>
+  </header>
+
+  <section data-screen-label="Color" style="display:flex;flex-direction:column;gap:18px">
+    <h2 style="margin:0;font-size:20px;font-weight:500">Color</h2>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+      <sc-for list="{{ themes }}" as="th" hint-placeholder-count="2">
+        <div data-theme="{{ th.key }}" style="border:1px solid var(--border);border-radius:14px;background:var(--background);color:var(--foreground);padding:18px;display:flex;flex-direction:column;gap:14px">
+          <div style="font-weight:500">{{ th.label }}</div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
+            <sc-for list="{{ th.tokens }}" as="t" hint-placeholder-count="12">
+              <div style="display:flex;flex-direction:column;gap:6px"><div style="height:48px;border-radius:9px;background:{{ t.v }};border:1px solid var(--border)"></div><div style="font-family:'Ubuntu Mono',monospace;font-size:11.5px">{{ t.n }}</div><div style="font-family:'Ubuntu Mono',monospace;font-size:11px;color:var(--muted-foreground);margin-top:-5px">{{ t.hex }}</div></div>
+            </sc-for>
+          </div>
+          <div style="font-size:12px;color:var(--muted-foreground)">Estados</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px">
+            <sc-for list="{{ statuses }}" as="s" hint-placeholder-count="7"><span style="display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 8px;border-radius:999px;font-size:11px;font-weight:500;color:var({{ s.v }});background:color-mix(in oklch,var({{ s.v }}) 14%,transparent);border:1px solid color-mix(in oklch,var({{ s.v }}) 36%,transparent)"><span style="width:6px;height:6px;border-radius:50%;background:currentColor"></span>{{ s.l }}</span></sc-for>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+    <div style="display:flex;gap:24px;flex-wrap:wrap">
+      <div style="display:flex;flex-direction:column;gap:8px"><div style="font-size:12px;color:var(--muted-foreground)">Agentes (color de identidad · texto #0A1A33 encima)</div><div style="display:flex;gap:8px"><sc-for list="{{ agents }}" as="a" hint-placeholder-count="4"><div style="display:flex;align-items:center;gap:8px;padding:6px 10px 6px 6px;border-radius:9px;border:1px solid var(--border);background:var(--card)"><span style="width:26px;height:26px;border-radius:7px;background:{{ a.c }};color:#0A1A33;font-weight:700;display:grid;place-items:center">{{ a.i }}</span><span>{{ a.n }}</span><span style="font-family:'Ubuntu Mono',monospace;font-size:11px;color:var(--muted-foreground)">{{ a.c }}</span></div></sc-for></div></div>
+      <div style="display:flex;flex-direction:column;gap:8px"><div style="font-size:12px;color:var(--muted-foreground)">Proyectos</div><div style="display:flex;gap:8px"><sc-for list="{{ projects }}" as="p" hint-placeholder-count="3"><span style="display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 9px;border-radius:7px;background:color-mix(in oklch,{{ p.c }} 16%,transparent)"><span style="width:8px;height:8px;border-radius:2px;background:{{ p.c }}"></span>{{ p.n }}</span></sc-for></div></div>
+    </div>
+  </section>
+
+  <section data-screen-label="Tipografía y forma" style="display:grid;grid-template-columns:1.4fr 1fr;gap:32px">
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <h2 style="margin:0;font-size:20px;font-weight:500">Tipografía</h2>
+      <sc-for list="{{ type }}" as="t" hint-placeholder-count="7">
+        <div style="display:grid;grid-template-columns:150px 1fr;gap:16px;align-items:baseline;border-bottom:1px solid var(--border);padding-bottom:10px">
+          <span style="font-family:'Ubuntu Mono',monospace;font-size:11.5px;color:var(--muted-foreground)">{{ t.n }}</span>
+          <span style="font-family:{{ t.f }};font-size:{{ t.s }};font-weight:{{ t.w }}">{{ t.sample }}</span>
+        </div>
+      </sc-for>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:22px">
+      <div style="display:flex;flex-direction:column;gap:12px"><h2 style="margin:0;font-size:20px;font-weight:500">Radios</h2><div style="display:flex;gap:14px"><sc-for list="{{ radii }}" as="r" hint-placeholder-count="5"><div style="display:flex;flex-direction:column;align-items:center;gap:6px"><div style="width:56px;height:56px;border:1.5px solid var(--ring);background:var(--accent);border-radius:{{ r.v }}"></div><span style="font-family:'Ubuntu Mono',monospace;font-size:11px;color:var(--muted-foreground)">{{ r.n }}</span></div></sc-for></div></div>
+      <div style="display:flex;flex-direction:column;gap:12px"><h2 style="margin:0;font-size:20px;font-weight:500">Espaciado (base 4 px)</h2><div style="display:flex;flex-direction:column;gap:6px"><sc-for list="{{ space }}" as="s" hint-placeholder-count="7"><div style="display:flex;align-items:center;gap:10px"><span style="width:40px;font-family:'Ubuntu Mono',monospace;font-size:11px;color:var(--muted-foreground)">{{ s.n }}</span><div style="height:10px;width:{{ s.v }};background:var(--primary-action);border-radius:2px"></div><span style="font-family:'Ubuntu Mono',monospace;font-size:11px;color:var(--muted-foreground)">{{ s.v }}</span></div></sc-for></div></div>
+      <div style="display:flex;flex-direction:column;gap:12px"><h2 style="margin:0;font-size:20px;font-weight:500">Botones y foco</h2><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button style="height:32px;padding:0 12px;border:0;border-radius:8px;background:var(--primary-action);color:#fff;font-weight:500">Primario</button><button style="height:32px;padding:0 12px;border-radius:8px;border:1px solid var(--border);background:var(--card)">Secundario</button><button style="height:32px;padding:0 12px;border-radius:8px;border:0;background:transparent">Ghost</button><button style="height:32px;padding:0 12px;border-radius:8px;border:1px solid color-mix(in oklch,var(--st-failed) 50%,transparent);background:transparent;color:var(--st-failed)">Destructivo</button><button style="height:32px;padding:0 12px;border:0;border-radius:8px;background:var(--primary-action);color:#fff;font-weight:500;outline:2px solid var(--ring);outline-offset:2px">Foco visible</button></div></div>
+    </div>
+  </section>
+
+  <section data-screen-label="Componentes" style="display:flex;flex-direction:column;gap:18px">
+    <h2 style="margin:0;font-size:20px;font-weight:500">Componentes clave</h2>
+    <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;align-items:start">
+      <div style="display:flex;flex-direction:column;gap:8px"><span style="font-family:'Ubuntu Mono',monospace;font-size:11.5px;color:var(--muted-foreground)">&lt;AgentCard /&gt;</span>
+        <div style="border:1px solid var(--border);border-radius:12px;background:var(--card);padding:14px;display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;align-items:center;gap:10px"><div style="width:34px;height:34px;border-radius:9px;background:#4FD1C5;color:#0A1A33;font-weight:700;font-size:15px;display:grid;place-items:center">D</div><div style="flex:1"><div style="font-weight:500">Dev <span style="color:var(--muted-foreground);font-weight:400">· Desarrollador</span></div><div style="font-size:11.5px;color:var(--muted-foreground)"><span style="font-family:'Ubuntu Mono',monospace;font-size:10px;font-weight:700;padding:0 4px;border-radius:3px;border:1px solid var(--border)">CC</span> Claude Code</div></div><span style="display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 8px;border-radius:999px;font-size:11px;font-weight:500;color:var(--st-running);background:color-mix(in oklch,var(--st-running) 14%,transparent);border:1px solid color-mix(in oklch,var(--st-running) 36%,transparent)"><span style="width:6px;height:6px;border-radius:50%;background:currentColor;animation:pulse 1.6s ease-out infinite"></span>Ejecutando</span></div>
+          <div style="border-radius:8px;background:var(--subtle);border:1px solid var(--border);padding:9px 10px"><div style="font-size:11px;color:var(--muted-foreground)">Trabajando en</div><div style="font-weight:500">Login con Google</div><div style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--muted-foreground)"><span style="width:8px;height:8px;border-radius:2px;background:#E58AF0"></span>App reservas<span style="margin-left:auto;font-family:'Ubuntu Mono',monospace;color:var(--foreground)">41:12</span></div></div>
+          <div style="display:flex;gap:14px;font-size:11.5px;color:var(--muted-foreground)"><span>Cola <strong style="color:var(--foreground);font-weight:500">2 tareas</strong></span><span>Concurrencia <strong style="color:var(--foreground);font-weight:500;font-family:'Ubuntu Mono',monospace">2/2</strong></span></div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px"><span style="font-family:'Ubuntu Mono',monospace;font-size:11.5px;color:var(--muted-foreground)">&lt;TaskCard /&gt; · ejecutando</span>
+        <div style="position:relative;overflow:hidden;background:var(--card);border:1px solid var(--border);border-radius:9px;padding:10px 11px;display:flex;flex-direction:column;gap:7px">
+          <div style="position:absolute;left:0;right:0;top:0;height:2px;background:linear-gradient(90deg,transparent,var(--st-running),transparent);background-size:200% 100%;animation:shimmer 1.6s linear infinite"></div>
+          <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted-foreground)"><span style="display:inline-flex;align-items:center;gap:5px;height:18px;padding:0 6px;border-radius:5px;background:color-mix(in oklch,#E58AF0 16%,transparent);color:var(--foreground)"><span style="width:6px;height:6px;border-radius:2px;background:#E58AF0"></span>App reservas</span>Desarrollo<span style="margin-left:auto;font-family:'Ubuntu Mono',monospace">T-142</span></div>
+          <div style="font-weight:500">Login con Google</div>
+          <div style="display:flex;align-items:center;gap:9px;font-size:11px;color:var(--muted-foreground)"><span style="width:20px;height:20px;border-radius:6px;background:#4FD1C5;color:#0A1A33;font-weight:700;font-size:10.5px;display:grid;place-items:center">D</span><span style="color:var(--st-waiting);font-weight:500">Alta</span><span>3/5</span><span style="margin-left:auto;font-family:'Ubuntu Mono',monospace">41 min</span><span style="font-family:'Ubuntu Mono',monospace;color:var(--foreground)">2,84 €</span></div>
+        </div>
+        <span style="font-family:'Ubuntu Mono',monospace;font-size:11.5px;color:var(--muted-foreground);margin-top:10px">&lt;RunTreeNode /&gt;</span>
+        <div style="border:1px solid var(--border);border-radius:10px;background:var(--card);padding:6px;display:flex;flex-direction:column;gap:2px">
+          <div style="display:flex;align-items:center;gap:8px;height:32px;padding:0 8px;border-radius:7px;background:var(--accent);border:1px solid var(--ring)"><span style="width:8px;height:8px;border-radius:50%;background:var(--st-running);animation:pulse 1.6s ease-out infinite"></span><span style="flex:1">Dev · ejecución principal</span><span style="font-family:'Ubuntu Mono',monospace;font-size:11.5px;color:var(--muted-foreground)">41:12</span></div>
+          <div style="display:flex;align-items:center;gap:8px;height:32px;padding:0 8px 0 24px"><span style="font-family:'Ubuntu Mono',monospace;color:var(--muted-foreground)">└</span><span style="width:8px;height:8px;border-radius:50%;background:var(--st-running)"></span><span style="flex:1;font-family:'Ubuntu Mono',monospace;font-size:12.5px">tests-auth</span><span style="font-family:'Ubuntu Mono',monospace;font-size:11.5px;color:var(--muted-foreground)">06:20</span></div>
+          <div style="display:flex;align-items:center;gap:8px;height:32px;padding:0 8px 0 40px"><span style="font-family:'Ubuntu Mono',monospace;color:var(--muted-foreground)">└</span><span style="width:8px;height:8px;border-radius:50%;background:var(--st-done)"></span><span style="flex:1;font-family:'Ubuntu Mono',monospace;font-size:12.5px">fixtures-oauth</span><span style="font-family:'Ubuntu Mono',monospace;font-size:11.5px;color:var(--muted-foreground)">01:12</span></div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px"><span style="font-family:'Ubuntu Mono',monospace;font-size:11.5px;color:var(--muted-foreground)">&lt;InboxItem type="approval" /&gt;</span>
+        <div style="border:1px solid var(--border);border-radius:12px;background:var(--card);overflow:hidden">
+          <div style="display:flex;gap:12px;padding:14px"><div style="width:34px;height:34px;flex:none;border-radius:9px;background:#B5E061;color:#0A1A33;font-weight:700;display:grid;place-items:center">Q</div><div style="flex:1;display:flex;flex-direction:column;gap:5px"><div style="font-size:12px;color:var(--muted-foreground)"><span style="color:var(--st-waiting);font-weight:500">Aprobación</span> · Quique · Tienda online</div><div style="font-size:15px;font-weight:500">¿Puedo ejecutar este comando?</div><code style="align-self:flex-start;font-family:'Ubuntu Mono',monospace;font-size:12.5px;padding:5px 9px;border-radius:7px;background:var(--term-bg);color:#E6EDF7;border:1px solid var(--border)">npm install -D @playwright/test</code></div></div>
+          <div style="display:flex;gap:8px;padding:10px 14px;border-top:1px solid var(--border);background:var(--subtle)"><button style="height:30px;padding:0 12px;border-radius:7px;border:0;background:var(--primary-action);color:#fff;font-weight:500">Aprobar</button><button style="height:30px;padding:0 12px;border-radius:7px;border:1px solid var(--border);background:var(--card)">Rechazar</button><button style="margin-left:auto;height:30px;padding:0 10px;border-radius:7px;border:1px solid var(--border);background:transparent">Abrir terminal</button></div>
+        </div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+      <sc-for list="{{ terms }}" as="t" hint-placeholder-count="2">
+        <div style="display:flex;flex-direction:column;gap:8px"><span style="font-family:'Ubuntu Mono',monospace;font-size:11.5px;color:var(--muted-foreground)">{{ t.label }}</span>
+          <div style="border-radius:11px;border:{{ t.border }};box-shadow:{{ t.shadow }};background:var(--term-bg);overflow:hidden">
+            <div style="display:flex;align-items:center;gap:10px;padding:8px 10px 8px 12px;border-bottom:1px solid #16294A;background:#081429;color:#E6EDF7"><span style="font-family:'Ubuntu Mono',monospace;font-size:12.5px">dev@T-142 · cc-7f3a91</span><span style="height:22px;padding:0 9px;border-radius:999px;background:{{ t.pillBg }};color:{{ t.pillFg }};font-size:11.5px;font-weight:{{ t.pillW }};display:flex;align-items:center">{{ t.pill }}</span><button style="margin-left:auto;height:28px;padding:0 12px;border-radius:7px;border:{{ t.btnBd }};background:{{ t.btnBg }};color:{{ t.btnFg }};font-weight:500">{{ t.btn }}</button></div>
+            <div style="padding:12px 14px;font-family:'Ubuntu Mono',monospace;font-size:13px;line-height:1.6;color:#D7E1F0;height:150px">
+              <div style="color:#B39CFF">● mcp · update_status("implementando el login con Google")</div><div style="color:#F5B547">✎ Editando src/auth/google.ts (+18 −6)</div><div style="color:#fff;font-weight:700">▶ npm run test -- auth</div><div style="color:#43D392">  PASS  tests/auth/session.test.ts (4 tests)</div><div style="color:#FF6B6F">  FAIL  tests/auth/google.test.ts › redirige al panel</div>
+              <div style="color:#7F8DAA">{{ t.foot }}<span style="display:inline-block;width:8px;height:15px;background:#4CC9F0;vertical-align:-2px;margin-left:3px;animation:blink 1s steps(1) infinite"></span></div>
+            </div>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+
+  <section style="border:1px solid var(--border);border-radius:12px;background:var(--card);padding:16px 18px;display:flex;gap:24px;align-items:center">
+    <div style="flex:1"><div style="font-weight:500">Código React + Tailwind</div><div style="color:var(--muted-foreground);font-size:12.5px">Tokens en <code style="font-family:'Ubuntu Mono',monospace">code/globals.css</code>, extensión de Tailwind en <code style="font-family:'Ubuntu Mono',monospace">code/tailwind.config.ts</code> y componentes en <code style="font-family:'Ubuntu Mono',monospace">code/agentic-ui.tsx</code> (shadcn/ui + Radix + lucide-react).</div></div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1360,&quot;height&quot;:2200}}">
+class Component extends DCLogic {
+  renderVals() {
+    const D = [['--background','#0A1A33'],['--card','#0F2242'],['--popover','#13284D'],['--primary','#13284D'],['--primary-action','#2E5BD6'],['--secondary','#16305A'],['--muted','#122A4E'],['--muted-foreground','#A8B6CF'],['--accent','#1A3562'],['--border','#1E3A66'],['--ring','#7AA2FF'],['--destructive','#E5484D'],['--sidebar','#071427'],['--term-bg','#050E1E'],['--foreground','#FFFFFF'],['--input','#24426F']];
+    const Lt = [['--background','#F4F6FA'],['--card','#FFFFFF'],['--popover','#FFFFFF'],['--primary','#13284D'],['--primary-action','#1B3F8F'],['--secondary','#E9EEF6'],['--muted','#EEF2F8'],['--muted-foreground','#4B5B78'],['--accent','#E3EAF5'],['--border','#D6DEEA'],['--ring','#2E5BD6'],['--destructive','#C9302C'],['--sidebar','#0F2347'],['--term-bg','#0A1A33'],['--foreground','#0A1A33'],['--input','#C9D3E3']];
+    const tk = l => l.map(([n, hex]) => ({ n, hex, v: hex }));
+    return {
+      themes: [{ key: 'dark', label: 'Oscuro · navy (principal)', tokens: tk(D) }, { key: 'light', label: 'Claro (secundario)', tokens: tk(Lt) }],
+      statuses: [['--st-queued','En cola'],['--st-running','Ejecutando'],['--st-waiting','Esperando humano'],['--st-review','En revisión'],['--st-done','Hecho'],['--st-failed','Fallido'],['--st-cancelled','Cancelado']].map(([v, l]) => ({ v, l })),
+      agents: [['Ana','#F27FB2'],['Dev','#4FD1C5'],['Quique','#B5E061'],['Rita','#FFA06B']].map(([n, c]) => ({ n, c, i: n[0] })),
+      projects: [['Tienda online','#7C9CFF'],['App reservas','#E58AF0'],['Blog corporativo','#F2C94C']].map(([n, c]) => ({ n, c })),
+      type: [['display · 30/700','Ubuntu','30px',700,'Agentic OS'],['h1 · 22/500','Ubuntu','22px',500,'Buenos días, Marta'],['h2 · 15/500','Ubuntu','15px',500,'Aprobaciones pendientes'],['body · 13/400','Ubuntu','13px',400,'Dev está trabajando en «Login con Google» · App reservas'],['caption · 11.5/400','Ubuntu','11.5px',400,'Cola 2 tareas · concurrencia 2/2'],['mono · 13/400','Ubuntu Mono',"13px",400,'▶ npm run test -- auth'],['mono-id · 12/400','Ubuntu Mono','12px',400,'T-142 · cc-7f3a91e2-04b8']].map(([n, f, s, w, sample]) => ({ n, f: f === 'Ubuntu' ? 'Ubuntu,sans-serif' : "'Ubuntu Mono',monospace", s, w, sample })),
+      radii: [['sm · 6','6px'],['md · 8','8px'],['lg · 12','12px'],['xl · 14','14px'],['full','999px']].map(([n, v]) => ({ n, v })),
+      space: [4, 8, 12, 16, 20, 24, 32].map(v => ({ n: 'space-' + v / 4, v: v * 4 + 'px' })),
+      terms: [
+        { label: '<TerminalPanel mode="observing" />', border: '1px solid var(--border)', shadow: 'none', pill: 'Solo lectura (observando)', pillBg: '#13284D', pillFg: '#C9D5EA', pillW: 400, btn: 'Tomar control', btnBg: '#2E5BD6', btnFg: '#fff', btnBd: '0', foot: 'Dev está trabajando…' },
+        { label: '<TerminalPanel mode="intervening" />', border: '2px solid #F5B547', shadow: '0 0 0 4px rgba(245,181,71,.22)', pill: 'Estás interviniendo · agente en pausa', pillBg: '#F5B547', pillFg: '#0A1A33', pillW: 700, btn: 'Devolver al agente', btnBg: 'transparent', btnFg: '#F5B547', btnBd: '1px solid #F5B547', foot: '❯ ' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

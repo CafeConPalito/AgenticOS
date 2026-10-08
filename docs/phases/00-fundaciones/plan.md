@@ -40,16 +40,23 @@ Los scripts raíz son npm (multiplataforma, válidos el día de mañana en el se
 - Vite 8, React 19, TS estricto, Tailwind 4 (`@tailwindcss/vite`), shadcn (CLI 4) con los componentes `sidebar`, `button`, `tooltip`, `badge`, `separator` y `sonner`.
 - React Router 8 (router de navegador; si el build de Tauri da problemas con las rutas, cambiamos a hash: riesgo verificado en CA6).
 - TanStack Query 5, i18next 26 + react-i18next 17 (`src/i18n/es.json`, idioma por defecto `es`).
-- Fuentes locales con `@fontsource/ubuntu` (400/500/700) y `@fontsource/ubuntu-mono`.
-- **Tema**:
-  - Tokens CSS compatibles con shadcn en `src/styles/theme.css`, con dos temas: `navy` (oscuro, por defecto, textos blancos) y `light`.
-  - `ThemeProvider` aplica la clase en `<html>` y guarda la elección en `localStorage` (con try/catch).
-  - Los valores se sustituirán por los tokens de Claude Design cuando estén en `docs/design/`.
+- Fuentes locales con `@fontsource/ubuntu` (400/500/700) y `@fontsource/ubuntu-mono` (400/700).
+- **Diseño** (ver `docs/design/` y `docs/design/revision.md`):
+  - `src/styles/tokens.css` es una copia de `docs/design/tokens.css` sin el `@import` de Google Fonts.
+  - Tema navy = clase `.dark` en `<html>`, por defecto; el claro es `:root`.
+  - `ThemeProvider` guarda la elección en `localStorage` (con try/catch).
+  - El layout reproduce las capturas `01a`/`01b` en lo que toca a esta fase:
+    - sidebar de 232 px (60 px colapsada) con logo, los 7 ítems con sus iconos lucide (§6 del design system), contador de Inbox, estado «Conectado · vX» y el cambio de tema al pie;
+    - header de 52 px con breadcrumb, el buscador «Buscar o ejecutar un comando… Ctrl K» (aún sin función), el botón «Terminal» (deshabilitado) y el botón primario contextual;
+    - banner «Backend desconectado» cuando falla el health.
+  - Se toman como base `shell.tsx` y `primitives.tsx` de `docs/design/code/`, adaptados: textos a i18n, router real y tokens en lugar de hex.
+  - Componentes shadcn de esta fase: `sidebar breadcrumb button badge tooltip separator skeleton sonner`.
 - **Estructura**:
   - `src/lib/api.ts`: `getApiBaseUrl()`. En Tauri hace `invoke("backend_url")` con reintentos hasta que el sidecar está listo; en el navegador usa `import.meta.env.VITE_API_URL` o `http://127.0.0.1:8765`. Además, `apiFetch()`.
   - `src/hooks/useHealth.ts`: TanStack Query que consulta `/api/health` cada 5 s.
-  - `src/components/layout/AppShell.tsx`, `AppSidebar.tsx` (las 7 secciones con icono lucide y el contador de Inbox de momento a 0), `AppHeader.tsx` (breadcrumb y hueco para Ctrl+K) y `BackendStatus.tsx` (Conectado / Desconectado / Conectando).
-  - `src/pages/`: `DashboardPage`, `AgentsPage`, `ProjectsPage`, `BoardPage`, `InboxPage`, `UsagePage` y `SettingsPage`, todas con un estado vacío y textos de i18n.
+  - `src/components/layout/AppShell.tsx`, `AppSidebar.tsx`, `AppHeader.tsx`, `BackendStatus.tsx` (Conectado / Desconectado / Conectando) y `OfflineBanner.tsx`.
+  - `src/pages/`: `DashboardPage`, `AgentsPage`, `ProjectsPage`, `BoardPage`, `InboxPage`, `UsagePage` y `SettingsPage`, todas con el `EmptyState` del diseño y textos de i18n.
+  - Rutas en español: `/`, `/agentes`, `/proyectos`, `/tablero`, `/inbox`, `/consumo`, `/ajustes`.
 - Calidad: ESLint 10 (flat config, plugins react-hooks y jsx-a11y, y la regla `i18next/no-literal-string` para impedir cadenas en duro en el JSX), Prettier 3 y Vitest 5 con Testing Library y jsdom.
 
 ### Escritorio (`desktop/src-tauri/`)
@@ -115,6 +122,7 @@ Pre-commit: husky + lint-staged, con `ruff check --fix` y `ruff format` en `*.py
 | `BackendStatus.test.tsx`: con fetch simulado muestra "Conectado", "Desconectado" y "Conectando" | CA1 |
 | `api.test.ts`: `getApiBaseUrl` en navegador (env/default) y en Tauri (`invoke` simulado, con reintentos) | CA1, CA5 |
 | ESLint `i18next/no-literal-string` dentro de `lint` | CA3 |
+| Visual: comparar con las capturas `01a`/`01b` (sidebar, header, tema y tipografía) | CA3, CA4 |
 | Manual: `npm run dev` + captura; `npm run dev:desktop` + captura; `build:desktop` → abrir el exe, comprobar con `Get-Process` que el backend existe, cerrar la ventana y verificar que el proceso desaparece; además, matar Tauri por la fuerza y comprobar que el watchdog cierra el backend | CA1, CA5, CA6 |
 
 ## Decisiones (ADR)

@@ -1,0 +1,1330 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@400;500;700&family=Ubuntu+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+html,body{margin:0;height:100%;background:#0A1A33}
+*{box-sizing:border-box}
+button,input,textarea,select{font:inherit;color:inherit}
+button{cursor:pointer}
+a{color:var(--ring);text-decoration:none}a:hover{text-decoration:underline}
+*:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+::selection{background:#2E5BD6;color:#fff}
+::-webkit-scrollbar{width:10px;height:10px}::-webkit-scrollbar-thumb{background:var(--border);border-radius:10px;border:2px solid transparent;background-clip:padding-box}::-webkit-scrollbar-track{background:transparent}
+[data-theme="dark"]{--background:#0A1A33;--foreground:#FFFFFF;--card:#0F2242;--card-foreground:#FFFFFF;--popover:#13284D;--primary:#13284D;--primary-foreground:#FFFFFF;--primary-action:#2E5BD6;--primary-action-hover:#3B69E8;--secondary:#16305A;--muted:#122A4E;--muted-foreground:#A8B6CF;--accent:#1A3562;--accent-foreground:#FFFFFF;--destructive:#E5484D;--border:#1E3A66;--input:#24426F;--ring:#7AA2FF;--subtle:#0C1D38;--sidebar:#071427;--sidebar-foreground:#FFFFFF;--sidebar-muted:#9AA9C4;--sidebar-active:#16305A;--sidebar-border:#13284A;--term-bg:#050E1E;--st-queued:#9DB0D0;--st-running:#4CC9F0;--st-waiting:#F5B547;--st-review:#B39CFF;--st-done:#43D392;--st-failed:#FF6B6F;--st-cancelled:#8492AE;color-scheme:dark}
+[data-theme="light"]{--background:#F4F6FA;--foreground:#0A1A33;--card:#FFFFFF;--card-foreground:#0A1A33;--popover:#FFFFFF;--primary:#13284D;--primary-foreground:#FFFFFF;--primary-action:#1B3F8F;--primary-action-hover:#24499F;--secondary:#E9EEF6;--muted:#EEF2F8;--muted-foreground:#4B5B78;--accent:#E3EAF5;--accent-foreground:#0A1A33;--destructive:#C9302C;--border:#D6DEEA;--input:#C9D3E3;--ring:#2E5BD6;--subtle:#F8FAFD;--sidebar:#0F2347;--sidebar-foreground:#FFFFFF;--sidebar-muted:#AEBCD6;--sidebar-active:#1F3C6E;--sidebar-border:#1A3360;--term-bg:#0A1A33;--st-queued:#4F6385;--st-running:#0A78A3;--st-waiting:#9A6200;--st-review:#6A4FD1;--st-done:#12805A;--st-failed:#C9302C;--st-cancelled:#647089;color-scheme:light}
+@keyframes pulse{0%{box-shadow:0 0 0 0 color-mix(in oklch,var(--st-running) 70%,transparent)}100%{box-shadow:0 0 0 7px transparent}}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+@keyframes blink{50%{opacity:0}}
+@keyframes skel{50%{opacity:.45}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes toastIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</helmet>
+<div data-theme="{{ theme }}" style="height:100vh;min-width:1200px;display:flex;background:var(--background);color:var(--foreground);font-family:Ubuntu,system-ui,sans-serif;font-size:13px;line-height:1.45;overflow:hidden">
+
+<aside style="width:{{ sideW }};flex:none;background:var(--sidebar);color:var(--sidebar-foreground);border-right:1px solid var(--sidebar-border);display:flex;flex-direction:column;transition:width .18s ease;overflow:hidden">
+  <div style="height:52px;flex:none;display:flex;align-items:center;gap:10px;padding:0 14px;border-bottom:1px solid var(--sidebar-border)">
+    <div style="width:28px;height:28px;flex:none;border-radius:8px;background:#2E5BD6;display:grid;place-items:center;position:relative"><div style="width:10px;height:10px;border-radius:3px;border:2px solid #fff"></div><div style="position:absolute;right:5px;top:5px;width:5px;height:5px;border-radius:50%;background:#4CC9F0"></div></div>
+    <sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><div style="font-weight:700;font-size:15px;letter-spacing:-.01em;white-space:nowrap;flex:1">Agentic OS</div></sc-if>
+    <sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><button onClick="{{ toggleSide }}" aria-label="Colapsar barra lateral" title="Colapsar" style="width:28px;height:28px;border:0;border-radius:6px;background:transparent;color:var(--sidebar-muted);display:grid;place-items:center" style-hover="background:var(--sidebar-active);color:#fff"><span style="width:16px;height:16px;background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/panel-left-close.svg) center/contain no-repeat"></span></button></sc-if>
+  </div>
+  <sc-if value="{{ collapsed }}"><button onClick="{{ toggleSide }}" aria-label="Expandir barra lateral" style="margin:8px auto 0;width:36px;height:30px;border:0;border-radius:6px;background:transparent;color:var(--sidebar-muted);display:grid;place-items:center" style-hover="background:var(--sidebar-active);color:#fff"><span style="width:16px;height:16px;background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/panel-left-open.svg) center/contain no-repeat"></span></button></sc-if>
+  <nav style="display:flex;flex-direction:column;gap:2px;padding:10px 10px;flex:1">
+    <sc-for list="{{ nav }}" as="n" hint-placeholder-count="7">
+      <button onClick="{{ n.go }}" title="{{ n.label }}" style="height:34px;display:flex;align-items:center;gap:10px;padding:0 10px;border:0;border-radius:7px;background:{{ n.bg }};color:{{ n.fg }};font-weight:{{ n.fw }};text-align:left;white-space:nowrap" style-hover="background:var(--sidebar-active);color:#fff">
+        <span style="width:16px;height:16px;flex:none;background:currentColor;mask:url({{ n.icon }}) center/contain no-repeat"></span>
+        <sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="flex:1">{{ n.label }}</span></sc-if>
+        <sc-if value="{{ n.showCount }}"><span style="min-width:20px;height:18px;padding:0 6px;border-radius:999px;background:#F5B547;color:#0A1A33;font-size:11px;font-weight:700;display:grid;place-items:center">{{ n.count }}</span></sc-if>
+      </button>
+    </sc-for>
+  </nav>
+  <div style="padding:10px;border-top:1px solid var(--sidebar-border);display:flex;flex-direction:column;gap:6px">
+    <div title="{{ backendLabel }}" style="height:32px;display:flex;align-items:center;gap:9px;padding:0 10px;border-radius:7px;font-size:12px;color:var(--sidebar-muted);white-space:nowrap">
+      <span style="width:8px;height:8px;flex:none;border-radius:50%;background:{{ backendColor }}"></span>
+      <sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span>{{ backendLabel }}</span></sc-if>
+    </div>
+    <button onClick="{{ toggleTheme }}" aria-label="Cambiar tema" style="height:32px;display:flex;align-items:center;gap:9px;padding:0 10px;border:0;border-radius:7px;background:transparent;color:var(--sidebar-muted);white-space:nowrap" style-hover="background:var(--sidebar-active);color:#fff">
+      <span style="width:16px;height:16px;flex:none;background:currentColor;mask:url({{ themeIcon }}) center/contain no-repeat"></span>
+      <sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span>{{ themeLabel }}</span></sc-if>
+    </button>
+  </div>
+</aside>
+
+<main style="flex:1;min-width:0;display:flex;flex-direction:column">
+  <header style="height:52px;flex:none;display:flex;align-items:center;gap:12px;padding:0 18px;border-bottom:1px solid var(--border);background:var(--background)">
+    <div style="display:flex;align-items:center;gap:6px;min-width:0;flex:1;font-size:13px">
+      <sc-for list="{{ crumbs }}" as="c" hint-placeholder-count="2">
+        <sc-if value="{{ c.sep }}"><span style="color:var(--muted-foreground)">/</span></sc-if>
+        <button onClick="{{ c.on }}" style="border:0;background:transparent;padding:3px 5px;border-radius:5px;color:{{ c.color }};font-weight:{{ c.fw }};white-space:nowrap" style-hover="background:var(--accent)">{{ c.label }}</button>
+      </sc-for>
+    </div>
+    <button onClick="{{ openPalette }}" style="width:300px;height:32px;display:flex;align-items:center;gap:8px;padding:0 8px 0 10px;border:1px solid var(--border);border-radius:8px;background:var(--subtle);color:var(--muted-foreground);font-size:12.5px" style-hover="border-color:var(--ring)">
+      <span style="width:14px;height:14px;background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/search.svg) center/contain no-repeat"></span>
+      <span style="flex:1;text-align:left">Buscar o ejecutar un comando…</span>
+      <span style="font-family:'Ubuntu Mono',monospace;font-size:11px;padding:1px 6px;border-radius:4px;border:1px solid var(--border);background:var(--card)">Ctrl K</span>
+    </button>
+    <button onClick="{{ toggleDock }}" title="Terminal (Ctrl+`)" style="height:32px;display:flex;align-items:center;gap:7px;padding:0 10px;border:1px solid var(--border);border-radius:8px;background:{{ dockBtnBg }};color:var(--foreground)" style-hover="background:var(--accent)">
+      <span style="width:15px;height:15px;background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/square-terminal.svg) center/contain no-repeat"></span>Terminal
+    </button>
+    <sc-if value="{{ primary.show }}" hint-placeholder-val="{{ true }}">
+      <button onClick="{{ primary.on }}" style="height:32px;display:flex;align-items:center;gap:6px;padding:0 12px;border:0;border-radius:8px;background:var(--primary-action);color:#fff;font-weight:500" style-hover="background:var(--primary-action-hover)">
+        <span style="width:15px;height:15px;background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/plus.svg) center/contain no-repeat"></span>{{ primary.label }}
+      </button>
+    </sc-if>
+  </header>
+
+  <sc-if value="{{ demo.offline }}">
+    <div role="alert" style="flex:none;display:flex;align-items:center;gap:10px;padding:9px 18px;background:color-mix(in oklch,var(--st-failed) 14%,var(--background));border-bottom:1px solid color-mix(in oklch,var(--st-failed) 40%,transparent);font-size:12.5px">
+      <span style="width:16px;height:16px;color:var(--st-failed);background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/wifi-off.svg) center/contain no-repeat"></span>
+      <strong style="font-weight:500">Backend desconectado.</strong><span style="color:var(--muted-foreground)">No se pueden lanzar ni observar ejecuciones. Los agentes en curso siguen trabajando en sus terminales.</span>
+      <button style="margin-left:auto;height:26px;padding:0 10px;border-radius:6px;border:1px solid var(--border);background:var(--card)" style-hover="border-color:var(--ring)">Reintentar ahora</button>
+      <span style="font-family:'Ubuntu Mono',monospace;color:var(--muted-foreground);font-size:12px">ws://127.0.0.1:4317</span>
+    </div>
+  </sc-if>
+
+  <div style="flex:1;min-height:0;display:flex;flex-direction:{{ bodyDir }}">
+    <div ref="{{ contentRef }}" style="flex:1;min-height:0;min-width:0;overflow:auto">
+
+<!-- ================= DASHBOARD ================= -->
+<sc-if value="{{ is.dashboard }}" hint-placeholder-val="{{ true }}">
+<div data-screen-label="Dashboard" style="padding:22px 24px 32px;display:flex;flex-direction:column;gap:20px;max-width:1640px">
+  <div style="display:flex;align-items:flex-end;gap:16px">
+    <div style="flex:1">
+      <h1 style="margin:0;font-size:22px;font-weight:500;letter-spacing:-.01em">Buenos días, Marta</h1>
+      <div style="color:var(--muted-foreground);margin-top:3px">{{ summary }}</div>
+    </div>
+    <div style="font-family:'Ubuntu Mono',monospace;font-size:12px;color:var(--muted-foreground)">jueves 8 oct · 10:43</div>
+  </div>
+
+  <sc-if value="{{ demo.empty }}">
+    <div style="border:1px dashed var(--input);border-radius:12px;padding:40px 24px;display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center;background:var(--subtle)">
+      <div style="width:44px;height:44px;border-radius:12px;background:var(--accent);display:grid;place-items:center"><span style="width:22px;height:22px;background:var(--foreground);mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/bot.svg) center/contain no-repeat"></span></div>
+      <div><div style="font-size:16px;font-weight:500">Aún no tienes agentes</div><div style="color:var(--muted-foreground);margin-top:4px">Crea tu primer agente o usa una plantilla para empezar en un minuto.</div></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center">
+        <sc-for list="{{ templates }}" as="tp" hint-placeholder-count="5"><button style="height:32px;padding:0 12px;border-radius:8px;border:1px solid var(--border);background:var(--card);display:flex;align-items:center;gap:7px" style-hover="border-color:var(--ring)"><span style="width:8px;height:8px;border-radius:2px;background:{{ tp.color }}"></span>{{ tp.name }}</button></sc-for>
+      </div>
+      <button onClick="{{ goArchitect }}" style="height:34px;padding:0 14px;border:0;border-radius:8px;background:var(--primary-action);color:#fff;font-weight:500;display:flex;align-items:center;gap:7px" style-hover="background:var(--primary-action-hover)"><span style="width:15px;height:15px;background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/sparkles.svg) center/contain no-repeat"></span>Crear con el Arquitecto</button>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ demo.loading }}">
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:12px">
+      <sc-for list="{{ skel4 }}" as="s" hint-placeholder-count="4">
+        <div style="height:156px;border:1px solid var(--border);border-radius:12px;background:var(--card);padding:14px;display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;gap:10px;align-items:center"><div style="width:34px;height:34px;border-radius:9px;background:var(--muted);animation:skel 1.2s ease-in-out infinite"></div><div style="flex:1;display:flex;flex-direction:column;gap:6px"><div style="height:10px;width:60%;border-radius:4px;background:var(--muted);animation:skel 1.2s ease-in-out infinite"></div><div style="height:8px;width:35%;border-radius:4px;background:var(--muted);animation:skel 1.2s ease-in-out infinite"></div></div></div>
+          <div style="height:40px;border-radius:7px;background:var(--muted);animation:skel 1.2s ease-in-out infinite"></div>
+          <div style="height:8px;width:80%;border-radius:4px;background:var(--muted);animation:skel 1.2s ease-in-out infinite"></div>
+        </div>
+      </sc-for>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ demo.showData }}" hint-placeholder-val="{{ true }}">
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:12px">
+    <sc-for list="{{ agentCards }}" as="a" hint-placeholder-count="4">
+      <div onClick="{{ a.open }}" style="border:1px solid {{ a.border }};border-radius:12px;background:var(--card);padding:14px;display:flex;flex-direction:column;gap:12px;cursor:pointer" style-hover="border-color:var(--ring)">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:34px;height:34px;flex:none;border-radius:9px;background:{{ a.color }};color:#0A1A33;font-weight:700;font-size:15px;display:grid;place-items:center">{{ a.initial }}</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:500;white-space:nowrap">{{ a.name }} <span style="color:var(--muted-foreground);font-weight:400">· {{ a.role }}</span></div>
+            <div style="display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--muted-foreground);white-space:nowrap"><span style="font-family:'Ubuntu Mono',monospace;font-size:10px;font-weight:700;padding:0 4px;border-radius:3px;border:1px solid var(--border)">{{ a.cliTag }}</span>{{ a.cli }}</div>
+          </div>
+          <span style="flex:none;display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 8px;border-radius:999px;font-size:11px;font-weight:500;color:{{ a.st.c }};background:{{ a.st.bg }};border:1px solid {{ a.st.bd }};white-space:nowrap"><span style="width:6px;height:6px;border-radius:50%;background:currentColor;animation:{{ a.pulse }}"></span>{{ a.stLabel }}</span>
+        </div>
+        <sc-if value="{{ a.busy }}">
+          <div style="border-radius:8px;background:var(--subtle);border:1px solid var(--border);padding:9px 10px;display:flex;flex-direction:column;gap:4px">
+            <div style="font-size:11px;color:var(--muted-foreground)">{{ a.verb }}</div>
+            <div style="font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ a.task }}</div>
+            <div style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--muted-foreground)"><span style="width:8px;height:8px;border-radius:2px;background:{{ a.pcolor }}"></span>{{ a.pname }}<span style="margin-left:auto;font-family:'Ubuntu Mono',monospace;color:var(--foreground)">{{ a.elapsed }}</span></div>
+          </div>
+        </sc-if>
+        <sc-if value="{{ a.idle }}">
+          <div style="border-radius:8px;border:1px dashed var(--input);padding:9px 10px;display:flex;align-items:center;gap:8px;min-height:72px">
+            <div style="flex:1;color:var(--muted-foreground);font-size:12px">Sin tarea activa</div>
+            <button onClick="{{ openNew }}" style="height:26px;padding:0 9px;border-radius:6px;border:1px solid var(--border);background:var(--card);font-size:12px" style-hover="border-color:var(--ring)">Asignar tarea</button>
+          </div>
+        </sc-if>
+        <div style="display:flex;gap:14px;font-size:11.5px;color:var(--muted-foreground)">
+          <span>Cola <strong style="color:var(--foreground);font-weight:500">{{ a.queueLabel }}</strong></span>
+          <span>Concurrencia <strong style="color:var(--foreground);font-weight:500;font-family:'Ubuntu Mono',monospace">{{ a.conc }}</strong></span>
+        </div>
+      </div>
+    </sc-for>
+  </div>
+
+  <div style="display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:16px;align-items:start">
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <section style="border:1px solid color-mix(in oklch,var(--st-waiting) 45%,var(--border));border-radius:12px;background:var(--card);overflow:hidden">
+        <div style="display:flex;align-items:center;gap:8px;padding:12px 14px;background:color-mix(in oklch,var(--st-waiting) 10%,transparent);border-bottom:1px solid var(--border)">
+          <span style="width:16px;height:16px;color:var(--st-waiting);background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/hand.svg) center/contain no-repeat"></span>
+          <h2 style="margin:0;font-size:14px;font-weight:500">Aprobaciones pendientes</h2>
+          <span style="height:18px;padding:0 6px;border-radius:999px;background:var(--st-waiting);color:#0A1A33;font-size:11px;font-weight:700;display:grid;place-items:center">{{ pendingCount }}</span>
+          <button onClick="{{ goInbox }}" style="margin-left:auto;border:0;background:transparent;color:var(--ring);font-size:12px">Ver Inbox →</button>
+        </div>
+        <sc-for list="{{ pendingTop }}" as="it" hint-placeholder-count="3">
+          <div style="display:flex;align-items:center;gap:12px;padding:11px 14px;border-bottom:1px solid var(--border)">
+            <div style="width:26px;height:26px;flex:none;border-radius:7px;background:{{ it.ag.color }};color:#0A1A33;font-weight:700;font-size:12px;display:grid;place-items:center">{{ it.ag.initial }}</div>
+            <div style="flex:1;min-width:0">
+              <div style="display:flex;gap:6px;align-items:center;font-size:11.5px;color:var(--muted-foreground)"><span style="color:{{ it.tm.c }};font-weight:500">{{ it.tm.l }}</span>·<span>{{ it.ag.name }}</span>·<span style="width:7px;height:7px;border-radius:2px;background:{{ it.pr.color }}"></span><span>{{ it.pr.name }}</span><span style="margin-left:auto">{{ it.when }}</span></div>
+              <div style="font-weight:500;margin-top:1px">{{ it.title }}</div>
+              <sc-if value="{{ it.cmd }}"><code style="display:inline-block;margin-top:4px;font-family:'Ubuntu Mono',monospace;font-size:12px;padding:2px 7px;border-radius:5px;background:var(--term-bg);color:#E6EDF7;border:1px solid var(--border)">{{ it.cmd }}</code></sc-if>
+            </div>
+            <div style="display:flex;gap:6px;flex:none">
+              <sc-if value="{{ it.isApproval }}"><button onClick="{{ it.reject }}" style="height:28px;padding:0 10px;border-radius:7px;border:1px solid var(--border);background:transparent" style-hover="background:var(--accent)">Rechazar</button></sc-if>
+              <sc-if value="{{ it.isApproval }}"><button onClick="{{ it.approve }}" style="height:28px;padding:0 10px;border-radius:7px;border:0;background:var(--primary-action);color:#fff;font-weight:500" style-hover="background:var(--primary-action-hover)">Aprobar</button></sc-if>
+              <sc-if value="{{ it.notApproval }}"><button onClick="{{ goInbox }}" style="height:28px;padding:0 10px;border-radius:7px;border:1px solid var(--border);background:transparent" style-hover="background:var(--accent)">Responder</button></sc-if>
+            </div>
+          </div>
+        </sc-for>
+        <sc-if value="{{ noPending }}"><div style="padding:18px 14px;color:var(--muted-foreground)">Nada pendiente. Tus agentes no necesitan nada de ti ahora mismo.</div></sc-if>
+      </section>
+
+      <section style="border:1px solid var(--border);border-radius:12px;background:var(--card);padding:14px 16px">
+        <h2 style="margin:0 0 10px;font-size:14px;font-weight:500">Actividad reciente</h2>
+        <div style="display:flex;flex-direction:column">
+          <sc-for list="{{ activity }}" as="ev" hint-placeholder-count="6">
+            <div style="display:grid;grid-template-columns:44px 14px minmax(0,1fr);gap:8px;align-items:start;min-height:34px">
+              <span style="font-family:'Ubuntu Mono',monospace;font-size:12px;color:var(--muted-foreground);padding-top:1px">{{ ev.t }}</span>
+              <div style="display:flex;flex-direction:column;align-items:center;height:100%"><span style="width:9px;height:9px;margin-top:4px;border-radius:50%;background:{{ ev.c }};flex:none"></span><span style="flex:1;width:1px;background:var(--border);margin-top:3px"></span></div>
+              <div style="padding-bottom:10px"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:{{ ev.ag.color }};margin-right:5px;vertical-align:0"></span><strong style="font-weight:500">{{ ev.ag.name }}</strong> <span>{{ ev.txt }}</span> <span style="color:var(--muted-foreground);font-size:12px">· {{ ev.pr.name }}</span></div>
+            </div>
+          </sc-for>
+        </div>
+      </section>
+    </div>
+
+    <section style="border:1px solid var(--border);border-radius:12px;background:var(--card);padding:14px 16px;display:flex;flex-direction:column;gap:14px">
+      <div style="display:flex;align-items:center"><h2 style="margin:0;font-size:14px;font-weight:500;flex:1">Consumo de hoy</h2><button onClick="{{ goUsage }}" style="border:0;background:transparent;color:var(--ring);font-size:12px">Ver detalle →</button></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div style="border-radius:9px;background:var(--subtle);border:1px solid var(--border);padding:10px 12px"><div style="font-size:11.5px;color:var(--muted-foreground)">Tokens</div><div style="font-size:22px;font-weight:500;font-family:'Ubuntu Mono',monospace">3,82 M</div><div style="font-size:11px;color:var(--muted-foreground)">2,61 M en caché</div></div>
+        <div style="border-radius:9px;background:var(--subtle);border:1px solid var(--border);padding:10px 12px"><div style="font-size:11.5px;color:var(--muted-foreground)">Coste</div><div style="font-size:22px;font-weight:500;font-family:'Ubuntu Mono',monospace">6,51 €</div><div style="font-size:11px;color:var(--muted-foreground)">Límite diario 25 €</div></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:9px">
+        <sc-for list="{{ todayAgents }}" as="u" hint-placeholder-count="4">
+          <div style="display:grid;grid-template-columns:90px minmax(0,1fr) 56px;gap:10px;align-items:center;font-size:12px">
+            <span style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:2px;background:{{ u.color }}"></span>{{ u.name }}</span>
+            <div style="height:8px;border-radius:4px;background:var(--muted);overflow:hidden"><div style="height:100%;width:{{ u.w }};background:{{ u.color }};border-radius:4px"></div></div>
+            <span style="text-align:right;font-family:'Ubuntu Mono',monospace">{{ u.cost }}</span>
+          </div>
+        </sc-for>
+      </div>
+      <div style="height:6px;border-radius:3px;background:var(--muted);overflow:hidden"><div style="height:100%;width:26%;background:var(--primary-action)"></div></div>
+      <div style="font-size:11.5px;color:var(--muted-foreground);margin-top:-8px">26 % del límite diario</div>
+    </section>
+  </div>
+  </sc-if>
+</div>
+</sc-if>
+
+<!-- ================= TABLERO ================= -->
+<sc-if value="{{ is.board }}">
+<div data-screen-label="Tablero" style="height:100%;display:flex;flex-direction:column">
+  <div style="flex:none;display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid var(--border);flex-wrap:wrap">
+    <div role="tablist" style="display:flex;padding:3px;border-radius:8px;background:var(--muted);border:1px solid var(--border)">
+      <sc-for list="{{ boardViews }}" as="v" hint-placeholder-count="3"><button role="tab" onClick="{{ v.on }}" style="height:26px;padding:0 11px;border:0;border-radius:6px;background:{{ v.bg }};color:{{ v.fg }};font-weight:500;font-size:12.5px;box-shadow:{{ v.sh }}">{{ v.label }}</button></sc-for>
+    </div>
+    <div style="width:1px;height:22px;background:var(--border)"></div>
+    <div style="display:flex;gap:6px;align-items:center">
+      <sc-for list="{{ fProjects }}" as="f" hint-placeholder-count="4"><button onClick="{{ f.on }}" style="height:28px;padding:0 10px;border-radius:999px;border:1px solid {{ f.bd }};background:{{ f.bg }};display:flex;align-items:center;gap:6px;font-size:12px"><sc-if value="{{ f.color }}"><span style="width:8px;height:8px;border-radius:2px;background:{{ f.color }}"></span></sc-if>{{ f.label }}</button></sc-for>
+    </div>
+    <div style="display:flex;gap:4px;align-items:center;margin-left:auto">
+      <span style="font-size:12px;color:var(--muted-foreground);margin-right:4px">Agente</span>
+      <sc-for list="{{ fAgents }}" as="f" hint-placeholder-count="5"><button onClick="{{ f.on }}" title="{{ f.label }}" style="width:28px;height:28px;border-radius:8px;border:2px solid {{ f.bd }};background:{{ f.color }};color:#0A1A33;font-weight:700;font-size:12px;opacity:{{ f.op }};display:grid;place-items:center;padding:0">{{ f.initial }}</button></sc-for>
+    </div>
+  </div>
+  <sc-if value="{{ isCols }}" hint-placeholder-val="{{ true }}">
+    <div style="flex:1;min-height:0;display:flex;gap:12px;padding:16px 20px;overflow-x:auto">
+      <sc-for list="{{ cols }}" as="col" hint-placeholder-count="6">
+        <div style="width:276px;flex:none;display:flex;flex-direction:column;border-radius:12px;background:var(--subtle);border:1px solid var(--border);min-height:0">
+          <div style="display:flex;align-items:center;gap:8px;padding:11px 12px 8px">
+            <span style="width:8px;height:8px;border-radius:50%;background:{{ col.c }}"></span>
+            <span style="font-weight:500">{{ col.title }}</span>
+            <span style="font-size:12px;color:var(--muted-foreground);font-family:'Ubuntu Mono',monospace">{{ col.count }}</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px;padding:0 8px 10px;overflow-y:auto">
+            <sc-for list="{{ col.items }}" as="t" hint-placeholder-count="2">
+              <div onClick="{{ t.open }}" tabindex="0" style="position:relative;overflow:hidden;background:var(--card);border:1px solid var(--border);border-radius:9px;padding:10px 11px;display:flex;flex-direction:column;gap:7px;cursor:pointer" style-hover="border-color:var(--ring)">
+                <sc-if value="{{ t.live }}"><div style="position:absolute;left:0;right:0;top:0;height:2px;background:linear-gradient(90deg,transparent,var(--st-running),transparent);background-size:200% 100%;animation:shimmer 1.6s linear infinite"></div></sc-if>
+                <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted-foreground)">
+                  <span style="display:inline-flex;align-items:center;gap:5px;height:18px;padding:0 6px;border-radius:5px;background:color-mix(in oklch,{{ t.proj.color }} 16%,transparent);color:var(--foreground)"><span style="width:6px;height:6px;border-radius:2px;background:{{ t.proj.color }}"></span>{{ t.proj.name }}</span>
+                  <span>{{ t.stage }}</span>
+                  <span style="margin-left:auto;font-family:'Ubuntu Mono',monospace">{{ t.code }}</span>
+                </div>
+                <div style="font-weight:500;line-height:1.35;text-wrap:pretty">{{ t.title }}</div>
+                <sc-if value="{{ t.showStatus }}"><span style="align-self:flex-start;display:inline-flex;align-items:center;gap:5px;height:19px;padding:0 7px;border-radius:999px;font-size:10.5px;font-weight:500;color:{{ t.st.c }};background:{{ t.st.bg }};border:1px solid {{ t.st.bd }}"><span style="width:5px;height:5px;border-radius:50%;background:currentColor"></span>{{ t.st.l }}</span></sc-if>
+                <div style="display:flex;align-items:center;gap:9px;font-size:11px;color:var(--muted-foreground)">
+                  <span title="{{ t.ag.full }}" style="width:20px;height:20px;border-radius:6px;background:{{ t.ag.color }};color:#0A1A33;font-weight:700;font-size:10.5px;display:grid;place-items:center;flex:none">{{ t.ag.initial }}</span>
+                  <span style="color:{{ t.pr.c }};font-weight:500">{{ t.pr.l }}</span>
+                  <sc-if value="{{ t.hasSubs }}"><span style="display:flex;align-items:center;gap:3px"><span style="width:12px;height:12px;background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/list-checks.svg) center/contain no-repeat"></span>{{ t.subs }}</span></sc-if>
+                  <span style="margin-left:auto;font-family:'Ubuntu Mono',monospace">{{ t.time }}</span>
+                  <span style="font-family:'Ubuntu Mono',monospace;color:var(--foreground)">{{ t.costL }}</span>
+                </div>
+              </div>
+            </sc-for>
+            <sc-if value="{{ col.empty }}"><div style="padding:16px 8px;text-align:center;color:var(--muted-foreground);font-size:12px;border:1px dashed var(--input);border-radius:8px">Sin tareas</div></sc-if>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </sc-if>
+  <sc-if value="{{ isQueues }}">
+    <div style="flex:1;min-height:0;overflow:auto;padding:16px 20px;display:flex;flex-direction:column;gap:10px">
+      <div style="font-size:12px;color:var(--muted-foreground)">Arrastra las tareas para cambiar el orden en que cada agente las ejecutará. La primera tarjeta es la actual.</div>
+      <sc-for list="{{ queueRows }}" as="row" hint-placeholder-count="4">
+        <div style="display:grid;grid-template-columns:190px minmax(0,1fr);gap:14px;align-items:stretch;border:1px solid var(--border);border-radius:12px;background:var(--card);padding:12px">
+          <div style="display:flex;flex-direction:column;gap:6px;padding-right:12px;border-right:1px solid var(--border)">
+            <div style="display:flex;align-items:center;gap:9px"><div style="width:30px;height:30px;border-radius:8px;background:{{ row.ag.color }};color:#0A1A33;font-weight:700;display:grid;place-items:center">{{ row.ag.initial }}</div><div><div style="font-weight:500">{{ row.ag.name }}</div><div style="font-size:11.5px;color:var(--muted-foreground)">{{ row.ag.role }} · {{ row.ag.cliTag }}</div></div></div>
+            <div style="font-size:11.5px;color:var(--muted-foreground)">{{ row.count }} · concurrencia <span style="font-family:'Ubuntu Mono',monospace;color:var(--foreground)">{{ row.ag.conc }}</span></div>
+          </div>
+          <div style="display:flex;gap:8px;overflow-x:auto;align-items:stretch;min-height:74px">
+            <sc-for list="{{ row.items }}" as="q" hint-placeholder-count="3">
+              <div draggable="true" onDragStart="{{ q.onDragStart }}" onDragOver="{{ q.onDragOver }}" onDrop="{{ q.onDrop }}" onDragEnd="{{ q.onDragEnd }}" onClick="{{ q.open }}" style="width:230px;flex:none;position:relative;overflow:hidden;border-radius:9px;border:1px solid {{ q.bd }};background:{{ q.bg }};padding:9px 10px 9px 8px;display:flex;gap:7px;cursor:grab;opacity:{{ q.op }}" style-hover="border-color:var(--ring)">
+                <sc-if value="{{ q.live }}"><div style="position:absolute;left:0;right:0;top:0;height:2px;background:linear-gradient(90deg,transparent,var(--st-running),transparent);background-size:200% 100%;animation:shimmer 1.6s linear infinite"></div></sc-if>
+                <span style="width:14px;height:14px;flex:none;margin-top:2px;color:var(--muted-foreground);background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/grip-vertical.svg) center/contain no-repeat"></span>
+                <div style="min-width:0;flex:1;display:flex;flex-direction:column;gap:4px">
+                  <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted-foreground)"><span style="font-family:'Ubuntu Mono',monospace;color:var(--foreground)">{{ q.pos }}</span><span style="width:7px;height:7px;border-radius:2px;background:{{ q.proj.color }}"></span>{{ q.proj.name }}<span style="margin-left:auto;color:{{ q.st.c }};font-weight:500">{{ q.st.l }}</span></div>
+                  <div style="font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ q.title }}</div>
+                  <div style="font-size:11px;color:var(--muted-foreground)">{{ q.stage }} · <span style="color:{{ q.pr.c }}">{{ q.pr.l }}</span></div>
+                </div>
+              </div>
+            </sc-for>
+            <sc-if value="{{ row.empty }}"><div style="flex:1;display:flex;align-items:center;justify-content:center;border:1px dashed var(--input);border-radius:9px;color:var(--muted-foreground);font-size:12px">Cola vacía · {{ row.ag.name }} está disponible</div></sc-if>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </sc-if>
+</div>
+</sc-if>
+
+<!-- ================= DETALLE DE TAREA ================= -->
+<sc-if value="{{ is.task }}">
+<div data-screen-label="Detalle de tarea" style="height:100%;display:flex;flex-direction:column;min-height:560px">
+  <div style="flex:none;display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:1px solid var(--border)">
+    <span style="font-family:'Ubuntu Mono',monospace;color:var(--muted-foreground)">{{ tk.code }}</span>
+    <h1 style="margin:0;font-size:17px;font-weight:500">{{ tk.title }}</h1>
+    <span style="display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 8px;border-radius:999px;font-size:11px;font-weight:500;color:{{ tk.st.c }};background:{{ tk.st.bg }};border:1px solid {{ tk.st.bd }}"><span style="width:6px;height:6px;border-radius:50%;background:currentColor;animation:{{ tk.pulse }}"></span>{{ tk.stL }}</span>
+    <span style="display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 8px;border-radius:6px;background:color-mix(in oklch,{{ tk.proj.color }} 16%,transparent);font-size:12px"><span style="width:7px;height:7px;border-radius:2px;background:{{ tk.proj.color }}"></span>{{ tk.proj.name }}</span>
+    <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted-foreground)"><span style="width:20px;height:20px;border-radius:6px;background:{{ tk.ag.color }};color:#0A1A33;font-weight:700;font-size:10.5px;display:grid;place-items:center">{{ tk.ag.initial }}</span>{{ tk.ag.full }}</span>
+    <div style="margin-left:auto;display:flex;gap:6px">
+      <button onClick="{{ pause }}" style="height:30px;padding:0 10px;border-radius:7px;border:1px solid var(--border);background:var(--card);display:flex;align-items:center;gap:6px" style-hover="background:var(--accent)"><span style="width:14px;height:14px;background:currentColor;mask:url({{ pauseIcon }}) center/contain no-repeat"></span>{{ pauseLabel }}</button>
+      <button onClick="{{ retry }}" style="height:30px;padding:0 10px;border-radius:7px;border:1px solid var(--border);background:var(--card);display:flex;align-items:center;gap:6px" style-hover="background:var(--accent)"><span style="width:14px;height:14px;background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/rotate-ccw.svg) center/contain no-repeat"></span>Reintentar</button>
+      <button onClick="{{ openFolder }}" style="height:30px;padding:0 10px;border-radius:7px;border:1px solid var(--border);background:var(--card);display:flex;align-items:center;gap:6px" style-hover="background:var(--accent)"><span style="width:14px;height:14px;background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/folder-git-2.svg) center/contain no-repeat"></span>Abrir worktree</button>
+      <button onClick="{{ cancelRun }}" style="height:30px;padding:0 10px;border-radius:7px;border:1px solid color-mix(in oklch,var(--st-failed) 50%,transparent);background:transparent;color:var(--st-failed);display:flex;align-items:center;gap:6px" style-hover="background:color-mix(in oklch,var(--st-failed) 12%,transparent)"><span style="width:14px;height:14px;background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/square.svg) center/contain no-repeat"></span>Cancelar</button>
+    </div>
+  </div>
+  <div style="flex:1;min-height:0;display:grid;grid-template-columns:300px minmax(0,1fr) 316px;grid-template-rows:minmax(0,1fr)">
+    <div style="border-right:1px solid var(--border);overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:18px">
+      <div><div style="font-size:11.5px;font-weight:500;color:var(--muted-foreground);margin-bottom:6px">Descripción</div><p style="margin:0;text-wrap:pretty">Permitir que los clientes inicien sesión con su cuenta de Google (OAuth 2.0 + PKCE). Si el email ya existe, vincular la cuenta. Redirigir al panel tras el login.</p></div>
+      <div>
+        <div style="font-size:11.5px;font-weight:500;color:var(--muted-foreground);margin-bottom:8px">Etapa del pipeline</div>
+        <div style="display:flex;align-items:center;gap:4px">
+          <sc-for list="{{ stepper }}" as="s" hint-placeholder-count="3">
+            <sc-if value="{{ s.sep }}"><span style="flex:1;height:1px;background:var(--border);min-width:8px"></span></sc-if>
+            <span style="display:flex;align-items:center;gap:5px;height:24px;padding:0 8px;border-radius:999px;font-size:11.5px;border:1px solid {{ s.bd }};background:{{ s.bg }};color:{{ s.fg }};white-space:nowrap"><span style="width:16px;height:16px;border-radius:50%;background:{{ s.ag.color }};color:#0A1A33;font-size:9px;font-weight:700;display:grid;place-items:center">{{ s.ag.initial }}</span>{{ s.name }}</span>
+          </sc-for>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:11.5px;font-weight:500;color:var(--muted-foreground);margin-bottom:8px">Subtareas · {{ subDone }}</div>
+        <div style="display:flex;flex-direction:column;gap:2px">
+          <sc-for list="{{ subtasks }}" as="s" hint-placeholder-count="5">
+            <label style="display:flex;align-items:flex-start;gap:8px;padding:5px 6px;border-radius:6px;cursor:pointer" style-hover="background:var(--accent)">
+              <input type="checkbox" checked="{{ s.done }}" onChange="{{ s.toggle }}" style="margin:2px 0 0;accent-color:#2E5BD6;width:14px;height:14px">
+              <span style="flex:1;color:{{ s.fg }};text-decoration:{{ s.dec }}">{{ s.t }}</span>
+              <sc-if value="{{ s.by }}"><span style="font-size:10.5px;color:var(--muted-foreground);font-family:'Ubuntu Mono',monospace">{{ s.by }}</span></sc-if>
+            </label>
+          </sc-for>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:11.5px;font-weight:500;color:var(--muted-foreground);margin-bottom:8px">Historial de transiciones</div>
+        <div style="display:flex;flex-direction:column;gap:9px">
+          <sc-for list="{{ transitions }}" as="tr" hint-placeholder-count="4">
+            <div style="display:flex;gap:8px;font-size:12px"><span style="width:8px;height:8px;border-radius:50%;margin-top:5px;flex:none;background:{{ tr.c }}"></span><div style="flex:1"><div>{{ tr.txt }}</div><div style="color:var(--muted-foreground);font-size:11px">{{ tr.when }}</div></div></div>
+          </sc-for>
+        </div>
+      </div>
+      <div style="border-radius:9px;border:1px solid var(--border);background:var(--subtle);padding:10px 12px">
+        <div style="font-size:11.5px;font-weight:500;color:var(--muted-foreground);margin-bottom:6px">Resumen del agente</div>
+        <p style="margin:0;font-size:12.5px;text-wrap:pretty">Flujo OAuth implementado en <code style="font-family:'Ubuntu Mono',monospace">src/auth/google.ts</code>. Corregido el redirect que QA marcó como fallido. Pendiente: botón en móvil y documentar variables de entorno.</p>
+      </div>
+    </div>
+
+    <div style="min-width:0;min-height:0;display:flex;flex-direction:column;padding:14px;gap:10px;background:var(--background)">
+      <div style="flex:1;min-height:0;display:flex;flex-direction:column;border-radius:11px;border:{{ termBorder }};background:var(--term-bg);overflow:hidden;box-shadow:{{ termShadow }};transition:box-shadow .2s,border-color .2s">
+        <div style="flex:none;display:flex;align-items:center;gap:10px;padding:8px 10px 8px 12px;border-bottom:1px solid #16294A;background:#081429;color:#E6EDF7">
+          <div style="display:flex;gap:5px"><span style="width:9px;height:9px;border-radius:50%;background:#1E3A66"></span><span style="width:9px;height:9px;border-radius:50%;background:#1E3A66"></span><span style="width:9px;height:9px;border-radius:50%;background:#1E3A66"></span></div>
+          <span style="font-family:'Ubuntu Mono',monospace;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">{{ runTitle }}</span>
+          <sc-if value="{{ observing }}" hint-placeholder-val="{{ true }}"><span style="flex:none;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;height:22px;padding:0 9px;border-radius:999px;background:#13284D;color:#C9D5EA;font-size:11.5px"><span style="width:12px;height:12px;background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/eye.svg) center/contain no-repeat"></span>Solo lectura (observando)</span></sc-if>
+          <sc-if value="{{ control }}"><span style="flex:none;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;height:22px;padding:0 9px;border-radius:999px;background:#F5B547;color:#0A1A33;font-size:11.5px;font-weight:700"><span style="width:12px;height:12px;background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/keyboard.svg) center/contain no-repeat"></span>Estás interviniendo</span></sc-if>
+          <div style="margin-left:auto;display:flex;gap:6px;flex:none;white-space:nowrap">
+            <sc-if value="{{ observing }}" hint-placeholder-val="{{ true }}"><button onClick="{{ takeControl }}" style="height:28px;padding:0 12px;border-radius:7px;border:0;background:#2E5BD6;color:#fff;font-weight:500;display:flex;align-items:center;gap:6px" style-hover="background:#3B69E8"><span style="width:14px;height:14px;background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/hand.svg) center/contain no-repeat"></span>Tomar control</button></sc-if>
+            <sc-if value="{{ control }}"><button onClick="{{ giveBack }}" style="height:28px;padding:0 12px;border-radius:7px;border:1px solid #F5B547;background:transparent;color:#F5B547;font-weight:500;display:flex;align-items:center;gap:6px" style-hover="background:rgba(245,181,71,.12)"><span style="width:14px;height:14px;background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/undo-2.svg) center/contain no-repeat"></span>Devolver al agente</button></sc-if>
+          </div>
+        </div>
+        <div ref="{{ termRef }}" style="flex:1;min-height:0;overflow-y:auto;padding:12px 14px;font-family:'Ubuntu Mono',monospace;font-size:13px;line-height:1.6;color:#D7E1F0">
+          <sc-for list="{{ termLines }}" as="l" hint-placeholder-count="12"><div style="white-space:pre-wrap;color:{{ l.c }};font-weight:{{ l.fw }}">{{ l.t }}</div></sc-for>
+          <sc-if value="{{ observing }}" hint-placeholder-val="{{ true }}"><div style="color:#7F8DAA">{{ cursorLine }}<span style="display:inline-block;width:8px;height:15px;background:#4CC9F0;vertical-align:-2px;margin-left:2px;animation:blink 1s steps(1) infinite"></span></div></sc-if>
+        </div>
+        <sc-if value="{{ control }}">
+          <div style="flex:none;display:flex;align-items:center;gap:8px;padding:8px 14px;border-top:1px solid #3A3320;background:#0B1424;font-family:'Ubuntu Mono',monospace;font-size:13px">
+            <span style="color:#F5B547">❯</span>
+            <input value="{{ termInput }}" onChange="{{ onTermInput }}" onKeyDown="{{ onTermKey }}" autofocus="" placeholder="Escribe en la terminal y pulsa Enter…" aria-label="Entrada de terminal" style="flex:1;background:transparent;border:0;outline:none;color:#fff;font-family:inherit;font-size:13px">
+            <span style="color:#7F8DAA;font-size:11.5px">Enter para enviar</span>
+          </div>
+        </sc-if>
+      </div>
+      <div style="flex:none;display:flex;gap:16px;font-size:11.5px;color:var(--muted-foreground);font-family:'Ubuntu Mono',monospace">
+        <span>xterm · 132×38</span><span>pwsh 7.4</span><span>D:\proyectos\app-reservas.wt\T-142</span><span style="margin-left:auto">rama feature/login-google</span>
+      </div>
+    </div>
+
+    <div style="border-left:1px solid var(--border);overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:18px">
+      <div>
+        <div style="font-size:11.5px;font-weight:500;color:var(--muted-foreground);margin-bottom:8px">Árbol de ejecución</div>
+        <div role="tree" style="display:flex;flex-direction:column;gap:2px">
+          <sc-for list="{{ runs }}" as="r" hint-placeholder-count="4">
+            <button role="treeitem" onClick="{{ r.select }}" style="display:flex;align-items:center;gap:8px;height:34px;padding:0 8px 0 {{ r.pad }};border-radius:7px;border:1px solid {{ r.bd }};background:{{ r.bg }};text-align:left" style-hover="background:var(--accent)">
+              <sc-if value="{{ r.child }}"><span style="font-family:'Ubuntu Mono',monospace;color:var(--muted-foreground)">└</span></sc-if>
+              <span style="width:8px;height:8px;border-radius:50%;flex:none;background:{{ r.st.c }};animation:{{ r.pulse }}"></span>
+              <span style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:{{ r.font }};font-size:12.5px">{{ r.name }}</span>
+              <span style="font-family:'Ubuntu Mono',monospace;font-size:11.5px;color:var(--muted-foreground)">{{ r.dur }}</span>
+            </button>
+          </sc-for>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:11.5px;font-weight:500;color:var(--muted-foreground);margin-bottom:8px">Eventos MCP</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <sc-for list="{{ mcp }}" as="m" hint-placeholder-count="5">
+            <div style="display:grid;grid-template-columns:40px minmax(0,1fr);gap:8px;font-size:12px">
+              <span style="font-family:'Ubuntu Mono',monospace;color:var(--muted-foreground)">{{ m.t }}</span>
+              <div><span style="font-family:'Ubuntu Mono',monospace;color:var(--st-review)">{{ m.fn }}</span><span style="color:var(--muted-foreground)">: </span><span>{{ m.arg }}</span></div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:11.5px;font-weight:500;color:var(--muted-foreground);margin-bottom:8px">Consumo de la sesión</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);border:1px solid var(--border);border-radius:9px;overflow:hidden">
+          <sc-for list="{{ sessStats }}" as="s" hint-placeholder-count="6"><div style="background:var(--card);padding:8px 10px"><div style="font-size:11px;color:var(--muted-foreground)">{{ s.l }}</div><div style="font-family:'Ubuntu Mono',monospace;font-size:14px">{{ s.v }}</div></div></sc-for>
+        </div>
+        <div style="margin-top:8px;display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--muted-foreground)">ID de sesión <code style="font-family:'Ubuntu Mono',monospace;color:var(--foreground);padding:1px 5px;border-radius:4px;background:var(--muted)">cc-7f3a91e2-04b8</code></div>
+      </div>
+    </div>
+  </div>
+</div>
+</sc-if>
+
+<!-- ================= AGENTES ================= -->
+<sc-if value="{{ is.agents }}">
+<div data-screen-label="Agentes" style="padding:22px 24px 32px;display:flex;flex-direction:column;gap:16px;max-width:1640px">
+  <div style="display:flex;align-items:flex-end;gap:12px"><div style="flex:1"><h1 style="margin:0;font-size:22px;font-weight:500">Agentes</h1><div style="color:var(--muted-foreground);margin-top:3px">Tu equipo. Cada agente es un CLI de IA con su propio rol, instrucciones y permisos.</div></div>
+    <button onClick="{{ goArchitect }}" style="height:32px;padding:0 12px;border-radius:8px;border:1px solid var(--border);background:var(--card);display:flex;align-items:center;gap:7px" style-hover="border-color:var(--ring)"><span style="width:15px;height:15px;color:var(--st-review);background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/sparkles.svg) center/contain no-repeat"></span>Crear con el Arquitecto</button></div>
+  <sc-if value="{{ agentsEmpty }}">
+    <div style="border:1px dashed var(--input);border-radius:12px;padding:48px 24px;display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center;background:var(--subtle)">
+      <div style="width:44px;height:44px;border-radius:12px;background:var(--accent);display:grid;place-items:center"><span style="width:22px;height:22px;background:var(--foreground);mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/bot.svg) center/contain no-repeat"></span></div>
+      <div><div style="font-size:16px;font-weight:500">Aún no tienes agentes</div><div style="color:var(--muted-foreground);margin-top:4px">Crea tu primer agente o usa una plantilla:</div></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center"><sc-for list="{{ templates }}" as="tp" hint-placeholder-count="5"><button style="height:32px;padding:0 12px;border-radius:8px;border:1px solid var(--border);background:var(--card);display:flex;align-items:center;gap:7px" style-hover="border-color:var(--ring)"><span style="width:8px;height:8px;border-radius:2px;background:{{ tp.color }}"></span>{{ tp.name }}</button></sc-for></div>
+      <button onClick="{{ goArchitect }}" style="height:34px;padding:0 14px;border:0;border-radius:8px;background:var(--primary-action);color:#fff;font-weight:500" style-hover="background:var(--primary-action-hover)">Crear mi primer agente</button>
+    </div>
+  </sc-if>
+  <sc-if value="{{ agentsLoading }}">
+    <div style="border:1px solid var(--border);border-radius:12px;background:var(--card);overflow:hidden" aria-busy="true">
+      <sc-for list="{{ skel5 }}" as="x" hint-placeholder-count="5"><div style="display:flex;gap:14px;align-items:center;padding:14px 16px;border-bottom:1px solid var(--border)"><div style="width:32px;height:32px;border-radius:8px;background:var(--muted);animation:skel 1.2s ease-in-out infinite"></div><div style="height:10px;width:160px;border-radius:4px;background:var(--muted);animation:skel 1.2s ease-in-out infinite"></div><div style="height:10px;width:110px;border-radius:4px;background:var(--muted);animation:skel 1.2s ease-in-out infinite;margin-left:60px"></div><div style="height:10px;flex:1;border-radius:4px;background:var(--muted);animation:skel 1.2s ease-in-out infinite;margin-left:60px"></div></div></sc-for>
+    </div>
+  </sc-if>
+  <sc-if value="{{ agentsData }}" hint-placeholder-val="{{ true }}">
+  <div style="border:1px solid var(--border);border-radius:12px;background:var(--card);overflow:hidden">
+    <div style="display:grid;grid-template-columns:minmax(220px,1.6fr) 150px minmax(140px,1fr) 150px 80px 120px 28px;gap:12px;padding:9px 16px;font-size:11.5px;font-weight:500;color:var(--muted-foreground);border-bottom:1px solid var(--border);background:var(--subtle)"><span>Agente</span><span>CLI</span><span>Modelo</span><span>Estado</span><span style="text-align:right">En cola</span><span style="text-align:right">Consumo del mes</span><span></span></div>
+    <sc-for list="{{ agentRows }}" as="r" hint-placeholder-count="5">
+      <div onClick="{{ r.open }}" tabindex="0" style="display:grid;grid-template-columns:minmax(220px,1.6fr) 150px minmax(140px,1fr) 150px 80px 120px 28px;gap:12px;align-items:center;padding:11px 16px;border-bottom:1px solid var(--border);cursor:pointer" style-hover="background:var(--accent)">
+        <div style="display:flex;align-items:center;gap:10px;min-width:0"><div style="width:32px;height:32px;flex:none;border-radius:8px;background:{{ r.color }};color:#0A1A33;font-weight:700;display:grid;place-items:center">{{ r.initial }}</div><div style="min-width:0"><div style="font-weight:500">{{ r.name }}</div><div style="font-size:12px;color:var(--muted-foreground)">{{ r.role }}</div></div>
+          <sc-if value="{{ r.isDraft }}"><span style="height:20px;padding:0 7px;border-radius:999px;border:1px dashed var(--st-review);color:var(--st-review);font-size:11px;display:flex;align-items:center;gap:4px;white-space:nowrap"><span style="width:11px;height:11px;background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/sparkles.svg) center/contain no-repeat"></span>Propuesto por el Arquitecto</span></sc-if></div>
+        <div style="display:flex;align-items:center;gap:7px"><span style="width:22px;height:22px;border-radius:6px;background:var(--primary);border:1px solid var(--border);color:#fff;font-family:'Ubuntu Mono',monospace;font-size:10px;font-weight:700;display:grid;place-items:center">{{ r.cliTag }}</span>{{ r.cli }}</div>
+        <span style="font-family:'Ubuntu Mono',monospace;font-size:12.5px;color:var(--muted-foreground)">{{ r.model }}</span>
+        <span style="justify-self:start;display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 8px;border-radius:999px;font-size:11px;font-weight:500;color:{{ r.st.c }};background:{{ r.st.bg }};border:1px solid {{ r.st.bd }}"><span style="width:6px;height:6px;border-radius:50%;background:currentColor;animation:{{ r.pulse }}"></span>{{ r.stL }}</span>
+        <span style="text-align:right;font-family:'Ubuntu Mono',monospace">{{ r.queue }}</span>
+        <span style="text-align:right;font-family:'Ubuntu Mono',monospace">{{ r.monthL }}</span>
+        <span style="width:14px;height:14px;color:var(--muted-foreground);background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/chevron-right.svg) center/contain no-repeat"></span>
+      </div>
+    </sc-for>
+  </div>
+  </sc-if>
+</div>
+</sc-if>
+
+<!-- ================= AGENTE (editor) ================= -->
+<sc-if value="{{ is.agent }}">
+<div data-screen-label="Editor de agente" style="display:flex;flex-direction:column;min-height:100%">
+  <sc-if value="{{ isDraft }}">
+    <div role="status" style="display:flex;align-items:center;gap:12px;padding:12px 24px;background:color-mix(in oklch,var(--st-review) 13%,var(--background));border-bottom:1px solid color-mix(in oklch,var(--st-review) 40%,transparent)">
+      <span style="width:18px;height:18px;color:var(--st-review);background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/sparkles.svg) center/contain no-repeat"></span>
+      <div style="flex:1"><div style="font-weight:500">Borrador propuesto por el Agente Arquitecto</div><div style="font-size:12px;color:var(--muted-foreground)">Revisa rol, instrucciones y permisos. El agente no podrá recibir tareas hasta que lo apruebes.</div></div>
+      <button onClick="{{ rejectDraft }}" style="height:32px;padding:0 12px;border-radius:8px;border:1px solid var(--border);background:var(--card)" style-hover="background:var(--accent)">Rechazar</button>
+      <button onClick="{{ approveDraft }}" style="height:32px;padding:0 14px;border-radius:8px;border:0;background:var(--primary-action);color:#fff;font-weight:500" style-hover="background:var(--primary-action-hover)">Aprobar agente</button>
+    </div>
+  </sc-if>
+  <div style="display:flex;align-items:center;gap:14px;padding:20px 24px 14px">
+    <div style="width:48px;height:48px;border-radius:12px;background:{{ ag.color }};color:#0A1A33;font-size:22px;font-weight:700;display:grid;place-items:center">{{ ag.initial }}</div>
+    <div style="flex:1"><h1 style="margin:0;font-size:20px;font-weight:500">{{ ag.name }} <span style="color:var(--muted-foreground);font-weight:400">· {{ ag.role }}</span></h1><div style="display:flex;align-items:center;gap:8px;margin-top:4px;font-size:12px;color:var(--muted-foreground)"><span style="display:inline-flex;align-items:center;gap:5px;height:20px;padding:0 7px;border-radius:999px;font-size:11px;font-weight:500;color:{{ ag.st.c }};background:{{ ag.st.bg }};border:1px solid {{ ag.st.bd }}">{{ ag.st.l }}</span><span>{{ ag.cli }}</span>·<span style="font-family:'Ubuntu Mono',monospace">{{ ag.model }}</span></div></div>
+    <button onClick="{{ saveAgent }}" style="height:32px;padding:0 14px;border-radius:8px;border:0;background:var(--primary-action);color:#fff;font-weight:500" style-hover="background:var(--primary-action-hover)">Guardar cambios</button>
+  </div>
+  <div role="tablist" style="display:flex;gap:2px;border-bottom:1px solid var(--border);padding:0 18px">
+    <sc-for list="{{ agentTabs }}" as="t" hint-placeholder-count="6"><button role="tab" onClick="{{ t.on }}" style="height:38px;padding:0 10px;border:0;background:transparent;color:{{ t.fg }};font-weight:{{ t.fw }};box-shadow:inset 0 -2px 0 {{ t.bd }}">{{ t.label }}</button></sc-for>
+  </div>
+  <div style="padding:20px 24px 32px;max-width:1100px">
+    <sc-if value="{{ at.general }}" hint-placeholder-val="{{ true }}">
+      <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px 20px">
+        <label style="display:flex;flex-direction:column;gap:6px"><span style="font-size:12px;color:var(--muted-foreground)">Nombre</span><input defaultValue="{{ ag.name }}" style="height:36px;padding:0 10px;border-radius:8px;border:1px solid var(--input);background:var(--subtle)"></label>
+        <label style="display:flex;flex-direction:column;gap:6px"><span style="font-size:12px;color:var(--muted-foreground)">Rol</span><input defaultValue="{{ ag.role }}" style="height:36px;padding:0 10px;border-radius:8px;border:1px solid var(--input);background:var(--subtle)"></label>
+        <div style="grid-column:1 / -1;display:flex;flex-direction:column;gap:8px"><span style="font-size:12px;color:var(--muted-foreground)">Avatar y color</span>
+          <div style="display:flex;align-items:center;gap:14px">
+            <div style="width:56px;height:56px;border-radius:14px;background:{{ ag.color }};color:#0A1A33;font-size:24px;font-weight:700;display:grid;place-items:center">{{ ag.initial }}</div>
+            <div role="radiogroup" aria-label="Color del agente" style="display:flex;gap:8px"><sc-for list="{{ colors }}" as="c" hint-placeholder-count="8"><button role="radio" aria-checked="{{ c.aria }}" onClick="{{ c.on }}" aria-label="{{ c.c }}" style="width:28px;height:28px;border-radius:8px;background:{{ c.c }};border:2px solid {{ c.bd }};box-shadow:0 0 0 2px var(--background) inset;padding:0"></button></sc-for></div>
+            <button style="height:30px;padding:0 10px;border-radius:7px;border:1px solid var(--border);background:var(--card);display:flex;align-items:center;gap:6px" style-hover="border-color:var(--ring)"><span style="width:14px;height:14px;background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/image-up.svg) center/contain no-repeat"></span>Subir imagen</button>
+          </div>
+          <div style="font-size:12px;color:var(--muted-foreground)">El color identifica al agente en el tablero, las colas y las pestañas de terminal.</div>
+        </div>
+        <label style="grid-column:1 / -1;display:flex;flex-direction:column;gap:6px"><span style="font-size:12px;color:var(--muted-foreground)">Descripción</span><textarea rows="3" defaultValue="{{ ag.desc }}" style="padding:9px 10px;border-radius:8px;border:1px solid var(--input);background:var(--subtle);resize:vertical"></textarea></label>
+      </div>
+    </sc-if>
+    <sc-if value="{{ at.instrucciones }}">
+      <div style="display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:16px">
+        <div style="border:1px solid var(--input);border-radius:10px;overflow:hidden;display:flex;flex-direction:column">
+          <div style="display:flex;align-items:center;gap:2px;padding:6px 8px;border-bottom:1px solid var(--border);background:var(--muted)">
+            <button style="height:26px;padding:0 8px;border:0;border-radius:5px;background:transparent;font-weight:700" style-hover="background:var(--accent)">H</button><button style="height:26px;padding:0 8px;border:0;border-radius:5px;background:transparent;font-weight:700" style-hover="background:var(--accent)">B</button><button style="height:26px;padding:0 8px;border:0;border-radius:5px;background:transparent;font-style:italic" style-hover="background:var(--accent)">I</button><button style="height:26px;padding:0 8px;border:0;border-radius:5px;background:transparent;font-family:'Ubuntu Mono',monospace" style-hover="background:var(--accent)">&lt;/&gt;</button><button style="height:26px;padding:0 8px;border:0;border-radius:5px;background:transparent" style-hover="background:var(--accent)">• Lista</button>
+            <span style="margin-left:auto;font-size:11.5px;color:var(--muted-foreground)">Markdown · system prompt</span>
+          </div>
+          <textarea rows="22" defaultValue="{{ prompt }}" aria-label="Instrucciones del agente" style="border:0;outline:none;padding:14px 16px;background:var(--subtle);font-family:'Ubuntu Mono',monospace;font-size:13px;line-height:1.65;resize:vertical"></textarea>
+          <div style="padding:6px 12px;border-top:1px solid var(--border);font-size:11.5px;color:var(--muted-foreground);font-family:'Ubuntu Mono',monospace">{{ promptLen }}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div style="border:1px solid var(--border);border-radius:10px;padding:12px;background:var(--card)"><div style="font-weight:500;margin-bottom:6px">Variables disponibles</div><div style="display:flex;flex-direction:column;gap:5px;font-family:'Ubuntu Mono',monospace;font-size:12px;color:var(--muted-foreground)"><span>$PROYECTO</span><span>$ETAPA</span><span>$TAREA</span><span>$MEMORIA</span><span>$WORKSPACE</span></div></div>
+          <div style="border:1px solid var(--border);border-radius:10px;padding:12px;background:var(--card);font-size:12px;color:var(--muted-foreground)">Se añaden automáticamente: herramientas MCP de Agentic OS, memoria del proyecto y documentos de conocimiento activos.</div>
+        </div>
+      </div>
+    </sc-if>
+    <sc-if value="{{ at.ejecucion }}">
+      <div style="display:flex;flex-direction:column;gap:22px">
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px">
+          <div style="display:flex;flex-direction:column;gap:8px"><span style="font-size:12px;color:var(--muted-foreground)">CLI</span>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><sc-for list="{{ cliOpts }}" as="c" hint-placeholder-count="2"><button onClick="{{ c.on }}" style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:9px;border:1.5px solid {{ c.bd }};background:{{ c.bg }};text-align:left"><span style="width:30px;height:30px;border-radius:7px;background:var(--primary);color:#fff;font-family:'Ubuntu Mono',monospace;font-size:11px;font-weight:700;display:grid;place-items:center;border:1px solid var(--border)">{{ c.t }}</span><span><span style="display:block;font-weight:500">{{ c.n }}</span><span style="display:block;font-size:11.5px;color:var(--muted-foreground)">{{ c.d }}</span></span></button></sc-for></div>
+          </div>
+          <label style="display:flex;flex-direction:column;gap:8px"><span style="font-size:12px;color:var(--muted-foreground)">Modelo</span>
+            <select value="{{ edModel }}" onChange="{{ onModel }}" style="height:52px;padding:0 10px;border-radius:9px;border:1px solid var(--input);background:var(--subtle);font-family:'Ubuntu Mono',monospace"><sc-for list="{{ models }}" as="m" hint-placeholder-count="2"><option value="{{ m.m }}">{{ m.m }}</option></sc-for></select></label>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px"><span style="font-size:12px;color:var(--muted-foreground)">Modo de permisos</span>
+          <div role="radiogroup" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px"><sc-for list="{{ perms }}" as="p" hint-placeholder-count="3"><button role="radio" aria-checked="{{ p.sel }}" onClick="{{ p.on }}" style="display:flex;gap:10px;padding:12px;border-radius:9px;border:1.5px solid {{ p.bd }};background:{{ p.bg }};text-align:left;align-items:flex-start"><span style="width:16px;height:16px;flex:none;margin-top:1px;background:currentColor;mask:url({{ p.icon }}) center/contain no-repeat"></span><span><span style="display:block;font-weight:500">{{ p.n }}</span><span style="display:block;font-size:12px;color:var(--muted-foreground);margin-top:2px">{{ p.d }}</span></span></button></sc-for></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px"><span style="font-size:12px;color:var(--muted-foreground)">Herramientas permitidas</span>
+          <div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{ tools }}" as="t" hint-placeholder-count="7"><button aria-pressed="{{ t.on }}" onClick="{{ t.toggle }}" style="height:30px;padding:0 11px;border-radius:999px;border:1px solid {{ t.bd }};background:{{ t.bg }};display:flex;align-items:center;gap:6px;font-size:12.5px"><span style="font-family:'Ubuntu Mono',monospace">{{ t.mark }}</span>{{ t.k }}</button></sc-for></div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px">
+          <div style="border:1px solid var(--border);border-radius:10px;background:var(--card);padding:12px;display:flex;align-items:center;gap:10px"><div style="flex:1"><div style="font-weight:500">Concurrencia máxima</div><div style="font-size:12px;color:var(--muted-foreground)">Tareas a la vez</div></div><div style="display:flex;align-items:center;border:1px solid var(--input);border-radius:8px;overflow:hidden"><button onClick="{{ decConc }}" aria-label="Menos" style="width:30px;height:30px;border:0;background:var(--muted)">−</button><span style="width:34px;text-align:center;font-family:'Ubuntu Mono',monospace">{{ conc }}</span><button onClick="{{ incConc }}" aria-label="Más" style="width:30px;height:30px;border:0;background:var(--muted)">+</button></div></div>
+          <div style="border:1px solid var(--border);border-radius:10px;background:var(--card);padding:12px;display:flex;align-items:center;gap:10px"><div style="flex:1"><div style="font-weight:500">Puede lanzar subagentes</div><div style="font-size:12px;color:var(--muted-foreground)">Ejecuciones hijas en paralelo</div></div><button role="switch" aria-checked="{{ swSub.aria }}" onClick="{{ swSub.toggle }}" aria-label="Puede lanzar subagentes" style="width:36px;height:20px;border-radius:999px;border:0;background:{{ swSub.track }};padding:2px;flex:none"><span style="display:block;width:16px;height:16px;border-radius:50%;background:#fff;transform:{{ swSub.x }};transition:transform .15s"></span></button></div>
+          <div style="border:1px solid var(--border);border-radius:10px;background:var(--card);padding:12px;display:flex;align-items:center;gap:10px"><div style="flex:1"><div style="font-weight:500">Puede crear tareas</div><div style="font-size:12px;color:var(--muted-foreground)">En el backlog de sus proyectos</div></div><button role="switch" aria-checked="{{ swCreate.aria }}" onClick="{{ swCreate.toggle }}" aria-label="Puede crear tareas" style="width:36px;height:20px;border-radius:999px;border:0;background:{{ swCreate.track }};padding:2px;flex:none"><span style="display:block;width:16px;height:16px;border-radius:50%;background:#fff;transform:{{ swCreate.x }};transition:transform .15s"></span></button></div>
+        </div>
+      </div>
+    </sc-if>
+    <sc-if value="{{ at.conocimiento }}"><dc-import name="Knowledge" level="agente" scope-name="{{ ag.name }}" section="docs" hint-size="100%,520px"></dc-import></sc-if>
+    <sc-if value="{{ at.skills }}"><dc-import name="Knowledge" level="agente" scope-name="{{ ag.name }}" section="skills" hint-size="100%,420px"></dc-import></sc-if>
+    <sc-if value="{{ at.historial }}">
+      <div style="border:1px solid var(--border);border-radius:12px;background:var(--card);overflow:hidden">
+        <div style="display:grid;grid-template-columns:110px minmax(0,1.4fr) minmax(0,1fr) 130px 90px 80px 100px;gap:12px;padding:9px 14px;font-size:11.5px;font-weight:500;color:var(--muted-foreground);background:var(--subtle);border-bottom:1px solid var(--border)"><span>Inicio</span><span>Tarea</span><span>Proyecto</span><span>Estado</span><span style="text-align:right">Tokens</span><span style="text-align:right">Coste</span><span style="text-align:right">Duración</span></div>
+        <sc-for list="{{ history }}" as="h" hint-placeholder-count="3"><div style="display:grid;grid-template-columns:110px minmax(0,1.4fr) minmax(0,1fr) 130px 90px 80px 100px;gap:12px;padding:10px 14px;align-items:center;border-bottom:1px solid var(--border)"><span style="font-family:'Ubuntu Mono',monospace;font-size:12px;color:var(--muted-foreground)">{{ h.when }}</span><span><span style="font-weight:500">{{ h.task }}</span> <span style="font-family:'Ubuntu Mono',monospace;font-size:11.5px;color:var(--muted-foreground)">{{ h.id }}</span></span><span style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:2px;background:{{ h.pr.color }}"></span>{{ h.pr.name }}</span><span style="justify-self:start;display:inline-flex;align-items:center;gap:5px;height:20px;padding:0 7px;border-radius:999px;font-size:11px;color:{{ h.st.c }};background:{{ h.st.bg }};border:1px solid {{ h.st.bd }}">{{ h.st.l }}</span><span style="text-align:right;font-family:'Ubuntu Mono',monospace">{{ h.tokL }}</span><span style="text-align:right;font-family:'Ubuntu Mono',monospace">{{ h.costL }}</span><span style="text-align:right;font-family:'Ubuntu Mono',monospace">{{ h.durL }}</span></div></sc-for>
+        <sc-if value="{{ noHistory }}"><div style="padding:22px;text-align:center;color:var(--muted-foreground)">Este agente todavía no ha ejecutado ninguna tarea.</div></sc-if>
+      </div>
+    </sc-if>
+  </div>
+</div>
+</sc-if>
+
+<!-- ================= ARQUITECTO ================= -->
+<sc-if value="{{ is.architect }}">
+<div data-screen-label="Crear agente con el Arquitecto" style="height:100%;display:grid;grid-template-columns:minmax(0,1fr) minmax(380px,0.9fr);min-height:560px">
+  <div style="display:flex;flex-direction:column;min-height:0;border-right:1px solid var(--border)">
+    <div style="padding:16px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px"><div style="width:32px;height:32px;border-radius:9px;background:var(--st-review);display:grid;place-items:center;color:#0A1A33"><span style="width:17px;height:17px;background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/sparkles.svg) center/contain no-repeat"></span></div><div style="flex:1"><div style="font-weight:500">Agente Arquitecto</div><div style="font-size:12px;color:var(--muted-foreground)">Diseña nuevos agentes a partir de una conversación</div></div><button onClick="{{ resetArch }}" style="height:28px;padding:0 10px;border-radius:7px;border:1px solid var(--border);background:transparent;font-size:12px" style-hover="background:var(--accent)">Reiniciar</button></div>
+    <div style="flex:1;min-height:0;overflow-y:auto;padding:20px 22px;display:flex;flex-direction:column;gap:12px">
+      <sc-for list="{{ chat }}" as="m" hint-placeholder-count="3">
+        <div style="display:flex;justify-content:{{ m.align }};gap:8px">
+          <sc-if value="{{ m.arch }}"><div style="width:24px;height:24px;flex:none;border-radius:7px;background:var(--st-review);color:#0A1A33;font-size:11px;font-weight:700;display:grid;place-items:center">A</div></sc-if>
+          <div style="max-width:78%;padding:10px 12px;border-radius:11px;background:{{ m.bg }};color:{{ m.fg }};border:1px solid {{ m.bd }};text-wrap:pretty">{{ m.text }}</div>
+        </div>
+      </sc-for>
+    </div>
+    <div style="padding:14px 22px 18px;border-top:1px solid var(--border)">
+      <div style="display:flex;align-items:flex-end;gap:8px;border:1px solid var(--input);border-radius:11px;background:var(--subtle);padding:8px 8px 8px 12px">
+        <textarea rows="2" value="{{ archInput }}" onChange="{{ onArchInput }}" onKeyDown="{{ onArchKey }}" placeholder="Describe el agente que necesitas…" aria-label="Mensaje para el Arquitecto" style="flex:1;border:0;outline:none;background:transparent;resize:none"></textarea>
+        <button onClick="{{ archSend }}" aria-label="Enviar" style="width:32px;height:32px;border-radius:8px;border:0;background:var(--primary-action);color:#fff;display:grid;place-items:center" style-hover="background:var(--primary-action-hover)"><span style="width:15px;height:15px;background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/arrow-up.svg) center/contain no-repeat"></span></button>
+      </div>
+      <div style="font-size:11.5px;color:var(--muted-foreground);margin-top:6px">Enter para enviar · Mayús+Enter para nueva línea</div>
+    </div>
+  </div>
+  <div style="overflow-y:auto;padding:20px 22px;display:flex;flex-direction:column;gap:14px;background:var(--subtle)">
+    <div style="display:flex;align-items:center;gap:10px"><h2 style="margin:0;font-size:15px;font-weight:500;flex:1">Ficha del agente</h2><span style="font-size:12px;color:var(--muted-foreground)">{{ archStepL }}</span></div>
+    <div style="height:4px;border-radius:2px;background:var(--muted);overflow:hidden"><div style="height:100%;width:{{ archProgress }};background:var(--st-review);transition:width .4s"></div></div>
+    <div style="border:1px solid var(--border);border-radius:12px;background:var(--card);padding:14px;display:flex;flex-direction:column;gap:14px">
+      <div style="display:flex;align-items:center;gap:12px">
+        <sc-if value="{{ archCard.f1 }}"><div style="width:44px;height:44px;border-radius:11px;background:#8FB4FF;color:#0A1A33;font-size:20px;font-weight:700;display:grid;place-items:center">C</div></sc-if>
+        <sc-if value="{{ archCard.p1 }}" hint-placeholder-val="{{ true }}"><div style="width:44px;height:44px;border-radius:11px;border:1px dashed var(--input);background:var(--muted);animation:skel 1.4s ease-in-out infinite"></div></sc-if>
+        <div style="flex:1;display:flex;flex-direction:column;gap:4px">
+          <div style="font-size:11.5px;color:var(--muted-foreground)">Nombre y rol</div>
+          <sc-if value="{{ archCard.f1 }}"><div style="font-size:16px;font-weight:500">Carla · Comercial</div></sc-if>
+          <sc-if value="{{ archCard.p1 }}" hint-placeholder-val="{{ true }}"><div style="height:12px;width:55%;border-radius:4px;background:var(--muted);animation:skel 1.4s ease-in-out infinite"></div></sc-if>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div style="border-radius:8px;border:1px solid var(--border);padding:9px 10px"><div style="font-size:11.5px;color:var(--muted-foreground)">CLI y modelo</div><sc-if value="{{ archCard.f3 }}"><div style="font-weight:500;margin-top:2px">Claude Code · <span style="font-family:'Ubuntu Mono',monospace;font-weight:400">claude-sonnet-4-5</span></div></sc-if><sc-if value="{{ archCard.p3 }}" hint-placeholder-val="{{ true }}"><div style="height:10px;width:70%;margin-top:6px;border-radius:4px;background:var(--muted);animation:skel 1.4s ease-in-out infinite"></div></sc-if></div>
+        <div style="border-radius:8px;border:1px solid var(--border);padding:9px 10px"><div style="font-size:11.5px;color:var(--muted-foreground)">Permisos</div><sc-if value="{{ archCard.f2 }}"><div style="font-weight:500;margin-top:2px">Restringido · sin envío de emails</div></sc-if><sc-if value="{{ archCard.p2 }}" hint-placeholder-val="{{ true }}"><div style="height:10px;width:60%;margin-top:6px;border-radius:4px;background:var(--muted);animation:skel 1.4s ease-in-out infinite"></div></sc-if></div>
+      </div>
+      <div><div style="font-size:11.5px;color:var(--muted-foreground);margin-bottom:6px">Skills</div><sc-if value="{{ archCard.f2 }}"><div style="display:flex;gap:6px;flex-wrap:wrap"><span style="height:24px;padding:0 9px;border-radius:999px;border:1px solid var(--border);background:var(--muted);display:flex;align-items:center;font-size:12px">Propuestas comerciales</span><span style="height:24px;padding:0 9px;border-radius:999px;border:1px solid var(--border);background:var(--muted);display:flex;align-items:center;font-size:12px">Cálculo de presupuestos</span></div></sc-if><sc-if value="{{ archCard.p2 }}" hint-placeholder-val="{{ true }}"><div style="display:flex;gap:6px"><div style="height:24px;width:120px;border-radius:999px;background:var(--muted);animation:skel 1.4s ease-in-out infinite"></div><div style="height:24px;width:90px;border-radius:999px;background:var(--muted);animation:skel 1.4s ease-in-out infinite"></div></div></sc-if></div>
+      <div><div style="font-size:11.5px;color:var(--muted-foreground);margin-bottom:6px">Conocimiento</div><sc-if value="{{ archCard.f2 }}"><div style="display:flex;flex-direction:column;gap:4px;font-size:12.5px"><span style="font-family:'Ubuntu Mono',monospace">catalogo-productos.xlsx</span><span style="font-family:'Ubuntu Mono',monospace">tarifas-2026.pdf</span></div></sc-if><sc-if value="{{ archCard.p2 }}" hint-placeholder-val="{{ true }}"><div style="height:10px;width:45%;border-radius:4px;background:var(--muted);animation:skel 1.4s ease-in-out infinite"></div></sc-if></div>
+      <div><div style="font-size:11.5px;color:var(--muted-foreground);margin-bottom:6px">Instrucciones (system prompt)</div><sc-if value="{{ archCard.f3 }}"><pre style="margin:0;white-space:pre-wrap;font-family:'Ubuntu Mono',monospace;font-size:12px;line-height:1.6;padding:10px 12px;border-radius:8px;background:var(--subtle);border:1px solid var(--border)">{{ archCard.prompt }}</pre></sc-if><sc-if value="{{ archCard.p3 }}" hint-placeholder-val="{{ true }}"><div style="height:90px;border-radius:8px;background:var(--muted);animation:skel 1.4s ease-in-out infinite"></div></sc-if></div>
+    </div>
+    <button onClick="{{ createDraft }}" disabled="{{ archCanSend }}" style="height:38px;border-radius:9px;border:0;background:var(--primary-action);color:#fff;font-weight:500;opacity:{{ archOp }}" style-hover="background:var(--primary-action-hover)">Crear borrador</button>
+    <div style="font-size:11.5px;color:var(--muted-foreground);text-align:center">El borrador quedará pendiente de tu aprobación antes de poder recibir tareas.</div>
+  </div>
+</div>
+</sc-if>
+
+<!-- ================= PROYECTOS ================= -->
+<sc-if value="{{ is.projects }}">
+<div data-screen-label="Proyectos" style="padding:22px 24px 32px;display:flex;flex-direction:column;gap:16px;max-width:1640px">
+  <div><h1 style="margin:0;font-size:22px;font-weight:500">Proyectos</h1><div style="color:var(--muted-foreground);margin-top:3px">Cada proyecto es una carpeta con su pipeline, memoria y conocimiento.</div></div>
+  <div style="border:1px solid var(--border);border-radius:12px;background:var(--card);overflow:hidden">
+    <div style="display:grid;grid-template-columns:minmax(180px,1.2fr) minmax(220px,1.4fr) minmax(150px,1fr) minmax(200px,1.2fr) 100px 120px;gap:12px;padding:9px 16px;font-size:11.5px;font-weight:500;color:var(--muted-foreground);background:var(--subtle);border-bottom:1px solid var(--border)"><span>Proyecto</span><span>Carpeta</span><span>Git</span><span>Pipeline</span><span style="text-align:right">Abiertas</span><span style="text-align:right">Último movimiento</span></div>
+    <sc-for list="{{ projRows }}" as="p" hint-placeholder-count="3">
+      <div onClick="{{ p.open }}" tabindex="0" style="display:grid;grid-template-columns:minmax(180px,1.2fr) minmax(220px,1.4fr) minmax(150px,1fr) minmax(200px,1.2fr) 100px 120px;gap:12px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--border);cursor:pointer" style-hover="background:var(--accent)">
+        <div style="display:flex;align-items:center;gap:10px"><span style="width:12px;height:12px;border-radius:3px;background:{{ p.color }}"></span><span style="font-weight:500">{{ p.name }}</span><div style="display:flex">
+          <sc-for list="{{ p.ags }}" as="x" hint-placeholder-count="0"><span title="{{ x.full }}" style="width:20px;height:20px;border-radius:6px;background:{{ x.color }};color:#0A1A33;font-size:10px;font-weight:700;display:grid;place-items:center;margin-left:-4px;border:2px solid var(--card)">{{ x.initial }}</span></sc-for></div></div>
+        <span style="font-family:'Ubuntu Mono',monospace;font-size:12.5px;color:var(--muted-foreground);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ p.path }}</span>
+        <span style="display:flex;align-items:center;gap:6px;font-family:'Ubuntu Mono',monospace;font-size:12.5px;min-width:0"><span style="width:13px;height:13px;flex:none;color:var(--muted-foreground);background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/git-branch.svg) center/contain no-repeat"></span><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ p.branch }}</span></span>
+        <span style="display:flex;flex-direction:column"><span style="font-weight:500">{{ p.pipeline }}</span><span style="font-size:11.5px;color:var(--muted-foreground)">{{ p.stages }}</span></span>
+        <span style="text-align:right;font-family:'Ubuntu Mono',monospace">{{ p.openN }}</span>
+        <span style="text-align:right;color:var(--muted-foreground);font-size:12.5px">{{ p.last }}</span>
+      </div>
+    </sc-for>
+  </div>
+</div>
+</sc-if>
+
+<!-- ================= PROYECTO (detalle) ================= -->
+<sc-if value="{{ is.project }}">
+<div data-screen-label="Detalle de proyecto" style="display:flex;flex-direction:column;min-height:100%">
+  <div style="display:flex;align-items:center;gap:14px;padding:20px 24px 14px">
+    <span style="width:40px;height:40px;border-radius:10px;background:{{ pr.color }}"></span>
+    <div style="flex:1"><h1 style="margin:0;font-size:20px;font-weight:500">{{ pr.name }}</h1><div style="display:flex;gap:12px;margin-top:3px;font-size:12px;color:var(--muted-foreground);font-family:'Ubuntu Mono',monospace"><span>{{ pr.path }}</span><span>⎇ {{ pr.branch }}</span><span style="font-family:Ubuntu,sans-serif">{{ pr.wsL }}</span></div></div>
+    <button onClick="{{ openFolder }}" style="height:32px;padding:0 12px;border-radius:8px;border:1px solid var(--border);background:var(--card);display:flex;align-items:center;gap:6px" style-hover="border-color:var(--ring)"><span style="width:14px;height:14px;background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/folder-open.svg) center/contain no-repeat"></span>Abrir carpeta</button>
+  </div>
+  <div role="tablist" style="display:flex;gap:2px;border-bottom:1px solid var(--border);padding:0 18px">
+    <sc-for list="{{ projTabs }}" as="t" hint-placeholder-count="6"><button role="tab" onClick="{{ t.on }}" style="height:38px;padding:0 10px;border:0;background:transparent;color:{{ t.fg }};font-weight:{{ t.fw }};box-shadow:inset 0 -2px 0 {{ t.bd }}">{{ t.label }}</button></sc-for>
+  </div>
+  <div style="padding:20px 24px 32px;max-width:1400px">
+    <sc-if value="{{ pt.resumen }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px"><sc-for list="{{ pKpis }}" as="k" hint-placeholder-count="4"><div style="border:1px solid var(--border);border-radius:10px;background:var(--card);padding:12px 14px"><div style="font-size:12px;color:var(--muted-foreground)">{{ k.l }}</div><div style="font-size:22px;font-weight:500;font-family:'Ubuntu Mono',monospace">{{ k.v }}</div></div></sc-for></div>
+        <div style="display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:16px;align-items:start">
+          <div style="border:1px solid var(--border);border-radius:12px;background:var(--card);padding:14px 16px"><h2 style="margin:0 0 10px;font-size:14px;font-weight:500">Ahora mismo</h2>
+            <sc-for list="{{ pActive }}" as="t" hint-placeholder-count="1"><div onClick="{{ t.open }}" style="display:flex;align-items:center;gap:10px;padding:9px 8px;border-radius:8px;cursor:pointer" style-hover="background:var(--accent)"><span style="width:24px;height:24px;border-radius:7px;background:{{ t.ag.color }};color:#0A1A33;font-weight:700;font-size:11px;display:grid;place-items:center">{{ t.ag.initial }}</span><div style="flex:1"><div style="font-weight:500">{{ t.title }}</div><div style="font-size:11.5px;color:var(--muted-foreground)">{{ t.ag.full }} · {{ t.stage }}</div></div><span style="display:inline-flex;align-items:center;gap:5px;height:20px;padding:0 7px;border-radius:999px;font-size:11px;color:{{ t.st.c }};background:{{ t.st.bg }};border:1px solid {{ t.st.bd }}">{{ t.st.l }}</span></div></sc-for>
+            <sc-if value="{{ pNoActive }}"><div style="color:var(--muted-foreground);padding:6px 0">Ningún agente trabaja en este proyecto ahora mismo.</div></sc-if>
+          </div>
+          <div style="border:1px solid var(--border);border-radius:12px;background:var(--card);padding:14px 16px"><h2 style="margin:0 0 10px;font-size:14px;font-weight:500">Pipeline</h2>
+            <div style="display:flex;flex-direction:column;gap:6px"><sc-for list="{{ stagesD }}" as="x" hint-placeholder-count="3"><div style="display:flex;align-items:center;gap:8px"><span style="font-family:'Ubuntu Mono',monospace;font-size:11.5px;color:var(--muted-foreground);width:16px">{{ x.n }}</span><span style="flex:1;font-weight:500">{{ x.name }}</span><span style="width:20px;height:20px;border-radius:6px;background:{{ x.ag.color }};color:#0A1A33;font-size:10px;font-weight:700;display:grid;place-items:center">{{ x.ag.initial }}</span><span style="font-size:12px;color:var(--muted-foreground)">{{ x.ag.name }}</span></div></sc-for></div>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+    <sc-if value="{{ pt.tareas }}">
+      <div style="border:1px solid var(--border);border-radius:12px;background:var(--card);overflow:hidden">
+        <div style="display:grid;grid-template-columns:70px minmax(0,1.6fr) 110px 150px 130px 70px 80px;gap:12px;padding:9px 14px;font-size:11.5px;font-weight:500;color:var(--muted-foreground);background:var(--subtle);border-bottom:1px solid var(--border)"><span>ID</span><span>Tarea</span><span>Etapa</span><span>Estado</span><span>Agente</span><span>Prioridad</span><span style="text-align:right">Coste</span></div>
+        <sc-for list="{{ pTasks }}" as="t" hint-placeholder-count="5"><div onClick="{{ t.open }}" style="display:grid;grid-template-columns:70px minmax(0,1.6fr) 110px 150px 130px 70px 80px;gap:12px;padding:10px 14px;align-items:center;border-bottom:1px solid var(--border);cursor:pointer" style-hover="background:var(--accent)"><span style="font-family:'Ubuntu Mono',monospace;font-size:12px;color:var(--muted-foreground)">{{ t.code }}</span><span style="font-weight:500">{{ t.title }}</span><span>{{ t.stage }}</span><span style="justify-self:start;display:inline-flex;align-items:center;gap:5px;height:20px;padding:0 7px;border-radius:999px;font-size:11px;color:{{ t.st.c }};background:{{ t.st.bg }};border:1px solid {{ t.st.bd }}">{{ t.st.l }}</span><span style="display:flex;align-items:center;gap:6px"><span style="width:18px;height:18px;border-radius:5px;background:{{ t.ag.color }};color:#0A1A33;font-size:9.5px;font-weight:700;display:grid;place-items:center">{{ t.ag.initial }}</span>{{ t.ag.name }}</span><span style="color:{{ t.pr.c }};font-weight:500;font-size:12px">{{ t.pr.l }}</span><span style="text-align:right;font-family:'Ubuntu Mono',monospace">{{ t.costL }}</span></div></sc-for>
+      </div>
+    </sc-if>
+    <sc-if value="{{ pt.pipeline }}">
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;align-items:center;gap:10px"><div style="flex:1"><h2 style="margin:0;font-size:15px;font-weight:500">Editor de pipeline</h2><div style="font-size:12px;color:var(--muted-foreground)">Cada etapa la ejecuta un agente. Pulsa el avatar para cambiarlo y usa las flechas para reordenar.</div></div><button onClick="{{ addStage }}" style="height:32px;padding:0 12px;border-radius:8px;border:1px dashed var(--input);background:transparent;display:flex;align-items:center;gap:6px" style-hover="border-color:var(--ring);background:var(--accent)"><span style="width:14px;height:14px;background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/plus.svg) center/contain no-repeat"></span>Añadir etapa</button></div>
+        <div style="border:1px solid var(--border);border-radius:12px;background:var(--subtle);padding:28px 28px 22px;background-image:radial-gradient(var(--border) 1px,transparent 1px);background-size:16px 16px">
+          <div style="display:grid;grid-template-columns:{{ pipeCols }};column-gap:44px;row-gap:0">
+            <sc-for list="{{ stagesD }}" as="x" hint-placeholder-count="3">
+              <div style="position:relative;border:1px solid var(--border);border-radius:11px;background:var(--card);padding:12px;display:flex;flex-direction:column;gap:10px;box-shadow:0 2px 8px rgba(0,0,0,.12)">
+                <div style="display:flex;align-items:center;gap:6px"><span style="font-family:'Ubuntu Mono',monospace;font-size:11px;color:var(--muted-foreground)">ETAPA {{ x.n }}</span><div style="margin-left:auto;display:flex;gap:2px"><button onClick="{{ x.left }}" aria-label="Mover a la izquierda" style="width:22px;height:22px;border:0;border-radius:5px;background:transparent;opacity:{{ x.canL }}" style-hover="background:var(--accent)">←</button><button onClick="{{ x.right }}" aria-label="Mover a la derecha" style="width:22px;height:22px;border:0;border-radius:5px;background:transparent;opacity:{{ x.canR }}" style-hover="background:var(--accent)">→</button><button onClick="{{ x.remove }}" aria-label="Eliminar etapa" style="width:22px;height:22px;border:0;border-radius:5px;background:transparent;color:var(--muted-foreground)" style-hover="background:var(--accent)">×</button></div></div>
+                <div style="font-size:15px;font-weight:500">{{ x.name }}</div>
+                <button onClick="{{ x.cycle }}" title="Cambiar agente" style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;border:1px solid var(--border);background:var(--subtle);text-align:left" style-hover="border-color:var(--ring)"><span style="width:24px;height:24px;border-radius:7px;background:{{ x.ag.color }};color:#0A1A33;font-weight:700;font-size:11px;display:grid;place-items:center">{{ x.ag.initial }}</span><span style="flex:1"><span style="display:block;font-weight:500;font-size:12.5px">{{ x.ag.name }}</span><span style="display:block;font-size:11px;color:var(--muted-foreground)">{{ x.ag.role }}</span></span><span style="width:12px;height:12px;color:var(--muted-foreground);background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/chevrons-up-down.svg) center/contain no-repeat"></span></button>
+                <sc-if value="{{ x.isFrom }}"><span style="align-self:flex-start;font-size:11px;color:var(--st-failed);display:flex;align-items:center;gap:4px"><span style="width:6px;height:6px;border-radius:50%;background:currentColor"></span>Puede rechazar</span></sc-if>
+                <sc-if value="{{ x.notLast }}"><div aria-hidden="true" style="position:absolute;right:-38px;top:50%;width:32px;height:2px;background:var(--ring);transform:translateY(-1px)"><span style="position:absolute;right:-1px;top:-4px;width:0;height:0;border-left:7px solid var(--ring);border-top:5px solid transparent;border-bottom:5px solid transparent"></span></div></sc-if>
+              </div>
+            </sc-for>
+            <sc-if value="{{ rejectOk }}" hint-placeholder-val="{{ true }}">
+              <div style="grid-column:{{ rejectCol }};grid-row:2;margin:{{ rejectM }};height:34px;border:2px dashed var(--st-failed);border-top:0;border-radius:0 0 12px 12px;position:relative">
+                <span style="position:absolute;left:-6px;top:-7px;width:0;height:0;border-bottom:8px solid var(--st-failed);border-left:5px solid transparent;border-right:5px solid transparent"></span>
+                <span style="position:absolute;left:50%;bottom:-11px;transform:translateX(-50%);padding:1px 8px;border-radius:999px;background:var(--subtle);border:1px solid color-mix(in oklch,var(--st-failed) 50%,transparent);color:var(--st-failed);font-size:11.5px;white-space:nowrap">↩ {{ rejectLabel }}</span>
+              </div>
+            </sc-if>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+    <sc-if value="{{ pt.memoria }}">
+      <div style="display:flex;flex-direction:column;gap:12px;max-width:860px">
+        <div style="display:flex;align-items:center"><div style="flex:1"><h2 style="margin:0;font-size:15px;font-weight:500">Memoria del proyecto</h2><div style="font-size:12px;color:var(--muted-foreground)">Notas que los agentes escriben con <code style="font-family:'Ubuntu Mono',monospace">add_memory</code> y que leen al empezar cada tarea. Puedes editarlas.</div></div><button onClick="{{ addNote }}" style="height:32px;padding:0 12px;border-radius:8px;border:1px solid var(--border);background:var(--card);display:flex;align-items:center;gap:6px" style-hover="border-color:var(--ring)"><span style="width:14px;height:14px;background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/plus.svg) center/contain no-repeat"></span>Añadir nota</button></div>
+        <sc-for list="{{ memory }}" as="m" hint-placeholder-count="4">
+          <div style="border:1px solid var(--border);border-radius:10px;background:var(--card);padding:12px 14px;display:flex;gap:12px">
+            <span style="width:26px;height:26px;flex:none;border-radius:7px;background:{{ m.ag.color }};color:#0A1A33;font-weight:700;font-size:12px;display:grid;place-items:center">{{ m.ag.initial }}</span>
+            <div style="flex:1;min-width:0">
+              <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted-foreground)"><strong style="color:var(--foreground);font-weight:500">{{ m.ag.name }}</strong>{{ m.when }}
+                <div style="margin-left:auto;display:flex;gap:4px"><sc-if value="{{ m.viewing }}" hint-placeholder-val="{{ true }}"><button onClick="{{ m.edit }}" style="height:24px;padding:0 8px;border-radius:6px;border:1px solid var(--border);background:transparent;font-size:12px" style-hover="background:var(--accent)">Editar</button></sc-if><sc-if value="{{ m.editing }}"><button onClick="{{ m.done }}" style="height:24px;padding:0 8px;border-radius:6px;border:0;background:var(--primary-action);color:#fff;font-size:12px">Guardar</button></sc-if><button onClick="{{ m.del }}" aria-label="Eliminar nota" style="height:24px;width:24px;border-radius:6px;border:1px solid var(--border);background:transparent;font-size:12px" style-hover="background:var(--accent)">×</button></div></div>
+              <sc-if value="{{ m.viewing }}" hint-placeholder-val="{{ true }}"><p style="margin:6px 0 0;text-wrap:pretty">{{ m.txt }}</p></sc-if>
+              <sc-if value="{{ m.editing }}"><textarea rows="3" value="{{ m.txt }}" onChange="{{ m.onTxt }}" autofocus="" style="margin-top:6px;width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--ring);background:var(--subtle);resize:vertical"></textarea></sc-if>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+    <sc-if value="{{ pt.conocimiento }}"><dc-import name="Knowledge" level="proyecto" scope-name="{{ pr.name }}" section="all" hint-size="100%,760px"></dc-import></sc-if>
+    <sc-if value="{{ pt.ajustes }}">
+      <div style="display:flex;flex-direction:column;gap:18px;max-width:860px">
+        <div style="display:flex;flex-direction:column;gap:8px"><span style="font-size:12px;color:var(--muted-foreground)">Modo de workspace</span>
+          <div role="radiogroup" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><sc-for list="{{ wsOpts }}" as="w" hint-placeholder-count="2"><button role="radio" aria-checked="{{ w.sel }}" onClick="{{ w.on }}" style="display:flex;gap:10px;padding:14px;border-radius:10px;border:1.5px solid {{ w.bd }};background:{{ w.bg }};text-align:left;align-items:flex-start"><span style="width:18px;height:18px;flex:none;background:currentColor;mask:url({{ w.icon }}) center/contain no-repeat"></span><span><span style="display:block;font-weight:500">{{ w.l }}</span><span style="display:block;font-size:12px;color:var(--muted-foreground);margin-top:3px;text-wrap:pretty">{{ w.d }}</span></span></button></sc-for></div></div>
+        <label style="display:flex;flex-direction:column;gap:6px"><span style="font-size:12px;color:var(--muted-foreground)">Carpeta del proyecto</span><div style="display:flex;gap:8px"><input defaultValue="{{ pr.path }}" style="flex:1;height:36px;padding:0 10px;border-radius:8px;border:1px solid var(--input);background:var(--subtle);font-family:'Ubuntu Mono',monospace"><button style="height:36px;padding:0 12px;border-radius:8px;border:1px solid var(--border);background:var(--card)" style-hover="border-color:var(--ring)">Cambiar…</button></div></label>
+        <label style="display:flex;flex-direction:column;gap:6px"><span style="font-size:12px;color:var(--muted-foreground)">Rama base para worktrees</span><input defaultValue="develop" style="height:36px;padding:0 10px;border-radius:8px;border:1px solid var(--input);background:var(--subtle);font-family:'Ubuntu Mono',monospace;max-width:320px"></label>
+      </div>
+    </sc-if>
+  </div>
+</div>
+</sc-if>
+
+<!-- ================= INBOX ================= -->
+<sc-if value="{{ is.inbox }}">
+<div data-screen-label="Inbox" style="padding:22px 24px 32px;display:flex;flex-direction:column;gap:16px;max-width:1080px">
+  <div style="display:flex;align-items:flex-end;gap:12px"><div style="flex:1"><h1 style="margin:0;font-size:22px;font-weight:500">Inbox</h1><div style="color:var(--muted-foreground);margin-top:3px">Peticiones de tus agentes: aprobaciones, preguntas, bloqueos y entregas.</div></div>
+    <div role="tablist" style="display:flex;padding:3px;border-radius:8px;background:var(--muted);border:1px solid var(--border)"><sc-for list="{{ inboxTabs }}" as="v" hint-placeholder-count="2"><button role="tab" onClick="{{ v.on }}" style="height:28px;padding:0 12px;border:0;border-radius:6px;background:{{ v.bg }};color:{{ v.fg }};font-weight:500;font-size:12.5px;box-shadow:{{ v.sh }};display:flex;align-items:center;gap:6px">{{ v.l }}<span style="font-family:'Ubuntu Mono',monospace;font-size:11px;color:var(--muted-foreground)">{{ v.n }}</span></button></sc-for></div></div>
+  <sc-for list="{{ inboxItems }}" as="it" hint-placeholder-count="4">
+    <article style="border:1px solid var(--border);border-radius:12px;background:var(--card);overflow:hidden">
+      <div style="display:flex;gap:12px;padding:14px 16px">
+        <div style="width:34px;height:34px;flex:none;border-radius:9px;background:{{ it.ag.color }};color:#0A1A33;font-weight:700;display:grid;place-items:center;position:relative">{{ it.ag.initial }}<span style="position:absolute;right:-5px;bottom:-5px;width:18px;height:18px;border-radius:50%;background:var(--card);display:grid;place-items:center"><span style="width:13px;height:13px;color:{{ it.tm.c }};background:currentColor;mask:url({{ it.tm.icon }}) center/contain no-repeat"></span></span></div>
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
+          <div style="display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted-foreground);flex-wrap:wrap">
+            <span style="color:{{ it.tm.c }};font-weight:500">{{ it.tm.l }}</span>·<strong style="color:var(--foreground);font-weight:500">{{ it.ag.name }}</strong>·
+            <span style="display:inline-flex;align-items:center;gap:5px"><span style="width:7px;height:7px;border-radius:2px;background:{{ it.pr.color }}"></span>{{ it.pr.name }}</span>·
+            <button onClick="{{ it.openTask }}" style="border:0;background:transparent;padding:0;color:var(--ring);font-size:12px">{{ it.task }}</button>
+            <span style="margin-left:auto">{{ it.when }}</span>
+          </div>
+          <div style="font-size:15px;font-weight:500">{{ it.title }}</div>
+          <sc-if value="{{ it.cmd }}"><code style="align-self:flex-start;font-family:'Ubuntu Mono',monospace;font-size:13px;padding:6px 10px;border-radius:7px;background:var(--term-bg);color:#E6EDF7;border:1px solid var(--border)"><span style="color:#7F8DAA">❯ </span>{{ it.cmd }}</code></sc-if>
+          <sc-if value="{{ it.ctx }}"><p style="margin:0;color:var(--muted-foreground);text-wrap:pretty">{{ it.ctx }}</p></sc-if>
+          <sc-if value="{{ it.resolved }}"><div style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--st-done)"><span style="width:13px;height:13px;background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/check.svg) center/contain no-repeat"></span>{{ it.res }}</div></sc-if>
+        </div>
+      </div>
+      <sc-if value="{{ it.pending }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-top:1px solid var(--border);background:var(--subtle);flex-wrap:wrap">
+          <sc-if value="{{ it.isApproval }}"><button onClick="{{ it.approve }}" style="height:30px;padding:0 12px;border-radius:7px;border:0;background:var(--primary-action);color:#fff;font-weight:500;display:flex;align-items:center;gap:6px" style-hover="background:var(--primary-action-hover)"><span style="width:13px;height:13px;background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/check.svg) center/contain no-repeat"></span>Aprobar</button></sc-if>
+          <sc-if value="{{ it.isApproval }}"><button onClick="{{ it.reject }}" style="height:30px;padding:0 12px;border-radius:7px;border:1px solid var(--border);background:var(--card)" style-hover="background:var(--accent)">Rechazar</button></sc-if>
+          <sc-if value="{{ it.isQuestion }}"><sc-for list="{{ it.opts }}" as="o" hint-placeholder-count="2"><button onClick="{{ o.on }}" style="height:30px;padding:0 12px;border-radius:999px;border:1px solid var(--border);background:var(--card)" style-hover="border-color:var(--ring)">{{ o.label }}</button></sc-for></sc-if>
+          <sc-if value="{{ it.notApproval }}">
+            <div style="flex:1;min-width:260px;display:flex;gap:6px"><input value="{{ it.reply }}" onChange="{{ it.onReply }}" placeholder="Responder con texto…" aria-label="Respuesta" style="flex:1;height:30px;padding:0 10px;border-radius:7px;border:1px solid var(--input);background:var(--card)"><button onClick="{{ it.send }}" style="height:30px;padding:0 12px;border-radius:7px;border:0;background:var(--primary-action);color:#fff;font-weight:500" style-hover="background:var(--primary-action-hover)">Responder</button></div>
+          </sc-if>
+          <sc-if value="{{ it.isDone }}"><button onClick="{{ it.ack }}" style="height:30px;padding:0 12px;border-radius:7px;border:1px solid var(--border);background:var(--card)" style-hover="background:var(--accent)">Marcar como revisado</button></sc-if>
+          <button onClick="{{ it.openTerm }}" style="margin-left:auto;height:30px;padding:0 10px;border-radius:7px;border:1px solid var(--border);background:transparent;display:flex;align-items:center;gap:6px" style-hover="background:var(--accent)"><span style="width:14px;height:14px;background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/square-terminal.svg) center/contain no-repeat"></span>Abrir terminal</button>
+        </div>
+      </sc-if>
+    </article>
+  </sc-for>
+  <sc-if value="{{ inboxEmpty }}"><div style="border:1px dashed var(--input);border-radius:12px;padding:40px;text-align:center;color:var(--muted-foreground)"><div style="font-size:15px;color:var(--foreground);font-weight:500">Bandeja al día</div>Tus agentes no necesitan nada de ti ahora mismo.</div></sc-if>
+</div>
+</sc-if>
+
+<!-- ================= CONSUMO ================= -->
+<sc-if value="{{ is.usage }}">
+<div data-screen-label="Consumo" style="padding:22px 24px 32px;display:flex;flex-direction:column;gap:16px;max-width:1640px">
+  <div style="display:flex;align-items:flex-end;gap:12px"><div style="flex:1"><h1 style="margin:0;font-size:22px;font-weight:500">Consumo</h1><div style="color:var(--muted-foreground);margin-top:3px">Tokens, coste y tiempo de tus agentes según lo reporta cada CLI.</div></div>
+    <div role="tablist" aria-label="Periodo" style="display:flex;padding:3px;border-radius:8px;background:var(--muted);border:1px solid var(--border)"><sc-for list="{{ periods }}" as="v" hint-placeholder-count="3"><button role="tab" onClick="{{ v.on }}" style="height:28px;padding:0 12px;border:0;border-radius:6px;background:{{ v.bg }};color:{{ v.fg }};font-weight:500;font-size:12.5px;box-shadow:{{ v.sh }}">{{ v.l }}</button></sc-for></div></div>
+  <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px"><sc-for list="{{ kpis }}" as="k" hint-placeholder-count="4"><div style="border:1px solid var(--border);border-radius:12px;background:var(--card);padding:14px 16px"><div style="font-size:12px;color:var(--muted-foreground)">{{ k.l }}</div><div style="font-size:26px;font-weight:500;font-family:'Ubuntu Mono',monospace;margin:2px 0">{{ k.v }}</div><div style="font-size:11.5px;color:var(--muted-foreground)">{{ k.d }}</div></div></sc-for></div>
+  <div style="display:grid;grid-template-columns:minmax(0,2.2fr) minmax(260px,1fr);gap:16px">
+    <section style="border:1px solid var(--border);border-radius:12px;background:var(--card);padding:14px 16px">
+      <div style="display:flex;align-items:center;margin-bottom:14px"><h2 style="margin:0;font-size:14px;font-weight:500;flex:1">{{ chartTitle }}</h2>
+        <div role="tablist" style="display:flex;padding:3px;border-radius:8px;background:var(--muted);border:1px solid var(--border)"><sc-for list="{{ groupTabs }}" as="v" hint-placeholder-count="2"><button role="tab" onClick="{{ v.on }}" style="height:24px;padding:0 10px;border:0;border-radius:5px;background:{{ v.bg }};color:{{ v.fg }};font-weight:500;font-size:12px;box-shadow:{{ v.sh }}">{{ v.l }}</button></sc-for></div></div>
+      <div style="height:200px;display:flex;align-items:flex-end;gap:4px;border-bottom:1px solid var(--border);padding-top:10px;background-image:linear-gradient(var(--border) 1px,transparent 1px);background-size:100% 42px;background-position:0 -1px">
+        <sc-for list="{{ bars }}" as="b" hint-placeholder-count="30"><div title="{{ b.tip }}" style="flex:1;display:flex;flex-direction:column-reverse;gap:1px;min-width:0" style-hover="opacity:.8"><sc-for list="{{ b.segs }}" as="g" hint-placeholder-count="4"><div style="height:{{ g.h }};background:{{ g.color }};border-radius:2px"></div></sc-for></div></sc-for>
+      </div>
+      <div style="display:flex;gap:4px;margin-top:6px"><sc-for list="{{ bars }}" as="b" hint-placeholder-count="30"><div style="flex:1;min-width:0;font-size:10.5px;color:var(--muted-foreground);white-space:nowrap;overflow:visible">{{ b.label }}</div></sc-for></div>
+    </section>
+    <section style="border:1px solid var(--border);border-radius:12px;background:var(--card);padding:14px 16px;display:flex;flex-direction:column;gap:12px">
+      <h2 style="margin:0;font-size:14px;font-weight:500">Reparto del periodo</h2>
+      <sc-for list="{{ breakdown }}" as="u" hint-placeholder-count="4"><div style="display:flex;flex-direction:column;gap:5px"><div style="display:flex;align-items:center;gap:7px;font-size:12.5px"><span style="width:9px;height:9px;border-radius:2px;background:{{ u.color }}"></span><span style="flex:1">{{ u.name }}</span><span style="font-family:'Ubuntu Mono',monospace">{{ u.cost }}</span><span style="font-family:'Ubuntu Mono',monospace;color:var(--muted-foreground);width:42px;text-align:right">{{ u.pct }}</span></div><div style="height:6px;border-radius:3px;background:var(--muted)"><div style="height:100%;width:{{ u.w }};border-radius:3px;background:{{ u.color }}"></div></div></div></sc-for>
+    </section>
+  </div>
+  <section style="border:1px solid var(--border);border-radius:12px;background:var(--card);overflow:hidden">
+    <div style="padding:12px 16px;border-bottom:1px solid var(--border)"><h2 style="margin:0;font-size:14px;font-weight:500">Sesiones de CLI</h2></div>
+    <div role="row" style="display:grid;grid-template-columns:110px 110px 140px minmax(0,1.4fr) 150px 90px 80px 110px;gap:12px;padding:8px 16px;background:var(--subtle);border-bottom:1px solid var(--border)">
+      <sc-for list="{{ sessHead }}" as="h" hint-placeholder-count="8"><button role="columnheader" aria-sort="{{ h.aria }}" onClick="{{ h.on }}" style="border:0;background:transparent;padding:0;text-align:{{ h.align }};font-size:11.5px;font-weight:500;color:{{ h.fg }}">{{ h.l }} {{ h.arrow }}</button></sc-for>
+    </div>
+    <sc-for list="{{ sessRows }}" as="r" hint-placeholder-count="8">
+      <div role="row" style="display:grid;grid-template-columns:110px 110px 140px minmax(0,1.4fr) 150px 90px 80px 110px;gap:12px;padding:9px 16px;align-items:center;border-bottom:1px solid var(--border)" style-hover="background:var(--accent)">
+        <span style="font-family:'Ubuntu Mono',monospace;font-size:12px;color:var(--muted-foreground)">{{ r.when }}</span>
+        <span style="display:flex;align-items:center;gap:6px"><span style="width:18px;height:18px;border-radius:5px;background:{{ r.ag.color }};color:#0A1A33;font-size:9.5px;font-weight:700;display:grid;place-items:center">{{ r.ag.initial }}</span>{{ r.ag.name }}</span>
+        <span style="display:flex;align-items:center;gap:6px;white-space:nowrap"><span style="width:8px;height:8px;border-radius:2px;background:{{ r.pr.color }}"></span>{{ r.pr.name }}</span>
+        <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.task }}</span>
+        <span style="font-family:'Ubuntu Mono',monospace;font-size:12px;color:var(--muted-foreground)">{{ r.model }}</span>
+        <span style="text-align:right;font-family:'Ubuntu Mono',monospace">{{ r.tokL }}</span>
+        <span style="text-align:right;font-family:'Ubuntu Mono',monospace">{{ r.costL }}</span>
+        <span style="text-align:right;font-family:'Ubuntu Mono',monospace">{{ r.durL }}</span>
+      </div>
+    </sc-for>
+  </section>
+</div>
+</sc-if>
+
+<!-- ================= AJUSTES ================= -->
+<sc-if value="{{ is.settings }}">
+<div data-screen-label="Ajustes" style="padding:22px 24px 40px;display:flex;flex-direction:column;gap:22px;max-width:1080px">
+  <div><h1 style="margin:0;font-size:22px;font-weight:500">Ajustes</h1><div style="color:var(--muted-foreground);margin-top:3px">CLIs, datos, notificaciones y apariencia.</div></div>
+  <section style="display:flex;flex-direction:column;gap:10px">
+    <h2 style="margin:0;font-size:15px;font-weight:500">CLIs detectados</h2>
+    <div style="border:1px solid var(--border);border-radius:12px;background:var(--card);overflow:hidden">
+      <sc-for list="{{ clis }}" as="c" hint-placeholder-count="3">
+        <div style="display:grid;grid-template-columns:36px minmax(0,1fr) 90px 150px 120px;gap:14px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--border)">
+          <span style="width:34px;height:34px;border-radius:8px;background:var(--primary);border:1px solid var(--border);color:#fff;font-family:'Ubuntu Mono',monospace;font-size:11px;font-weight:700;display:grid;place-items:center">{{ c.tag }}</span>
+          <div style="min-width:0"><div style="font-weight:500">{{ c.name }}</div><div style="font-family:'Ubuntu Mono',monospace;font-size:12px;color:var(--muted-foreground);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ c.path }}</div></div>
+          <span style="font-family:'Ubuntu Mono',monospace;font-size:12.5px">v{{ c.ver }}</span>
+          <div style="display:flex;flex-direction:column"><span style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:{{ c.stC }}"><span style="width:7px;height:7px;border-radius:50%;background:currentColor"></span>{{ c.stL }}</span><span style="font-size:11px;color:var(--muted-foreground)">Comprobado {{ c.checked }}</span></div>
+          <button onClick="{{ c.check }}" style="height:30px;padding:0 12px;border-radius:7px;border:1px solid var(--border);background:var(--subtle);display:flex;align-items:center;justify-content:center;gap:6px" style-hover="border-color:var(--ring)">
+            <sc-if value="{{ c.checking }}"><span style="width:13px;height:13px;border-radius:50%;border:2px solid var(--muted-foreground);border-top-color:transparent;animation:spin .8s linear infinite"></span></sc-if>
+            <sc-if value="{{ c.idle }}" hint-placeholder-val="{{ true }}"><span style="width:13px;height:13px;background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/refresh-cw.svg) center/contain no-repeat"></span></sc-if>Comprobar</button>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+  <section style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px">
+    <div style="border:1px solid var(--border);border-radius:12px;background:var(--card);padding:14px 16px;display:flex;flex-direction:column;gap:14px">
+      <h2 style="margin:0;font-size:15px;font-weight:500">General</h2>
+      <label style="display:flex;flex-direction:column;gap:6px"><span style="font-size:12px;color:var(--muted-foreground)">Carpeta de datos</span><div style="display:flex;gap:8px"><input defaultValue="C:\Users\marta\AppData\Local\AgenticOS" style="flex:1;min-width:0;height:34px;padding:0 10px;border-radius:8px;border:1px solid var(--input);background:var(--subtle);font-family:'Ubuntu Mono',monospace;font-size:12.5px"><button style="height:34px;padding:0 12px;border-radius:8px;border:1px solid var(--border);background:var(--subtle)" style-hover="border-color:var(--ring)">Cambiar…</button></div><span style="font-size:11.5px;color:var(--muted-foreground)">Base de datos, logs de sesión y documentos indexados · 1,8 GB</span></label>
+      <label style="display:flex;flex-direction:column;gap:6px"><span style="font-size:12px;color:var(--muted-foreground)">Idioma</span><select defaultValue="es" style="height:34px;padding:0 10px;border-radius:8px;border:1px solid var(--input);background:var(--subtle)"><option value="es">Español</option><option value="en">English</option><option value="ca">Català</option></select></label>
+      <div style="display:flex;flex-direction:column;gap:6px"><span style="font-size:12px;color:var(--muted-foreground)">Tema</span><div role="tablist" style="align-self:flex-start;display:flex;padding:3px;border-radius:8px;background:var(--muted);border:1px solid var(--border)"><sc-for list="{{ themeOpts }}" as="v" hint-placeholder-count="2"><button role="tab" onClick="{{ v.on }}" style="height:28px;padding:0 14px;border:0;border-radius:6px;background:{{ v.bg }};color:{{ v.fg }};font-weight:500;font-size:12.5px;box-shadow:{{ v.sh }}">{{ v.l }}</button></sc-for></div></div>
+    </div>
+    <div style="border:1px solid var(--border);border-radius:12px;background:var(--card);padding:14px 16px;display:flex;flex-direction:column;gap:4px">
+      <h2 style="margin:0 0 6px;font-size:15px;font-weight:500">Notificaciones de Windows</h2>
+      <sc-for list="{{ notifs }}" as="n" hint-placeholder-count="5"><div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--border)"><div style="flex:1"><div style="font-weight:500">{{ n.l }}</div><div style="font-size:12px;color:var(--muted-foreground)">{{ n.d }}</div></div><button role="switch" aria-checked="{{ n.aria }}" aria-label="{{ n.l }}" onClick="{{ n.toggle }}" style="width:36px;height:20px;border-radius:999px;border:0;background:{{ n.track }};padding:2px;flex:none"><span style="display:block;width:16px;height:16px;border-radius:50%;background:#fff;transform:{{ n.x }};transition:transform .15s"></span></button></div></sc-for>
+    </div>
+  </section>
+  <section style="display:flex;flex-direction:column;gap:10px">
+    <h2 style="margin:0;font-size:15px;font-weight:500">Conocimiento y skills</h2>
+    <dc-import name="Knowledge" level="general" scope-name="General" section="all" hint-size="100%,760px"></dc-import>
+  </section>
+</div>
+</sc-if>
+
+
+    </div>
+
+    <sc-if value="{{ dockOpen }}">
+      <div style="flex:none;{{ dockSize }};display:flex;flex-direction:column;background:var(--term-bg);border-top:{{ dockBt }};border-left:{{ dockBl }};color:#D7E1F0">
+        <div style="flex:none;height:36px;display:flex;align-items:stretch;background:#081429;border-bottom:1px solid #16294A">
+          <sc-for list="{{ dockTabs }}" as="d" hint-placeholder-count="3">
+            <button onClick="{{ d.on }}" style="display:flex;align-items:center;gap:7px;padding:0 12px;border:0;border-right:1px solid #16294A;background:{{ d.bg }};color:{{ d.fg }};font-size:12px;white-space:nowrap;box-shadow:{{ d.sh }}">
+              <span style="width:7px;height:7px;border-radius:50%;background:{{ d.c }};animation:{{ d.pulse }}"></span>
+              <span style="width:16px;height:16px;border-radius:4px;background:{{ d.ag.color }};color:#0A1A33;font-size:9px;font-weight:700;display:grid;place-items:center">{{ d.ag.initial }}</span>{{ d.label }}
+            </button>
+          </sc-for>
+          <div style="margin-left:auto;display:flex;align-items:center;gap:2px;padding:0 6px">
+            <button onClick="{{ dockSwap }}" title="{{ dockSwapLabel }}" aria-label="{{ dockSwapLabel }}" style="width:28px;height:28px;border:0;border-radius:6px;background:transparent;color:#9AA9C4;display:grid;place-items:center" style-hover="background:#13284D;color:#fff"><span style="width:15px;height:15px;background:currentColor;mask:url({{ dockSwapIcon }}) center/contain no-repeat"></span></button>
+            <button onClick="{{ openDockTask }}" title="Abrir detalle" aria-label="Abrir detalle de la tarea" style="width:28px;height:28px;border:0;border-radius:6px;background:transparent;color:#9AA9C4;display:grid;place-items:center" style-hover="background:#13284D;color:#fff"><span style="width:15px;height:15px;background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/maximize-2.svg) center/contain no-repeat"></span></button>
+            <button onClick="{{ toggleDock }}" title="Cerrar" aria-label="Cerrar terminal" style="width:28px;height:28px;border:0;border-radius:6px;background:transparent;color:#9AA9C4;display:grid;place-items:center" style-hover="background:#13284D;color:#fff"><span style="width:15px;height:15px;background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/x.svg) center/contain no-repeat"></span></button>
+          </div>
+        </div>
+        <div ref="{{ dockRef }}" style="flex:1;min-height:0;overflow-y:auto;padding:10px 14px;font-family:'Ubuntu Mono',monospace;font-size:12.5px;line-height:1.6">
+          <sc-for list="{{ dockLines }}" as="l" hint-placeholder-count="6"><div style="white-space:pre-wrap;color:{{ l.c }};font-weight:{{ l.fw }}">{{ l.t }}</div></sc-for>
+          <div style="color:#7F8DAA">Solo lectura · abre el detalle para tomar el control<span style="display:inline-block;width:7px;height:14px;background:#4CC9F0;vertical-align:-2px;margin-left:4px;animation:blink 1s steps(1) infinite"></span></div>
+        </div>
+      </div>
+    </sc-if>
+  </div>
+</main>
+
+<sc-if value="{{ palette }}">
+  <div onClick="{{ closePalette }}" style="position:fixed;inset:0;z-index:50;background:rgba(3,10,22,.55);display:flex;justify-content:center;padding-top:12vh">
+    <div onClick="{{ stop }}" role="dialog" aria-label="Paleta de comandos" style="width:600px;max-height:440px;display:flex;flex-direction:column;border-radius:12px;background:var(--popover);border:1px solid var(--border);box-shadow:0 24px 60px rgba(0,0,0,.45);overflow:hidden">
+      <div style="display:flex;align-items:center;gap:10px;padding:0 14px;height:48px;border-bottom:1px solid var(--border)">
+        <span style="width:16px;height:16px;color:var(--muted-foreground);background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/search.svg) center/contain no-repeat"></span>
+        <input value="{{ q }}" onChange="{{ onQ }}" onKeyDown="{{ onPalKey }}" autofocus="" placeholder="Ir a, buscar tareas o ejecutar una acción…" aria-label="Buscar" style="flex:1;border:0;outline:none;background:transparent;font-size:14px">
+        <span style="font-family:'Ubuntu Mono',monospace;font-size:11px;padding:1px 6px;border-radius:4px;border:1px solid var(--border);color:var(--muted-foreground)">Esc</span>
+      </div>
+      <div style="overflow-y:auto;padding:6px">
+        <sc-for list="{{ cmds }}" as="c" hint-placeholder-count="6">
+          <sc-if value="{{ c.head }}"><div style="padding:8px 10px 4px;font-size:11px;color:var(--muted-foreground);font-weight:500">{{ c.head }}</div></sc-if>
+          <button onClick="{{ c.on }}" style="width:100%;height:36px;display:flex;align-items:center;gap:10px;padding:0 10px;border:0;border-radius:7px;background:{{ c.bg }};text-align:left" style-hover="background:var(--accent)">
+            <span style="width:15px;height:15px;color:var(--muted-foreground);background:currentColor;mask:url({{ c.icon }}) center/contain no-repeat"></span>
+            <span style="flex:1">{{ c.label }}</span>
+            <span style="font-size:11.5px;color:var(--muted-foreground)">{{ c.hint }}</span>
+          </button>
+        </sc-for>
+        <sc-if value="{{ noCmds }}"><div style="padding:20px;text-align:center;color:var(--muted-foreground)">Sin resultados para «{{ q }}»</div></sc-if>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ newTask }}">
+  <div onClick="{{ closeNew }}" style="position:fixed;inset:0;z-index:50;background:rgba(3,10,22,.55);display:grid;place-items:center">
+    <div onClick="{{ stop }}" role="dialog" aria-label="Nueva tarea" style="width:520px;border-radius:12px;background:var(--popover);border:1px solid var(--border);box-shadow:0 24px 60px rgba(0,0,0,.45);padding:18px;display:flex;flex-direction:column;gap:14px">
+      <div style="display:flex;align-items:center"><h2 style="margin:0;font-size:16px;font-weight:500;flex:1">Nueva tarea</h2><button onClick="{{ closeNew }}" aria-label="Cerrar" style="width:28px;height:28px;border:0;border-radius:6px;background:transparent;display:grid;place-items:center" style-hover="background:var(--accent)"><span style="width:15px;height:15px;background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/x.svg) center/contain no-repeat"></span></button></div>
+      <label style="display:flex;flex-direction:column;gap:6px"><span style="font-size:12px;color:var(--muted-foreground)">Título</span><input value="{{ ntTitle }}" onChange="{{ onNtTitle }}" autofocus="" placeholder="p. ej. Añadir filtro por precio" style="height:36px;padding:0 10px;border-radius:8px;border:1px solid var(--input);background:var(--subtle)"></label>
+      <div style="display:flex;flex-direction:column;gap:6px"><span style="font-size:12px;color:var(--muted-foreground)">Proyecto</span><div style="display:flex;gap:6px"><sc-for list="{{ ntProjects }}" as="p" hint-placeholder-count="3"><button onClick="{{ p.on }}" style="height:30px;padding:0 10px;border-radius:7px;border:1px solid {{ p.bd }};background:{{ p.bg }};display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:2px;background:{{ p.color }}"></span>{{ p.name }}</button></sc-for></div></div>
+      <label style="display:flex;flex-direction:column;gap:6px"><span style="font-size:12px;color:var(--muted-foreground)">Descripción</span><textarea rows="3" placeholder="Qué debe conseguir el agente y criterios de aceptación…" style="padding:8px 10px;border-radius:8px;border:1px solid var(--input);background:var(--subtle);resize:vertical"></textarea></label>
+      <div style="font-size:12px;color:var(--muted-foreground)">Entrará en la primera etapa del pipeline: <strong style="color:var(--foreground);font-weight:500">{{ ntStage }}</strong></div>
+      <div style="display:flex;justify-content:flex-end;gap:8px"><button onClick="{{ closeNew }}" style="height:32px;padding:0 12px;border-radius:8px;border:1px solid var(--border);background:transparent" style-hover="background:var(--accent)">Cancelar</button><button onClick="{{ createTask }}" style="height:32px;padding:0 14px;border-radius:8px;border:0;background:var(--primary-action);color:#fff;font-weight:500" style-hover="background:var(--primary-action-hover)">Crear tarea</button></div>
+    </div>
+  </div>
+</sc-if>
+
+<div aria-live="polite" style="position:fixed;right:18px;bottom:18px;z-index:60;display:flex;flex-direction:column;gap:8px;align-items:flex-end;pointer-events:none">
+  <sc-for list="{{ toasts }}" as="t" hint-placeholder-count="0">
+    <div style="pointer-events:auto;min-width:320px;max-width:440px;display:flex;align-items:flex-start;gap:10px;padding:11px 12px;border-radius:10px;background:var(--popover);border:1px solid var(--border);box-shadow:0 12px 32px rgba(0,0,0,.35);animation:toastIn .22s ease-out">
+      <span style="width:16px;height:16px;flex:none;margin-top:1px;color:{{ t.c }};background:currentColor;mask:url({{ t.icon }}) center/contain no-repeat"></span>
+      <div style="flex:1"><div style="font-weight:500">{{ t.title }}</div><sc-if value="{{ t.sub }}"><div style="font-size:12px;color:var(--muted-foreground);margin-top:2px">{{ t.sub }}</div></sc-if></div>
+      <sc-if value="{{ t.action }}"><button onClick="{{ t.onAction }}" style="height:26px;padding:0 9px;border-radius:6px;border:1px solid var(--border);background:var(--card);font-size:12px;white-space:nowrap" style-hover="border-color:var(--ring)">{{ t.action }}</button></sc-if>
+    </div>
+  </sc-for>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;demoState&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;normal&quot;,&quot;vacio&quot;,&quot;cargando&quot;,&quot;desconectado&quot;],&quot;default&quot;:&quot;normal&quot;,&quot;tsType&quot;:&quot;'normal'|'vacio'|'cargando'|'desconectado'&quot;,&quot;section&quot;:&quot;Estados&quot;},&quot;startScreen&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;dashboard&quot;,&quot;agents&quot;,&quot;agent&quot;,&quot;architect&quot;,&quot;projects&quot;,&quot;project&quot;,&quot;board&quot;,&quot;task&quot;,&quot;inbox&quot;,&quot;usage&quot;,&quot;settings&quot;],&quot;default&quot;:&quot;dashboard&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Navegación&quot;},&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;dark&quot;,&quot;light&quot;],&quot;default&quot;:&quot;dark&quot;,&quot;tsType&quot;:&quot;'dark'|'light'&quot;,&quot;section&quot;:&quot;Tema&quot;}}">
+const IC = n => 'https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/' + n + '.svg';
+const ST = {backlog:['Backlog','var(--st-cancelled)'],queued:['En cola','var(--st-queued)'],running:['Ejecutando','var(--st-running)'],waiting:['Esperando humano','var(--st-waiting)'],review:['En revisión','var(--st-review)'],done:['Hecho','var(--st-done)'],failed:['Fallido','var(--st-failed)'],cancelled:['Cancelado','var(--st-cancelled)'],idle:['Inactivo','var(--st-cancelled)'],draft:['Borrador','var(--st-review)'],paused:['En pausa','var(--st-waiting)']};
+const st = k => { const [l, c] = ST[k]; return { key: k, l, c, bg: `color-mix(in oklch, ${c} 14%, transparent)`, bd: `color-mix(in oklch, ${c} 36%, transparent)` }; };
+const PULSE = 'pulse 1.6s ease-out infinite';
+const AG = {
+  ana:{id:'ana',name:'Ana',role:'Analista',color:'#F27FB2',cli:'Claude Code',cliTag:'CC',model:'claude-sonnet-4-5',perm:'Preguntar',status:'running',since:754,conc:'1/1',concMax:1,month:48.2,tokM:'4,1 M',desc:'Convierte ideas en requisitos claros, historias de usuario y criterios de aceptación.'},
+  dev:{id:'dev',name:'Dev',role:'Desarrollador',color:'#4FD1C5',cli:'Claude Code',cliTag:'CC',model:'claude-opus-4-1',perm:'Autónomo',status:'running',since:2471,conc:'2/2',concMax:2,month:131.75,tokM:'11,8 M',desc:'Implementa funcionalidades full-stack siguiendo los requisitos y las convenciones de cada proyecto.'},
+  quique:{id:'quique',name:'Quique',role:'QA',color:'#B5E061',cli:'Antigravity',cliTag:'AG',model:'gemini-2.5-pro',perm:'Restringido',status:'waiting',since:312,conc:'1/1',concMax:1,month:22.1,tokM:'3,0 M',desc:'Prueba cada entrega, escribe tests E2E y devuelve a Desarrollo lo que no cumple los criterios.'},
+  rita:{id:'rita',name:'Rita',role:'Redactora',color:'#FFA06B',cli:'Antigravity',cliTag:'AG',model:'gemini-2.5-flash',perm:'Preguntar',status:'idle',since:0,conc:'0/1',concMax:1,month:9.85,tokM:'1,9 M',desc:'Escribe artículos, fichas de producto y textos de marketing con el tono de la marca.'},
+  carla:{id:'carla',name:'Carla',role:'Comercial',color:'#8FB4FF',cli:'Claude Code',cliTag:'CC',model:'claude-sonnet-4-5',perm:'Restringido',status:'draft',since:0,conc:'0/1',concMax:1,month:0,tokM:'—',desc:'Prepara propuestas comerciales para clientes a partir del catálogo de productos.',draft:true}
+};
+Object.values(AG).forEach(a => { a.initial = a.name[0]; a.full = a.name + ' · ' + a.role; });
+const NOAG = {id:'none',name:'Sin asignar',initial:'?',color:'#8492AE',role:'',full:'Sin asignar'};
+const PR = {
+  tienda:{id:'tienda',name:'Tienda online',color:'#7C9CFF',path:'D:\\proyectos\\tienda-online',branch:'main',pipeline:'Desarrollo web',open:7,last:'hace 2 min',git:true},
+  reservas:{id:'reservas',name:'App reservas',color:'#E58AF0',path:'D:\\proyectos\\app-reservas',branch:'feature/login-google',pipeline:'Desarrollo web',open:6,last:'hace 40 s',git:true},
+  blog:{id:'blog',name:'Blog corporativo',color:'#F2C94C',path:'D:\\contenido\\blog-corporativo',branch:'—',pipeline:'Contenidos',open:4,last:'hace 1 h',git:false}
+};
+const PRIO = {Urgente:'var(--st-failed)',Alta:'var(--st-waiting)',Media:'var(--st-queued)',Baja:'var(--st-cancelled)'};
+const TASKS = [
+  {id:'t1',code:'T-142',title:'Login con Google',p:'reservas',stage:'Desarrollo',a:'dev',s:'running',prio:'Alta',sub:[3,5],time:'41 min',cost:2.84},
+  {id:'t2',code:'T-151',title:'Requisitos del checkout',p:'tienda',stage:'Requisitos',a:'ana',s:'running',prio:'Alta',sub:[1,4],time:'12 min',cost:0.62},
+  {id:'t3',code:'T-138',title:'QA carrito de compra',p:'tienda',stage:'QA',a:'quique',s:'waiting',prio:'Media',sub:[6,8],time:'1 h 05',cost:1.9},
+  {id:'t4',code:'T-160',title:'Artículo: tendencias eCommerce 2026',p:'blog',stage:'Redacción',a:'rita',s:'backlog',prio:'Baja',sub:[0,3],time:'—',cost:0},
+  {id:'t5',code:'T-147',title:'API de disponibilidad',p:'reservas',stage:'Desarrollo',a:'dev',s:'queued',prio:'Alta',sub:[0,6],time:'—',cost:0},
+  {id:'t6',code:'T-149',title:'Pasarela de pago con Stripe',p:'tienda',stage:'Desarrollo',a:'dev',s:'queued',prio:'Urgente',sub:[0,5],time:'—',cost:0},
+  {id:'t7',code:'T-131',title:'Calendario de reservas',p:'reservas',stage:'QA',a:'quique',s:'review',prio:'Media',sub:[4,4],time:'2 h 10',cost:4.12},
+  {id:'t8',code:'T-120',title:'Página de categorías',p:'tienda',stage:'QA',a:'quique',s:'done',prio:'Media',sub:[5,5],time:'1 h 32',cost:3.05},
+  {id:'t9',code:'T-118',title:'Guía de estilo editorial',p:'blog',stage:'Revisión',a:'rita',s:'done',prio:'Baja',sub:[3,3],time:'38 min',cost:0.74},
+  {id:'t10',code:'T-155',title:'Notificaciones por email',p:'reservas',stage:'Requisitos',a:'ana',s:'backlog',prio:'Media',sub:[0,0],time:'—',cost:0},
+  {id:'t11',code:'T-156',title:'Recordatorios por SMS',p:'reservas',stage:'Requisitos',a:'ana',s:'backlog',prio:'Baja',sub:[0,0],time:'—',cost:0},
+  {id:'t12',code:'T-153',title:'Política de devoluciones',p:'tienda',stage:'Requisitos',a:'ana',s:'queued',prio:'Media',sub:[0,2],time:'—',cost:0},
+  {id:'t13',code:'T-158',title:'Briefing newsletter de octubre',p:'blog',stage:'Briefing',a:'ana',s:'queued',prio:'Baja',sub:[0,0],time:'—',cost:0},
+  {id:'t14',code:'T-150',title:'QA reservas recurrentes',p:'reservas',stage:'QA',a:'quique',s:'queued',prio:'Alta',sub:[0,4],time:'—',cost:0},
+  {id:'t15',code:'T-144',title:'Revisión SEO de la home',p:'blog',stage:'Revisión',a:'rita',s:'review',prio:'Media',sub:[2,3],time:'24 min',cost:0.41}
+];
+const COLS = ['backlog','queued','running','waiting','review','done'];
+const STAGES = ['Requisitos','Briefing','Desarrollo','Redacción','QA','Revisión'];
+const INBOX = [
+  {id:'i1',type:'approval',a:'quique',p:'tienda',task:'QA carrito de compra',title:'¿Puedo ejecutar este comando?',cmd:'npm install -D @playwright/test',ctx:'Necesito Playwright para los tests E2E del carrito. Se añadirá solo a devDependencies.',when:'hace 4 min',status:'pending'},
+  {id:'i2',type:'question',a:'dev',p:'reservas',task:'API de disponibilidad',title:'¿Usamos Postgres o SQLite para las reservas?',ctx:'Prevemos ~2.000 reservas al día con acceso concurrente desde el panel de administración.',options:['Postgres','SQLite'],when:'hace 9 min',status:'pending'},
+  {id:'i3',type:'blocked',a:'ana',p:'tienda',task:'Requisitos del checkout',title:'Me falta la clave de test de Stripe',ctx:'No puedo validar los métodos de pago disponibles sin acceso a la cuenta de pruebas.',when:'hace 18 min',status:'pending'},
+  {id:'i4',type:'approval',a:'dev',p:'reservas',task:'Login con Google',title:'¿Puedo hacer push de la rama?',cmd:'git push origin feature/login-google',ctx:'Los 14 tests de autenticación pasan. Abriré un PR hacia develop.',when:'hace 22 min',status:'pending'},
+  {id:'i5',type:'done',a:'rita',p:'blog',task:'Guía de estilo editorial',title:'Tarea completada',ctx:'Documento de 6 páginas con tono, vocabulario y ejemplos. Guardado en docs/estilo.md.',when:'hace 31 min',status:'pending'},
+  {id:'i6',type:'approval',a:'quique',p:'reservas',task:'Calendario de reservas',title:'¿Puedo borrar la base de datos de pruebas?',cmd:'rm -rf ./tmp/test-db',ctx:'Se recrea en el siguiente arranque de los tests.',when:'ayer 18:12',status:'resolved',res:'Aprobado por ti'},
+  {id:'i7',type:'question',a:'rita',p:'blog',task:'Guía de estilo editorial',title:'¿Tuteamos o tratamos de usted?',ctx:'El blog actual mezcla ambos registros.',when:'ayer 11:40',status:'resolved',res:'Respondido: «Tuteamos»'}
+];
+const TYPES = {approval:{l:'Aprobación',c:'var(--st-waiting)',icon:IC('shield-check')},question:{l:'Pregunta',c:'var(--st-running)',icon:IC('message-circle-question')},blocked:{l:'Bloqueo',c:'var(--st-failed)',icon:IC('octagon-alert')},done:{l:'Tarea completada',c:'var(--st-done)',icon:IC('circle-check')}};
+const ACTIVITY = [
+  {t:'10:42',a:'quique',txt:'pidió aprobación para ejecutar npm install -D @playwright/test',p:'tienda',k:'waiting'},
+  {t:'10:39',a:'dev',txt:'lanzó el subagente tests-auth',p:'reservas',k:'running'},
+  {t:'10:31',a:'quique',txt:'rechazó «Login con Google» → vuelve a Desarrollo',p:'reservas',k:'failed'},
+  {t:'10:30',a:'ana',txt:'empezó «Requisitos del checkout»',p:'tienda',k:'running'},
+  {t:'10:12',a:'rita',txt:'completó «Guía de estilo editorial»',p:'blog',k:'done'},
+  {t:'09:58',a:'dev',txt:'añadió una nota a la memoria: «El callback valida state + PKCE»',p:'reservas',k:'review'}
+];
+const L = (k, t) => ({k, t});
+const LC = {cmd:['#FFFFFF',700],info:['#8FB4FF',400],ok:['#43D392',400],err:['#FF6B6F',400],edit:['#F5B547',400],mcp:['#B39CFF',400],dim:['#7F8DAA',400],sub:['#4CC9F0',400],user:['#F5B547',700]};
+const INIT_LINES = [
+  L('dim','PS D:\\proyectos\\app-reservas.wt\\T-142> agentic run --agent dev --task T-142'),
+  L('info','▸ Sesión cc-7f3a91 · claude-opus-4-1 · permisos: autónomo'),
+  L('info','▸ Contexto: memoria del proyecto (12 notas) · 3 documentos · skill «oauth-flows»'),
+  L('mcp','● mcp · update_status("retomando tras rechazo de QA: redirect tras callback")'),
+  L('info','● Leyendo src/auth/google.ts, src/routes/login.tsx, tests/auth/*.test.ts'),
+  L('edit','✎ Editando src/auth/google.ts (+18 −6)'),
+  L('cmd','▶ npm run test -- auth'),
+  L('ok','  PASS  tests/auth/session.test.ts (4 tests)'),
+  L('err','  FAIL  tests/auth/google.test.ts › redirige al panel tras el callback'),
+  L('dim','        Expected: "/panel"  Received: "/"'),
+  L('edit','✎ Editando src/routes/callback.tsx (+9 −2)'),
+  L('sub','↳ subagente tests-auth lanzado · amplía la cobertura del flujo OAuth'),
+  L('mcp','● mcp · update_status("implementando el login con Google: corrigiendo redirect")')
+];
+const POOL = [
+  L('cmd','▶ npm run test -- auth'),L('ok','  PASS  tests/auth/google.test.ts (6 tests)'),L('mcp','● mcp · update_status("tests de OAuth en verde, revisando tipos")'),L('dim','  tsc --noEmit · 0 errores'),
+  L('info','● Leyendo src/components/LoginForm.tsx'),L('edit','✎ Editando src/components/GoogleButton.tsx (+48)'),L('mcp','● mcp · add_memory("El callback valida state + PKCE; no reutilizar la sesión de /login")'),
+  L('sub','↳ tests-auth: 14/14 tests pasan'),L('mcp','● mcp · create_subtask("Documentar variables OAuth en el README")'),L('edit','✎ Editando README.md (+12)'),L('cmd','▶ npm run lint'),L('ok','  ✓ 0 problemas')
+];
+const RUN_LINES = {
+  explore:[L('dim','$ subagente explorar-auth (padre: cc-7f3a91)'),L('info','● Leyendo 23 archivos en src/auth y src/routes'),L('ok','✓ Mapa de dependencias generado'),L('mcp','● mcp · report("La auth usa sesiones en cookie; no hay OAuth previo")'),L('dim','Finalizado en 03:48 · 0,21 €')],
+  tests:[L('dim','$ subagente tests-auth (padre: cc-7f3a91)'),L('edit','✎ Creando tests/auth/google.test.ts'),L('cmd','▶ npx vitest run tests/auth'),L('ok','  ✓ genera la URL de autorización con PKCE'),L('ok','  ✓ valida el parámetro state'),L('ok','  ✓ vincula cuentas con el mismo email'),L('info','● Añadiendo caso: token caducado…')],
+  fixtures:[L('dim','$ subagente fixtures-oauth (padre: tests-auth)'),L('edit','✎ Creando tests/fixtures/google-tokens.json'),L('ok','✓ 6 fixtures generados'),L('dim','Finalizado en 01:12 · 0,04 €')],
+  r2:[L('dim','PS D:\\proyectos\\tienda-online> agentic run --agent ana --task T-151'),L('info','▸ Sesión cc-2b81e0 · claude-sonnet-4-5'),L('info','● Leyendo docs/negocio/checkout-actual.md'),L('edit','✎ Escribiendo docs/requisitos/checkout.md'),L('mcp','● mcp · update_status("redactando historias de usuario del checkout")'),L('err','⚠ Sin acceso a Stripe: pedida la clave de test en el Inbox')],
+  r3:[L('dim','PS D:\\proyectos\\tienda-online.wt\\T-138> agentic run --agent quique --task T-138'),L('info','▸ Sesión ag-91c4d2 · gemini-2.5-pro · permisos: restringido'),L('ok','✓ 6/8 casos manuales verificados'),L('cmd','▶ npm install -D @playwright/test'),L('user','⏸ Esperando aprobación humana para ejecutar el comando…')]
+};
+const SESS = [
+  {id:'cc-7f3a91',a:'dev',p:'reservas',task:'Login con Google',model:'claude-opus-4-1',tin:1240000,tout:86400,cost:2.84,dur:2471,when:'08/10 10:01'},
+  {id:'cc-2b81e0',a:'ana',p:'tienda',task:'Requisitos del checkout',model:'claude-sonnet-4-5',tin:212000,tout:18300,cost:0.62,dur:754,when:'08/10 10:30'},
+  {id:'ag-91c4d2',a:'quique',p:'tienda',task:'QA carrito de compra',model:'gemini-2.5-pro',tin:640000,tout:41200,cost:1.9,dur:3900,when:'08/10 09:22'},
+  {id:'ag-55e017',a:'rita',p:'blog',task:'Guía de estilo editorial',model:'gemini-2.5-flash',tin:180000,tout:52800,cost:0.74,dur:2280,when:'08/10 09:31'},
+  {id:'cc-0d3f77',a:'dev',p:'reservas',task:'Calendario de reservas',model:'claude-opus-4-1',tin:1810000,tout:122000,cost:4.12,dur:7800,when:'07/10 16:05'},
+  {id:'ag-c2a9b4',a:'quique',p:'reservas',task:'Calendario de reservas',model:'gemini-2.5-pro',tin:420000,tout:30100,cost:1.21,dur:1960,when:'07/10 18:40'},
+  {id:'cc-a7710c',a:'dev',p:'tienda',task:'Página de categorías',model:'claude-sonnet-4-5',tin:960000,tout:71500,cost:3.05,dur:5520,when:'07/10 11:12'},
+  {id:'ag-3e6f21',a:'rita',p:'blog',task:'Revisión SEO de la home',model:'gemini-2.5-flash',tin:96000,tout:14100,cost:0.41,dur:1440,when:'07/10 10:02'},
+  {id:'cc-58b2d9',a:'ana',p:'reservas',task:'Notificaciones por email',model:'claude-sonnet-4-5',tin:150000,tout:12900,cost:0.47,dur:930,when:'06/10 17:20'},
+  {id:'ag-77f0aa',a:'quique',p:'tienda',task:'Página de categorías',model:'gemini-2.5-pro',tin:510000,tout:36800,cost:1.48,dur:2650,when:'06/10 12:44'}
+];
+const ARCH = [
+  {user:'Necesito un agente comercial que prepare propuestas para clientes de la tienda online.',reply:'Perfecto. Lo llamaré «Carla · Comercial». ¿Debe poder enviar emails o solo redactar borradores para que los revises?'},
+  {user:'Solo borradores. Y que use el catálogo de productos y las tarifas vigentes.',reply:'Entendido: modo Restringido y sin envío de emails. Le añado el skill «Propuestas comerciales» y como conocimiento el catálogo y las tarifas 2026.'},
+  {user:'Usa Claude Code con Sonnet.',reply:'Hecho. He redactado sus instrucciones con estructura de propuesta, tono y límites. Revisa la ficha y pulsa «Crear borrador» cuando te encaje.'}
+];
+const fmt = s => { s = Math.max(0, Math.floor(s)); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60, p = n => String(n).padStart(2, '0'); return h ? h + ':' + p(m) + ':' + p(x) : p(m) + ':' + p(x); };
+const dur = s => { const h = Math.floor(s / 3600), m = Math.round(s % 3600 / 60); return h ? h + ' h ' + String(m).padStart(2, '0') + ' min' : m + ' min'; };
+const eur = v => v.toFixed(2).replace('.', ',') + ' €';
+const tok = n => n >= 1e6 ? (n / 1e6).toFixed(2).replace('.', ',') + ' M' : n >= 1e3 ? (n / 1e3).toFixed(1).replace('.', ',') + ' k' : String(n);
+const rnd = (i, j) => { const x = Math.sin(i * 12.9898 + j * 78.233) * 43758.5453; return x - Math.floor(x); };
+
+class Component extends DCLogic {
+  state = {
+    screen: this.props.startScreen || 'dashboard', theme: this.props.theme || 'dark', collapsed: false,
+    dock: false, dockPos: 'bottom', dockTab: 'r1',
+    taskId: 't1', agentId: 'dev', agentTab: 'general', projectId: 'tienda', projectTab: 'resumen',
+    boardView: 'estado', fP: 'all', fA: 'all',
+    control: false, paused: false, run: 'main', lines: INIT_LINES.slice(), poolI: 0, termInput: '',
+    subs: [{t:'Configurar credenciales OAuth en .env',d:true,by:'dev'},{t:'Flujo de autorización con PKCE',d:true,by:'dev'},{t:'Vincular cuentas existentes por email',d:true,by:'dev'},{t:'Corregir redirect tras callback',d:false,by:'quique'},{t:'Botón de Google en móvil',d:false,by:null}],
+    inboxFilter: 'pending', inbox: INBOX, replies: {},
+    queues: {ana:['t2','t12','t13'], dev:['t1','t6','t5'], quique:['t3','t14'], rita:[]}, drag: null,
+    usageGroup: 'agente', period: '30d', sort: {k:'when', d:-1},
+    arch: 0, archInput: ARCH[0].user,
+    palette: false, q: '', palI: 0, toasts: [], now: 0, newTask: false, ntTitle: '', ntProject: 'tienda', extraTasks: [],
+    draft: null, edColor: null, edPerm: null, edCli: null, edConc: null, edTools: null, edSub: null, edCreate: null,
+    clis: [{id:'cc',name:'Claude Code',tag:'CC',path:'C:\\Users\\marta\\AppData\\Roaming\\npm\\claude.cmd',ver:'2.0.14',logged:true,checked:'hace 3 h'},{id:'ag',name:'Antigravity (Gemini CLI)',tag:'AG',path:'C:\\Users\\marta\\AppData\\Local\\Programs\\gemini\\gemini.exe',ver:'0.9.2',logged:true,checked:'hace 3 h'},{id:'cx',name:'Codex CLI',tag:'CX',path:'No encontrado en PATH',ver:'—',logged:false,missing:true,checked:'hace 3 h'}],
+    checking: null, notif: {approval:true, question:true, rejected:true, done:false, sound:false},
+    pipes: {tienda:[{id:'s1',name:'Requisitos',a:'ana'},{id:'s2',name:'Desarrollo',a:'dev'},{id:'s3',name:'QA',a:'quique'}], reservas:[{id:'s1',name:'Requisitos',a:'ana'},{id:'s2',name:'Desarrollo',a:'dev'},{id:'s3',name:'QA',a:'quique'}], blog:[{id:'s1',name:'Briefing',a:'ana'},{id:'s2',name:'Redacción',a:'rita'},{id:'s3',name:'Revisión',a:'quique'}]},
+    reject: {tienda:{from:'s3',to:'s2'}, reservas:{from:'s3',to:'s2'}, blog:{from:'s3',to:'s2'}}, stageN: 4,
+    memory: [{id:'m1',a:'dev',when:'hoy 09:58',txt:'El callback de OAuth valida state + PKCE. No reutilizar la sesión antigua de /login.'},{id:'m2',a:'ana',when:'ayer 17:05',txt:'Las reservas se agrupan en franjas de 30 min; el cliente quiere pasar a 15 min en el primer trimestre.'},{id:'m3',a:'quique',when:'06/10',txt:'Los tests E2E usan la base de datos test-db, que se recrea en cada ejecución.'},{id:'m4',a:null,when:'02/10',txt:'Despliegue: solo desde la rama main tras aprobación manual. Nunca forzar push.'}],
+    editingNote: null, ws: {tienda:'worktree', reservas:'worktree', blog:'folder'}
+  };
+  componentDidMount() {
+    this.timer = setInterval(() => {
+      this.setState(s => {
+        const n = { now: s.now + 1 };
+        if (!s.control && !s.paused && (s.now % 3 === 2)) { n.lines = [...s.lines, POOL[s.poolI % POOL.length]].slice(-80); n.poolI = s.poolI + 1; }
+        return n;
+      });
+    }, 1000);
+    this.onKey = e => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); this.setState(s => ({ palette: !s.palette, q: '', palI: 0 })); }
+      else if (e.ctrlKey && e.key === '`') { e.preventDefault(); this.setState(s => ({ dock: !s.dock })); }
+      else if (e.key === 'Escape') this.setState({ palette: false, newTask: false });
+    };
+    window.addEventListener('keydown', this.onKey);
+    this.t0 = setTimeout(() => this.toast({ title: 'QA ha rechazado «Login con Google» → vuelve a Desarrollo', sub: 'Quique · «redirige al panel tras el callback» falla', c: 'var(--st-failed)', icon: IC('undo-2'), action: 'Ver tarea', onAction: () => this.go('task', { taskId: 't1' }) }), 2200);
+  }
+  componentWillUnmount() { clearInterval(this.timer); clearTimeout(this.t0); window.removeEventListener('keydown', this.onKey); }
+  componentDidUpdate(pp, ps) {
+    if (pp.startScreen !== this.props.startScreen && this.props.startScreen) this.setState({ screen: this.props.startScreen });
+    if (pp.theme !== this.props.theme && this.props.theme) this.setState({ theme: this.props.theme });
+    [this.term, this.dockEl].forEach(el => { if (el && el.scrollHeight - el.scrollTop - el.clientHeight < 80) el.scrollTop = el.scrollHeight; });
+    if (ps.screen !== this.state.screen && this.content) this.content.scrollTop = 0;
+  }
+  toast(t) { const id = Math.random(); this.setState(s => ({ toasts: [...s.toasts, { ...t, id }] })); setTimeout(() => this.setState(s => ({ toasts: s.toasts.filter(x => x.id !== id) })), 5200); }
+  go(screen, extra) { this.setState({ screen, palette: false, ...(extra || {}) }); }
+  openAgent(id) { this.go('agent', { agentId: id, agentTab: 'general', draft: null, edColor: null, edPerm: null, edCli: null, edConc: null, edTools: null, edSub: null, edCreate: null }); }
+  resolve(id, res, msg) { this.setState(s => ({ inbox: s.inbox.map(i => i.id === id ? { ...i, status: 'resolved', res, when: 'ahora' } : i) })); this.toast({ title: msg, c: 'var(--st-done)', icon: IC('check') }); }
+  allTasks() { return [...TASKS, ...this.state.extraTasks]; }
+  deco(t) {
+    const live = t.s === 'running' && !(t.id === 't1' && this.state.paused);
+    return { ...t, proj: PR[t.p], ag: AG[t.a] || NOAG, st: st(t.s), live, pr: { l: t.prio, c: PRIO[t.prio] }, subs: t.sub[0] + '/' + t.sub[1], hasSubs: t.sub[1] > 0, costL: t.cost ? eur(t.cost) : '', open: () => this.go('task', { taskId: t.id, run: 'main', control: false }) };
+  }
+
+  moreVals({ s, demo, tasks, T, pending, decoInbox, agSel, prSel, now }) {
+    const tab = (list, cur, set) => list.map(([k, label]) => ({ key: k, label, on: () => this.setState({ [set]: k }), fg: cur === k ? 'var(--foreground)' : 'var(--muted-foreground)', bd: cur === k ? 'var(--primary-action)' : 'transparent', fw: cur === k ? 500 : 400 }));
+    const flags = (list, cur) => { const o = {}; list.forEach(([k]) => o[k] = cur === k); return o; };
+    const sw = (on, fn) => ({ on, toggle: fn, track: on ? 'var(--primary-action)' : 'var(--input)', x: on ? 'translateX(16px)' : 'none', aria: on ? 'true' : 'false' });
+    // Agents
+    const ids = ['ana','dev','quique','rita'].concat(s.draft === 'rejected' ? [] : ['carla']);
+    const agentRows = ids.map(id => { const a = AG[id]; const k = id === 'carla' ? (s.draft === 'approved' ? 'idle' : 'draft') : (id === 'dev' && s.paused ? 'paused' : a.status); const so = st(k); return { ...a, st: so, stL: k === 'waiting' ? 'Esperándote' : so.l, pulse: k === 'running' ? PULSE : 'none', queue: (s.queues[id] || []).length, monthL: a.month ? eur(a.month) : '—', isDraft: k === 'draft', open: () => this.openAgent(id) }; });
+    const a = agSel, aid = a.id;
+    const isDraft = !!a.draft && !s.draft;
+    const ATABS = [['general','General'],['instrucciones','Instrucciones'],['ejecucion','Ejecución'],['conocimiento','Conocimiento'],['skills','Skills'],['historial','Historial']];
+    const edColor = s.edColor || a.color, edCli = s.edCli || a.cli, edPerm = s.edPerm || a.perm, edConc = s.edConc ?? a.concMax;
+    const defTools = { 'Leer archivos': true, 'Editar archivos': aid !== 'quique', 'Terminal': aid === 'dev' || aid === 'quique', 'Git': aid === 'dev', 'Web fetch': aid === 'ana' || aid === 'rita' || aid === 'carla', 'MCP agentic-os': true, 'Navegador (Playwright)': aid === 'quique' };
+    const tl = s.edTools || defTools;
+    const MODELS = { 'Claude Code': ['claude-opus-4-1','claude-sonnet-4-5','claude-haiku-4-5'], 'Antigravity': ['gemini-2.5-pro','gemini-2.5-flash'] };
+    const PERMS = [['Autónomo','Ejecuta comandos y edita sin preguntar, siempre dentro de su workspace.','zap'],['Restringido','Lee y edita archivos. Sin red ni comandos de sistema.','lock'],['Preguntar','Pide aprobación en el Inbox antes de cada comando.','hand']];
+    const prompt = `# ${a.name} · ${a.role}\n\n${a.desc}\n\n## Cómo trabajas\n- Lee la memoria del proyecto antes de empezar y añade notas cuando descubras algo útil.\n- Informa de tu progreso con \`update_status\` al menos cada 5 minutos.\n- Si una decisión cambia el alcance, pregunta en el Inbox con \`ask_human\`.\n\n## Criterios de entrega\n1. Todo lo que entregas tiene criterios de aceptación verificables.\n2. Resume al final qué has hecho, qué queda pendiente y los riesgos.\n\n## Límites\n- No toques ramas protegidas (main, develop).\n- No compartas claves ni datos personales en los registros.`;
+    const canSub = s.edSub ?? (aid === 'dev'), canCreate = s.edCreate ?? (aid === 'ana' || aid === 'dev');
+    const history = SESS.filter(x => x.a === aid).map(x => ({ ...x, pr: PR[x.p], tokL: tok(x.tin + x.tout), costL: eur(x.cost), durL: dur(x.dur), st: st(x.id === 'cc-7f3a91' || x.id === 'cc-2b81e0' ? 'running' : x.id === 'ag-91c4d2' ? 'waiting' : x.id === 'cc-0d3f77' ? 'failed' : 'done') }));
+    // Architect
+    const chat = [{ me: false, text: 'Hola, soy el Arquitecto. Cuéntame qué necesitas que haga tu nuevo agente y te propongo una ficha completa.' }];
+    for (let i = 0; i < s.arch; i++) { chat.push({ me: true, text: ARCH[i].user }); chat.push({ me: false, text: ARCH[i].reply }); }
+    const chatD = chat.map(m => ({ ...m, arch: !m.me, align: m.me ? 'flex-end' : 'flex-start', bg: m.me ? 'var(--primary-action)' : 'var(--card)', fg: m.me ? '#FFFFFF' : 'var(--foreground)', bd: m.me ? 'transparent' : 'var(--border)' }));
+    const f1 = s.arch >= 1, f2 = s.arch >= 2, f3 = s.arch >= 3;
+    const archCard = { f1, f2, f3, p1: !f1, p2: !f2, p3: !f3, prompt: `# Carla · Comercial\n\nPreparas propuestas comerciales para clientes de la Tienda online.\n\n## Estructura\n1. Resumen de la necesidad del cliente\n2. Productos recomendados (solo del catálogo vigente)\n3. Precio con las tarifas 2026 y condiciones\n\n## Límites\n- Nunca envías emails: dejas un borrador para revisión humana.` };
+    // Projects
+    const projRows = Object.values(PR).map(p => { const pt = tasks.filter(t => t.p === p.id); const ags = [...new Set(pt.filter(t => t.s === 'running' || t.s === 'waiting').map(t => t.a))].map(x => AG[x]); return { ...p, openN: pt.filter(t => t.s !== 'done').length, stages: s.pipes[p.id].map(x => x.name).join(' → '), ags, live: ags.length > 0, wsL: s.ws[p.id] === 'worktree' ? 'git worktree' : 'carpeta directa', open: () => this.go('project', { projectId: p.id, projectTab: 'resumen' }) }; });
+    const pid = prSel.id;
+    const PTABS = [['resumen','Resumen'],['tareas','Tareas'],['pipeline','Pipeline'],['memoria','Memoria del proyecto'],['conocimiento','Conocimiento'],['ajustes','Ajustes']];
+    const pTasks = tasks.filter(t => t.p === pid).map(t => this.deco(t));
+    const pipe = s.pipes[pid], rj = s.reject[pid];
+    const move = (i, d) => { const p = [...pipe]; const j = i + d; if (j < 0 || j >= p.length) return; [p[i], p[j]] = [p[j], p[i]]; this.setState(x => ({ pipes: { ...x.pipes, [pid]: p } })); };
+    const AGL = ['ana','dev','quique','rita'];
+    const stagesD = pipe.map((x, i) => ({ ...x, n: i + 1, ag: AG[x.a] || NOAG, last: i === pipe.length - 1, notLast: i < pipe.length - 1, canL: i > 0 ? 1 : 0.35, canR: i < pipe.length - 1 ? 1 : 0.35, left: () => move(i, -1), right: () => move(i, 1),
+      cycle: () => { const nx = AGL[(AGL.indexOf(x.a) + 1) % AGL.length]; this.setState(z => ({ pipes: { ...z.pipes, [pid]: z.pipes[pid].map(y => y.id === x.id ? { ...y, a: nx } : y) } })); },
+      remove: () => { if (pipe.length <= 1) return; this.setState(z => ({ pipes: { ...z.pipes, [pid]: z.pipes[pid].filter(y => y.id !== x.id) } })); },
+      isFrom: rj && rj.from === x.id, isTo: rj && rj.to === x.id,
+      setFrom: () => this.setState(z => ({ reject: { ...z.reject, [pid]: { from: x.id, to: (z.reject[pid] || {}).to || pipe[0].id } } })) }));
+    let rejectOk = false, rejectCol = '1 / 2', rejectM = '0', rejectLabel = '';
+    if (rj) { const fi = pipe.findIndex(x => x.id === rj.from), ti = pipe.findIndex(x => x.id === rj.to); if (fi >= 0 && ti >= 0 && fi !== ti) { rejectOk = true; const lo = Math.min(fi, ti), hi = Math.max(fi, ti), k = hi - lo + 1; rejectCol = (lo + 1) + ' / ' + (hi + 2); rejectM = `0 calc((100% - ${(k - 1) * 44}px) / ${k} / 2)`; rejectLabel = 'Si ' + pipe[fi].name + ' rechaza → vuelve a ' + pipe[ti].name; } }
+    const memory = s.memory.map(m => ({ ...m, ag: m.a ? AG[m.a] : { name: 'Tú', initial: 'M', color: '#C9D5EA' }, editing: s.editingNote === m.id, viewing: s.editingNote !== m.id, edit: () => this.setState({ editingNote: m.id }), done: () => this.setState({ editingNote: null }), onTxt: e => { const v = e.target.value; this.setState(z => ({ memory: z.memory.map(y => y.id === m.id ? { ...y, txt: v } : y) })); }, del: () => this.setState(z => ({ memory: z.memory.filter(y => y.id !== m.id) })) }));
+    const wsOpts = [['folder','Carpeta directa','Los agentes trabajan sobre la carpeta del proyecto. Simple, pero solo una tarea a la vez.','folder'],['worktree','Git worktree por tarea','Cada tarea tiene su propio worktree y rama. Permite varias tareas en paralelo sin conflictos.','git-fork']].map(([k, l, d, ic]) => ({ k, l, d, icon: IC(ic), sel: s.ws[pid] === k, bd: s.ws[pid] === k ? 'var(--primary-action)' : 'var(--border)', bg: s.ws[pid] === k ? 'color-mix(in oklch,var(--primary-action) 10%,var(--card))' : 'var(--card)', on: () => this.setState(z => ({ ws: { ...z.ws, [pid]: k } })) }));
+    // Inbox
+    const inboxItems = s.inbox.filter(i => i.status === s.inboxFilter).map(decoInbox);
+    // Usage
+    const N = s.period === '7d' ? 7 : 30, mult = s.period === '90d' ? 3 : 1;
+    const groups = s.usageGroup === 'agente' ? [['ana',1.55],['dev',4.3],['quique',1.1],['rita',0.42]].map(([id, b]) => ({ id, name: AG[id].name, color: AG[id].color, b })) : [['tienda',2.6],['reservas',3.9],['blog',0.9]].map(([id, b]) => ({ id, name: PR[id].name, color: PR[id].color, b }));
+    const MES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+    const raw = []; for (let i = 0; i < N; i++) { const dt = new Date(2026, 9, 8 - (N - 1 - i) * mult); const wk = mult === 1 && (dt.getDay() === 0 || dt.getDay() === 6) ? 0.35 : 1; raw.push({ dt, v: groups.map((g, j) => g.b * (0.45 + rnd(i + 1, j + 1) * 0.9) * mult * wk) }); }
+    const max = Math.max(...raw.map(r => r.v.reduce((x, y) => x + y, 0)));
+    const every = N === 7 ? 1 : 5;
+    const bars = raw.map((r, i) => { const tot = r.v.reduce((x, y) => x + y, 0); return { segs: r.v.map((v, j) => ({ h: (v / max * 168).toFixed(1) + 'px', color: groups[j].color })), label: (N - 1 - i) % every === 0 ? r.dt.getDate() + ' ' + MES[r.dt.getMonth()] : '', tip: r.dt.getDate() + ' ' + MES[r.dt.getMonth()] + ' · ' + eur(tot) }; });
+    const totals = groups.map((g, j) => raw.reduce((x, r) => x + r.v[j], 0));
+    const total = totals.reduce((x, y) => x + y, 0);
+    const breakdown = groups.map((g, j) => ({ ...g, cost: eur(totals[j]), pct: Math.round(totals[j] / total * 100) + ' %', w: (totals[j] / Math.max(...totals) * 100).toFixed(0) + '%' }));
+    const kpis = [{ l: 'Coste', v: eur(total), d: s.period === '7d' ? '+8 % vs. semana anterior' : '+12 % vs. periodo anterior' }, { l: 'Tokens', v: tok(total * 412000), d: '68 % servidos desde caché' }, { l: 'Horas de agente', v: (total * 0.52).toFixed(1).replace('.', ',') + ' h', d: 'equivale a ' + Math.round(total * 0.52 / 8) + ' jornadas' }, { l: 'Sesiones de CLI', v: String(Math.round(total * 1.9)), d: '94 % terminadas sin error' }];
+    const SH = [['when','Inicio'],['a','Agente'],['p','Proyecto'],['task','Tarea'],['model','Modelo'],['tok','Tokens'],['cost','Coste'],['dur','Duración']];
+    const sessHead = SH.map(([k, l]) => ({ l, arrow: s.sort.k === k ? (s.sort.d > 0 ? '↑' : '↓') : '', align: ['tok','cost','dur'].includes(k) ? 'right' : 'left', fg: s.sort.k === k ? 'var(--foreground)' : 'var(--muted-foreground)', aria: s.sort.k === k ? (s.sort.d > 0 ? 'ascending' : 'descending') : 'none', on: () => this.setState(z => ({ sort: { k, d: z.sort.k === k ? -z.sort.d : -1 } })) }));
+    const key = r => s.sort.k === 'tok' ? r.tin + r.tout : s.sort.k === 'a' ? AG[r.a].name : s.sort.k === 'p' ? PR[r.p].name : r[s.sort.k];
+    const sessRows = [...SESS].sort((x, y) => { const p = key(x), q = key(y); return (p > q ? 1 : p < q ? -1 : 0) * s.sort.d; }).map(r => ({ ...r, ag: AG[r.a], pr: PR[r.p], tokL: tok(r.tin + r.tout), costL: eur(r.cost), durL: dur(r.dur) }));
+    // Settings
+    const clis = s.clis.map(c => ({ ...c, checking: s.checking === c.id, idle: s.checking !== c.id, ok: c.logged, stL: c.missing ? 'No detectado' : c.logged ? 'Sesión iniciada' : 'Sin sesión', stC: c.missing ? 'var(--st-failed)' : c.logged ? 'var(--st-done)' : 'var(--st-waiting)', check: () => { this.setState({ checking: c.id }); setTimeout(() => { this.setState(z => ({ checking: null, clis: z.clis.map(y => y.id === c.id ? { ...y, checked: 'ahora mismo' } : y) })); this.toast(c.missing ? { title: c.name + ' no encontrado', sub: 'Instálalo o indica la ruta manualmente', c: 'var(--st-failed)', icon: IC('circle-alert') } : { title: c.name + ' ' + c.ver + ' funciona', sub: 'Sesión iniciada correctamente', c: 'var(--st-done)', icon: IC('check') }); }, 1200); } }));
+    const NOT = [['approval','Aprobaciones pendientes','Cuando un agente necesita permiso para ejecutar algo.'],['question','Preguntas de los agentes','Cuando un agente te pregunta algo o está bloqueado.'],['rejected','Rechazos entre etapas','Cuando QA o una revisión devuelve una tarea.'],['done','Tareas completadas','Al terminar cada tarea.'],['sound','Sonido','Reproducir un sonido con cada notificación.']];
+    const notifs = NOT.map(([k, l, d]) => ({ l, d, ...sw(s.notif[k], () => this.setState(z => ({ notif: { ...z.notif, [k]: !z.notif[k] } }))) }));
+    const themeOpts = [['dark','Oscuro'],['light','Claro']].map(([k, l]) => ({ l, on: () => this.setState({ theme: k }), bg: s.theme === k ? 'var(--card)' : 'transparent', fg: s.theme === k ? 'var(--foreground)' : 'var(--muted-foreground)', sh: s.theme === k ? '0 1px 2px rgba(0,0,0,.25)' : 'none' }));
+    return {
+      agentRows, agentsEmpty: demo.empty, agentsLoading: demo.loading, agentsData: demo.showData, skel5: [1,2,3,4,5],
+      ag: { ...a, color: edColor, isDraft, st: st(a.draft ? (s.draft === 'approved' ? 'idle' : 'draft') : a.status) }, isDraft,
+      approveDraft: () => { this.setState({ draft: 'approved' }); this.toast({ title: 'Carla · Comercial aprobada', sub: 'Ya puede recibir tareas', c: 'var(--st-done)', icon: IC('check') }); },
+      rejectDraft: () => { this.setState({ draft: 'rejected', screen: 'agents' }); this.toast({ title: 'Borrador rechazado', sub: 'El Arquitecto ha archivado la propuesta', c: 'var(--st-failed)', icon: IC('x') }); },
+      agentTabs: tab(ATABS, s.agentTab, 'agentTab'), at: flags(ATABS, s.agentTab),
+      colors: ['#F27FB2','#4FD1C5','#B5E061','#FFA06B','#8FB4FF','#C4A1FF','#FF8A8A','#F2C94C'].map(c => ({ c, on: () => this.setState({ edColor: c }), bd: c === edColor ? 'var(--foreground)' : 'transparent', aria: c === edColor ? 'true' : 'false' })),
+      prompt, promptLen: prompt.length + ' caracteres · ~' + Math.round(prompt.length / 4) + ' tokens',
+      cliOpts: [['Claude Code','CC','Anthropic · claude.cmd'],['Antigravity','AG','Google · gemini.exe']].map(([n, t, d]) => ({ n, t, d, bd: edCli === n ? 'var(--primary-action)' : 'var(--border)', bg: edCli === n ? 'color-mix(in oklch,var(--primary-action) 10%,var(--card))' : 'var(--card)', sel: edCli === n, on: () => this.setState({ edCli: n }) })),
+      models: (MODELS[edCli] || []).map(m => ({ m })), edModel: s.edModel || (MODELS[edCli].includes(a.model) ? a.model : MODELS[edCli][0]), onModel: e => this.setState({ edModel: e.target.value }),
+      perms: PERMS.map(([n, d, ic]) => ({ n, d, icon: IC(ic), sel: edPerm === n, bd: edPerm === n ? 'var(--primary-action)' : 'var(--border)', bg: edPerm === n ? 'color-mix(in oklch,var(--primary-action) 10%,var(--card))' : 'var(--card)', on: () => this.setState({ edPerm: n }) })),
+      tools: Object.keys(defTools).map(k => ({ k, on: tl[k], bg: tl[k] ? 'color-mix(in oklch,var(--primary-action) 18%,transparent)' : 'transparent', bd: tl[k] ? 'var(--primary-action)' : 'var(--border)', mark: tl[k] ? '✓' : '+', toggle: () => this.setState({ edTools: { ...tl, [k]: !tl[k] } }) })),
+      conc: edConc, incConc: () => this.setState({ edConc: Math.min(8, edConc + 1) }), decConc: () => this.setState({ edConc: Math.max(1, edConc - 1) }),
+      swSub: sw(canSub, () => this.setState({ edSub: !canSub })), swCreate: sw(canCreate, () => this.setState({ edCreate: !canCreate })),
+      history, noHistory: !history.length,
+      saveAgent: () => this.toast({ title: 'Cambios guardados', sub: a.full + ' usará la nueva configuración en la próxima ejecución', c: 'var(--st-done)', icon: IC('check') }),
+      chat: chatD, archInput: s.archInput, onArchInput: e => this.setState({ archInput: e.target.value }), archCard, archDone: f3, archCanSend: !f3,
+      archSend: () => { if (s.arch >= 3) return; const n = s.arch + 1; this.setState({ arch: n, archInput: ARCH[n] ? ARCH[n].user : '' }); },
+      onArchKey: e => { if (e.key === 'Enter' && !e.shiftKey && s.arch < 3) { e.preventDefault(); const n = s.arch + 1; this.setState({ arch: n, archInput: ARCH[n] ? ARCH[n].user : '' }); } },
+      archProgress: Math.round(s.arch / 3 * 100) + '%', archOp: f3 ? 1 : 0.45, archStepL: 'Ficha completada al ' + Math.round(s.arch / 3 * 100) + ' %',
+      createDraft: () => { this.setState({ draft: null }); this.openAgent('carla'); this.toast({ title: 'Borrador creado', sub: 'Revisa la ficha de Carla y apruébala', c: 'var(--st-review)', icon: IC('sparkles') }); },
+      resetArch: () => this.setState({ arch: 0, archInput: ARCH[0].user }),
+      projRows, pr: { ...prSel, wsL: s.ws[pid] === 'worktree' ? 'Git worktree por tarea' : 'Carpeta directa' }, projTabs: tab(PTABS, s.projectTab, 'projectTab'), pt: flags(PTABS, s.projectTab), pTasks,
+      pKpis: [{ l: 'Tareas abiertas', v: String(pTasks.filter(t => t.s !== 'done').length) }, { l: 'En ejecución', v: String(pTasks.filter(t => t.s === 'running').length) }, { l: 'Esperando humano', v: String(pTasks.filter(t => t.s === 'waiting' || t.s === 'review').length) }, { l: 'Coste del mes', v: eur(pid === 'tienda' ? 58.4 : pid === 'reservas' ? 96.1 : 14.3) }],
+      pActive: pTasks.filter(t => t.s === 'running' || t.s === 'waiting'), pNoActive: !pTasks.some(t => t.s === 'running' || t.s === 'waiting'),
+      stagesD, pipeCols: `repeat(${pipe.length}, minmax(0,1fr))`, rejectOk, rejectCol, rejectM, rejectLabel,
+      addStage: () => { const id = 's' + (s.stageN + 1); this.setState(z => ({ stageN: z.stageN + 1, pipes: { ...z.pipes, [pid]: [...z.pipes[pid], { id, name: 'Nueva etapa', a: 'rita' }] } })); },
+      memory, addNote: () => { const id = 'm' + Date.now(); this.setState(z => ({ memory: [{ id, a: null, when: 'ahora', txt: '' }, ...z.memory], editingNote: id })); },
+      wsOpts,
+      inboxTabs: [['pending','Pendientes'],['resolved','Resueltas']].map(([k, l]) => ({ l, n: s.inbox.filter(i => i.status === k).length, on: () => this.setState({ inboxFilter: k }), bg: s.inboxFilter === k ? 'var(--card)' : 'transparent', fg: s.inboxFilter === k ? 'var(--foreground)' : 'var(--muted-foreground)', sh: s.inboxFilter === k ? '0 1px 2px rgba(0,0,0,.25)' : 'none' })),
+      inboxItems, inboxEmpty: !inboxItems.length, inboxPending: s.inboxFilter === 'pending',
+      periods: [['7d','7 días'],['30d','30 días'],['90d','90 días']].map(([k, l]) => ({ l, on: () => this.setState({ period: k }), bg: s.period === k ? 'var(--card)' : 'transparent', fg: s.period === k ? 'var(--foreground)' : 'var(--muted-foreground)', sh: s.period === k ? '0 1px 2px rgba(0,0,0,.25)' : 'none' })),
+      groupTabs: [['agente','Por agente'],['proyecto','Por proyecto']].map(([k, l]) => ({ l, on: () => this.setState({ usageGroup: k }), bg: s.usageGroup === k ? 'var(--card)' : 'transparent', fg: s.usageGroup === k ? 'var(--foreground)' : 'var(--muted-foreground)', sh: s.usageGroup === k ? '0 1px 2px rgba(0,0,0,.25)' : 'none' })),
+      bars, breakdown, kpis, sessHead, sessRows, chartTitle: s.usageGroup === 'agente' ? 'Coste diario por agente' : 'Coste diario por proyecto',
+      clis, notifs, themeOpts
+    };
+  }
+  renderVals() {
+    const s = this.state, now = s.now, demoK = this.props.demoState || 'normal';
+    const demo = { normal: demoK === 'normal', empty: demoK === 'vacio', loading: demoK === 'cargando', offline: demoK === 'desconectado' };
+    demo.showData = !demo.empty && !demo.loading;
+    const screen = s.screen;
+    const is = {}; ['dashboard','agents','agent','architect','projects','project','board','task','inbox','usage','settings'].forEach(k => is[k] = screen === k);
+    const section = { agent:'agents', architect:'agents', project:'projects', task:'board' }[screen] || screen;
+    const pending = s.inbox.filter(i => i.status === 'pending');
+    const tasks = this.allTasks();
+    const T = id => tasks.find(t => t.id === id);
+
+    const NAV = [['dashboard','Dashboard','layout-dashboard'],['agents','Agentes','bot'],['projects','Proyectos','folder-git-2'],['board','Tablero','square-kanban'],['inbox','Inbox','inbox'],['usage','Consumo','chart-column'],['settings','Ajustes','settings']];
+    const nav = NAV.map(([k, label, icon]) => { const act = section === k; return { label, icon: IC(icon), go: () => this.go(k), bg: act ? 'var(--sidebar-active)' : 'transparent', fg: act ? '#FFFFFF' : 'var(--sidebar-muted)', fw: act ? 500 : 400, showCount: k === 'inbox' && pending.length > 0, count: pending.length }; });
+
+    const tk0 = T(s.taskId) || TASKS[0];
+    const agSel = AG[s.agentId] || AG.dev;
+    const prSel = PR[s.projectId];
+    const C = (label, on) => ({ label, on: on || (() => {}) });
+    const crumbMap = {
+      dashboard:[C('Dashboard')], agents:[C('Agentes')], agent:[C('Agentes', () => this.go('agents')), C(agSel.full)], architect:[C('Agentes', () => this.go('agents')), C('Crear con el Arquitecto')],
+      projects:[C('Proyectos')], project:[C('Proyectos', () => this.go('projects')), C(prSel.name)], board:[C('Tablero')],
+      task:[C('Tablero', () => this.go('board')), C(PR[tk0.p].name, () => this.go('project', { projectId: tk0.p, projectTab: 'tareas' })), C(tk0.code + ' · ' + tk0.title)],
+      inbox:[C('Inbox')], usage:[C('Consumo')], settings:[C('Ajustes')]
+    };
+    const cr = crumbMap[screen];
+    const crumbs = cr.map((c, i) => ({ ...c, sep: i > 0, color: i === cr.length - 1 ? 'var(--foreground)' : 'var(--muted-foreground)', fw: i === cr.length - 1 ? 500 : 400 }));
+    const openNew = () => this.setState({ newTask: true, ntTitle: '' });
+    const primaryMap = { dashboard:['Nueva tarea', openNew], board:['Nueva tarea', openNew], task:['Nueva tarea', openNew], project:['Nueva tarea', openNew], agents:['Nuevo agente', () => this.go('architect')], agent:['Nuevo agente', () => this.go('architect')], projects:['Nuevo proyecto', () => this.toast({ title: 'Selecciona la carpeta del proyecto', sub: 'Se abrirá el explorador de Windows', c: 'var(--ring)', icon: IC('folder-open') })], usage:['Exportar CSV', () => this.toast({ title: 'Exportado consumo_30d.csv', c: 'var(--st-done)', icon: IC('download') })] };
+    const pm = primaryMap[screen];
+    const primary = { show: !!pm, label: pm ? pm[0] : '', on: pm ? pm[1] : null };
+
+    // Dashboard
+    const curTask = id => { const q = s.queues[id] || []; const t = T(q[0]); return t && (t.s === 'running' || t.s === 'waiting') ? t : null; };
+    const agentCards = ['ana','dev','quique','rita'].map(id => {
+      const a = AG[id], t = curTask(id), q = (s.queues[id] || []).length - (t ? 1 : 0);
+      const status = id === 'dev' && s.paused ? 'paused' : a.status;
+      const sObj = st(status);
+      return { ...a, st: sObj, stLabel: status === 'waiting' ? 'Esperándote' : sObj.l, pulse: status === 'running' ? PULSE : 'none', busy: !!t, idle: !t, task: t ? t.title : '', pname: t ? PR[t.p].name : '', pcolor: t ? PR[t.p].color : '', verb: status === 'waiting' ? 'Esperando aprobación en' : status === 'paused' ? 'En pausa en' : 'Trabajando en', elapsed: status === 'waiting' ? 'hace ' + fmt(a.since + now) : fmt(a.since + (status === 'running' ? now : 0)), queueLabel: q === 1 ? '1 tarea' : q + ' tareas', border: status === 'waiting' ? 'color-mix(in oklch,var(--st-waiting) 50%,var(--border))' : 'var(--border)', open: () => t ? this.go('task', { taskId: t.id, run: 'main', control: false }) : this.openAgent(id) };
+    });
+    const decoInbox = i => {
+      const ag = AG[i.a], pr = PR[i.p], tm = TYPES[i.type];
+      return { ...i, ag, pr, tm, cmd: i.cmd || '', isApproval: i.type === 'approval', notApproval: i.type !== 'approval', isQuestion: i.type === 'question', isBlocked: i.type === 'blocked', isDone: i.type === 'done', pending: i.status === 'pending', resolved: i.status === 'resolved',
+        approve: () => this.resolve(i.id, 'Aprobado por ti', 'Aprobado · ' + ag.name + ' continúa'), reject: () => this.resolve(i.id, 'Rechazado por ti', 'Rechazado · ' + ag.name + ' buscará otra vía'),
+        reply: s.replies[i.id] || '', onReply: e => { const v = e.target.value; this.setState(x => ({ replies: { ...x.replies, [i.id]: v } })); },
+        send: () => { const v = (s.replies[i.id] || '').trim(); if (!v) return; this.resolve(i.id, 'Respondido: «' + v + '»', 'Respuesta enviada a ' + ag.name); },
+        opts: (i.options || []).map(o => ({ label: o, on: () => this.setState(x => ({ replies: { ...x.replies, [i.id]: o } })) })),
+        ack: () => this.resolve(i.id, 'Revisado', 'Marcado como revisado'),
+        openTerm: () => this.setState({ dock: true, dockTab: i.a === 'quique' ? 'r3' : i.a === 'ana' ? 'r2' : 'r1' }),
+        openTask: () => { const t = tasks.find(x => x.title === i.task); if (t) this.go('task', { taskId: t.id, run: 'main', control: false }); } };
+    };
+    const pendingTop = pending.filter(i => i.type !== 'done').slice(0, 3).map(decoInbox);
+    const runningN = agentCards.filter(a => a.st.key === 'running').length, waitingN = agentCards.filter(a => a.st.key === 'waiting').length;
+    const summary = demo.empty ? 'Configura tu primer agente para empezar.' : `${runningN} agentes trabajando · ${waitingN} esperándote · ${pending.length} peticiones en el Inbox`;
+    const todayRaw = [['ana',1.12],['dev',4.05],['quique',0.98],['rita',0.36]];
+    const todayAgents = todayRaw.map(([id, v]) => ({ name: AG[id].name, color: AG[id].color, cost: eur(v), w: Math.round(v / 4.05 * 100) + '%' }));
+    const activity = ACTIVITY.map(e => ({ ...e, ag: AG[e.a], pr: PR[e.p], c: ST[e.k][1] }));
+    const templates = [['Analista','#F27FB2'],['Desarrollador','#4FD1C5'],['QA','#B5E061'],['Redactor','#FFA06B'],['Comercial','#8FB4FF']].map(([name, color]) => ({ name, color }));
+
+    // Board
+    const filt = tasks.filter(t => (s.fP === 'all' || t.p === s.fP) && (s.fA === 'all' || t.a === s.fA));
+    const boardViews = [['estado','Por estado'],['etapa','Por etapa'],['colas','Colas por agente']].map(([k, label]) => ({ label, on: () => this.setState({ boardView: k }), bg: s.boardView === k ? 'var(--card)' : 'transparent', fg: s.boardView === k ? 'var(--foreground)' : 'var(--muted-foreground)', sh: s.boardView === k ? '0 1px 2px rgba(0,0,0,.25)' : 'none' }));
+    const fProjects = [{ id:'all', label:'Todos los proyectos', color:'' }, ...Object.values(PR).map(p => ({ id:p.id, label:p.name, color:p.color }))].map(f => ({ ...f, on: () => this.setState({ fP: f.id }), bg: s.fP === f.id ? 'var(--accent)' : 'transparent', bd: s.fP === f.id ? 'var(--ring)' : 'var(--border)' }));
+    const fAgents = [{ id:'all', label:'Todos los agentes', initial:'∗', color:'var(--muted)' }, ...['ana','dev','quique','rita'].map(id => ({ id, label: AG[id].full, initial: AG[id].initial, color: AG[id].color }))].map(f => ({ ...f, on: () => this.setState({ fA: f.id }), bd: s.fA === f.id ? 'var(--ring)' : 'transparent', op: s.fA === 'all' || s.fA === f.id ? 1 : 0.45 }));
+    const cols = s.boardView === 'etapa'
+      ? STAGES.map(k => { const items = filt.filter(t => t.stage === k && t.s !== 'done').map(t => ({ ...this.deco(t), showStatus: true })); return { title: k, c: 'var(--ring)', count: items.length, items, empty: !items.length }; }).concat([(() => { const items = filt.filter(t => t.s === 'done').map(t => ({ ...this.deco(t), showStatus: false })); return { title: 'Hecho', c: 'var(--st-done)', count: items.length, items, empty: !items.length }; })()])
+      : COLS.map(k => { const items = filt.filter(t => t.s === k).map(t => ({ ...this.deco(t), showStatus: false })); return { title: ST[k][0], c: ST[k][1], count: items.length, items, empty: !items.length }; });
+    const queueRows = ['ana','dev','quique','rita'].filter(id => s.fA === 'all' || s.fA === id).map(id => {
+      const ids = s.queues[id];
+      const items = ids.map(tid => T(tid)).filter(t => s.fP === 'all' || t.p === s.fP).map((t) => {
+        const i = ids.indexOf(t.id), d = this.deco(t), cur = i === 0 && (t.s === 'running' || t.s === 'waiting');
+        const dragging = s.drag && s.drag.a === id && s.drag.i === i;
+        return { ...d, pos: cur ? 'Ahora' : '#' + i, bg: cur ? 'color-mix(in oklch,var(--st-running) 7%,var(--card))' : 'var(--subtle)', bd: cur ? 'color-mix(in oklch,var(--st-running) 40%,var(--border))' : 'var(--border)', op: dragging ? 0.4 : 1,
+          onDragStart: e => { e.dataTransfer.effectAllowed = 'move'; this.setState({ drag: { a: id, i } }); },
+          onDragOver: e => { if (s.drag && s.drag.a === id) e.preventDefault(); },
+          onDrop: e => { e.preventDefault(); const dr = this.state.drag; if (!dr || dr.a !== id || dr.i === i) return; const q = [...this.state.queues[id]]; const [m] = q.splice(dr.i, 1); q.splice(i, 0, m); this.setState(x => ({ queues: { ...x.queues, [id]: q }, drag: null })); this.toast({ title: 'Cola de ' + AG[id].name + ' reordenada', sub: '«' + T(m).title + '» pasa a la posición ' + (i === 0 ? 'actual' : '#' + i), c: 'var(--ring)', icon: IC('arrow-down-up') }); },
+          onDragEnd: () => this.setState({ drag: null }) };
+      });
+      const cur = curTask(id); const n = ids.length - (cur ? 1 : 0);
+      return { ag: AG[id], items, empty: !items.length, count: (cur ? '1 en curso · ' : '') + n + ' en cola' };
+    });
+
+    // Task detail
+    const isT1 = tk0.id === 't1';
+    const tkSt = isT1 && s.paused ? 'paused' : tk0.s;
+    const tk = { ...this.deco(tk0), st: st(tkSt), stL: ST[tkSt][0], pulse: tkSt === 'running' ? PULSE : 'none' };
+    const pipe = s.pipes[tk0.p];
+    const stIdx = pipe.findIndex(x => x.name === tk0.stage);
+    const stepper = pipe.map((x, i) => ({ ...x, ag: AG[x.a] || NOAG, sep: i > 0, bg: i === stIdx ? 'color-mix(in oklch,var(--st-running) 14%,transparent)' : 'transparent', bd: i === stIdx ? 'var(--st-running)' : 'var(--border)', fg: i < stIdx ? 'var(--muted-foreground)' : 'var(--foreground)' }));
+    const subtasks = s.subs.map((x, i) => ({ ...x, done: x.d, fg: x.d ? 'var(--muted-foreground)' : 'var(--foreground)', dec: x.d ? 'line-through' : 'none', by: x.by ? '@' + x.by : '', toggle: () => this.setState(z => ({ subs: z.subs.map((y, j) => j === i ? { ...y, d: !y.d } : y) })) }));
+    const transitions = [
+      { txt: 'Requisitos → Desarrollo · aprobado por ti', when: '06/10 12:20', c: 'var(--st-done)' },
+      { txt: 'Desarrollo → QA · Dev entregó 3/5 subtareas', when: 'hoy 09:47', c: 'var(--st-review)' },
+      { txt: 'QA → Desarrollo · rechazado por Quique: «el redirect tras el callback vuelve a /»', when: 'hoy 10:31', c: 'var(--st-failed)' },
+      { txt: 'Dev retoma la tarea en el worktree T-142', when: 'hoy 10:01', c: 'var(--st-running)' }
+    ];
+    const RUNS = [{ id:'main', name:'Dev · ejecución principal', depth:0, s: s.paused ? 'paused' : 'running', d: 2471 + (s.paused ? 0 : now) }, { id:'explore', name:'explorar-auth', depth:1, s:'done', d:228 }, { id:'tests', name:'tests-auth', depth:1, s:'running', d:380 + now }, { id:'fixtures', name:'fixtures-oauth', depth:2, s:'done', d:72 }];
+    const runs = RUNS.map(r => { const sel = s.run === r.id; return { ...r, st: st(r.s), pulse: r.s === 'running' ? PULSE : 'none', dur: fmt(r.d), pad: (8 + r.depth * 16) + 'px', child: r.depth > 0, font: r.depth ? "'Ubuntu Mono',monospace" : 'Ubuntu,sans-serif', bg: sel ? 'var(--accent)' : 'transparent', bd: sel ? 'var(--ring)' : 'transparent', select: () => this.setState({ run: r.id, control: false }) }; });
+    const lineDeco = l => ({ t: l.t, c: LC[l.k][0], fw: LC[l.k][1] });
+    const termLines = (s.run === 'main' ? s.lines : RUN_LINES[s.run]).map(lineDeco);
+    const runTitle = s.run === 'main' ? 'dev@T-142 · cc-7f3a91' : RUNS.find(r => r.id === s.run).name + ' · subagente';
+    const control = s.control, observing = !s.control;
+    const mcp = [{ t:'10:43', fn:'update_status', arg:'implementando el login con Google: corrigiendo redirect' }, { t:'10:39', fn:'spawn_subagent', arg:'tests-auth · ampliar cobertura OAuth' }, { t:'10:22', fn:'add_memory', arg:'El callback valida state + PKCE' }, { t:'10:14', fn:'request_approval', arg:'git push origin feature/login-google' }, { t:'10:02', fn:'update_status', arg:'leyendo el informe de QA' }];
+    const sessStats = [{ l:'Tokens entrada', v:'1,24 M' }, { l:'Tokens salida', v:'86,4 k' }, { l:'Caché (lectura)', v:'3,10 M' }, { l:'Caché (escritura)', v:'212 k' }, { l:'Coste', v: eur(2.84 + (s.paused ? 0 : now * 0.0011)) }, { l:'Duración', v: fmt(2471 + (s.paused ? 0 : now)) }];
+
+    // Dock
+    const DT = [{ id:'r1', a:'dev', label:'Login con Google', s:'running' }, { id:'r2', a:'ana', label:'Requisitos del checkout', s:'running' }, { id:'r3', a:'quique', label:'QA carrito de compra', s:'waiting' }];
+    const dockTabs = DT.map(d => { const sel = s.dockTab === d.id; return { ...d, ag: AG[d.a], c: ST[d.s][1], pulse: d.s === 'running' ? PULSE : 'none', bg: sel ? '#050E1E' : 'transparent', fg: sel ? '#FFFFFF' : '#9AA9C4', sh: sel ? 'inset 0 2px 0 #4CC9F0' : 'none', on: () => this.setState({ dockTab: d.id }) }; });
+    const dockLines = (s.dockTab === 'r1' ? s.lines : RUN_LINES[s.dockTab]).map(lineDeco);
+    const right = s.dockPos === 'right';
+
+    // Palette
+    const allCmds = [
+      ...NAV.map(([k, label, icon]) => ({ g:'Ir a', label, icon: IC(icon), hint: '', on: () => this.go(k) })),
+      { g:'Acciones', label:'Nueva tarea', icon: IC('plus'), hint:'N', on: () => this.setState({ palette:false, newTask:true }) },
+      { g:'Acciones', label:'Crear agente con el Arquitecto', icon: IC('sparkles'), hint:'', on: () => this.go('architect') },
+      { g:'Acciones', label:'Abrir / cerrar terminal', icon: IC('square-terminal'), hint:'Ctrl `', on: () => this.setState(x => ({ palette:false, dock: !x.dock })) },
+      { g:'Acciones', label:'Cambiar tema claro / oscuro', icon: IC('sun-moon'), hint:'', on: () => this.setState(x => ({ palette:false, theme: x.theme === 'dark' ? 'light' : 'dark' })) },
+      ...tasks.slice(0, 15).map(t => ({ g:'Tareas', label: t.code + '  ' + t.title, icon: IC('square-check'), hint: PR[t.p].name, on: () => this.go('task', { taskId: t.id, run:'main', control:false }) })),
+      ...['ana','dev','quique','rita'].map(id => ({ g:'Agentes', label: AG[id].full, icon: IC('bot'), hint: AG[id].cli, on: () => this.openAgent(id) }))
+    ];
+    const qq = s.q.trim().toLowerCase();
+    const fc = allCmds.filter(c => !qq || c.label.toLowerCase().includes(qq)).slice(0, 12);
+    const pi = Math.min(s.palI, Math.max(0, fc.length - 1));
+    const cmds = fc.map((c, i) => ({ ...c, head: i === 0 || fc[i - 1].g !== c.g ? c.g : '', bg: i === pi ? 'var(--accent)' : 'transparent' }));
+
+    const base = {
+      theme: s.theme, sideW: s.collapsed ? '60px' : '232px', expanded: !s.collapsed, collapsed: s.collapsed, toggleSide: () => this.setState(x => ({ collapsed: !x.collapsed })),
+      nav, backendLabel: demo.offline ? 'Desconectado · reintentando…' : 'Conectado · v0.8.2', backendColor: demo.offline ? 'var(--st-failed)' : 'var(--st-done)',
+      toggleTheme: () => this.setState(x => ({ theme: x.theme === 'dark' ? 'light' : 'dark' })), themeIcon: IC(s.theme === 'dark' ? 'sun' : 'moon'), themeLabel: s.theme === 'dark' ? 'Tema claro' : 'Tema oscuro',
+      crumbs, primary, openPalette: () => this.setState({ palette: true, q: '', palI: 0 }), toggleDock: () => this.setState(x => ({ dock: !x.dock })), dockBtnBg: s.dock ? 'var(--accent)' : 'transparent',
+      dockOpen: s.dock, bodyDir: right ? 'row' : 'column', dockSize: right ? 'width:440px' : 'height:260px', dockBt: right ? '0' : '1px solid var(--border)', dockBl: right ? '1px solid var(--border)' : '0',
+      dockTabs, dockLines, dockSwap: () => this.setState(x => ({ dockPos: x.dockPos === 'right' ? 'bottom' : 'right' })), dockSwapLabel: right ? 'Acoplar abajo' : 'Acoplar a la derecha', dockSwapIcon: IC(right ? 'panel-bottom' : 'panel-right'),
+      openDockTask: () => this.go('task', { taskId: s.dockTab === 'r2' ? 't2' : s.dockTab === 'r3' ? 't3' : 't1', run: 'main', control: false }),
+      dockRef: el => { this.dockEl = el; }, termRef: el => { this.term = el; }, contentRef: el => { this.content = el; },
+      is, demo, skel4: [1,2,3,4],
+      summary, agentCards, pendingTop, pendingCount: pending.filter(i => i.type !== 'done').length, noPending: !pendingTop.length, activity, todayAgents, templates,
+      goInbox: () => this.go('inbox'), goUsage: () => this.go('usage'), goArchitect: () => this.go('architect'), openNew,
+      boardViews, fProjects, fAgents, cols, isCols: s.boardView !== 'colas', isQueues: s.boardView === 'colas', queueRows,
+      tk, stepper, subtasks, subDone: s.subs.filter(x => x.d).length + '/' + s.subs.length, transitions, runs, termLines, runTitle, control, observing, mcp, sessStats,
+      cursorLine: s.paused ? '⏸ Ejecución en pausa' : 'Dev está trabajando…',
+      termBorder: control ? '2px solid var(--st-waiting)' : '1px solid var(--border)', termShadow: control ? '0 0 0 4px color-mix(in oklch,var(--st-waiting) 22%,transparent)' : 'none',
+      takeControl: () => { this.setState(x => ({ control: true, lines: [...x.lines, L('user', '■ Has tomado el control. El agente queda en pausa hasta que se lo devuelvas.')] })); },
+      giveBack: () => { this.setState(x => ({ control: false, termInput: '', lines: [...x.lines, L('mcp', '● mcp · control devuelto al agente · Dev retoma con tus cambios en contexto')] })); this.toast({ title: 'Control devuelto a Dev', sub: 'Tus comandos quedan en el historial de la sesión', c: 'var(--st-running)', icon: IC('undo-2') }); },
+      termInput: s.termInput, onTermInput: e => this.setState({ termInput: e.target.value }),
+      onTermKey: e => { if (e.key === 'Enter' && s.termInput.trim()) { const v = s.termInput; this.setState(x => ({ termInput: '', lines: [...x.lines, L('user', '❯ ' + v), L('dim', '  (ejecutado por ti en la terminal del agente)')] })); } },
+      pause: () => { this.setState(x => ({ paused: !x.paused })); this.toast({ title: s.paused ? 'Ejecución reanudada' : 'Ejecución en pausa', c: 'var(--st-waiting)', icon: IC(s.paused ? 'play' : 'pause') }); },
+      pauseLabel: s.paused ? 'Reanudar' : 'Pausar', pauseIcon: IC(s.paused ? 'play' : 'pause'),
+      retry: () => this.toast({ title: 'Reintento programado', sub: 'Nueva sesión en el mismo worktree', c: 'var(--ring)', icon: IC('rotate-ccw') }),
+      openFolder: () => this.toast({ title: 'Abriendo worktree en el Explorador', sub: 'D:\\proyectos\\app-reservas.wt\\T-142', c: 'var(--ring)', icon: IC('folder-open') }),
+      cancelRun: () => this.toast({ title: '¿Cancelar la ejecución?', sub: 'Se detendrá Dev y sus 2 subagentes', c: 'var(--st-failed)', icon: IC('circle-alert'), action: 'Confirmar', onAction: () => this.toast({ title: 'Ejecución cancelada', c: 'var(--st-failed)', icon: IC('x') }) }),
+      palette: s.palette, q: s.q, onQ: e => this.setState({ q: e.target.value, palI: 0 }), cmds, noCmds: !cmds.length, closePalette: () => this.setState({ palette: false }), stop: e => e.stopPropagation(),
+      onPalKey: e => { if (e.key === 'ArrowDown') { e.preventDefault(); this.setState({ palI: Math.min(pi + 1, fc.length - 1) }); } else if (e.key === 'ArrowUp') { e.preventDefault(); this.setState({ palI: Math.max(pi - 1, 0) }); } else if (e.key === 'Enter' && fc[pi]) fc[pi].on(); },
+      toasts: s.toasts.map(t => ({ ...t, sub: t.sub || '', action: t.action || '', onAction: () => { this.setState(x => ({ toasts: x.toasts.filter(y => y.id !== t.id) })); t.onAction && t.onAction(); } })),
+      newTask: s.newTask, closeNew: () => this.setState({ newTask: false }), ntTitle: s.ntTitle, onNtTitle: e => this.setState({ ntTitle: e.target.value }),
+      ntProjects: Object.values(PR).map(p => ({ ...p, on: () => this.setState({ ntProject: p.id }), bg: s.ntProject === p.id ? 'var(--accent)' : 'transparent', bd: s.ntProject === p.id ? 'var(--ring)' : 'var(--border)' })),
+      ntStage: s.pipes[s.ntProject][0].name + ' · ' + (AG[s.pipes[s.ntProject][0].a] || NOAG).full,
+      createTask: () => { const title = s.ntTitle.trim() || 'Tarea sin título'; const p0 = s.pipes[s.ntProject][0]; const id = 'n' + Date.now(); this.setState(x => ({ newTask: false, extraTasks: [...x.extraTasks, { id, code: 'T-' + (161 + x.extraTasks.length), title, p: x.ntProject, stage: p0.name, a: p0.a, s: 'backlog', prio: 'Media', sub: [0, 0], time: '—', cost: 0 }] })); this.toast({ title: 'Tarea creada en Backlog', sub: '«' + title + '» · ' + PR[s.ntProject].name, c: 'var(--st-done)', icon: IC('check') }); }
+    };
+    return Object.assign(base, this.moreVals ? this.moreVals({ s, demo, tasks, T, pending, decoInbox, agSel, prSel, now }) : {});
+  }
+}
+</script>
+</body>
+</html>

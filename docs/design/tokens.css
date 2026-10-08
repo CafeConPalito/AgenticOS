@@ -1,0 +1,223 @@
+/* ==========================================================================
+   Agentic OS · tokens (shadcn/ui + Tailwind CSS v4)
+   :root  = tema claro (secundario)
+   .dark  = tema navy oscuro (PRINCIPAL; poner <html class="dark"> por defecto)
+   Uso: @import "tailwindcss"; @import "./tokens.css";
+   ========================================================================== */
+@import url("https://fonts.googleapis.com/css2?family=Ubuntu:wght@400;500;700&family=Ubuntu+Mono:wght@400;700&display=swap");
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --radius: 0.5rem; /* 8px → rounded-md. sm 6 / lg 12 / xl 14 */
+
+  --background: #F4F6FA;
+  --foreground: #0A1A33;
+  --card: #FFFFFF;
+  --card-foreground: #0A1A33;
+  --popover: #FFFFFF;
+  --popover-foreground: #0A1A33;
+
+  /* --primary es el NAVY de marca. Para botones primarios y elementos activos
+     usar --primary-action (navy más luminoso), siempre con texto blanco. */
+  --primary: #13284D;
+  --primary-foreground: #FFFFFF;
+  --primary-action: #1B3F8F;
+  --primary-action-hover: #24499F;
+
+  --secondary: #E9EEF6;
+  --secondary-foreground: #0A1A33;
+  --muted: #EEF2F8;
+  --muted-foreground: #4B5B78;
+  --accent: #E3EAF5;
+  --accent-foreground: #0A1A33;
+  --destructive: #C9302C;
+  --destructive-foreground: #FFFFFF;
+  --border: #D6DEEA;
+  --input: #C9D3E3;
+  --ring: #2E5BD6;
+  --subtle: #F8FAFD;          /* superficie hundida: inputs, cabeceras de tabla */
+
+  /* Sidebar: navy también en modo claro, texto blanco */
+  --sidebar: #0F2347;
+  --sidebar-foreground: #FFFFFF;
+  --sidebar-muted: #AEBCD6;
+  --sidebar-primary: #2E5BD6;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #1F3C6E;   /* item activo / hover */
+  --sidebar-accent-foreground: #FFFFFF;
+  --sidebar-border: #1A3360;
+  --sidebar-ring: #7AA2FF;
+
+  /* Terminal: siempre oscura */
+  --terminal: #0A1A33;
+  --terminal-header: #081429;
+  --terminal-border: #16294A;
+  --terminal-foreground: #D7E1F0;
+
+  /* Gráficas */
+  --chart-1: #0A78A3;
+  --chart-2: #C2477F;
+  --chart-3: #5E8A1A;
+  --chart-4: #C2621F;
+  --chart-5: #6A4FD1;
+
+  /* Estados (texto AA sobre --card y --background) */
+  --status-queued: #4F6385;
+  --status-running: #0A78A3;
+  --status-waiting: #9A6200;
+  --status-review: #6A4FD1;
+  --status-done: #12805A;
+  --status-failed: #C9302C;
+  --status-cancelled: #647089;
+  --status-intervening: #F5B547; /* borde "Estás interviniendo" (sobre terminal oscura) */
+}
+
+.dark {
+  --background: #0A1A33;
+  --foreground: #FFFFFF;
+  --card: #0F2242;
+  --card-foreground: #FFFFFF;
+  --popover: #13284D;
+  --popover-foreground: #FFFFFF;
+
+  --primary: #13284D;
+  --primary-foreground: #FFFFFF;
+  --primary-action: #2E5BD6;
+  --primary-action-hover: #3B69E8;
+
+  --secondary: #16305A;
+  --secondary-foreground: #FFFFFF;
+  --muted: #122A4E;
+  --muted-foreground: #A8B6CF;
+  --accent: #1A3562;
+  --accent-foreground: #FFFFFF;
+  --destructive: #E5484D;
+  --destructive-foreground: #FFFFFF;
+  --border: #1E3A66;
+  --input: #24426F;
+  --ring: #7AA2FF;
+  --subtle: #0C1D38;
+
+  --sidebar: #071427;
+  --sidebar-foreground: #FFFFFF;
+  --sidebar-muted: #9AA9C4;
+  --sidebar-primary: #2E5BD6;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #16305A;
+  --sidebar-accent-foreground: #FFFFFF;
+  --sidebar-border: #13284A;
+  --sidebar-ring: #7AA2FF;
+
+  --terminal: #050E1E;
+  --terminal-header: #081429;
+  --terminal-border: #16294A;
+  --terminal-foreground: #D7E1F0;
+
+  --chart-1: #4CC9F0;
+  --chart-2: #F27FB2;
+  --chart-3: #B5E061;
+  --chart-4: #FFA06B;
+  --chart-5: #B39CFF;
+
+  --status-queued: #9DB0D0;
+  --status-running: #4CC9F0;
+  --status-waiting: #F5B547;
+  --status-review: #B39CFF;
+  --status-done: #43D392;
+  --status-failed: #FF6B6F;
+  --status-cancelled: #8492AE;
+  --status-intervening: #F5B547;
+}
+
+@theme inline {
+  --font-sans: "Ubuntu", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Ubuntu Mono", ui-monospace, monospace;
+
+  --radius-sm: calc(var(--radius) - 2px);  /* 6px  */
+  --radius-md: var(--radius);              /* 8px  */
+  --radius-lg: calc(var(--radius) + 4px);  /* 12px */
+  --radius-xl: calc(var(--radius) + 6px);  /* 14px */
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-action: var(--primary-action);
+  --color-primary-action-hover: var(--primary-action-hover);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-subtle: var(--subtle);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-muted: var(--sidebar-muted);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --color-terminal: var(--terminal);
+  --color-terminal-header: var(--terminal-header);
+  --color-terminal-border: var(--terminal-border);
+  --color-terminal-foreground: var(--terminal-foreground);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  --color-status-queued: var(--status-queued);
+  --color-status-running: var(--status-running);
+  --color-status-waiting: var(--status-waiting);
+  --color-status-review: var(--status-review);
+  --color-status-done: var(--status-done);
+  --color-status-failed: var(--status-failed);
+  --color-status-cancelled: var(--status-cancelled);
+  --color-status-intervening: var(--status-intervening);
+
+  --animate-live-pulse: live-pulse 1.6s ease-out infinite;
+  --animate-live-shimmer: live-shimmer 1.6s linear infinite;
+  --animate-blink: blink 1s steps(1) infinite;
+  --animate-toast-in: toast-in 0.22s ease-out;
+
+  @keyframes live-pulse {
+    0%   { box-shadow: 0 0 0 0 color-mix(in oklch, var(--status-running) 70%, transparent); }
+    100% { box-shadow: 0 0 0 7px transparent; }
+  }
+  @keyframes live-shimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+  @keyframes toast-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: none; }
+  }
+}
+
+@layer base {
+  * { @apply border-border; }
+  body { @apply bg-background text-foreground font-sans antialiased; font-size: 13px; line-height: 1.45; }
+  :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+  ::selection { background: #2E5BD6; color: #fff; }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+}

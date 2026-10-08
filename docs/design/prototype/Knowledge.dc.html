@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="display:flex;flex-direction:column;gap:18px;font-family:Ubuntu,system-ui,sans-serif;font-size:13px;color:var(--foreground,#fff)">
+  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+    <div style="flex:1;min-width:220px"><div style="font-size:15px;font-weight:500">{{ heading }}</div><div style="font-size:12px;color:var(--muted-foreground)">{{ sub }}</div></div>
+    <div role="tablist" aria-label="Nivel" style="display:flex;padding:3px;border-radius:8px;background:var(--muted);border:1px solid var(--border)">
+      <sc-for list="{{ levels }}" as="l" hint-placeholder-count="3"><button role="tab" aria-selected="{{ l.sel }}" onClick="{{ l.on }}" style="height:28px;padding:0 12px;border:0;border-radius:6px;background:{{ l.bg }};color:{{ l.fg }};font-weight:500;font-size:12.5px;box-shadow:{{ l.sh }}">{{ l.label }}</button></sc-for>
+    </div>
+  </div>
+
+  <sc-if value="{{ showDocs }}" hint-placeholder-val="{{ true }}">
+    <div onDragOver="{{ onOver }}" onDragLeave="{{ onLeave }}" onDrop="{{ onDrop }}" style="border:1.5px dashed {{ dropBd }};border-radius:12px;background:{{ dropBg }};padding:20px;display:flex;align-items:center;gap:18px;transition:background .15s,border-color .15s">
+      <div style="width:44px;height:44px;flex:none;border-radius:11px;background:var(--accent);display:grid;place-items:center"><span style="width:20px;height:20px;background:var(--foreground);mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/upload.svg) center/contain no-repeat"></span></div>
+      <div style="flex:1;min-width:0"><div style="font-weight:500">Arrastra archivos aquí o <button onClick="{{ browse }}" style="border:0;background:transparent;padding:0;color:var(--ring);font-weight:500">examina</button></div><div style="font-size:12px;color:var(--muted-foreground);margin-top:2px">Markdown, código, PDF, Word, Excel e imágenes · hasta 50 MB por archivo</div></div>
+      <div style="display:flex;gap:6px;width:360px;flex:none"><div style="flex:1;display:flex;align-items:center;gap:6px;height:34px;padding:0 10px;border-radius:8px;border:1px solid var(--input);background:var(--card)"><span style="width:14px;height:14px;flex:none;color:var(--muted-foreground);background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/link.svg) center/contain no-repeat"></span><input value="{{ url }}" onChange="{{ onUrl }}" onKeyDown="{{ onUrlKey }}" placeholder="o pega una URL" aria-label="URL" style="flex:1;min-width:0;border:0;outline:none;background:transparent"></div><button onClick="{{ addUrl }}" style="height:34px;padding:0 12px;border-radius:8px;border:0;background:var(--primary-action);color:#fff;font-weight:500" style-hover="background:var(--primary-action-hover)">Añadir</button></div>
+    </div>
+    <div style="border:1px solid var(--border);border-radius:12px;background:var(--card);overflow:hidden">
+      <div style="display:grid;grid-template-columns:minmax(0,1.6fr) 90px 110px 190px 32px;gap:12px;padding:9px 14px;font-size:11.5px;font-weight:500;color:var(--muted-foreground);background:var(--subtle);border-bottom:1px solid var(--border)"><span>Documento</span><span>Tamaño</span><span>Añadido</span><span>Indexado</span><span></span></div>
+      <sc-for list="{{ docs }}" as="d" hint-placeholder-count="4">
+        <div style="display:grid;grid-template-columns:minmax(0,1.6fr) 90px 110px 190px 32px;gap:12px;padding:10px 14px;align-items:center;border-bottom:1px solid var(--border)">
+          <div style="display:flex;align-items:center;gap:10px;min-width:0"><span style="width:34px;height:22px;flex:none;border-radius:5px;background:color-mix(in oklch,{{ d.tc }} 18%,transparent);color:{{ d.tc }};font-family:'Ubuntu Mono',monospace;font-size:10px;font-weight:700;display:grid;place-items:center">{{ d.ext }}</span><div style="min-width:0"><div style="font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ d.name }}</div><div style="font-size:11.5px;color:var(--muted-foreground)">{{ d.by }}</div></div></div>
+          <span style="font-family:'Ubuntu Mono',monospace;font-size:12px;color:var(--muted-foreground)">{{ d.size }}</span>
+          <span style="font-size:12px;color:var(--muted-foreground)">{{ d.when }}</span>
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:{{ d.sc }}"><span style="width:7px;height:7px;border-radius:50%;background:currentColor;animation:{{ d.anim }}"></span>{{ d.sl }}</span>
+            <sc-if value="{{ d.indexing }}"><div style="height:4px;border-radius:2px;background:var(--muted);overflow:hidden"><div style="height:100%;width:{{ d.pct }};background:var(--st-running);transition:width .4s"></div></div></sc-if>
+          </div>
+          <button onClick="{{ d.del }}" aria-label="Eliminar documento" style="width:28px;height:28px;border:0;border-radius:6px;background:transparent;color:var(--muted-foreground);display:grid;place-items:center" style-hover="background:var(--accent)"><span style="width:14px;height:14px;background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/trash-2.svg) center/contain no-repeat"></span></button>
+        </div>
+      </sc-for>
+      <sc-if value="{{ noDocs }}"><div style="padding:22px;text-align:center;color:var(--muted-foreground)">Sin documentos en este nivel. Sube el primero arriba.</div></sc-if>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ showSkills }}" hint-placeholder-val="{{ true }}">
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;align-items:center"><div style="flex:1"><div style="font-weight:500">Biblioteca de skills</div><div style="font-size:12px;color:var(--muted-foreground)">Las «autoseleccionadas» se cargan solo cuando la tarea las necesita.</div></div><span style="font-size:12px;color:var(--muted-foreground)">{{ activeCount }}</span></div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px">
+        <sc-for list="{{ skills }}" as="k" hint-placeholder-count="6">
+          <div style="border:1px {{ k.bstyle }} {{ k.bd }};border-radius:11px;background:var(--card);padding:12px;display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;align-items:flex-start;gap:10px">
+              <span style="width:28px;height:28px;flex:none;border-radius:7px;background:var(--accent);display:grid;place-items:center"><span style="width:15px;height:15px;background:var(--foreground);mask:url({{ k.icon }}) center/contain no-repeat"></span></span>
+              <div style="flex:1;min-width:0"><div style="font-weight:500;font-family:'Ubuntu Mono',monospace;font-size:13px">{{ k.id }}</div><div style="font-size:12px;color:var(--muted-foreground);text-wrap:pretty">{{ k.d }}</div></div>
+              <sc-if value="{{ k.settled }}" hint-placeholder-val="{{ true }}"><button role="switch" aria-checked="{{ k.aria }}" aria-label="{{ k.id }}" onClick="{{ k.toggle }}" style="width:36px;height:20px;border-radius:999px;border:0;background:{{ k.track }};padding:2px;flex:none"><span style="display:block;width:16px;height:16px;border-radius:50%;background:#fff;transform:{{ k.x }};transition:transform .15s"></span></button></sc-if>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+              <sc-if value="{{ k.auto }}"><span style="height:20px;padding:0 7px;border-radius:999px;background:color-mix(in oklch,var(--st-running) 14%,transparent);color:var(--st-running);font-size:11px;display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/wand-sparkles.svg) center/contain no-repeat"></span>Autoseleccionada</span></sc-if>
+              <span style="font-size:11px;color:var(--muted-foreground)">{{ k.meta }}</span>
+            </div>
+            <sc-if value="{{ k.proposed }}">
+              <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;background:color-mix(in oklch,var(--st-review) 12%,transparent);border:1px solid color-mix(in oklch,var(--st-review) 35%,transparent)">
+                <span style="flex:1;font-size:12px;color:var(--st-review)">Propuesta por {{ k.by }} – pendiente de aprobar</span>
+                <button onClick="{{ k.reject }}" style="height:24px;padding:0 8px;border-radius:6px;border:1px solid var(--border);background:var(--card);font-size:12px">Rechazar</button>
+                <button onClick="{{ k.approve }}" style="height:24px;padding:0 8px;border-radius:6px;border:0;background:var(--primary-action);color:#fff;font-size:12px;font-weight:500">Aprobar</button>
+              </div>
+            </sc-if>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1000,&quot;height&quot;:820},&quot;level&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;general&quot;,&quot;proyecto&quot;,&quot;agente&quot;],&quot;default&quot;:&quot;general&quot;,&quot;tsType&quot;:&quot;'general'|'proyecto'|'agente'&quot;},&quot;scopeName&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;section&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;all&quot;,&quot;docs&quot;,&quot;skills&quot;],&quot;default&quot;:&quot;all&quot;,&quot;tsType&quot;:&quot;'all'|'docs'|'skills'&quot;}}">
+const IC = n => 'https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/' + n + '.svg';
+const TC = { PDF:'#FF6B6F', MD:'#8FB4FF', DOCX:'#4CC9F0', XLSX:'#43D392', PNG:'#F5B547', TS:'#B39CFF', URL:'#9DB0D0' };
+const DOCS = {
+  general: [['guia-marca-2026.pdf','2,4 MB','02/10','Marta','done'],['convenciones-codigo.md','18 kB','28/09','Marta','done'],['glosario-negocio.docx','96 kB','28/09','Ana','done']],
+  proyecto: [['requisitos-tienda.md','42 kB','hoy','Ana','done'],['catalogo-productos.xlsx','3,1 MB','hoy','Marta','indexing'],['https://docs.stripe.com/payments','—','ayer','Dev','done'],['mockup-checkout.png','1,2 MB','ayer','Marta','error']],
+  agente: [['checklist-entrega.md','8 kB','05/10','Marta','done'],['ejemplos-buenas-tareas.md','14 kB','05/10','Arquitecto','done'],['errores-frecuentes.ts','6 kB','hoy','Quique','queued']]
+};
+const SKILLS = [
+  ['revision-codigo','Revisa diffs buscando bugs, seguridad y convenciones.','git-pull-request',true,true,'Usada 41 veces',null],
+  ['tests-e2e-playwright','Escribe y ejecuta tests E2E con Playwright.','flask-conical',true,false,'Usada 12 veces',null],
+  ['oauth-flows','Patrones seguros de OAuth 2.0 + PKCE y vinculación de cuentas.','key-round',false,true,'Creada hoy',"Dev"],
+  ['migraciones-bd','Genera migraciones reversibles y comprueba datos existentes.','database',false,true,'Usada 3 veces',null],
+  ['redaccion-seo','Estructura artículos con intención de búsqueda y metadatos.','pen-line',true,false,'Usada 9 veces',null],
+  ['propuestas-comerciales','Plantilla de propuesta con resumen, productos y precio.','briefcase',false,false,'Nueva',"el Arquitecto"]
+];
+class Component extends DCLogic {
+  state = { level: null, over: false, url: '', docs: null, skills: SKILLS.map(([id, d, ic, on, auto, meta, by]) => ({ id, d, ic, on, auto, meta, by, proposed: !!by })) };
+  componentDidMount() { this.t = setInterval(() => { const docs = this.getDocs(); if (!docs.some(d => d.st === 'indexing')) return; this.setDocs(docs.map(d => d.st === 'indexing' ? (d.p >= 100 ? { ...d, st: 'done' } : { ...d, p: Math.min(100, d.p + 7) }) : d)); }, 700); }
+  componentWillUnmount() { clearInterval(this.t); }
+  lvl() { return this.state.level || this.props.level || 'general'; }
+  getDocs() { const all = this.state.docs || {}; const l = this.lvl(); return all[l] || DOCS[l].map(([name, size, when, by, st]) => ({ name, size, when, by, st, p: st === 'indexing' ? 62 : 0 })); }
+  setDocs(list) { this.setState(s => ({ docs: { ...(s.docs || {}), [this.lvl()]: list } })); }
+  add(name, size) { this.setDocs([{ name, size, when: 'ahora', by: 'Marta', st: 'indexing', p: 4 }, ...this.getDocs()]); }
+  renderVals() {
+    const s = this.state, l = this.lvl(), section = this.props.section || 'all', scope = this.props.scopeName || '';
+    const LV = [['general','General'],['proyecto','Proyecto'],['agente','Agente']];
+    const levels = LV.map(([k, label]) => ({ label, sel: l === k ? 'true' : 'false', on: () => this.setState({ level: k }), bg: l === k ? 'var(--card)' : 'transparent', fg: l === k ? 'var(--foreground)' : 'var(--muted-foreground)', sh: l === k ? '0 1px 2px rgba(0,0,0,.25)' : 'none' }));
+    const scopeL = l === 'general' ? 'todos los agentes y proyectos' : l === 'proyecto' ? (this.props.level === 'proyecto' && scope ? scope : 'el proyecto') : (this.props.level === 'agente' && scope ? scope : 'el agente');
+    const SL = { done:['Indexado','var(--st-done)'], indexing:['Indexando','var(--st-running)'], error:['Error: imagen sin texto legible','var(--st-failed)'], queued:['En cola','var(--st-queued)'] };
+    const docs = this.getDocs().map((d, i) => { const ext = d.name.startsWith('http') ? 'URL' : d.name.split('.').pop().toUpperCase(); return { ...d, ext, tc: TC[ext] || '#9DB0D0', by: 'Añadido por ' + d.by, sl: d.st === 'indexing' ? 'Indexando · ' + d.p + ' %' : SL[d.st][0], sc: SL[d.st][1], indexing: d.st === 'indexing', pct: d.p + '%', anim: d.st === 'indexing' ? 'pulse 1.6s ease-out infinite' : 'none', del: () => this.setDocs(this.getDocs().filter((_, j) => j !== i)) }; });
+    const skills = s.skills.map((k, i) => ({ ...k, icon: IC(k.ic), settled: !k.proposed, track: k.on ? 'var(--primary-action)' : 'var(--input)', x: k.on ? 'translateX(16px)' : 'none', aria: k.on ? 'true' : 'false', bd: k.proposed ? 'var(--st-review)' : 'var(--border)', bstyle: k.proposed ? 'dashed' : 'solid',
+      toggle: () => this.setState(z => ({ skills: z.skills.map((y, j) => j === i ? { ...y, on: !y.on } : y) })),
+      approve: () => this.setState(z => ({ skills: z.skills.map((y, j) => j === i ? { ...y, proposed: false, on: true, meta: 'Aprobada ahora' } : y) })),
+      reject: () => this.setState(z => ({ skills: z.skills.filter((_, j) => j !== i) })) }));
+    return {
+      heading: section === 'skills' ? 'Skills' : section === 'docs' ? 'Conocimiento' : 'Conocimiento y skills', sub: 'Disponible para ' + scopeL,
+      levels, showDocs: section !== 'skills', showSkills: section !== 'docs', docs, noDocs: !docs.length, skills,
+      activeCount: s.skills.filter(k => k.on && !k.proposed).length + ' activas de ' + s.skills.length,
+      dropBd: s.over ? 'var(--ring)' : 'var(--input)', dropBg: s.over ? 'color-mix(in oklch,var(--ring) 10%,var(--card))' : 'var(--subtle)',
+      onOver: e => { e.preventDefault(); if (!this.state.over) this.setState({ over: true }); }, onLeave: () => this.setState({ over: false }),
+      onDrop: e => { e.preventDefault(); this.setState({ over: false }); const fs = [...(e.dataTransfer.files || [])]; if (fs.length) fs.forEach(f => this.add(f.name, Math.max(1, Math.round(f.size / 1024)) + ' kB')); else this.add('documento-arrastrado.md', '12 kB'); },
+      browse: () => this.add('notas-reunion-cliente.docx', '64 kB'),
+      url: s.url, onUrl: e => this.setState({ url: e.target.value }),
+      addUrl: () => { const u = s.url.trim() || 'https://ejemplo.com/documentacion'; this.add(u, '—'); this.setState({ url: '' }); },
+      onUrlKey: e => { if (e.key === 'Enter') { const u = s.url.trim(); if (u) { this.add(u, '—'); this.setState({ url: '' }); } } }
+    };
+  }
+}
+</script>
+</body>
+</html>
