@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     ]
     log_level: str = "INFO"
     log_json: bool = False
+    log_file: Path | None = None
 
 
 @lru_cache

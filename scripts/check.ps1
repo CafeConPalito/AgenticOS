@@ -15,9 +15,9 @@ $results = @()
 foreach ($step in $steps) {
     Write-Host "`n=== $($step.Name) ===" -ForegroundColor Cyan
     cmd /c $step.Cmd
-    $results += [pscustomobject]@{ Paso = $step.Name; Resultado = $(if ($LASTEXITCODE -eq 0) { 'OK' } else { 'FALLO' }) }
+    $results += [pscustomobject]@{ Step = $step.Name; Result = $(if ($LASTEXITCODE -eq 0) { 'OK' } else { 'FAILED' }) }
 }
 
-Write-Host "`n=== Resumen ===" -ForegroundColor Cyan
+Write-Host "`n=== Summary ===" -ForegroundColor Cyan
 $results | Format-Table -AutoSize
-if ($results.Resultado -contains 'FALLO') { exit 1 }
+if ($results.Result -contains 'FAILED') { exit 1 }

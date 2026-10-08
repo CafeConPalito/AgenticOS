@@ -20,7 +20,7 @@ describe('getApiBaseUrl', () => {
     vi.useFakeTimers()
     vi.mocked(isTauri).mockReturnValue(true)
     vi.mocked(invoke)
-      .mockRejectedValueOnce(new Error('backend starting'))
+      .mockRejectedValueOnce('starting')
       .mockResolvedValueOnce('http://127.0.0.1:51234')
     const url = getApiBaseUrl()
     await vi.advanceTimersByTimeAsync(300)
@@ -28,6 +28,13 @@ describe('getApiBaseUrl', () => {
     expect(invoke).toHaveBeenCalledWith('backend_url')
     expect(invoke).toHaveBeenCalledTimes(2)
     vi.useRealTimers()
+  })
+
+  it('fails fast on a permanent backend error', async () => {
+    vi.mocked(isTauri).mockReturnValue(true)
+    vi.mocked(invoke).mockRejectedValue('backend exited (code Some(1))')
+    await expect(getApiBaseUrl()).rejects.toThrow('backend exited')
+    expect(invoke).toHaveBeenCalledTimes(1)
   })
 
   it('caches the resolved URL', async () => {

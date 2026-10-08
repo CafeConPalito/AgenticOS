@@ -7,7 +7,10 @@ describe('backend status', () => {
     const fetchMock = mockHealth('ok', '0.1.0')
     renderApp('/')
     expect(await screen.findByText('Conectado · v0.1.0')).toBeVisible()
-    expect(fetchMock).toHaveBeenCalledWith('http://127.0.0.1:8765/api/health', undefined)
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://127.0.0.1:8765/api/health',
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    )
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
@@ -24,5 +27,20 @@ describe('backend status', () => {
     expect(screen.getByRole('alert')).toHaveTextContent(es.backend.offlineTitle)
     expect(screen.getByRole('button', { name: es.backend.retry })).toBeEnabled()
     expect(screen.getByRole('alert')).toHaveTextContent('http://127.0.0.1:8765')
+  })
+
+  it('treats a backend that never answers as disconnected', async () => {
+    // The health request carries a timeout signal; simulate it having expired.
+    vi.spyOn(AbortSignal, 'timeout').mockReturnValue(AbortSignal.abort())
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((_url: string, init?: RequestInit) =>
+        init?.signal?.aborted
+          ? Promise.reject(new DOMException('timeout', 'TimeoutError'))
+          : new Promise<Response>(() => {}),
+      ),
+    )
+    renderApp('/')
+    expect(await screen.findByText(es.backend.disconnected)).toBeVisible()
   })
 })

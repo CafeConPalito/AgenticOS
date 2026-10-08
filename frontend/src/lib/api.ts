@@ -4,23 +4,26 @@ export const DEFAULT_API_URL = 'http://127.0.0.1:8765'
 
 const TAURI_RETRIES = 120
 const TAURI_RETRY_DELAY_MS = 250
+/** Error the Tauri shell returns while the sidecar boots; any other error is final. */
+export const BACKEND_STARTING = 'starting'
 
 let baseUrlPromise: Promise<string> | null = null
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
-/** Asks the Tauri shell for the sidecar URL, retrying while the backend is still starting. */
+const toError = (error: unknown) => (error instanceof Error ? error : new Error(String(error)))
+
+/** Asks the Tauri shell for the sidecar URL, retrying only while the backend is starting. */
 async function resolveTauriUrl(): Promise<string> {
-  let lastError: unknown
   for (let attempt = 0; attempt < TAURI_RETRIES; attempt++) {
     try {
       return await invoke<string>('backend_url')
     } catch (error) {
-      lastError = error
+      if (error !== BACKEND_STARTING) throw toError(error)
       await sleep(TAURI_RETRY_DELAY_MS)
     }
   }
-  throw lastError instanceof Error ? lastError : new Error(String(lastError))
+  throw new Error('backend did not start in time')
 }
 
 /** Base URL of the backend: Tauri sidecar in the desktop app, env/default in the browser. */
