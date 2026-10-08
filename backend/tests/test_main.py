@@ -1,0 +1,59 @@
+import json
+import subprocess
+import sys
+import time
+
+import httpx
+import pytest
+
+from agentic_os.__main__ import READY_PREFIX, pid_exists
+
+
+def start_backend(*extra: str) -> tuple[subprocess.Popen[str], int]:
+    proc = subprocess.Popen(
+        [sys.executable, "-m", "agentic_os", "--port", "0", *extra],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        text=True,
+    )
+    assert proc.stdout is not None
+    deadline = time.monotonic() + 20
+    while time.monotonic() < deadline:
+        line = proc.stdout.readline()
+        if line.startswith(READY_PREFIX):
+            return proc, json.loads(line.removeprefix(READY_PREFIX))["port"]
+        if not line and proc.poll() is not None:
+            break
+    proc.kill()
+    pytest.fail("backend never announced readiness")
+
+
+def test_free_port_handshake_serves_health():
+    proc, port = start_backend()
+    try:
+        assert port > 0
+        response = httpx.get(f"http://127.0.0.1:{port}/api/health", timeout=5)
+        assert response.json()["status"] == "ok"
+    finally:
+        proc.kill()
+        proc.wait(5)
+
+
+def test_exits_when_parent_dies():
+    parent = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"])
+    proc, _ = start_backend("--parent-pid", str(parent.pid), "--watchdog-interval", "0.2")
+    try:
+        parent.kill()
+        parent.wait(5)
+        assert proc.wait(timeout=5) is not None
+    finally:
+        if proc.poll() is None:
+            proc.kill()
+
+
+def test_pid_exists():
+    proc = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"])
+    assert pid_exists(proc.pid)
+    proc.kill()
+    proc.wait(5)
+    assert not pid_exists(proc.pid)
