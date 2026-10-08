@@ -12,6 +12,7 @@ import socket
 import sys
 import threading
 from collections.abc import Callable
+from pathlib import Path
 
 import structlog
 import uvicorn
@@ -95,6 +96,7 @@ def main(argv: list[str] | None = None) -> None:
             host=args.host,
             port=args.port,
             reload=True,
+            reload_dirs=[str(Path(__file__).resolve().parent)],
             log_config=None,
         )
         return
