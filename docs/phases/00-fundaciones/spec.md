@@ -1,6 +1,6 @@
 # Fase 00: Fundaciones · Spec
 
-- **Estado**: borrador (pendiente de aprobación)
+- **Estado**: aprobada (2026-10-08)
 - **Rama**: `phase/00-fundaciones`
 
 ## Objetivo
@@ -13,7 +13,7 @@ Montar el esqueleto del monorepo, con backend, frontend y la ventana de escritor
 - **Frontend** (Vite + React + TS + Tailwind + shadcn/ui): layout base con barra lateral (Dashboard, Agentes, Proyectos, Tablero, Inbox, Consumo, Ajustes; las pantallas son marcadores vacíos), router, TanStack Query, i18next con `es.json`, un indicador de "Backend conectado" que consulta `/api/health`, tema claro/oscuro, ESLint, Prettier y vitest.
 - **Escritorio** (Tauri v2): ventana que carga la UI; en desarrollo apunta al servidor de Vite y en build arranca el backend empaquetado con PyInstaller como sidecar en un puerto libre y lo para al cerrar.
 - **Scripts** (`scripts/`, PowerShell y npm): `dev` (backend + frontend en paralelo), `dev:desktop`, `test` (pytest + vitest), `lint`, `build:backend` (PyInstaller), `build:desktop`.
-- **CI local**: `scripts/check` ejecuta lint y todos los tests, y es la puerta mínima de cada commit. Opcionalmente un hook pre-commit.
+- **CI local**: `scripts/check` ejecuta lint y todos los tests. Hook pre-commit solo con lint y formato de los archivos en stage; los tests completos se pasan con `check` y en cada validación.
 - `README.md` con los requisitos y cómo arrancar.
 
 ### Fuera
@@ -33,7 +33,7 @@ Montar el esqueleto del monorepo, con backend, frontend y la ventana de escritor
 | CA1 | `scripts/dev` levanta el backend (`:8765` por defecto) y la UI (Vite), y la UI muestra "Backend conectado" | Ejecución manual + captura |
 | CA2 | `GET /api/health` devuelve `200` con `{status:"ok", version}` | test pytest |
 | CA3 | La UI tiene barra lateral con las 7 secciones, navegación funcional y textos desde `es.json` (sin cadenas en duro) | test vitest + revisión |
-| CA4 | Funciona el cambio de tema claro/oscuro y se recuerda | test vitest |
+| CA4 | Funciona el cambio de tema claro/oscuro (oscuro navy por defecto) y se recuerda; la fuente Ubuntu se carga en local | test vitest + revisión |
 | CA5 | `dev:desktop` abre una ventana Tauri con la UI conectada al backend | Ejecución manual + captura |
 | CA6 | `build:desktop` genera un ejecutable que arranca el sidecar del backend en un puerto libre, lo conecta a la UI y lo para al cerrar la ventana (sin procesos huérfanos) | Ejecución manual + comprobación de procesos |
 | CA7 | `scripts/check` ejecuta ruff, ESLint, Prettier (check), pytest y vitest, todos en verde | Salida del comando |
@@ -50,6 +50,8 @@ CLIs iniciales (fase 01): **Claude Code** y **Antigravity CLI** (`agy` 1.3.1, en
 
 ## Diseño de la interfaz
 La interfaz se diseña con Claude Design (prompt en `docs/design/prompt-claude-design.md`). El resultado se guarda en `docs/design/` y es la referencia visual: los tokens (colores, tipografía, radios y espaciado) y el layout base (barra lateral y cabecera) de esta fase se toman de ese diseño. Si el diseño no está listo al empezar el desarrollo, se usa shadcn/ui por defecto y se ajusta al llegar.
+
+Identidad fija, esté o no el diseño: tipografía **Ubuntu** en la UI y **Ubuntu Mono** en terminales y código (empaquetadas localmente, sin depender de internet); color principal **azul navy** y textos blancos; tema oscuro navy por defecto.
 
 ## Riesgos y preguntas abiertas
 - **Sidecar con PyInstaller en Windows**: tamaño del binario, antivirus y tiempo de arranque. Mitigación: probarlo en esta fase (CA6) en vez de dejarlo para la 08.
