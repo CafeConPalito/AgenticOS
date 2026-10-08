@@ -42,11 +42,16 @@ Montar el esqueleto del monorepo, con backend, frontend y la ventana de escritor
 ## Prerrequisitos
 Ya presentes: Python 3.12.10, uv 0.12.5, Node 24.19, npm 11.17, git 2.55, Claude Code 2.1.294.
 
-Faltan:
-- ⚠️ **Rust (rustup + toolchain MSVC) y Visual Studio Build Tools (C++)**, necesarios para Tauri (CA5 y CA6). Hay que instalarlos antes de empezar el desarrollo de esta fase. WebView2 ya viene con Windows 11.
-- (Para la fase 01) Gemini CLI, OpenCode y Codex CLI no están instalados.
+Para esta fase:
+- ✅ Rust 1.99 (rustup, toolchain `stable-x86_64-pc-windows-msvc`), instalado el 2026-10-08.
+- ⚠️ Visual Studio 2022 Build Tools (C++), necesarias para Tauri: **pendiente**. La instalación automática falló con el código 1602 (cancelada por el usuario o por el UAC). WebView2 ya viene con Windows 11.
+
+CLIs iniciales (fase 01): **Claude Code** y **Antigravity CLI** (`agy` 1.3.1, en `%LOCALAPPDATA%\agy\bin`, todavía fuera del PATH y sin sesión iniciada). Gemini CLI, OpenCode y Codex se dejan para más adelante.
+
+## Diseño de la interfaz
+La interfaz se diseña con Claude Design (prompt en `docs/design/prompt-claude-design.md`). El resultado se guarda en `docs/design/` y es la referencia visual: los tokens (colores, tipografía, radios y espaciado) y el layout base (barra lateral y cabecera) de esta fase se toman de ese diseño. Si el diseño no está listo al empezar el desarrollo, se usa shadcn/ui por defecto y se ajusta al llegar.
 
 ## Riesgos y preguntas abiertas
 - **Sidecar con PyInstaller en Windows**: tamaño del binario, antivirus y tiempo de arranque. Mitigación: probarlo en esta fase (CA6) en vez de dejarlo para la 08.
 - **Puerto del backend**: el sidecar elige un puerto libre y se lo comunica a la UI a través de Tauri (comando o evento). Se detalla en el plan.
-- **Nombre de la app**: "Agentic OS" como nombre provisional. ¿Te vale?
+- **Nombre de la app**: "Agentic OS" (confirmado).

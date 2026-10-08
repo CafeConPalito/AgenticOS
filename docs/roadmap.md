@@ -7,7 +7,7 @@ Flujo de cada fase: ver `CLAUDE.md` (Spec → Plan → Desarrollo → Validació
 | # | Fase | Estado | Objetivo | Criterios clave (orientativos) | Docs |
 |---|---|---|---|---|---|
 | 00 | Fundaciones | **spec** | Monorepo, docs, ADR del stack, esqueleto FastAPI + Vite + Tauri, lint, scripts de CI local, i18n base | `dev` levanta backend y UI; Tauri abre la ventana con el sidecar; tests de humo en verde | [spec](phases/00-fundaciones/spec.md) |
-| 01 | Spike de CLIs | pendiente | Validar en Windows cada CLI: PTY interactivo con prompt, inyección MCP, permisos, consumo, hooks | Matriz verificada por CLI en `spike.md`; prototipos funcionando | |
+| 01 | Spike de CLIs | pendiente | Validar en Windows **Claude Code y Antigravity CLI (`agy`)**: PTY interactivo con prompt, inyección MCP, permisos, consumo, hooks. Gemini CLI, OpenCode y Codex más adelante | Matriz verificada por CLI en `spike.md`; prototipos funcionando | |
 | 02 | Dominio y CRUD | pendiente | Agent, Project, Pipeline/Stage, Task; API REST; pantallas de Agentes y Proyectos | CRUD completo desde la UI; tests de la API; persistencia en SQLite | |
 | 03 | Terminales en vivo | pendiente | PtySession, log a disco, WS multi-viewer, xterm.js, tomar control | Sesión real de Claude Code visible en vivo, interactiva, con scrollback recuperable | |
 | 04 | Adapters y MCP | pendiente | Adapters de los CLIs, context builder, servidor MCP `agentic-os`, `fake_agent` | Cada CLI recibe su contexto y su MCP; `complete_task`/`update_status` llegan a la BD | |
@@ -25,3 +25,4 @@ Flujo de cada fase: ver `CLAUDE.md` (Spec → Plan → Desarrollo → Validació
 | Fecha | Cambio |
 |---|---|
 | 2026-10-08 | Roadmap inicial. Fase 00 en spec. |
+| 2026-10-08 | Nombre "Agentic OS" confirmado. CLIs iniciales: Claude Code y Antigravity CLI. Diseño de la UI con Claude Design (`docs/design/`). |
