@@ -8,9 +8,10 @@ Diseña la interfaz de **Agentic OS**, una aplicación de escritorio (Windows, v
 
 ## Estilo
 - Herramienta profesional de productividad para desarrolladores, densa en información pero tranquila. Referencias: Linear, Raycast, Vercel dashboard, Warp terminal.
-- **Modo oscuro como principal** y modo claro igual de cuidado.
-- Tipografía sans moderna para la UI (Inter o Geist) y monoespaciada para terminales, IDs y logs (JetBrains Mono o Geist Mono).
-- Un color de acento (propón uno con personalidad que no sea el azul genérico), más colores semánticos de estado: en cola, ejecutando, esperando humano, en revisión, hecho, fallido, cancelado.
+- **Identidad de color: azul navy como color principal y textos en blanco.** El tema principal es oscuro sobre una base navy (fondos, barra lateral y superficies en distintos tonos de navy, p. ej. alrededor de `#0A1A33`–`#13284D`), con texto blanco (`#FFFFFF`) y texto secundario blanco atenuado. El color `--primary` es navy; para los botones primarios y los elementos activos usa una variante navy más luminosa que contraste bien, siempre con texto blanco.
+- Modo claro secundario y coherente: fondos claros con el navy como color principal en botones, barra lateral y elementos activos (con texto blanco sobre navy).
+- **Tipografía: Ubuntu** (Google Fonts) para toda la UI, y **Ubuntu Mono** para terminales, IDs y logs.
+- Colores semánticos de estado que funcionen sobre fondo navy: en cola, ejecutando, esperando humano, en revisión, hecho, fallido, cancelado.
 - Cada agente tiene un **avatar o icono y un color propio** para reconocerlo en todas partes (tablero, colas, terminales).
 - Implementable con **React + Tailwind + shadcn/ui** (Radix): usa sus patrones de componentes (Sidebar, Card, Table, Tabs, Dialog, Sheet, Command, Badge, Tooltip).
 - Todos los textos de la interfaz **en español**.
@@ -74,7 +75,7 @@ Diseña la interfaz de **Agentic OS**, una aplicación de escritorio (Windows, v
 - Accesibilidad: contraste AA y foco visible.
 
 ## Entregables
-- Las pantallas anteriores en modo oscuro (y como mínimo Dashboard y Detalle de tarea también en claro).
+- Las pantallas anteriores en el tema navy oscuro (y como mínimo Dashboard y Detalle de tarea también en claro).
 - Un **mini design system**: paleta con tokens (CSS variables compatibles con shadcn: `--background`, `--foreground`, `--primary`, `--muted`, `--accent`, `--destructive`, `--border`, `--ring` y los tokens de estado), tipografía, radios, espaciado, y los componentes clave (tarjeta de agente, tarjeta de tarea, badge de estado, elemento de inbox, panel de terminal, nodo del árbol de ejecución).
 - Si es posible, el código React + Tailwind de los componentes clave.
 

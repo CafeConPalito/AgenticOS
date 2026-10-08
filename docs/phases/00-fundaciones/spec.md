@@ -44,9 +44,9 @@ Ya presentes: Python 3.12.10, uv 0.12.5, Node 24.19, npm 11.17, git 2.55, Claude
 
 Para esta fase:
 - ✅ Rust 1.99 (rustup, toolchain `stable-x86_64-pc-windows-msvc`), instalado el 2026-10-08.
-- ⚠️ Visual Studio 2022 Build Tools (C++), necesarias para Tauri: **pendiente**. La instalación automática falló con el código 1602 (cancelada por el usuario o por el UAC). WebView2 ya viene con Windows 11.
+- ✅ Visual Studio 2022 Build Tools (C++), instaladas el 2026-10-08. WebView2 ya viene con Windows 11.
 
-CLIs iniciales (fase 01): **Claude Code** y **Antigravity CLI** (`agy` 1.3.1, en `%LOCALAPPDATA%\agy\bin`, todavía fuera del PATH y sin sesión iniciada). Gemini CLI, OpenCode y Codex se dejan para más adelante.
+CLIs iniciales (fase 01): **Claude Code** y **Antigravity CLI** (`agy` 1.3.1, en `%LOCALAPPDATA%\agy\bin`, en el PATH y con la sesión iniciada). Gemini CLI, OpenCode y Codex se dejan para más adelante.
 
 ## Diseño de la interfaz
 La interfaz se diseña con Claude Design (prompt en `docs/design/prompt-claude-design.md`). El resultado se guarda en `docs/design/` y es la referencia visual: los tokens (colores, tipografía, radios y espaciado) y el layout base (barra lateral y cabecera) de esta fase se toman de ese diseño. Si el diseño no está listo al empezar el desarrollo, se usa shadcn/ui por defecto y se ajusta al llegar.
