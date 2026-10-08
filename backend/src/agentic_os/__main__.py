@@ -6,6 +6,7 @@ when that process disappears, so it never outlives the desktop app.
 """
 
 import argparse
+import contextlib
 import json
 import os
 import socket
@@ -48,15 +49,24 @@ def pid_exists(pid: int) -> bool:
     return True
 
 
-def watch_parent(pid: int, on_exit: Callable[[], None], interval: float) -> threading.Thread:
+def watch_parent(
+    pid: int, on_exit: Callable[[], None], interval: float, grace: float = 5.0
+) -> threading.Thread:
+    """Calls `on_exit` when `pid` dies; hard-exits if the process is still alive after `grace`.
+
+    When the parent dies our stdout/stderr pipes are usually broken, so nothing here may depend
+    on being able to write to them.
+    """
     stop = threading.Event()
 
     def run() -> None:
         while not stop.wait(interval):
             if not pid_exists(pid):
-                log.warning("parent process gone, shutting down", parent_pid=pid)
                 on_exit()
-                return
+                with contextlib.suppress(Exception):
+                    log.warning("parent process gone, shutting down", parent_pid=pid)
+                stop.wait(grace)
+                os._exit(0)
 
     thread = threading.Thread(target=run, name="parent-watchdog", daemon=True)
     thread.start()

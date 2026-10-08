@@ -9,11 +9,13 @@ import pytest
 from agentic_os.__main__ import READY_PREFIX, pid_exists
 
 
-def start_backend(*extra: str) -> tuple[subprocess.Popen[str], int]:
+def start_backend(
+    *extra: str, stderr: int = subprocess.DEVNULL
+) -> tuple[subprocess.Popen[str], int]:
     proc = subprocess.Popen(
         [sys.executable, "-m", "agentic_os", "--port", "0", *extra],
         stdout=subprocess.PIPE,
-        stderr=subprocess.DEVNULL,
+        stderr=stderr,
         text=True,
     )
     assert proc.stdout is not None
@@ -46,6 +48,25 @@ def test_exits_when_parent_dies():
         parent.kill()
         parent.wait(5)
         assert proc.wait(timeout=5) is not None
+    finally:
+        if proc.poll() is None:
+            proc.kill()
+
+
+def test_exits_when_parent_dies_and_its_pipes_are_closed():
+    # The desktop shell owns the sidecar's stdout/stderr pipes; when it dies they break and any
+    # write fails. The watchdog must still shut the backend down.
+    parent = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"])
+    proc, _ = start_backend(
+        "--parent-pid", str(parent.pid), "--watchdog-interval", "0.2", stderr=subprocess.PIPE
+    )
+    try:
+        assert proc.stdout is not None and proc.stderr is not None
+        proc.stdout.close()
+        proc.stderr.close()
+        parent.kill()
+        parent.wait(5)
+        assert proc.wait(timeout=10) is not None
     finally:
         if proc.poll() is None:
             proc.kill()
