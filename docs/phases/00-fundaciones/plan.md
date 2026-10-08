@@ -1,7 +1,7 @@
 # Fase 00: Fundaciones · Plan técnico
 
 - **Spec**: [spec.md](spec.md)
-- **Estado**: borrador (pendiente de aprobación, Puerta 2)
+- **Estado**: aprobado (2026-10-08)
 - **Rama**: `phase/00-fundaciones`
 
 ## Diseño
