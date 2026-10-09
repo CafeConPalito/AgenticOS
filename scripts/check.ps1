@@ -6,9 +6,11 @@ $steps = @(
     @{ Name = 'Lint backend (ruff)';           Cmd = 'npm run lint:backend' },
     @{ Name = 'Lint frontend (eslint+prettier)'; Cmd = 'npm run lint:frontend' },
     @{ Name = 'Lint desktop (rustfmt)';        Cmd = 'npm run lint:desktop' },
+    @{ Name = 'Lint spikes (ruff)';            Cmd = 'npm run lint:spikes' },
     @{ Name = 'Tests backend (pytest)';        Cmd = 'npm run test:backend' },
     @{ Name = 'Tests frontend (vitest)';       Cmd = 'npm run test:frontend' },
-    @{ Name = 'Tests desktop (cargo test)';    Cmd = 'npm run test:desktop' }
+    @{ Name = 'Tests desktop (cargo test)';    Cmd = 'npm run test:desktop' },
+    @{ Name = 'Tests spikes (pytest)';         Cmd = 'npm run test:spikes' }
 )
 
 $results = @()

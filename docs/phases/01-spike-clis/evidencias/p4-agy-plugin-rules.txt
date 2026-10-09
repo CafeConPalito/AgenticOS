@@ -1,0 +1,4 @@
+respuesta: '[AOS-PLUGIN-RULE] ¡Hola! ¿En qué puedo ayudarte hoy?\n'
+marker presente: True
+[config-guard] agy-plugin-rules: global CLI configuration CHANGED
+  changed: C:\Users\usuario\.gemini\antigravity-cli\settings.json
