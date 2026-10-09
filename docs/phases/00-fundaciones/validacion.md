@@ -71,7 +71,7 @@ Tests desktop (cargo test)      OK   3 passed
 - **Migración `httpx` → `httpx2`** en los tests: cuando Starlette deje de aceptar `httpx`.
 
 ## Cierre
-- [ ] OK del usuario
-- [ ] Merge a `main` (`--no-ff`)
-- [ ] Tag `v0.1`
-- [ ] `docs/roadmap.md` actualizado
+- [x] OK del usuario (2026-10-09)
+- [x] Merge a `main` (`--no-ff`)
+- [x] Tag `v0.1`
+- [x] `docs/roadmap.md` actualizado
