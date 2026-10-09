@@ -36,9 +36,9 @@ def test_claude_usage_falls_back_to_assistant_rows(tmp_path: Path):
     assert usage.source == "claude:assistant-rows"
     assert usage.cost_usd is None
     assert usage.output_tokens > 0
-    assert sum(m["messages"] for m in usage.models.values()) == sum(
-        1 for r in rows if r["type"] == "assistant"
-    )
+    # Claude writes one row per content block, all sharing the API message id.
+    unique_messages = {r["message"]["id"] for r in rows if r["type"] == "assistant"}
+    assert sum(m["messages"] for m in usage.models.values()) == len(unique_messages)
 
 
 def test_claude_transcript_path_uses_cwd_slug(tmp_path: Path):
