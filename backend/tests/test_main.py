@@ -1,6 +1,8 @@
 import json
+import os
 import subprocess
 import sys
+import tempfile
 import time
 
 import httpx
@@ -12,11 +14,14 @@ from agentic_os.__main__ import READY_PREFIX, pid_exists
 def start_backend(
     *extra: str, stderr: int = subprocess.DEVNULL
 ) -> tuple[subprocess.Popen[str], int]:
+    # Never touch the real %APPDATA%\AgenticOS database from tests.
+    data_dir = tempfile.mkdtemp(prefix="agentic-os-test-")
     proc = subprocess.Popen(
         [sys.executable, "-m", "agentic_os", "--port", "0", *extra],
         stdout=subprocess.PIPE,
         stderr=stderr,
         text=True,
+        env={**os.environ, "AGENTIC_OS_DATA_DIR": data_dir},
     )
     assert proc.stdout is not None
     deadline = time.monotonic() + 20
