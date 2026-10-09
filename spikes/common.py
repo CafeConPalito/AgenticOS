@@ -29,7 +29,10 @@ GEMINI_VOLATILE_DIRS = {
     "crashes",
     "updater",
     "tmp",
+    "presence",
+    "annotations",
 }
+GEMINI_VOLATILE_SUFFIXES = (".db-wal", ".db-shm", ".lock", ".pb")
 GEMINI_VOLATILE_FILES = {
     "cli.log",
     "conversation_summaries.db",
@@ -58,7 +61,11 @@ def _gemini_files() -> list[Path]:
     files = []
     for path in GEMINI_DIR.rglob("*"):
         rel = path.relative_to(GEMINI_DIR).parts
-        if any(part in GEMINI_VOLATILE_DIRS for part in rel) or path.name in GEMINI_VOLATILE_FILES:
+        if (
+            any(part in GEMINI_VOLATILE_DIRS for part in rel)
+            or path.name in GEMINI_VOLATILE_FILES
+            or path.name.endswith(GEMINI_VOLATILE_SUFFIXES)
+        ):
             continue
         if path.is_file():
             files.append(path)
