@@ -30,4 +30,4 @@ addopts = "-q"
 pythonpath = ["."]
 
 [tool.ruff.lint.isort]
-known-first-party = ["common", "pty_run", "recorder", "spike_mcp", "usage_probe", "cli_probe"]
+known-first-party = ["common", "pty_run", "recorder", "spike_mcp", "usage_probe", "cli_probe", "agy_mcp"]

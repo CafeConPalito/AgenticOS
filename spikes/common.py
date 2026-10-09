@@ -32,6 +32,7 @@ GEMINI_VOLATILE_DIRS = {
     "presence",
     "annotations",
     "bin",
+    "mcp",  # tool-schema cache of connected MCP servers
 }
 GEMINI_VOLATILE_SUFFIXES = (".db-wal", ".db-shm", ".lock", ".pb")
 GEMINI_VOLATILE_FILES = {
