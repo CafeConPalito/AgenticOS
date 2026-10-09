@@ -11,6 +11,7 @@ from agentic_os.db.migrate import upgrade_to_head
 from agentic_os.db.session import create_db_engine, database_url, make_sessionmaker
 from agentic_os.errors import register_error_handlers
 from agentic_os.logging_setup import configure_logging
+from agentic_os.services.clis import CliCatalog
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -23,6 +24,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         app.state.engine = engine
         app.state.sessionmaker = make_sessionmaker(engine)
         app.state.settings = settings
+        app.state.cli_catalog = CliCatalog()
         try:
             yield
         finally:
