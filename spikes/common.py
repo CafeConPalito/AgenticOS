@@ -6,7 +6,6 @@ import contextlib
 import difflib
 import json
 import os
-import shutil
 import time
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
@@ -41,9 +40,8 @@ GEMINI_VOLATILE_FILES = {
 
 def sandbox(name: str) -> Path:
     """Fresh, empty working directory for one scenario (outside the repo and user folders)."""
-    path = SANDBOX_ROOT / name
-    if path.exists():
-        shutil.rmtree(path)
+    # Unique per run: a previous run may have left a process (e.g. an MCP server) inside it.
+    path = SANDBOX_ROOT / f"{name}-{time.strftime('%Y%m%d-%H%M%S')}"
     path.mkdir(parents=True)
     (path / "README.txt").write_text("Agentic OS spike sandbox. Safe to delete.\n", "utf-8")
     return path
