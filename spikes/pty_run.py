@@ -27,16 +27,85 @@ KEYS = {
 }
 
 
+# Markers a running Claude Code session sets for its children. Inherited by a spawned CLI they
+# disable transcripts and alter behaviour. User configuration (CLAUDE_CONFIG_DIR,
+# CLAUDE_CODE_GIT_BASH_PATH, CLAUDE_CODE_USE_BEDROCK…) is deliberately kept.
+SESSION_MARKERS = {
+    "CLAUDECODE",
+    "CLAUDE_PID",
+    "CLAUDE_EFFORT",
+    "CLAUDE_CODE_CHILD_SESSION",
+    "CLAUDE_CODE_SESSION_ID",
+    "CLAUDE_CODE_SESSION_ATTENDED",
+    "CLAUDE_CODE_ENTRYPOINT",
+    "CLAUDE_CODE_EXECPATH",
+    "CLAUDE_CODE_MESSAGING_SOCKET",
+    "CLAUDE_CODE_MESSAGING_TOKEN",
+    "CLAUDE_AGENT_SDK_VERSION",
+}
+
+
 def clean_env(extra: dict[str, str] | None = None) -> dict[str, str]:
-    """Environment for a spawned CLI without markers inherited from the Claude Code session
-    running these spikes (they disable transcripts and alter behaviour)."""
-    env = {
-        k: v
-        for k, v in os.environ.items()
-        if not k.upper().startswith("CLAUDE") or k.upper() == "CLAUDE_CONFIG_DIR"
-    }
+    """Environment for a spawned CLI without the parent Claude Code session's markers."""
+    env = {k: v for k, v in os.environ.items() if k.upper() not in SESSION_MARKERS}
     env.update(extra or {})
     return env
+
+
+def agy_permission_request(screen: str) -> tuple[str, str] | None:
+    """Classifies the permission dialog agy is showing, reading only the dialog itself (the
+    echoed prompt elsewhere on screen must not influence the decision).
+
+    Returns ("mcp", "<server>/<tool>"), ("command", "<command line>") or None.
+    """
+    lines = screen.splitlines()
+    for i, line in enumerate(lines):
+        if line.strip() == "Allow calling this tool?":
+            # The tool id is the nearest non-blank line above (the TUI may pad with blanks).
+            above = next((lines[j].strip() for j in range(i - 1, -1, -1) if lines[j].strip()), "")
+            return "mcp", above
+        if line.strip() == "Run this command?":
+            start = next(
+                (j for j in range(i, -1, -1) if "Requesting permission for:" in lines[j]), i
+            )
+            return "command", " ".join(x.strip() for x in lines[start + 1 : i])
+    return None
+
+
+def approve_only_agentic_os(run: PtyRun) -> tuple[str, str] | None:
+    """If agy shows a permission dialog: approve it only for our own MCP tools, deny anything
+    else (shell commands, other servers). Returns the request handled, if any."""
+    request = agy_permission_request(run.snapshot())
+    if request is None:
+        return None
+    run.key("enter" if request[0] == "mcp" and request[1].startswith("agentic-os") else "esc")
+    time.sleep(2)
+    return request
+
+
+TRUST_DIALOG = {
+    "claude": (r"trust this folder", r"❯ Yes, I trust"),
+    "agy": (r"trust the contents", r"> Yes, I trust"),
+}
+
+
+def accept_trust(run: PtyRun, cli: str, timeout: float = 30) -> bool:
+    """Accepts the folder-trust dialog. Keys sent before the menu is interactive are dropped,
+    so the selection is retried until the screen shows "Yes" selected and the dialog closes."""
+    question, yes_selected = TRUST_DIALOG[cli]
+    if not run.wait_screen(question, timeout=timeout):
+        return False
+    for _ in range(10):
+        time.sleep(0.5)
+        if not re.search(yes_selected, run.snapshot()):
+            run.key("down")
+            if not run.wait_screen(yes_selected, timeout=1.5):
+                continue
+        run.key("enter")
+        time.sleep(1)
+        if not re.search(question, run.snapshot(), re.IGNORECASE):
+            return True
+    return False
 
 
 class PtyRun:

@@ -94,6 +94,8 @@ Evidencia: [`p5-claude-mcp.md`](evidencias/p5-claude-mcp.md), [`p5-agy-mcp.md`](
 
 ⚠️ En Windows, Claude usa la herramienta **`PowerShell`** además de `Bash`: las reglas tienen que cubrir las dos. `acceptEdits` permite redirecciones de shell que crean archivos.
 
+⚠️ **Vetar una herramienta no es una barrera** con la shell disponible: en `bypassPermissions` + `--disallowedTools Write`, una de dos ejecuciones creó el archivo por otra vía. El modo «Restringido» debe basarse en el modo de permisos (`manual`/`acceptEdits`) más listas de permitidos, no en listas de denegados sobre un modo sin restricciones.
+
 ⚠️ En `agy`, las denegaciones en headless salen en `denied_actions` (`write_file`, `command`, `mcp`).
 
 ## P7 · Sesiones
@@ -111,7 +113,7 @@ Evidencia: [`p5-claude-mcp.md`](evidencias/p5-claude-mcp.md), [`p5-agy-mcp.md`](
 | Verificación | ✅ coincidencia exacta con `total_cost_usd` y `modelUsage` del resultado JSON (con y sin subagente) y funciona en sesiones interactivas | ✅ coincidencia exacta con `usage` del resultado JSON |
 | Nota | El `usage` del resultado solo refleja el **último** turno; la fuente buena es `cost-state` | Los subagentes tienen su propia conversación (`conversation://<id>`) |
 
-⚠️ Si el proceso hereda `CLAUDE_CODE_CHILD_SESSION` (p. ej. al lanzarse desde otra sesión de Claude Code), **no se guarda el transcript**. Agentic OS debe lanzar los CLIs con un entorno sin variables `CLAUDE*`.
+⚠️ Si el proceso hereda `CLAUDE_CODE_CHILD_SESSION` (p. ej. al lanzarse desde otra sesión de Claude Code), **no se guarda el transcript**. Agentic OS debe lanzar los CLIs sin los **marcadores de sesión** de Claude Code (`CLAUDECODE`, `CLAUDE_CODE_CHILD_SESSION`, `CLAUDE_CODE_SESSION_ID`, `CLAUDE_CODE_ENTRYPOINT`…; lista en `spikes/pty_run.py: SESSION_MARKERS`), pero conservando la configuración del usuario (`CLAUDE_CONFIG_DIR`, `CLAUDE_CODE_GIT_BASH_PATH`, `CLAUDE_CODE_USE_BEDROCK`…).
 
 Evidencia: [`p8-usage.md`](evidencias/p8-usage.md); parsers en `spikes/usage_probe.py` con tests.
 
@@ -152,7 +154,7 @@ Evidencia: [`p12-cli-probe.json`](evidencias/p12-cli-probe.json).
 ---
 
 ## Requisitos que salen del spike para el adapter
-1. **Entorno limpio**: lanzar los CLIs sin variables `CLAUDE*` heredadas.
+1. **Entorno limpio**: lanzar los CLIs sin los marcadores de sesión de Claude Code heredados (no todas las `CLAUDE*`: algunas son configuración del usuario).
 2. **Claude aislado**: `--setting-sources project,local`, `--strict-mcp-config` + `--mcp-config` propio, `--permission-mode` explícito y `--session-id` generado por nosotros. El prompt va **antes** de las opciones variádicas (`--allowedTools <tools...>` se traga un prompt posicional que vaya detrás).
 3. **agy por plugin de workspace**: `.agents/plugins/agentic-os/` con `mcp_config.json` (token en la URL), `hooks.json` (comandos sin comillas que nunca fallen) y `rules/AGENTS.md` con las instrucciones. En PTY, lanzar sin `-i`, esperar a que el MCP esté conectado y escribir el prompt.
 4. **Diálogo de confianza**: automatizarlo en el PTY. En `agy` se acumulan entradas en `trustedWorkspaces`; con worktrees por tarea, conviene un directorio raíz de worktrees de confianza o limpiar las entradas al borrar el worktree.

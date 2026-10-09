@@ -32,6 +32,12 @@ class Usage:
         return asdict(self)
 
 
+def _n(data: dict, key: str) -> int:
+    """Token counter that tolerates missing keys and explicit nulls."""
+    value = data.get(key)
+    return value if isinstance(value, int) else 0
+
+
 # ------------------------------------------------------------------------------- Claude Code
 def claude_project_slug(cwd: Path | str) -> str:
     return re.sub(r"[^A-Za-z0-9-]", "-", str(cwd))
@@ -60,11 +66,11 @@ def claude_usage(transcript: Path) -> Usage:
         usage = Usage("claude:cost-state", cost_usd=state.get("totalCostUSD"))
         for model, m in (state.get("modelUsage") or {}).items():
             usage.models[model] = m
-            usage.input_tokens += m.get("inputTokens", 0)
-            usage.output_tokens += m.get("outputTokens", 0)
-            usage.cache_read_tokens += m.get("cacheReadInputTokens", 0)
-            usage.cache_creation_tokens += m.get("cacheCreationInputTokens", 0)
-            usage.thinking_tokens += m.get("thinkingTokens", 0)
+            usage.input_tokens += _n(m, "inputTokens")
+            usage.output_tokens += _n(m, "outputTokens")
+            usage.cache_read_tokens += _n(m, "cacheReadInputTokens")
+            usage.cache_creation_tokens += _n(m, "cacheCreationInputTokens")
+            usage.thinking_tokens += _n(m, "thinkingTokens")
         return usage
 
     # Fallback: per-message usage (one row per API message; de-duplicate by message id).
@@ -79,11 +85,11 @@ def claude_usage(transcript: Path) -> Usage:
             continue
         seen.add(key)
         u = message["usage"]
-        usage.input_tokens += u.get("input_tokens", 0)
-        usage.output_tokens += u.get("output_tokens", 0)
-        usage.cache_read_tokens += u.get("cache_read_input_tokens", 0)
-        usage.cache_creation_tokens += u.get("cache_creation_input_tokens", 0)
-        usage.thinking_tokens += (u.get("output_tokens_details") or {}).get("thinking_tokens", 0)
+        usage.input_tokens += _n(u, "input_tokens")
+        usage.output_tokens += _n(u, "output_tokens")
+        usage.cache_read_tokens += _n(u, "cache_read_input_tokens")
+        usage.cache_creation_tokens += _n(u, "cache_creation_input_tokens")
+        usage.thinking_tokens += _n(u.get("output_tokens_details") or {}, "thinking_tokens")
         model = message.get("model", "?")
         usage.models.setdefault(model, {"messages": 0})["messages"] += 1
     return usage
@@ -106,8 +112,8 @@ def agy_transcript(conversation_id: str, home: Path = HOME) -> Path:
 def agy_usage(transcript: Path) -> Usage:
     usage = Usage("agy:transcript_full")
     for row in _rows(transcript):
-        usage.input_tokens += row.get("input_tokens", 0) or 0
-        usage.output_tokens += row.get("output_tokens", 0) or 0
-        usage.cache_read_tokens += row.get("cache_read_tokens", 0) or 0
-        usage.thinking_tokens += row.get("thinking_tokens", 0) or 0
+        usage.input_tokens += _n(row, "input_tokens")
+        usage.output_tokens += _n(row, "output_tokens")
+        usage.cache_read_tokens += _n(row, "cache_read_tokens")
+        usage.thinking_tokens += _n(row, "thinking_tokens")
     return usage

@@ -9,7 +9,6 @@ Usage: uv run python scenarios/claude_mcp.py
 from __future__ import annotations
 
 import json
-import subprocess
 import sys
 import time
 import uuid
@@ -17,8 +16,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from common import config_guard, evidence, sandbox  # noqa: E402
-from pty_run import PtyRun, clean_env  # noqa: E402
+from common import config_guard, evidence, run_cli, sandbox  # noqa: E402
+from pty_run import PtyRun, accept_trust  # noqa: E402
 from recorder import Recorder  # noqa: E402
 from spike_mcp import SpikeMcp  # noqa: E402
 
@@ -72,17 +71,10 @@ def main() -> None:
             cwd = sandbox("claude-mcp-headless")
             config = mcp_config(cwd.parent / f"{cwd.name}.mcp.json", url, headless_token)
             argv = [*base_argv(config), "--output-format", "json", "-p", PROMPT]
-            proc = subprocess.run(
-                argv,
-                cwd=cwd,
-                env=clean_env(),
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                errors="replace",
-                timeout=300,
-            )
-            out = json.loads(proc.stdout or "{}")
+            result = run_cli(argv, cwd)
+            out = result.json or {}
+            if not result.ok:
+                rec.note(f"⚠️ Headless rc={result.returncode}: {result.stderr[:300]!r}")
             calls = [c for c in server.calls() if c["run"] == headless_token]
             rec.step(
                 "Headless: llamadas recibidas por el servidor",
@@ -102,13 +94,7 @@ def main() -> None:
             run = PtyRun(argv, cwd, evidence("p5-claude-mcp-pty.raw.log"))
             rec.run = run
             try:
-                if run.wait_screen(r"trust this folder", timeout=30):
-                    for _ in range(10):
-                        time.sleep(0.5)
-                        run.key("down")
-                        if run.wait_screen(r"❯ Yes, I trust", timeout=1.5):
-                            break
-                    run.key("enter")
+                accept_trust(run, "claude")
                 done = run.wait_screen(r"●\s*FIN", timeout=120)
                 run.wait_idle(3, 30)
                 calls = [c for c in server.calls() if c["run"] == pty_token]

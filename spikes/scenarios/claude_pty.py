@@ -12,22 +12,14 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from common import config_guard, evidence, sandbox  # noqa: E402
-from pty_run import PtyRun  # noqa: E402
+from pty_run import PtyRun, accept_trust  # noqa: E402
 from recorder import Recorder  # noqa: E402
 
-PROMPT_LINE = r"❯\s*$|>\s*$|\? for shortcuts"
 
-
-def accept_trust(run: PtyRun, rec: Recorder) -> None:
+def trust(run: PtyRun, rec: Recorder) -> None:
     if run.wait_screen(r"trust this folder", timeout=30):
         rec.step("Diálogo de confianza en la carpeta")
-        # Keys sent before the menu is interactive are dropped: retry until selected.
-        for _ in range(10):
-            time.sleep(0.5)
-            run.key("down")
-            if run.wait_screen(r"❯ Yes, I trust", timeout=1.5):
-                break
-        run.key("enter")
+        accept_trust(run, "claude")
 
 
 def main() -> None:
@@ -45,7 +37,7 @@ def main() -> None:
         rec = Recorder("Claude Code en ConPTY (P1–P3)", evidence("p1-claude-pty.md"), run)
         rec.note(f"argv: `{' '.join(argv)}` · cwd: sandbox · ventana 120×40")
         try:
-            accept_trust(run, rec)
+            trust(run, rec)
 
             ok = run.wait_screen(r"\bUNO\b", timeout=90) and run.wait_idle(3, 60)
             rec.step("a) Respuesta al prompt inicial", ok)

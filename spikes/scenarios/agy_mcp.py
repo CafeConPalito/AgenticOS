@@ -9,7 +9,6 @@ Usage: uv run python scenarios/agy_mcp.py
 from __future__ import annotations
 
 import json
-import subprocess
 import sys
 import time
 import uuid
@@ -17,8 +16,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from common import config_guard, evidence, sandbox  # noqa: E402
-from pty_run import PtyRun, clean_env  # noqa: E402
+from common import config_guard, evidence, run_cli, sandbox  # noqa: E402
+from pty_run import PtyRun, accept_trust, approve_only_agentic_os  # noqa: E402
 from recorder import Recorder  # noqa: E402
 from spike_mcp import SpikeMcp  # noqa: E402
 
@@ -44,20 +43,8 @@ def headless(server: SpikeMcp, rec: Recorder, label: str, extra: list[str]) -> N
     cwd = sandbox(f"agy-mcp-headless{label}")
     install_plugin(cwd, server.path_url(token))
     argv = ["agy", "--model", MODEL, "--output-format", "json", *extra, "-p", PROMPT]
-    proc = subprocess.run(
-        argv,
-        cwd=cwd,
-        env=clean_env(),
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        timeout=300,
-    )
-    try:
-        out = json.loads(proc.stdout)
-    except json.JSONDecodeError:
-        out = {"_raw": proc.stdout[-400:]}
+    result = run_cli(argv, cwd)
+    out = result.json or {}
     calls = [c for c in server.calls() if c["run"] == token]
     rec.step(
         f"Headless {' '.join(extra) or '(sin flags)'}: llamadas recibidas",
@@ -67,7 +54,7 @@ def headless(server: SpikeMcp, rec: Recorder, label: str, extra: list[str]) -> N
     rec.note("```json\n" + json.dumps(calls, ensure_ascii=False, indent=1) + "\n```")
     rec.note(
         f"Respuesta: {out.get('response')!r} · denegadas: {out.get('denied_actions')} · "
-        f"stderr: {proc.stderr.strip()[:300]!r}"
+        f"rc: {result.returncode} · stderr: {result.stderr[:300]!r}"
     )
 
 
@@ -82,29 +69,20 @@ def pty(server: SpikeMcp, rec: Recorder) -> None:
     run = PtyRun(argv, cwd, evidence("p5-agy-mcp-pty.raw.log"))
     rec.run = run
     try:
-        if run.wait_screen(r"trust the contents", timeout=30):
-            for _ in range(10):
-                time.sleep(0.5)
-                run.key("enter")
-                time.sleep(1)
-                if "trust the contents" not in run.snapshot():
-                    break
+        accept_trust(run, "agy")
         run.wait_screen(r"\? for shortcuts", timeout=30)
         time.sleep(5)
         run.type_line(PROMPT)
         deadline = time.monotonic() + 120
         while time.monotonic() < deadline:
-            screen = run.snapshot()
             if [c["tool"] for c in server.calls() if c["run"] == token] == [
                 "report_status",
                 "complete_task",
             ]:
                 break
-            # Permission prompts for the MCP tool: approve them (we are in a sandbox).
-            if any(w in screen for w in ("Allow", "allow", "Permitir", "approve")):
-                rec.step("Petición de permiso en la TUI")
-                run.key("enter")
-                time.sleep(2)
+            request = approve_only_agentic_os(run)  # never approves shell commands
+            if request:
+                rec.step(f"Diálogo de permiso ({request[0]}): {request[1]}", screen=False)
             time.sleep(1)
         run.wait_idle(3, 30)
         calls = [c for c in server.calls() if c["run"] == token]

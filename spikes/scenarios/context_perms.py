@@ -8,15 +8,13 @@ Usage: uv run python scenarios/context_perms.py
 from __future__ import annotations
 
 import json
-import subprocess
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from common import config_guard, evidence, sandbox  # noqa: E402
-from pty_run import clean_env  # noqa: E402
+from common import config_guard, evidence, run_cli, sandbox  # noqa: E402
 
 CLAUDE = ["claude", "--model", "haiku", "--strict-mcp-config", "--output-format", "json"]
 AGY = ["agy", "--model", "gemini-3.8-flash-low", "--output-format", "json"]
@@ -165,38 +163,30 @@ def run_case(case: Case) -> dict:
         target.write_text(content, "utf-8")
     base = CLAUDE if case.cli == "claude" else AGY
     argv = [*base, *case.argv_extra, "-p", case.prompt]
-    proc = subprocess.run(
-        argv,
-        cwd=cwd,
-        env=clean_env(),
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        timeout=300,
-    )
-    try:
-        out = json.loads(proc.stdout)
-    except json.JSONDecodeError:
-        out = {"_raw": proc.stdout[-800:]}
+    result = run_cli(argv, cwd)
+    out = result.json or {}
     answer = out.get("result") if case.cli == "claude" else out.get("response")
     answer = answer if isinstance(answer, str) else ""
-    checks = []
+    denials = out.get("permission_denials") or out.get("denied_actions")
+    # A run that crashed (auth, rate limit, bad flag…) must never count as "permission denied".
+    checks = [result.ok]
     if case.expect_marker:
         checks.append(case.expect_marker in answer)
     if case.expect_file:
         checks.append((cwd / case.expect_file).exists() == case.expect_file_present)
-    denials = out.get("permission_denials") or out.get("denied_actions")
+        if not case.expect_file_present:
+            checks.append(bool(denials) or bool(answer.strip()))  # the agent did respond
     return {
         "cli": case.cli,
         "case": case.name,
         "ok": all(checks),
+        "returncode": result.returncode,
         "argv_extra": " ".join(case.argv_extra) or "(ninguno)",
         "files": ", ".join(case.files) or "-",
         "answer": answer.strip().replace("\n", " ")[:120],
         "file_present": (cwd / case.expect_file).exists() if case.expect_file else None,
         "denials": json.dumps(denials, ensure_ascii=False)[:200] if denials else "",
-        "stderr": proc.stderr.strip().replace("\n", " ")[:200],
+        "stderr": result.stderr.replace("\n", " ")[:200],
         "cost": out.get("total_cost_usd"),
     }
 

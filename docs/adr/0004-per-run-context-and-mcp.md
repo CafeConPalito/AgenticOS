@@ -29,6 +29,7 @@ claude "<prompt>" \
 - El prompt va **primero**: las opciones variádicas (`--allowedTools <tools...>`) se tragan un prompt posicional que vaya detrás.
 - Los archivos de la ejecución (`<run>/…`) viven en la carpeta de datos de Agentic OS, nunca en el proyecto.
 - Las reglas de permisos cubren `Bash(...)` **y** `PowerShell(...)` en Windows.
+- El modo «Restringido» se apoya en el modo de permisos (`manual`/`acceptEdits`) más listas de permitidos. Las listas de denegados sobre `bypassPermissions` no son una barrera: el modelo puede escribir archivos por la shell.
 
 ### Antigravity CLI: plugin de workspace
 `agy` no tiene flags de instrucciones, MCP ni hooks por sesión, pero descubre **plugins de workspace** en `.agents/plugins/` de la carpeta de trabajo:
@@ -54,7 +55,7 @@ claude "<prompt>" \
 - Cada token solo actúa sobre su propia ejecución y su tarea (un modelo puede leer el token del archivo de configuración e intentar usarlo por otros medios).
 
 ### Entorno
-Los procesos de los CLIs se lanzan sin variables `CLAUDE*` heredadas (si heredan `CLAUDE_CODE_CHILD_SESSION`, Claude no guarda el transcript).
+Los procesos de los CLIs se lanzan sin los marcadores de sesión de Claude Code heredados (si heredan `CLAUDE_CODE_CHILD_SESSION`, Claude no guarda el transcript); la lista está en `spikes/pty_run.py: SESSION_MARKERS`. Se conservan las variables de configuración del usuario (`CLAUDE_CONFIG_DIR`, `CLAUDE_CODE_GIT_BASH_PATH`, proveedores Bedrock/Vertex…).
 
 ## Consecuencias
 - ✅ La configuración global del usuario no se toca (verificado con snapshots antes y después en todos los escenarios del spike).

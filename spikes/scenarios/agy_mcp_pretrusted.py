@@ -17,7 +17,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from agy_mcp import MODEL, PROMPT, install_plugin  # noqa: E402
 from common import evidence, sandbox  # noqa: E402
-from pty_run import PtyRun  # noqa: E402
+from pty_run import PtyRun, accept_trust, approve_only_agentic_os  # noqa: E402
 from recorder import Recorder  # noqa: E402
 from spike_mcp import SpikeMcp  # noqa: E402
 
@@ -36,13 +36,7 @@ def main() -> None:
     try:
         first = PtyRun(["agy", "--model", MODEL], cwd, evidence("p5-agy-pretrust-1.raw.log"))
         try:
-            first.wait_screen(r"trust the contents", timeout=30)
-            for _ in range(10):
-                time.sleep(0.5)
-                first.key("enter")
-                time.sleep(1)
-                if "trust the contents" not in first.snapshot():
-                    break
+            accept_trust(first, "agy")
             first.wait_screen(r"\? for shortcuts", timeout=30)
             rec.run = first
             rec.step("Lanzamiento 1: confianza aceptada")
@@ -62,11 +56,12 @@ def main() -> None:
             while time.monotonic() < deadline:
                 if len(server.calls()) >= 2:
                     break
-                screen = second.snapshot()
-                if "trust the contents" in screen or "Allow" in screen or "allow" in screen:
-                    rec.step("Diálogo en el lanzamiento 2")
-                    second.key("enter")
-                    time.sleep(2)
+                # Only our own MCP tools are approved; shell commands are denied. (The first
+                # version of this scenario approved any dialog, which let the model run
+                # Get-ChildItem in the sandbox — see the evidence file.)
+                request = approve_only_agentic_os(second)
+                if request:
+                    rec.step(f"Diálogo de permiso ({request[0]}): {request[1]}", screen=False)
                 time.sleep(1)
             second.wait_idle(3, 30)
             calls = server.calls()

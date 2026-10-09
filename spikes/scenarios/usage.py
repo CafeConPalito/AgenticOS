@@ -6,15 +6,13 @@ Usage: uv run python scenarios/usage.py
 from __future__ import annotations
 
 import json
-import subprocess
 import sys
 import uuid
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from common import config_guard, evidence, sandbox  # noqa: E402
-from pty_run import clean_env  # noqa: E402
+from common import config_guard, evidence, run_cli, sandbox  # noqa: E402
 from recorder import Recorder  # noqa: E402
 from usage_probe import agy_transcript, agy_usage, claude_transcript, claude_usage  # noqa: E402
 
@@ -25,17 +23,11 @@ SUBAGENT_PROMPT = (
 
 
 def run_json(argv: list[str], cwd: Path) -> dict:
-    proc = subprocess.run(
-        argv,
-        cwd=cwd,
-        env=clean_env(),
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        timeout=300,
-    )
-    return json.loads(proc.stdout)
+    result = run_cli(argv, cwd)
+    if not result.ok:
+        detail = result.stderr[:300] or result.stdout[-300:]
+        raise RuntimeError(f"{argv[0]} failed (rc={result.returncode}): {detail}")
+    return result.json
 
 
 def compare_claude(rec: Recorder, label: str, prompt: str, extra: list[str]) -> None:
@@ -51,7 +43,8 @@ def compare_claude(rec: Recorder, label: str, prompt: str, extra: list[str]) -> 
     reported = result.get("usage") or {}
     reported_models = result.get("modelUsage") or {}
     same_cost = (
-        parsed.cost_usd is not None and abs(parsed.cost_usd - result["total_cost_usd"]) < 1e-9
+        parsed.cost_usd is not None
+        and abs(parsed.cost_usd - (result.get("total_cost_usd") or 0)) < 1e-9
     )
     model_totals = {
         "input": sum(m.get("inputTokens", 0) for m in reported_models.values()),

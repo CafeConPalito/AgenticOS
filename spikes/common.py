@@ -6,6 +6,7 @@ import contextlib
 import difflib
 import json
 import os
+import subprocess
 import time
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
@@ -100,7 +101,21 @@ class ConfigSnapshot:
 
     @classmethod
     def take(cls) -> ConfigSnapshot:
-        return cls({p: _relevant_bytes(p) for p in watched_config_files()})
+        """Files may be mid-write by a running CLI: retry, then record them as unreadable
+        instead of raising (a raise inside config_guard's finally would hide the result)."""
+        contents: dict[Path, bytes] = {}
+        for path in watched_config_files():
+            for attempt in range(5):
+                try:
+                    contents[path] = _relevant_bytes(path)
+                    break
+                except FileNotFoundError:
+                    break  # deleted between listing and reading: treat as absent
+                except (OSError, ValueError):  # ValueError covers JSONDecodeError
+                    if attempt == 4:
+                        contents[path] = b"<unreadable>"
+                    time.sleep(0.2)
+        return cls(contents)
 
     def diff(self, other: ConfigSnapshot) -> list[str]:
         changes: list[str] = []
@@ -130,12 +145,54 @@ def config_guard(label: str) -> Iterator[list[str]]:
     try:
         yield changes
     finally:
-        changes.extend(before.diff(ConfigSnapshot.take()))
+        try:
+            changes.extend(before.diff(ConfigSnapshot.take()))
+        except Exception as error:  # noqa: BLE001 - never mask the scenario's own outcome
+            changes.append(f"config-guard could not compare: {error!r}")
         status = "UNCHANGED" if not changes else "CHANGED"
         print(f"[config-guard] {label}: global CLI configuration {status}")
         for change in changes:
             for line in change.splitlines():
                 print("  " + line)
+
+
+@dataclass
+class CliResult:
+    returncode: int
+    stdout: str
+    stderr: str
+    json: dict | None  # last stdout line parsed as JSON, if it was JSON
+    events: list[dict]  # every stdout line that parsed as JSON (stream-json)
+
+    @property
+    def ok(self) -> bool:
+        return self.returncode == 0 and self.json is not None
+
+
+def run_cli(argv: list[str], cwd: Path, timeout: float = 300) -> CliResult:
+    """Runs a CLI headless with a clean environment; never raises on non-JSON output."""
+    from pty_run import clean_env  # local import: pty_run imports winpty
+
+    proc = subprocess.run(
+        argv,
+        cwd=cwd,
+        env=clean_env(),
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        timeout=timeout,
+    )
+    events: list[dict] = []
+    for line in proc.stdout.splitlines():
+        try:
+            value = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(value, dict):
+            events.append(value)
+    last = events[-1] if events else None
+    return CliResult(proc.returncode, proc.stdout, proc.stderr.strip(), last, events)
 
 
 def wait_for(predicate: Callable[[], bool], timeout: float, interval: float = 0.25) -> bool:

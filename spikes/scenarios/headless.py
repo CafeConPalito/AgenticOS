@@ -6,7 +6,6 @@ Usage: uv run python scenarios/headless.py
 from __future__ import annotations
 
 import json
-import subprocess
 import sys
 import time
 import uuid
@@ -14,36 +13,20 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from common import config_guard, evidence, sandbox  # noqa: E402
-from pty_run import clean_env  # noqa: E402
+from common import config_guard, evidence, run_cli, sandbox  # noqa: E402
 
 PROMPT = "Crea un archivo hola.txt que contenga la palabra hola y después responde LISTO"
 
 
 def run_headless(name: str, argv: list[str], cwd: Path) -> list[dict]:
     started = time.monotonic()
-    proc = subprocess.run(
-        argv,
-        cwd=cwd,
-        env=clean_env(),
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        timeout=300,
-    )
+    result = run_cli(argv, cwd)
     elapsed = time.monotonic() - started
-    evidence(f"p11-{name}.stream.jsonl").write_text(proc.stdout, "utf-8")
-    events = []
-    for line in proc.stdout.splitlines():
-        try:
-            events.append(json.loads(line))
-        except json.JSONDecodeError:
-            events.append({"_non_json": line[:200]})
-    print(f"== {name}: rc={proc.returncode} {elapsed:.1f}s, {len(events)} events")
-    if proc.stderr.strip():
-        print("stderr:", proc.stderr.strip()[:500])
-    return events
+    evidence(f"p11-{name}.stream.jsonl").write_text(result.stdout, "utf-8")
+    print(f"== {name}: rc={result.returncode} {elapsed:.1f}s, {len(result.events)} events")
+    if result.stderr:
+        print("stderr:", result.stderr[:500])
+    return result.events
 
 
 def summarize(events: list[dict]) -> list[str]:

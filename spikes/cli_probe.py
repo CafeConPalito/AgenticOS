@@ -36,9 +36,16 @@ def probe_claude() -> CliInfo:
         return info
     info.version = run([info.path, "--version"]).stdout.strip()
     status = run([info.path, "auth", "status"])
-    if status.returncode == 0 and status.stdout.strip():
-        info.login_evidence = f"`claude auth status` -> {status.stdout.strip()[:200]}"
-        info.logged_in = '"loggedIn": true' in status.stdout or "logged in" in status.stdout.lower()
+    try:
+        payload = json.loads(status.stdout)
+    except json.JSONDecodeError:
+        payload = None
+    if status.returncode == 0 and isinstance(payload, dict) and "loggedIn" in payload:
+        info.logged_in = payload["loggedIn"] is True
+        info.login_evidence = (
+            f"`claude auth status` -> loggedIn={payload['loggedIn']}, "
+            f"authMethod={payload.get('authMethod')}"
+        )
     else:
         creds = HOME / ".claude" / ".credentials.json"
         info.logged_in = creds.exists()

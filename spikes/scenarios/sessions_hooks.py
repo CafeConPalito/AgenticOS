@@ -6,15 +6,13 @@ Usage: uv run python scenarios/sessions_hooks.py
 from __future__ import annotations
 
 import json
-import subprocess
 import sys
 import uuid
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from common import config_guard, evidence, sandbox  # noqa: E402
-from pty_run import clean_env  # noqa: E402
+from common import config_guard, evidence, run_cli, sandbox  # noqa: E402
 from recorder import Recorder  # noqa: E402
 
 SPIKES = Path(__file__).resolve().parent.parent
@@ -27,23 +25,10 @@ SUBAGENT_PROMPT = (
 
 
 def run(argv: list[str], cwd: Path) -> dict:
-    proc = subprocess.run(
-        argv,
-        cwd=cwd,
-        env=clean_env(),
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        timeout=300,
-    )
-    lines = [ln for ln in proc.stdout.splitlines() if ln.strip()]
-    try:
-        out = json.loads(lines[-1]) if lines else {}
-    except json.JSONDecodeError:
-        out = {"_raw": proc.stdout[-500:]}
-    out["_stream"] = lines
-    out["_stderr"] = proc.stderr.strip()[:300]
+    result = run_cli(argv, cwd)
+    out = dict(result.json or {})
+    out["_stream"] = [ln for ln in result.stdout.splitlines() if ln.strip()]
+    out["_stderr"] = result.stderr[:300]
     return out
 
 

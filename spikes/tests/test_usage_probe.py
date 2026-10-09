@@ -48,6 +48,24 @@ def test_claude_transcript_path_uses_cwd_slug(tmp_path: Path):
     assert path == tmp_path / ".claude" / "projects" / claude_project_slug(cwd) / "abc.jsonl"
 
 
+def test_null_token_fields_count_as_zero(tmp_path: Path):
+    transcript = tmp_path / "t.jsonl"
+    rows = [
+        {
+            "type": "cost-state",
+            "totalCostUSD": 0.01,
+            "modelUsage": {"m": {"inputTokens": 5, "outputTokens": None, "thinkingTokens": None}},
+        }
+    ]
+    transcript.write_text("\n".join(json.dumps(r) for r in rows), "utf-8")
+    usage = claude_usage(transcript)
+    assert (usage.input_tokens, usage.output_tokens, usage.thinking_tokens) == (5, 0, 0)
+
+    agy = tmp_path / "agy.jsonl"
+    agy.write_text(json.dumps({"input_tokens": 3, "output_tokens": None}), "utf-8")
+    assert agy_usage(agy).input_tokens == 3
+
+
 def test_agy_usage_sums_steps():
     usage = agy_usage(FIXTURES / "agy_transcript_full.jsonl")
     assert (usage.input_tokens, usage.output_tokens, usage.cache_read_tokens) == (11690, 19, 0)

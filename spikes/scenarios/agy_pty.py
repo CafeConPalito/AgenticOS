@@ -12,21 +12,16 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from common import config_guard, evidence, sandbox  # noqa: E402
-from pty_run import PtyRun  # noqa: E402
+from pty_run import PtyRun, accept_trust  # noqa: E402
 from recorder import Recorder  # noqa: E402
 
 MODEL = "gemini-3.8-flash-low"
 
 
-def accept_trust(run: PtyRun, rec: Recorder) -> None:
+def trust(run: PtyRun, rec: Recorder) -> None:
     if run.wait_screen(r"trust the contents", timeout=30):
         rec.step("Diálogo de confianza en la carpeta")
-        for _ in range(10):  # "Yes" is preselected; retry Enter until the dialog is gone
-            time.sleep(0.5)
-            run.key("enter")
-            time.sleep(1)
-            if "trust the contents" not in run.snapshot():
-                break
+        accept_trust(run, "agy")
 
 
 def answered(run: PtyRun, word: str) -> bool:
@@ -42,7 +37,7 @@ def main() -> None:
         rec = Recorder("Antigravity CLI en ConPTY (P1–P3)", evidence("p1-agy-pty.md"), run)
         rec.note(f"argv: `{' '.join(argv)}` · cwd: sandbox · ventana 120×40")
         try:
-            accept_trust(run, rec)
+            trust(run, rec)
 
             ok = wait(lambda: answered(run, "UNO"), 90) and run.wait_idle(3, 60)
             rec.step("a) Respuesta al prompt inicial", ok)
