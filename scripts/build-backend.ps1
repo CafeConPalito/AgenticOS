@@ -1,0 +1,30 @@
+# Builds the backend sidecar with PyInstaller and copies it where Tauri expects it:
+# desktop/src-tauri/binaries/agentic-os-backend-<target-triple>.exe
+$ErrorActionPreference = 'Stop'
+$root = Resolve-Path (Join-Path $PSScriptRoot '..')
+$backend = Join-Path $root 'backend'
+$binaries = Join-Path $root 'desktop\src-tauri\binaries'
+
+Push-Location $backend
+try {
+    uv run pyinstaller --noconfirm --clean --onefile --console `
+        --name agentic-os-backend `
+        --paths src `
+        --collect-submodules uvicorn `
+        --distpath build\dist --workpath build\work --specpath build `
+        packaging\entry.py
+    if ($LASTEXITCODE -ne 0) { throw "PyInstaller failed ($LASTEXITCODE)" }
+}
+finally {
+    Pop-Location
+}
+
+$triple = 'x86_64-pc-windows-msvc'
+if (Get-Command rustc -ErrorAction SilentlyContinue) {
+    $triple = ((rustc -vV | Select-String '^host:').ToString() -split '\s+')[1]
+}
+
+New-Item -ItemType Directory -Force $binaries | Out-Null
+$target = Join-Path $binaries "agentic-os-backend-$triple.exe"
+Copy-Item (Join-Path $backend 'build\dist\agentic-os-backend.exe') $target -Force
+Write-Host "Sidecar listo: $target"

@@ -1,0 +1,20 @@
+﻿== CA6 · 2026-10-09T19:08:00 · D:\agentic_os\desktop\src-tauri\target\release\agentic-os.exe
+-- Prueba 1: cierre normal de la ventana
+Tauri pid=18104 ventana='Agentic OS'
+  backend pid=20972 padre=18104 args=--port 0 --parent-pid 18104
+  backend pid=1144 padre=20972 args=--port 0 --parent-pid 18104
+  escuchando en 127.0.0.1:51856 -> {"status":"ok","name":"Agentic OS","version":"0.1.0"}
+  carpetas _MEI en TEMP: 1
+  0 procesos backend vivos tras 1,67 s; carpetas _MEI en TEMP: 0
+-- Prueba 2: Tauri terminado a la fuerza (Stop-Process -Force)
+Tauri pid=2028 ventana='Agentic OS'
+  backend pid=1684 padre=2028 args=--port 0 --parent-pid 2028
+  backend pid=21692 padre=1684 args=--port 0 --parent-pid 2028
+  escuchando en 127.0.0.1:62474 -> {"status":"ok","name":"Agentic OS","version":"0.1.0"}
+  carpetas _MEI en TEMP: 1
+  0 procesos backend vivos tras 1,69 s; carpetas _MEI en TEMP: 0
+-- Log del backend: C:\Users\usuario\AppData\Roaming\AgenticOS\logs\backend.log (20 líneas)
+  2026-10-09T17:08:12.489741Z [info     ] Shutting down                  [uvicorn.error]
+  2026-10-09T17:08:12.597855Z [info     ] Waiting for application shutdown. [uvicorn.error]
+  2026-10-09T17:08:12.597855Z [info     ] Application shutdown complete. [uvicorn.error]
+  2026-10-09T17:08:12.597855Z [info     ] Finished server process [21692] [uvicorn.error]

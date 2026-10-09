@@ -1,0 +1,23 @@
+# Runs the local CI gate (lint + all tests) and prints a summary.
+$ErrorActionPreference = 'Stop'
+Set-Location (Join-Path $PSScriptRoot '..')
+
+$steps = @(
+    @{ Name = 'Lint backend (ruff)';           Cmd = 'npm run lint:backend' },
+    @{ Name = 'Lint frontend (eslint+prettier)'; Cmd = 'npm run lint:frontend' },
+    @{ Name = 'Lint desktop (rustfmt)';        Cmd = 'npm run lint:desktop' },
+    @{ Name = 'Tests backend (pytest)';        Cmd = 'npm run test:backend' },
+    @{ Name = 'Tests frontend (vitest)';       Cmd = 'npm run test:frontend' },
+    @{ Name = 'Tests desktop (cargo test)';    Cmd = 'npm run test:desktop' }
+)
+
+$results = @()
+foreach ($step in $steps) {
+    Write-Host "`n=== $($step.Name) ===" -ForegroundColor Cyan
+    cmd /c $step.Cmd
+    $results += [pscustomobject]@{ Step = $step.Name; Result = $(if ($LASTEXITCODE -eq 0) { 'OK' } else { 'FAILED' }) }
+}
+
+Write-Host "`n=== Summary ===" -ForegroundColor Cyan
+$results | Format-Table -AutoSize
+if ($results.Result -contains 'FAILED') { exit 1 }

@@ -1,0 +1,79 @@
+{
+  "app": {
+    "name": "Agentic OS"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "agents": "Agentes",
+    "projects": "Proyectos",
+    "board": "Tablero",
+    "inbox": "Inbox",
+    "usage": "Consumo",
+    "settings": "Ajustes",
+    "collapse": "Colapsar barra lateral",
+    "main": "Navegación principal"
+  },
+  "header": {
+    "search": "Buscar o ejecutar un comando…",
+    "searchShortcut": "Ctrl K",
+    "terminal": "Terminal",
+    "comingSoon": "Disponible en próximas fases",
+    "primary": {
+      "newTask": "Nueva tarea",
+      "newAgent": "Nuevo agente",
+      "newProject": "Nuevo proyecto",
+      "exportCsv": "Exportar CSV"
+    }
+  },
+  "theme": {
+    "toLight": "Tema claro",
+    "toDark": "Tema oscuro",
+    "toggle": "Cambiar tema"
+  },
+  "backend": {
+    "connected": "Conectado · v{{version}}",
+    "connecting": "Conectando…",
+    "disconnected": "Desconectado · reintentando…",
+    "offlineTitle": "Backend desconectado.",
+    "offlineDescription": "No se pueden lanzar ni observar ejecuciones. Los agentes en curso siguen trabajando en sus terminales.",
+    "retry": "Reintentar ahora"
+  },
+  "pages": {
+    "dashboard": {
+      "title": "Dashboard",
+      "emptyTitle": "Aún no tienes agentes",
+      "emptyDescription": "Aquí verás qué hace cada agente, las aprobaciones pendientes y el consumo de hoy."
+    },
+    "agents": {
+      "title": "Agentes",
+      "emptyTitle": "Aún no tienes agentes",
+      "emptyDescription": "Crea tu primer agente o usa una plantilla: Analista, Desarrollador, QA, Redactor, Comercial."
+    },
+    "projects": {
+      "title": "Proyectos",
+      "emptyTitle": "Aún no tienes proyectos",
+      "emptyDescription": "Un proyecto es una carpeta en la que trabajan tus agentes, con su pipeline y su memoria."
+    },
+    "board": {
+      "title": "Tablero",
+      "emptyTitle": "No hay tareas",
+      "emptyDescription": "Las tareas de todos tus proyectos aparecerán aquí, por estado, por etapa o por agente."
+    },
+    "inbox": {
+      "title": "Inbox",
+      "emptyTitle": "Todo al día",
+      "emptyDescription": "Las aprobaciones, preguntas y bloqueos de tus agentes llegarán aquí."
+    },
+    "usage": {
+      "title": "Consumo",
+      "emptyTitle": "Sin datos de consumo",
+      "emptyDescription": "Tokens, coste y horas de agente por agente, proyecto y sesión."
+    },
+    "settings": {
+      "title": "Ajustes",
+      "emptyTitle": "Ajustes",
+      "emptyDescription": "CLIs detectados, carpeta de datos, notificaciones, idioma y tema."
+    },
+    "comingSoon": "Disponible en próximas fases"
+  }
+}
