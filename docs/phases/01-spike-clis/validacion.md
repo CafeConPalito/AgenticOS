@@ -36,7 +36,7 @@ Tests de `spikes/`: snapshot de configuración (2), servidor MCP con tokens (3),
 - **Limpieza**:
   - Las 5 entradas de sandbox en `trustedWorkspaces` de `agy` se eliminaron con `spikes/cleanup.py`, con copia de seguridad en `%LOCALAPPDATA%\AgenticOS-spike\backup\`.
   - Las entradas de proyecto de `~/.claude.json` siguen ahí, porque ese archivo lo reescribe la sesión de Claude Code en curso. Se limpian con `uv run --project spikes python spikes/cleanup.py --claude` cuando no haya ninguna sesión abierta (el script se niega si Claude Code está en ejecución).
-- **Proceso huérfano**: una de las primeras ejecuciones (sin `--strict-mcp-config`) arrancó el MCP global `godot_ai` del usuario, que quedó vivo escuchando en 8001/8002. No se ha cerrado porque podría estar en uso; el usuario decide.
+- **Proceso huérfano**: una de las primeras ejecuciones (sin `--strict-mcp-config`) arrancó el MCP global `godot_ai` del usuario, que quedó vivo escuchando en 8001/8002. Al cierre de la fase ya había terminado por su cuenta (puertos libres).
 
 ## Code review
 `/code-review high` sobre `main...phase/01-spike-clis`:
@@ -77,7 +77,7 @@ Tests de `spikes/`: snapshot de configuración (2), servidor MCP con tokens (3),
 - **Fase 07**: consumo desde transcripts (ADR 0005); el coste de Claude se presenta como equivalente API y `agy` solo muestra tokens.
 
 ## Cierre
-- [ ] OK del usuario
-- [ ] Merge a `main` (`--no-ff`)
-- [ ] Tag `v0.2`
-- [ ] `docs/roadmap.md` actualizado
+- [x] OK del usuario (2026-10-09)
+- [x] Merge a `main` (`--no-ff`)
+- [x] Tag `v0.2`
+- [x] `docs/roadmap.md` actualizado
