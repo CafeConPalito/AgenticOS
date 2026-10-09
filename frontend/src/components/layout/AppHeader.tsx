@@ -1,27 +1,71 @@
 import { Plus, Search, SquareTerminal } from 'lucide-react'
+import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Link, useMatches, useNavigate } from 'react-router'
 import {
   Breadcrumb,
   BreadcrumbItem,
+  BreadcrumbLink,
   BreadcrumbList,
   BreadcrumbPage,
+  BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb'
 import { Button } from '@/components/ui/button'
-import type { NavItem } from './nav'
+import type { CrumbHandle } from './crumbs'
+import type { NavItem, PrimaryAction } from './nav'
+
+/** Where each primary header action goes; actions without a route are not available yet. */
+const PRIMARY_ROUTES: Partial<Record<PrimaryAction, string>> = {
+  newAgent: '/agentes/nuevo',
+  newProject: '/proyectos/nuevo',
+}
+
+function useCrumbs() {
+  return useMatches()
+    .filter((m) => (m.handle as CrumbHandle | undefined)?.crumb)
+    .map((m) => ({ id: m.id, path: m.pathname, node: (m.handle as CrumbHandle).crumb(m.params) }))
+}
 
 export function AppHeader({ section }: { section: NavItem }) {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const comingSoon = t('header.comingSoon')
+  const crumbs = useCrumbs()
+  const primaryRoute = section.primary ? PRIMARY_ROUTES[section.primary] : undefined
 
   return (
     <header className="flex h-[52px] shrink-0 items-center gap-3 border-b bg-background px-[18px]">
       <Breadcrumb className="min-w-0 flex-1">
         <BreadcrumbList className="flex-nowrap gap-1.5 text-[13px]">
-          <BreadcrumbItem>
-            <BreadcrumbPage className="font-medium whitespace-nowrap">
-              {t(`nav.${section.id}`)}
-            </BreadcrumbPage>
-          </BreadcrumbItem>
+          {crumbs.length === 0 ? (
+            <BreadcrumbItem>
+              <BreadcrumbPage className="font-medium whitespace-nowrap">
+                {t(`nav.${section.id}`)}
+              </BreadcrumbPage>
+            </BreadcrumbItem>
+          ) : (
+            crumbs.map((crumb, i) => (
+              <Fragment key={crumb.id}>
+                {i > 0 && <BreadcrumbSeparator>/</BreadcrumbSeparator>}
+                <BreadcrumbItem>
+                  {i === crumbs.length - 1 ? (
+                    <BreadcrumbPage className="truncate font-medium whitespace-nowrap">
+                      {crumb.node}
+                    </BreadcrumbPage>
+                  ) : (
+                    <BreadcrumbLink asChild>
+                      <Link
+                        to={crumb.path}
+                        className="rounded-[5px] px-1.5 py-0.5 whitespace-nowrap hover:bg-accent"
+                      >
+                        {crumb.node}
+                      </Link>
+                    </BreadcrumbLink>
+                  )}
+                </BreadcrumbItem>
+              </Fragment>
+            ))
+          )}
         </BreadcrumbList>
       </Breadcrumb>
       <button
@@ -47,8 +91,9 @@ export function AppHeader({ section }: { section: NavItem }) {
       </Button>
       {section.primary && (
         <Button
-          disabled
-          title={comingSoon}
+          disabled={!primaryRoute}
+          title={primaryRoute ? undefined : comingSoon}
+          onClick={() => primaryRoute && navigate(primaryRoute)}
           className="h-8 gap-1.5 bg-primary-action font-medium text-white hover:bg-primary-action-hover"
         >
           <Plus className="size-[15px]" />
