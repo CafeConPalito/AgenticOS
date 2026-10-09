@@ -31,6 +31,7 @@ GEMINI_VOLATILE_DIRS = {
     "tmp",
     "presence",
     "annotations",
+    "bin",
 }
 GEMINI_VOLATILE_SUFFIXES = (".db-wal", ".db-shm", ".lock", ".pb")
 GEMINI_VOLATILE_FILES = {
