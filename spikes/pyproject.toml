@@ -1,0 +1,33 @@
+[project]
+name = "agentic-os-spikes"
+version = "0.1.0"
+description = "Phase 01 prototypes: probing Claude Code and Antigravity CLI"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "pywinpty>=2.0; sys_platform == 'win32'",
+    "pyte>=0.8",
+    "mcp>=1.0",
+    "httpx>=0.28",
+    "uvicorn>=0.30",
+]
+
+[dependency-groups]
+dev = ["pytest>=9.1", "ruff>=0.16"]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+pythonpath = ["."]
+
+[tool.ruff.lint.isort]
+known-first-party = ["common", "pty_run", "recorder", "spike_mcp", "usage_probe", "cli_probe", "agy_mcp", "hook_logger"]
