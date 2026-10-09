@@ -1,6 +1,6 @@
 # Fase 02: Dominio y CRUD (Agentes y Proyectos) · Spec
 
-- **Estado**: borrador (pendiente de aprobación)
+- **Estado**: aprobada (2026-10-09)
 - **Rama**: `phase/02-dominio-crud`
 
 ## Objetivo
