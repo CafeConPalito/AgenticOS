@@ -1,7 +1,7 @@
 # Fase 02: Dominio y CRUD · Plan técnico
 
 - **Spec**: [spec.md](spec.md)
-- **Estado**: borrador (pendiente de aprobación, Puerta 2)
+- **Estado**: aprobado (2026-10-09)
 - **Rama**: `phase/02-dominio-crud`
 
 ## Diseño
