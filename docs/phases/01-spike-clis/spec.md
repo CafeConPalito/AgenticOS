@@ -1,6 +1,6 @@
 # Fase 01: Spike de CLIs · Spec
 
-- **Estado**: borrador (pendiente de aprobación)
+- **Estado**: aprobada (2026-10-09)
 - **Rama**: `phase/01-spike-clis`
 
 ## Objetivo
