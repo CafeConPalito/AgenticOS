@@ -89,7 +89,7 @@ Otras:
 - De fases anteriores: «Examinar…» con el diálogo nativo, F5 en una subruta de la app instalada y `uv run --project spikes python spikes/cleanup.py --claude` con Claude Code cerrado.
 
 ## Cierre
-- [ ] OK del usuario
-- [ ] Merge a `main` (`--no-ff`)
-- [ ] Tag `v0.4`
-- [ ] `docs/roadmap.md` actualizado
+- [x] OK del usuario (2026-10-10, «siguiente fase»). Las comprobaciones manuales de la app instalada (sección anterior) quedan a cargo del usuario.
+- [x] Merge a `main` (`--no-ff`)
+- [x] Tag `v0.4`
+- [x] `docs/roadmap.md` actualizado
