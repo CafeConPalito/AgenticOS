@@ -46,6 +46,24 @@ def test_free_port_handshake_serves_health():
         proc.wait(5)
 
 
+def test_real_server_accepts_websockets():
+    # TestClient bypasses uvicorn: without a WebSocket library uvicorn answers the upgrade
+    # with a 404, so the terminal only works if the real server can speak WebSocket.
+    from websockets.exceptions import ConnectionClosed
+    from websockets.sync.client import connect
+
+    proc, port = start_backend()
+    try:
+        url = f"ws://127.0.0.1:{port}/api/runs/missing/terminal?client_id=test"
+        with connect(url, open_timeout=5) as ws, pytest.raises(ConnectionClosed) as closed:
+            ws.recv(timeout=5)
+        assert closed.value.rcvd is not None
+        assert closed.value.rcvd.code == 4404
+    finally:
+        proc.kill()
+        proc.wait(5)
+
+
 def test_exits_when_parent_dies():
     parent = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"])
     proc, _ = start_backend("--parent-pid", str(parent.pid), "--watchdog-interval", "0.2")

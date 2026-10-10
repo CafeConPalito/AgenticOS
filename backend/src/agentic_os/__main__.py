@@ -21,6 +21,7 @@ import uvicorn
 from agentic_os.app import create_app
 from agentic_os.config import Settings, get_settings
 from agentic_os.logging_setup import configure_logging
+from agentic_os.services.pty.job import kill_children_on_exit
 
 READY_PREFIX = "AGENTIC_OS_READY"
 
@@ -139,6 +140,8 @@ def resolve_log_file(settings: Settings) -> Path | None:
 def main(argv: list[str] | None = None) -> None:
     args = parse_args(argv)
     settings = get_settings()
+    # Agent CLIs started by this backend must never outlive it (ADR 0007).
+    kill_children_on_exit()
     configure_logging(
         settings.log_level, json=settings.log_json, log_file=resolve_log_file(settings)
     )

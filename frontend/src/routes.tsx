@@ -1,6 +1,12 @@
 import { Navigate, type RouteObject } from 'react-router'
 import { AppShell } from '@/components/layout/AppShell'
-import { AgentCrumb, type CrumbHandle, ProjectCrumb, TextCrumb } from '@/components/layout/crumbs'
+import {
+  AgentCrumb,
+  type CrumbHandle,
+  ProjectCrumb,
+  RunCrumb,
+  TextCrumb,
+} from '@/components/layout/crumbs'
 import AgentEditorPage from '@/pages/agents/AgentEditorPage'
 import AgentsPage from '@/pages/agents/AgentsPage'
 import NewAgentPage from '@/pages/agents/NewAgentPage'
@@ -10,6 +16,8 @@ import InboxPage from '@/pages/InboxPage'
 import NewProjectPage from '@/pages/projects/NewProjectPage'
 import ProjectDetailPage from '@/pages/projects/ProjectDetailPage'
 import ProjectsPage from '@/pages/projects/ProjectsPage'
+import RunPage from '@/pages/runs/RunPage'
+import RunsPage from '@/pages/runs/RunsPage'
 import SettingsPage from '@/pages/SettingsPage'
 import UsagePage from '@/pages/UsagePage'
 
@@ -54,6 +62,18 @@ export const routes: RouteObject[] = [
             path: ':projectId/:tab',
             element: <ProjectDetailPage />,
             handle: crumb((params) => <ProjectCrumb id={params.projectId} />),
+          },
+        ],
+      },
+      {
+        path: 'ejecuciones',
+        handle: crumb(() => <TextCrumb i18nKey="nav.runs" />),
+        children: [
+          { index: true, element: <RunsPage /> },
+          {
+            path: ':runId',
+            element: <RunPage />,
+            handle: crumb((params) => <RunCrumb id={params.runId} />),
           },
         ],
       },

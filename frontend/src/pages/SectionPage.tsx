@@ -3,7 +3,7 @@ import { EmptyState } from '@/components/EmptyState'
 import { NAV, type Section } from '@/components/layout/nav'
 
 /** Placeholder layout shared by every section until its phase implements it. */
-export function SectionPage({ section }: { section: Section }) {
+export function SectionPage({ section }: { section: Exclude<Section, 'runs'> }) {
   const { t } = useTranslation()
   const { icon } = NAV.find((item) => item.id === section) ?? NAV[0]
 

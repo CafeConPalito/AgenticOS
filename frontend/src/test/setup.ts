@@ -17,6 +17,10 @@ Object.defineProperty(window, 'matchMedia', {
     dispatchEvent: () => false,
   }),
 })
+// Radix Select relies on pointer capture and scrollIntoView.
+Element.prototype.hasPointerCapture ??= () => false
+Element.prototype.releasePointerCapture ??= () => {}
+Element.prototype.scrollIntoView ??= () => {}
 globalThis.ResizeObserver ??= class {
   observe() {}
   unobserve() {}

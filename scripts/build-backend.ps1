@@ -10,10 +10,16 @@ try {
     # Alembic loads env.py and the revisions from files at runtime: ship them as data.
     # Paths are absolute because --specpath changes the base for relative --add-data paths.
     $migrations = Join-Path $backend 'src\agentic_os\db\migrations'
+    # pywinpty's conpty.dll starts OpenConsole.exe from its own folder, and PyInstaller only
+    # picks up the DLLs: without these executables every run dies as soon as it starts.
+    $winpty = Join-Path $backend '.venv\Lib\site-packages\winpty'
     uv run pyinstaller --noconfirm --clean --onefile --console `
+        --add-binary "$winpty\OpenConsole.exe;winpty" `
+        --add-binary "$winpty\winpty-agent.exe;winpty" `
         --name agentic-os-backend `
         --paths src `
         --collect-submodules uvicorn `
+        --collect-submodules websockets `
         --collect-submodules agentic_os `
         --add-data "$migrations;agentic_os\db\migrations" `
         --distpath build\dist --workpath build\work --specpath build `

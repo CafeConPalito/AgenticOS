@@ -60,6 +60,37 @@ export interface Project extends ProjectFields {
   folder_exists: boolean
 }
 
+export type RunStatus =
+  'starting' | 'running' | 'intervening' | 'exited' | 'stopped' | 'failed' | 'interrupted'
+export type RunActivity = 'busy' | 'idle'
+export const ACTIVE_RUN_STATUSES: RunStatus[] = ['starting', 'running', 'intervening']
+
+export interface Run {
+  id: string
+  agent_id: string | null
+  project_id: string | null
+  agent_name: string
+  agent_color: string
+  project_name: string
+  cli: CliId
+  model: string
+  prompt: string
+  cwd: string
+  status: RunStatus
+  activity: RunActivity
+  error: string | null
+  cli_session_id: string | null
+  exit_code: number | null
+  cols: number
+  rows: number
+  started_at: string | null
+  ended_at: string | null
+  created_at: string
+  updated_at: string
+  controller: string | null
+  viewers: number
+}
+
 export interface ModelOption {
   id: string
   /** Label from the CLI itself; null for well-known aliases named by the UI (i18n). */

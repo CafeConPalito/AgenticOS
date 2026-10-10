@@ -20,3 +20,30 @@ export function relativeTime(iso: string, now: Date = new Date()): string {
   }
   return format.format(seconds, 'second')
 }
+
+/** Elapsed time as «m:ss» or «h:mm:ss» (like the design's session timers). */
+export function formatDuration(
+  startIso: string | null,
+  endIso: string | null,
+  now: Date = new Date(),
+): string {
+  if (!startIso) return '—'
+  const end = endIso ? new Date(endIso) : now
+  const total = Math.max(0, Math.floor((end.getTime() - new Date(startIso).getTime()) / 1000))
+  const h = Math.floor(total / 3600)
+  const m = Math.floor((total % 3600) / 60)
+  const s = String(total % 60).padStart(2, '0')
+  return h > 0 ? `${h}:${String(m).padStart(2, '0')}:${s}` : `${m}:${s}`
+}
+
+/** Date and time for tables: «10/10 12:20», with the year when it is not the current one. */
+export function formatDateTime(iso: string, now: Date = new Date()): string {
+  const date = new Date(iso)
+  return new Intl.DateTimeFormat(i18n.language, {
+    day: '2-digit',
+    month: '2-digit',
+    ...(date.getFullYear() !== now.getFullYear() && { year: 'numeric' }),
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date)
+}
