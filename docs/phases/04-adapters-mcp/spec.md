@@ -1,6 +1,6 @@
 # Fase 04: Adapters y MCP · Spec
 
-- **Estado**: borrador
+- **Estado**: aprobada
 - **Rama**: `phase/04-adapters-mcp`
 
 ## Objetivo
