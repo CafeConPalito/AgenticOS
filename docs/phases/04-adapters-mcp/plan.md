@@ -206,7 +206,7 @@ Habla con el MCP con el cliente oficial (`mcp`), ejecuta los `hook.cmd` configur
 1. [x] **Comprobación con agy real**: ¿existe una regla persistente (plugin o workspace) que preapruebe herramientas MCP? ¿Funciona `hook.cmd` con ruta corta y `curl` en agy y en Claude? Resultado en el plan y en el ADR; se decide el plan A o el B.
 2. [x] Modelo: migración `0003` (`completed`, `summary`, `last_status`, `mcp_connected_at`, `run_events`), schemas, `GET /events`; tests de migración y de la API.
 3. [x] Servidor MCP montado en el backend: TokenGate, registro de tokens, las cuatro herramientas y la URL pública; tests con el cliente MCP oficial (401, aislamiento entre ejecuciones, efectos en la BD).
-4. [ ] Hooks: endpoint, `hook.cmd` (ruta corta, `exit /b 0`) e interpretación por CLI; tests, incluido «backend caído → el hook termina con 0».
+4. [x] Hooks: endpoint, `hook.cmd` (ruta corta, `exit /b 0`) e interpretación por CLI; tests, incluido «backend caído → el hook termina con 0».
 5. [ ] Context builder y adapters (Claude, agy), traducción de permisos, plugin con `.git/info/exclude`, limpieza y recuperación, una ejecución de agy por carpeta; tests de argv y archivos por modo.
 6. [ ] Integración en `RunSession`/`RunManager`: actividad por hooks, prompt diferido de agy, cierre tras `complete_task` → `completed`, eventos por WebSocket y, si aplica, autoaprobación del diálogo MCP. CLI falso ampliado; tests de extremo a extremo de los dos adapters.
 7. [ ] Frontend: tipos y API, panel «Eventos MCP», estado actual, resumen, «Completada», refresco de la memoria; tests.

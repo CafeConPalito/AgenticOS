@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from agentic_os import APP_NAME, __version__
 from agentic_os.api import api_router
+from agentic_os.api.hooks import router as hooks_router
 from agentic_os.config import Settings, get_settings
 from agentic_os.db.migrate import upgrade_to_head
 from agentic_os.db.session import create_db_engine, database_url, make_sessionmaker
@@ -65,6 +66,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     register_error_handlers(app)
     app.include_router(api_router)
+    app.include_router(hooks_router)  # /r/<token>/hook/… before the /r mount (MCP)
     app.mount("/r", AgentGateway())
     return app
 

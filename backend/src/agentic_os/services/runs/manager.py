@@ -25,6 +25,7 @@ from agentic_os.models import (
     RunStatus,
 )
 from agentic_os.services.context import build_context, build_instructions
+from agentic_os.services.hooks import HOOK_EVENTS, interpret
 from agentic_os.services.mcp_server import RunTokens
 from agentic_os.services.runs.launcher import build_launch
 from agentic_os.services.runs.session import RunSession
@@ -254,3 +255,20 @@ class RunManager:
             project.memory = f"{project.memory.rstrip()}\n\n{block}".strip()
             db.commit()
         self.add_event(run_id, EventKind.MCP, "write_project_memory", note)
+
+    # ------------------------------------------------------------------ CLI hooks
+    def on_hook(self, run_id: str, event: str, payload: object) -> None:
+        session = self.get(run_id)
+        with self._db() as db:
+            run = db.get(Run, run_id)
+            if run is None:
+                return
+            cli = Cli(run.cli)
+            effect = interpret(cli, event, payload)
+            if effect.session_id and run.cli_session_id != effect.session_id:
+                run.cli_session_id = effect.session_id  # agy: its conversation id
+                db.commit()
+        boundary = session.on_hook(effect) if session is not None else False
+        # agy fires PreInvocation on every model step: only turn boundaries are events.
+        if event in HOOK_EVENTS[cli] and (boundary or event not in ("PreInvocation",)):
+            self.add_event(run_id, EventKind.HOOK, event)

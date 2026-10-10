@@ -23,6 +23,7 @@ import structlog
 from agentic_os.models.agent import Cli
 from agentic_os.models.run import Activity, RunStatus
 from agentic_os.services import pty as pty_service
+from agentic_os.services.hooks import HookEffect
 from agentic_os.services.pty import PtyProcess
 from agentic_os.services.runs.launcher import LaunchSpec
 from agentic_os.services.runs.screen import ScreenState
@@ -92,6 +93,8 @@ class RunSession:
         self._stopping = False
         self._ended = False
         self.completed = False  # the agent called complete_task
+        self._hooks_seen = False  # once hooks arrive they drive the activity, not the screen
+        self._in_turn = False
         self.mcp_connected = False
         self._trust_done = False
         self._finished = threading.Event()
@@ -242,6 +245,18 @@ class RunSession:
         """Pushes a message (e.g. an event) to every viewer; any thread."""
         self._publish(message)
 
+    def on_hook(self, effect: HookEffect) -> bool:
+        """Applies a CLI hook. True when it marks a turn boundary (start or end)."""
+        self._hooks_seen = True
+        boundary = False
+        if effect.turn_started and not self._in_turn:
+            self._in_turn = boundary = True
+        if effect.turn_ended:
+            self._in_turn, boundary = False, True
+        if effect.activity is not None and self.alive:
+            self._set(activity=effect.activity)
+        return boundary
+
     def on_mcp_connected(self) -> None:
         self.mcp_connected = True
 
@@ -364,6 +379,8 @@ class RunSession:
                     last_trust_action = now
                 elif not visible and last_trust_action:
                     self._trust_done = True
+            if self._hooks_seen:
+                continue  # the hooks report turn start/end exactly
             busy = self._screen.footer_busy() or now - self._last_output < BUSY_GRACE
             activity = Activity.BUSY if busy else Activity.IDLE
             if activity != self.activity and self.alive:
