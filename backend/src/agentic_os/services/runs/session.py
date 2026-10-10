@@ -18,6 +18,8 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 
+import structlog
+
 from agentic_os.models.agent import Cli
 from agentic_os.models.run import Activity, RunStatus
 from agentic_os.services import pty as pty_service
@@ -28,6 +30,8 @@ from agentic_os.services.runs.screen import ScreenState
 SCROLLBACK_LIMIT = 2 * 1024 * 1024  # characters kept in memory per run
 VIEWER_BACKLOG_LIMIT = 4096  # queued messages before a slow viewer is dropped
 BUSY_GRACE = 1.5  # seconds of recent output that still count as "busy"
+log = structlog.get_logger(__name__)
+
 TRUST_WINDOW = 90.0  # seconds after start during which the trust dialog is handled
 STOP_TIMEOUT = 15.0
 CONTINUE_MESSAGE = "Continúa con la tarea."
@@ -116,38 +120,49 @@ class RunSession:
         if not self.alive or self._pty is None:
             return
         self._stop_requested = True
+        limit = STOP_TIMEOUT if timeout is None else timeout
 
         def run() -> None:
             pty = self._pty
             assert pty is not None
-            with contextlib.suppress(Exception):
-                if self.cli == Cli.CLAUDE:
-                    pty.write(ESC)
-                    time.sleep(0.5)
-                    pty.write("/exit")
-                    time.sleep(0.4)
-                    pty.write(ENTER)
-                else:
-                    self._double_ctrl_c(pty)
-            if not self._finished.wait(STOP_TIMEOUT if timeout is None else timeout):
-                pty.terminate()
+            deadline = time.monotonic() + limit
+            try:
+                self._request_exit(pty, deadline)
+            except Exception:
+                log.exception("graceful stop failed", run_id=self.run_id)
+            if not self._finished.wait(max(0.0, deadline - time.monotonic())):
+                with contextlib.suppress(OSError):  # it may be exiting right now
+                    pty.terminate()
 
         threading.Thread(target=run, name=f"run-{self.run_id}-stop", daemon=True).start()
 
-    def _double_ctrl_c(self, pty: PtyProcess) -> None:
-        """agy: the second Ctrl+C only exits once the "press ctrl+c again" notice is shown;
-        sent any earlier it is lost, so wait for the notice (and retry a couple of times)."""
-        for _ in range(3):
-            pty.write(CTRL_C)
-            deadline = time.monotonic() + 3
-            while time.monotonic() < deadline and not self._finished.is_set():
-                if self._screen.exit_armed():
+    def _request_exit(self, pty: PtyProcess, deadline: float) -> None:
+        """Sends the CLI's exit keys until it acknowledges them. The TUIs drop keys while they
+        are busy (e.g. Claude Code right after a turn), so every attempt is verified on screen;
+        agy also needs its second Ctrl+C after the "press ctrl+c again" notice."""
+        while time.monotonic() < deadline and not self._finished.is_set():
+            if self.cli == Cli.CLAUDE:
+                pty.write(ESC)
+                time.sleep(0.5)
+                pty.write("/exit")
+                time.sleep(0.4)
+                pty.write(ENTER)
+            else:
+                pty.write(CTRL_C)
+                if self._wait_screen(self._screen.exit_armed, 3, deadline):
                     time.sleep(0.2)
                     pty.write(CTRL_C)
-                    break
-                time.sleep(0.1)
-            if self._finished.wait(2):
+            if self._wait_screen(self._screen.exit_acknowledged, 3, deadline):
                 return
+
+    def _wait_screen(self, check: Callable[[], bool], seconds: float, deadline: float) -> bool:
+        """Waits until `check()` holds on the screen (or the process ended)."""
+        end = min(time.monotonic() + seconds, deadline)
+        while time.monotonic() < end:
+            if self._finished.is_set() or check():
+                return True
+            time.sleep(0.1)
+        return False
 
     def kill(self) -> None:
         self._stop_requested = True

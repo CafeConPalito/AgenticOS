@@ -26,6 +26,12 @@ BUSY_FOOTER = {
 # agy's first Ctrl+C only arms the exit; a second one counts once this notice is shown.
 EXIT_ARMED = re.compile(r"ctrl\+c again to exit", re.IGNORECASE)
 
+# Printed once the CLI accepted the exit (it may still take a few seconds to end).
+EXIT_ACK = {
+    Cli.CLAUDE: re.compile(r"Resume this session|claude --resume"),
+    Cli.AGY: re.compile(r"Resume with -c|agy --conversation"),
+}
+
 
 class ScreenState:
     def __init__(self, cli: Cli, cols: int, rows: int) -> None:
@@ -53,6 +59,9 @@ class ScreenState:
 
     def exit_armed(self) -> bool:
         return bool(EXIT_ARMED.search(self.text()))
+
+    def exit_acknowledged(self) -> bool:
+        return bool(EXIT_ACK[self.cli].search(self.text()))
 
     def footer_busy(self) -> bool:
         lines = [line for line in self.text().splitlines() if line.strip()]

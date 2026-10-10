@@ -57,3 +57,13 @@ def test_agy_exit_armed_notice():
     # Text seen in the real agy log after the first Ctrl+C (phase 03 manual test).
     assert screen_with(Cli.AGY, "> \r\npress ctrl+c again to exit\r\n").exit_armed()
     assert not screen_with(Cli.AGY, "> \r\n? for shortcuts\r\n").exit_armed()
+
+
+def test_exit_acknowledged_per_cli():
+    # Texts seen in the real CLIs' logs once they accepted the exit (phase 03 manual test).
+    claude = "Resume this session with:\r\nclaude --resume be7bcc14\r\n"
+    agy = "Resume with -c (or command below):\r\nagy --conversation=74d1755d\r\n"
+    assert screen_with(Cli.CLAUDE, claude).exit_acknowledged()
+    assert screen_with(Cli.AGY, agy).exit_acknowledged()
+    assert not screen_with(Cli.CLAUDE, "? for shortcuts\r\n").exit_acknowledged()
+    assert not screen_with(Cli.AGY, "press ctrl+c again to exit\r\n").exit_acknowledged()

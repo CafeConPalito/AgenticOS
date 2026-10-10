@@ -9,7 +9,11 @@ Behaviour (keys are read raw, like the real TUIs):
 - Ctrl+C works like agy: the first one shows "press ctrl+c again to exit" after a short
   delay (presses in between are lost); a second Ctrl+C after the notice exits with 130.
 
-Usage: python fake_cli.py [--ignore-exit] [--no-trust] [-i] "<prompt>"
+- --deaf: keys typed during the 1.5 s after an answer are lost (Claude Code does this while
+  it finishes background work after a turn).
+- On a clean exit it prints the CLI's resume hint ("Resume this session with:").
+
+Usage: python fake_cli.py [--ignore-exit] [--no-trust] [--deaf] [-i] "<prompt>"
 """
 
 from __future__ import annotations
@@ -19,6 +23,9 @@ import time
 
 IGNORE_EXIT = "--ignore-exit" in sys.argv
 NO_TRUST = "--no-trust" in sys.argv
+DEAF = "--deaf" in sys.argv
+DEAF_AFTER_ANSWER = 1.5
+deaf_until = 0.0
 args = [a for a in sys.argv[1:] if not a.startswith("-")]
 PROMPT = args[0] if args else ""
 
@@ -85,9 +92,12 @@ def trust_dialog() -> None:
 
 
 def answer(text: str) -> None:
+    global deaf_until
     out(f"> {text}")
     out(f"● RESPUESTA: {text}")
     out("? for shortcuts")
+    if DEAF:
+        deaf_until = time.monotonic() + DEAF_AFTER_ANSWER
 
 
 def long_turn() -> None:
@@ -115,10 +125,13 @@ def main() -> None:
     exit_armed = False
     while True:
         key = read_key()
+        if time.monotonic() < deaf_until:
+            continue
         if key == "\x03":
             if IGNORE_EXIT:
                 continue
             if exit_armed:
+                out("Resume with -c (or command below):")
                 sys.exit(130)
             # Keys typed while agy arms the exit are lost, like in the real TUI.
             time.sleep(CTRL_C_NOTICE_DELAY)
@@ -137,7 +150,7 @@ def main() -> None:
                 if IGNORE_EXIT:
                     out("(ignoring /exit)")
                     continue
-                out("Bye.")
+                out("Resume this session with:")
                 sys.exit(0)
             if text == "LARGO":
                 long_turn()

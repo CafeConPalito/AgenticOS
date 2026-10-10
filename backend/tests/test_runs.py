@@ -260,6 +260,23 @@ def test_agy_graceful_stop_waits_for_the_exit_notice(app_client: TestClient, tmp
         viewer.close()
 
 
+def test_stop_retries_when_the_cli_was_not_listening(tmp_path: Path):
+    # Real Claude Code drops keys while it finishes background work after a turn.
+    with TestClient(create_app(make_settings(tmp_path, "--deaf"))) as client:
+        run = launch(client, tmp_path, "adios")
+        viewer = Viewer(client, run["id"], "a")
+        try:
+            assert viewer.wait_for("RESPUESTA: adios")
+            started = time.monotonic()
+            client.post(f"/api/runs/{run['id']}/stop")
+            finished = wait_status(client, run["id"], "stopped")
+            assert "Resume this session" in viewer.text
+            assert finished["exit_code"] == 0  # left by itself, not terminated
+            assert time.monotonic() - started < 10
+        finally:
+            viewer.close()
+
+
 def test_forced_stop_when_the_cli_ignores_exit(tmp_path: Path, monkeypatch):
     monkeypatch.setattr(session_module, "STOP_TIMEOUT", 1.5)
     with TestClient(create_app(make_settings(tmp_path, "--ignore-exit"))) as client:
