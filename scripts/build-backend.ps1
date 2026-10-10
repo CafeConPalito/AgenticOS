@@ -20,6 +20,7 @@ try {
         --paths src `
         --collect-submodules uvicorn `
         --collect-submodules websockets `
+        --collect-submodules mcp `
         --collect-submodules agentic_os `
         --add-data "$migrations;agentic_os\db\migrations" `
         --distpath build\dist --workpath build\work --specpath build `

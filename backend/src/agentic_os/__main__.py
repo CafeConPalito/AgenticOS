@@ -161,6 +161,8 @@ def main(argv: list[str] | None = None) -> None:
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.bind((args.host, args.port))
+    # The agents reach the backend (MCP, hooks) on the port actually bound (free port with 0).
+    settings = settings.model_copy(update={"port": sock.getsockname()[1]})
     server = ReadyServer(uvicorn.Config(create_app(settings), log_config=None))
 
     if args.parent_pid is not None:

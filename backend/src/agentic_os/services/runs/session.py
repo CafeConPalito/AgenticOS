@@ -91,6 +91,8 @@ class RunSession:
         self._stop_requested = False
         self._stopping = False
         self._ended = False
+        self.completed = False  # the agent called complete_task
+        self.mcp_connected = False
         self._trust_done = False
         self._finished = threading.Event()
         self._lock = threading.RLock()  # control + scrollback
@@ -235,6 +237,16 @@ class RunSession:
                 viewer.queue.put_nowait(None)  # the client reconnects and gets a snapshot
             else:
                 viewer.queue.put_nowait(message)
+
+    def emit(self, message: Message) -> None:
+        """Pushes a message (e.g. an event) to every viewer; any thread."""
+        self._publish(message)
+
+    def on_mcp_connected(self) -> None:
+        self.mcp_connected = True
+
+    def mark_completed(self) -> None:
+        self.completed = True
 
     def _publish(self, message: Message) -> None:
         """Any thread."""

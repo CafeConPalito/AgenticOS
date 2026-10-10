@@ -14,7 +14,18 @@ from sqlalchemy.orm import Session, sessionmaker
 from agentic_os.config import Settings
 from agentic_os.db.base import DEFAULT_WORKSPACE, utcnow
 from agentic_os.errors import ApiError
-from agentic_os.models import ACTIVE_STATUSES, Agent, Cli, Project, Run, RunStatus
+from agentic_os.models import (
+    ACTIVE_STATUSES,
+    Agent,
+    Cli,
+    EventKind,
+    Project,
+    Run,
+    RunEvent,
+    RunStatus,
+)
+from agentic_os.services.context import build_context, build_instructions
+from agentic_os.services.mcp_server import RunTokens
 from agentic_os.services.runs.launcher import build_launch
 from agentic_os.services.runs.session import RunSession
 
@@ -30,11 +41,18 @@ class RunManager:
         # Only runs that are still alive: a finished run is served from its log file.
         self._live: dict[str, RunSession] = {}
         self._live_lock = threading.Lock()
+        self.tokens = RunTokens()
+        self._mcp_seen: set[str] = set()
         self.loop: asyncio.AbstractEventLoop | None = None
 
     @property
     def runs_dir(self) -> Path:
         return Path(self._settings.data_dir) / "runs"
+
+    @property
+    def public_url(self) -> str:
+        """Where the agent CLIs reach this backend (MCP server and hooks)."""
+        return f"http://127.0.0.1:{self._settings.port}"
 
     # ------------------------------------------------------------------ queries
     def get(self, run_id: str) -> RunSession | None:
@@ -135,6 +153,7 @@ class RunManager:
         if changes.get("ended"):
             with self._live_lock:
                 self._live.pop(run_id, None)
+            self.tokens.revoke(run_id)
         values: dict = {}
         for key in ("status", "activity", "exit_code", "cols", "rows"):
             if key in changes:
@@ -154,3 +173,84 @@ class RunManager:
                 db.commit()
         except Exception:  # never break the PTY threads; the state is retried on next change
             log.exception("could not persist run state", run_id=run_id, changes=changes)
+
+    # ------------------------------------------------------------------ events
+    def add_event(self, run_id: str, kind: EventKind, name: str, detail: str = "") -> None:
+        """Stores an event and pushes it to the run's viewers («Eventos MCP» panel)."""
+        with self._db() as db:
+            event = RunEvent(run_id=run_id, kind=kind, name=name, detail=detail)
+            db.add(event)
+            db.commit()
+            message = {
+                "type": "event",
+                "id": event.id,
+                "run_id": run_id,
+                "at": event.at.isoformat().replace("+00:00", "Z"),
+                "kind": event.kind,
+                "name": event.name,
+                "detail": event.detail,
+            }
+        session = self.get(run_id)
+        if session is not None:
+            session.emit(message)
+
+    # ------------------------------------------------------------------ agentic-os MCP tools
+    def mcp_connected(self, run_id: str) -> None:
+        """Called on every MCP request of a run: only the first one is news."""
+        if run_id in self._mcp_seen:
+            return
+        self._mcp_seen.add(run_id)
+        with self._db() as db:
+            run = db.get(Run, run_id)
+            if run is not None and run.mcp_connected_at is None:
+                run.mcp_connected_at = utcnow()
+                db.commit()
+        self.add_event(run_id, EventKind.SYSTEM, "mcp_connected")
+        session = self.get(run_id)
+        if session is not None:
+            session.on_mcp_connected()
+
+    def get_context(self, run_id: str) -> str:
+        with self._db() as db:
+            run = db.get(Run, run_id)
+            if run is None:
+                raise LookupError(run_id)
+            agent = db.get(Agent, run.agent_id) if run.agent_id else None
+            project = db.get(Project, run.project_id) if run.project_id else None
+            instructions = build_instructions(agent, project, run.cwd)
+            prompt = run.prompt
+        self.add_event(run_id, EventKind.MCP, "get_context")
+        return build_context(instructions, prompt)
+
+    def report_status(self, run_id: str, message: str) -> None:
+        with self._db() as db:
+            run = db.get(Run, run_id)
+            if run is None:
+                return
+            run.last_status = message
+            db.commit()
+        self.add_event(run_id, EventKind.MCP, "report_status", message)
+
+    def complete_task(self, run_id: str, summary: str) -> None:
+        with self._db() as db:
+            run = db.get(Run, run_id)
+            if run is None:
+                return
+            run.summary = summary
+            db.commit()
+        self.add_event(run_id, EventKind.MCP, "complete_task", summary)
+        session = self.get(run_id)
+        if session is not None:
+            session.mark_completed()
+
+    def write_project_memory(self, run_id: str, note: str) -> None:
+        with self._db() as db:
+            run = db.get(Run, run_id)
+            project = db.get(Project, run.project_id) if run and run.project_id else None
+            if run is None or project is None:
+                return
+            stamp = utcnow().astimezone().strftime("%Y-%m-%d %H:%M")
+            block = f"### {stamp} · {run.agent_name}\n{note.strip()}"
+            project.memory = f"{project.memory.rstrip()}\n\n{block}".strip()
+            db.commit()
+        self.add_event(run_id, EventKind.MCP, "write_project_memory", note)
