@@ -109,7 +109,23 @@ Traducción de `allowed_tools` en Claude:
 
 En `autonomous` la lista no se aplica: el spike demostró que denegar no es una barrera (ADR 0004).
 
-**Aprobaciones MCP en agy** (riesgo de la spec): la **tarea 1** comprueba con agy real si existe una regla persistente a nivel de workspace o plugin para preaprobar herramientas MCP.
+**Aprobaciones MCP en agy: resultado de la tarea 1 → plan B.** agy tiene reglas `mcp(<servidor>/<herramienta>)` en `permissions.allow`, pero en las pruebas con agy real (headless, modo preguntar) **ningún archivo de proyecto ni de plugin las aplica**. Se probaron:
+- `.agents/settings.json`;
+- `.agents/config.json`;
+- `.gemini/settings.json`;
+- `settings.json` dentro del plugin;
+- `plugin.json` con `permissions`.
+
+En todos los casos la llamada sale en `denied_actions` y la configuración global no cambia. Evidencia: `docs/phases/01-spike-clis/evidencias/p04-agy-preapproval.md`.
+
+Se aplica el plan B:
+- el ticker reconoce el diálogo «Allow calling this tool?» de una herramienta `agentic-os_agentic-os/<herramienta>`;
+- elige la opción 2, «Yes, and always allow tool … in this conversation»: un diálogo como mucho por herramienta y ejecución;
+- cualquier otro diálogo de permiso queda para el usuario.
+
+El transporte de hooks también se verificó: `hook.cmd` por ruta corta + `curl` recibe `PreInvocation`/`PostInvocation`/`Stop` con `conversationId` (`p04-agy-hook-cmd.md`). En headless con una herramienta denegada no hay `Stop`, porque el turno termina antes.
+
+Texto original de la duda: la **tarea 1** comprueba con agy real si existe una regla persistente a nivel de workspace o plugin para preaprobar herramientas MCP.
 - **Si existe**, el plugin la incluye.
 - **Si no**, plan B: `ScreenState` reconoce el diálogo «Requesting permission for» de una herramienta de `agentic-os` y el ticker elige «Yes, and always allow in this conversation», como ya hace con el diálogo de confianza. Solo para nuestras herramientas.
 
@@ -187,7 +203,7 @@ Habla con el MCP con el cliente oficial (`mcp`), ejecuta los `hook.cmd` configur
 | `docs/adr/0008-agent-coordination.md`, `README.md`, `docs/roadmap.md` | nuevos / modificados |
 
 ## Tareas (en orden)
-1. [ ] **Comprobación con agy real**: ¿existe una regla persistente (plugin o workspace) que preapruebe herramientas MCP? ¿Funciona `hook.cmd` con ruta corta y `curl` en agy y en Claude? Resultado en el plan y en el ADR; se decide el plan A o el B.
+1. [x] **Comprobación con agy real**: ¿existe una regla persistente (plugin o workspace) que preapruebe herramientas MCP? ¿Funciona `hook.cmd` con ruta corta y `curl` en agy y en Claude? Resultado en el plan y en el ADR; se decide el plan A o el B.
 2. [ ] Modelo: migración `0003` (`completed`, `summary`, `last_status`, `mcp_connected_at`, `run_events`), schemas, `GET /events`; tests de migración y de la API.
 3. [ ] Servidor MCP montado en el backend: TokenGate, registro de tokens, las cuatro herramientas y la URL pública; tests con el cliente MCP oficial (401, aislamiento entre ejecuciones, efectos en la BD).
 4. [ ] Hooks: endpoint, `hook.cmd` (ruta corta, `exit /b 0`) e interpretación por CLI; tests, incluido «backend caído → el hook termina con 0».
