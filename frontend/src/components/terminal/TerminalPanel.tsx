@@ -31,7 +31,8 @@ export function TerminalPanel({
     exit,
     interactive: mine,
   } = useRunTerminal(run.id, {
-    fit: variant === 'page',
+    // A finished run is replayed at the size it was drawn at; only a live one is fitted.
+    fit: variant === 'page' && isActive(run),
     size: { cols: run.cols, rows: run.rows },
   })
   const controller = state ? state.controller : run.controller

@@ -1,0 +1,31 @@
+Resume with -c (or command below):
+agy --conversation=47df8831-e827-4bd5-b4fc-fa1676be6e26
+
+
+      ▄▀▀▄        Antigravity CLI 1.3.3
+     ▀▀▀▀▀▀       usuario@example.com (Google AI Pro)
+    ▀▀▀▀▀▀▀▀      Gemini 3.8 Flash (High)
+   ▄▀▀    ▀▀▄     ~/AppData/Local/Temp/claude/D--agentic-os/bf340cc2-a6a4-400c-b66b-409f646e50d3/scratchpad/f04-proyecto
+  ▄▀▀      ▀▀▄
+
+────────────────────────────────────────────────────────────
+> Crea el archivo agy-ask.txt con el texto hola. Cuando lo hayas creado, termina con complete_task.
+
+○ Thought for 12.1s (Soy Gema (ask), de Agentic OS. The user's request is to create a file named "agy-ask.txt" cont...)
+● Explored 2 files (complete_task.json, report_status.json)
+● Called 1 MCP tool (agentic-os_agentic-os/report_status)
+● Edited 1 file (agy-ask.txt)
+● Called 1 MCP tool (agentic-os_agentic-os/complete_task) (ctrl+o to expand)
+
+▸ Thought for 3s, 214 tokens
+  Soy Gema (ask), de Agentic OS.
+  Soy Gema (ask), de Agentic OS.
+
+  He creado el archivo agy-ask.txt con el texto hola y he marcado la tarea como completada a través de complete_task.
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+> 1u
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+Resume with -c (or command below):
+agy --conversation=47df8831-e827-4bd5-b4fc-fa1676be6e26

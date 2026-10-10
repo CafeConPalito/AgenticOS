@@ -37,7 +37,8 @@ TRUST_WINDOW = 90.0  # seconds after start during which the trust dialog is hand
 STOP_TIMEOUT = 15.0  # to get the CLI to accept the exit
 EXIT_GRACE = 10.0  # once accepted, time it gets to close by itself (agy/Claude need ~6 s)
 EXIT_ARM_DELAY = 0.5  # agy ignores a second Ctrl+C sent right after its notice appears
-MCP_WAIT = 45.0  # agy: send the prompt anyway if its MCP server has not connected by then
+MCP_WAIT = 60.0  # agy: send the prompt anyway if its input never looked ready by then
+MCP_PROBE_WAIT = 15.0  # agy: how long `/mcp` gets to connect our MCP server
 PROMPT_CONFIRM = 10.0  # agy: retype the prompt once if no turn started meanwhile
 COMPLETE_CLOSE_AFTER = 60.0  # after complete_task, close even if no end-of-turn hook arrives
 CONTINUE_MESSAGE = "Continúa con la tarea."
@@ -108,6 +109,10 @@ class RunSession:
         self._prompt_sent = False
         self._turn_seen = threading.Event()
         self._mcp_dialog_at = 0.0
+        self._mcp_probe_at = 0.0
+        self._human_notified: set[str] = set()
+        self._closing_mcp_panel = False
+        self._mcp_panel_closed_at = 0.0
         self._hooks_seen = False  # once hooks arrive they drive the activity, not the screen
         self._in_turn = False
         self.mcp_connected = False
@@ -295,6 +300,32 @@ class RunSession:
         self.on_system_event("closing", reason)
         self.stop()
 
+    def _deferred_prompt_step(self, now: float) -> None:
+        """agy connects its plugin's MCP server lazily: once its input is ready, `/mcp` makes
+        it connect (verified with agy 1.3.3), so the model sees our tools from the first turn.
+        Then the panel is closed and the prompt typed. Typed too early, an Enter would answer
+        a dialog (e.g. «No, exit»)."""
+        if self._mcp_probe_at == 0.0:
+            if self.mcp_connected and self._screen.ready_for_prompt():
+                self._send_deferred_prompt(mcp_timeout=False)
+            elif self._screen.ready_for_prompt():
+                self._mcp_probe_at = now
+                self._type_line("/mcp")
+                self.on_system_event("mcp_probe")
+            elif now - self.started_at > MCP_WAIT:
+                self._send_deferred_prompt(mcp_timeout=True)  # never got ready: try anyway
+            return
+        timed_out = now - self._mcp_probe_at > MCP_PROBE_WAIT
+        if (self.mcp_connected or timed_out) and not self._closing_mcp_panel:
+            self._closing_mcp_panel = True
+            if self._pty is not None:
+                with contextlib.suppress(Exception):
+                    self._pty.write(ESC)  # close the /mcp panel
+            self._mcp_panel_closed_at = now
+            return
+        if self._closing_mcp_panel and now - self._mcp_panel_closed_at > 0.8:
+            self._send_deferred_prompt(mcp_timeout=not self.mcp_connected)
+
     def _send_deferred_prompt(self, mcp_timeout: bool) -> None:
         """agy: types the prompt once its MCP server is connected, and checks that the turn
         started (a PreInvocation hook); keys typed while the TUI is busy are dropped."""
@@ -449,12 +480,13 @@ class RunSession:
                 elif not visible and last_trust_action:
                     self._trust_done = True
             if self.deferred_prompt and not self._prompt_sent:
-                waited = now - self.started_at > MCP_WAIT
-                # Typed too early, the Enter would answer a dialog (e.g. «No, exit»).
-                if (self.mcp_connected or waited) and self._screen.ready_for_prompt():
-                    self._send_deferred_prompt(mcp_timeout=not self.mcp_connected)
+                self._deferred_prompt_step(now)
             if self.cli == Cli.AGY and self.controller is None:
                 self._approve_agentic_os_tool(now)
+            human = self._screen.waiting_for_human()
+            if human is not None and human not in self._human_notified:
+                self._human_notified.add(human)
+                self.on_system_event("waiting_for_human", human)
             if (
                 self.completed
                 and not self._closing_completed

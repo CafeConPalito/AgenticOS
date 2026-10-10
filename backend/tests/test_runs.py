@@ -308,8 +308,8 @@ def test_graceful_stop_and_finished_run_replays_its_log(app_client: TestClient, 
 
 
 def test_agy_graceful_stop_waits_for_the_exit_notice(app_client: TestClient, tmp_path, monkeypatch):
-    # No real server here: agy's MCP never connects, so the prompt goes after MCP_WAIT.
-    monkeypatch.setattr(session_module, "MCP_WAIT", 1.0)
+    # No real server here: agy's MCP never connects, so the prompt goes after the probe.
+    monkeypatch.setattr(session_module, "MCP_PROBE_WAIT", 1.0)
     run = launch(app_client, tmp_path, "adios", cli="agy")
     viewer = Viewer(app_client, run["id"], "a")
     try:
@@ -407,7 +407,7 @@ def test_forced_stop_when_the_cli_ignores_exit(tmp_path: Path, monkeypatch):
 
 
 def test_agy_style_launch(app_client: TestClient, tmp_path: Path, monkeypatch):
-    monkeypatch.setattr(session_module, "MCP_WAIT", 1.0)
+    monkeypatch.setattr(session_module, "MCP_PROBE_WAIT", 1.0)
     run = launch(app_client, tmp_path, "revisa", cli="agy")
     assert run["cli"] == "agy" and run["cli_session_id"] is None
     viewer = Viewer(app_client, run["id"], "a")

@@ -1,0 +1,16 @@
+{
+ "status": "stopped",
+ "exit_code": 0,
+ "summary": null,
+ "last_status": null,
+ "cli_session_id": "b86d7093-be22-4012-9e83-d4cfb3ed5caa",
+ "events": [
+  [
+   "hook",
+   "SessionEnd",
+   ""
+  ]
+ ],
+ "asked for permission": false,
+ "file created": false
+}

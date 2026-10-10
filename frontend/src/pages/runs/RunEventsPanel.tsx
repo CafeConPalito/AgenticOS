@@ -5,6 +5,7 @@ import type es from '@/i18n/es.json'
 import { cn } from '@/lib/utils'
 
 type EventName = keyof typeof es.runs.events.names
+type HumanKey = keyof typeof es.runs.events.human
 
 function time(iso: string): string {
   return new Date(iso).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
@@ -50,7 +51,9 @@ function EventRow({ event }: { event: RunEvent }) {
         ) : (
           <span className={cn('text-muted-foreground', event.kind === 'hook' && 'italic')}>
             {label || event.name}
-            {event.detail && event.name !== 'closing' && ` · ${event.detail}`}
+            {event.name === 'waiting_for_human'
+              ? ` · ${t(`runs.events.human.${event.detail as HumanKey}`, { defaultValue: event.detail })}`
+              : event.detail && event.name !== 'closing' && ` · ${event.detail}`}
           </span>
         )}
       </p>

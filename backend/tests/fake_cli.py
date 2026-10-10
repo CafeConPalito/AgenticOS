@@ -16,8 +16,9 @@ Agentic OS integration, like the real CLIs (phase 04):
 - **Claude mode** (`--mcp-config` in the argv): MCP server and hooks from the run files;
   hooks SessionStart, UserPromptSubmit and Stop.
 - **agy mode** (no prompt in the argv): MCP server and hooks from the workspace plugin
-  `.agents/plugins/agentic-os/`; it connects to the MCP server after start (like agy does)
-  and waits for the prompt to be typed; hooks PreInvocation and Stop with a conversationId.
+  `.agents/plugins/agentic-os/`; like agy 1.3.3 it connects the MCP server lazily, when
+  `/mcp` is typed (Esc closes that panel), and waits for the prompt to be typed; hooks
+  PreInvocation and Stop with a conversationId.
   Without --dangerously-skip-permissions every MCP call shows agy's permission dialog.
 - In a prompt or typed line, `;`-separated parts call the MCP tools:
   `ESTADO: x` → report_status, `MEMORIA: x` → write_project_memory, `TERMINA: x` →
@@ -297,8 +298,8 @@ def main() -> None:
     if CLAUDE_MODE:
         hook("SessionStart")
     if AGY_MODE:
+        out(">")
         out("? for shortcuts")
-        out(f"(mcp {mcp(None)})")  # agy connects the plugin's server after starting
     if PROMPT:
         answer(PROMPT)
     line = ""
@@ -333,6 +334,11 @@ def main() -> None:
                 hook("SessionEnd")
                 out("Resume this session with:")
                 sys.exit(0)
+            if AGY_MODE and text == "/mcp":
+                out("MCP servers")
+                out(f"  agentic-os  {mcp(None)}")  # agy connects lazily, here
+                out("esc to close")
+                continue
             if text == "LARGO":
                 long_turn()
             else:

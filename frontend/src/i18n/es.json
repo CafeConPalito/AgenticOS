@@ -411,7 +411,12 @@
         "UserPromptSubmit": "Inicio de turno",
         "PreInvocation": "Inicio de turno",
         "SessionStart": "Sesión iniciada",
-        "SessionEnd": "Sesión cerrada"
+        "SessionEnd": "Sesión cerrada",
+        "waiting_for_human": "Espera tu respuesta en la terminal",
+        "mcp_probe": "Conectando el MCP (/mcp)"
+      },
+      "human": {
+        "bypass_permissions_consent": "Claude pide aceptar el modo «Autónomo» (sin permisos). Toma el control para responder."
       }
     }
   },

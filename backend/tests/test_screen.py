@@ -98,3 +98,19 @@ def test_agy_ready_for_prompt():
     assert screen_with(Cli.AGY, ">\r\n? for shortcuts\r\n").ready_for_prompt()
     assert not screen_with(Cli.AGY, AGY_TRUST).ready_for_prompt()
     assert not screen_with(Cli.AGY, "Loading…\r\n").ready_for_prompt()
+
+
+def test_claude_bypass_consent_is_left_to_the_human():
+    # Real screen (phase 04 manual test): first start of Claude Code in bypassPermissions.
+    consent = (
+        "  WARNING: Claude Code running in Bypass Permissions mode\r\n"
+        "  By proceeding, you accept all responsibility for actions taken while running in"
+        " Bypass Permissions mode.\r\n"
+        "  ❯ No, exit\r\n"
+        "    Yes, I accept\r\n"
+        "  Enter to confirm · Esc to cancel\r\n"
+    )
+    screen = screen_with(Cli.CLAUDE, consent)
+    assert screen.waiting_for_human() == "bypass_permissions_consent"
+    assert screen.trust_dialog() == (False, False)  # never auto-answered as a trust dialog
+    assert screen_with(Cli.CLAUDE, "? for shortcuts\r\n").waiting_for_human() is None

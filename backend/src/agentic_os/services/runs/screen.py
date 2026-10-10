@@ -26,6 +26,13 @@ BUSY_FOOTER = {
 # agy's first Ctrl+C only arms the exit; a second one counts once this notice is shown.
 EXIT_ARMED = re.compile(r"ctrl\+c again to exit", re.IGNORECASE)
 
+# Dialogs Agentic OS never answers for the user (a consent, not a technicality): the run
+# records an event so the UI can ask the human to take the control.
+HUMAN_DIALOGS = {
+    # Claude Code, first start in bypassPermissions («Autónomo»): stored in ~/.claude.json.
+    "bypass_permissions_consent": re.compile(r"Bypass Permissions mode[\s\S]*Yes, I accept"),
+}
+
 # agy's idle input footer: the prompt can be typed (spike P5 waited for the same).
 INPUT_READY = re.compile(r"\? for shortcuts")
 
@@ -33,6 +40,7 @@ INPUT_READY = re.compile(r"\? for shortcuts")
 AGENTIC_OS_TOOL_PREFIX = "agentic-os_agentic-os/"
 ALWAYS_ALLOW = re.compile(r"2\. Yes, and always allow tool .* in this conversation")
 MCP_DIALOG_LINES = 14  # the dialog must be at the bottom: an answered one scrolls away
+DIALOG_LINES = 12  # same for the trust dialog
 
 # Printed once the CLI accepted the exit (it may still take a few seconds to end).
 EXIT_ACK = {
@@ -61,9 +69,20 @@ class ScreenState:
             return "\n".join(line.rstrip() for line in self._screen.display)
 
     def trust_dialog(self) -> tuple[bool, bool]:
-        """(dialog visible, "Yes" option selected)."""
-        screen = self.text()
+        """(dialog visible, "Yes" option selected). Only the bottom of the screen counts:
+        agy leaves the answered dialog drawn above its TUI."""
+        lines = [line for line in self.text().splitlines() if line.strip()]
+        screen = "\n".join(lines[-DIALOG_LINES:])
         return bool(TRUST_OPTION.search(screen)), bool(TRUST_SELECTED.search(screen))
+
+    def waiting_for_human(self) -> str | None:
+        """A dialog only the human should answer, at the bottom of the screen: its key."""
+        lines = [line for line in self.text().splitlines() if line.strip()]
+        tail = "\n".join(lines[-DIALOG_LINES:])
+        for key, pattern in HUMAN_DIALOGS.items():
+            if pattern.search(tail):
+                return key
+        return None
 
     def ready_for_prompt(self) -> bool:
         """agy shows its input (footer «? for shortcuts») and no dialog is waiting."""
