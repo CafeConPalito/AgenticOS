@@ -72,6 +72,7 @@ En la app empaquetada, el backend usa un puerto libre asignado al arrancar (ver 
 ## Ejecuciones (terminales en vivo)
 - Cada ejecución es el CLI del agente en una terminal real (ConPTY) que gestiona el backend ([ADR 0007](docs/adr/0007-run-processes.md)). La salida se guarda en `<data_dir>\runs\<id>.log`.
 - Claude Code se lanza aislado de tu configuración global (`--setting-sources project,local --strict-mcp-config`) y en modo de permisos manual: las peticiones de permiso aparecen en la terminal y las respondes tú ([ADR 0003](docs/adr/0003-execution-mode.md), [ADR 0004](docs/adr/0004-per-run-context-and-mcp.md)).
+- Los CLIs tienen que estar instalados como ejecutable nativo (`claude.exe`, `agy.exe`): un shim `.cmd` de npm se rechaza, porque `cmd.exe` reinterpretaría el prompt.
 - Al cerrar la app, las ejecuciones activas se cortan (no queda ningún CLI vivo) y aparecen como «Interrumpida» al volver a abrirla.
 - Para probar con un CLI falso o con otra ruta: `AGENTIC_OS_CLI_COMMAND_OVERRIDES='{"claude": ["ruta\\a\\claude.exe"]}'`.
 

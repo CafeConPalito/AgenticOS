@@ -1,5 +1,6 @@
 """Runs end to end: API + WebSocket + a real PTY running the fake CLI (tests/fake_cli.py)."""
 
+import asyncio
 import contextlib
 import sys
 import threading
@@ -13,6 +14,7 @@ from fastapi.testclient import TestClient
 from agentic_os.app import create_app
 from agentic_os.config import Settings
 from agentic_os.services.runs import session as session_module
+from agentic_os.services.runs.launcher import LaunchSpec
 
 FAKE = str(Path(__file__).with_name("fake_cli.py"))
 
@@ -186,6 +188,38 @@ def test_resize_is_broadcast_and_only_the_controller_resizes(app_client: TestCli
         b.close()
 
 
+def test_control_is_released_when_its_viewer_leaves(app_client: TestClient, tmp_path):
+    run = launch(app_client, tmp_path)
+    a, b = Viewer(app_client, run["id"], "a"), Viewer(app_client, run["id"], "b")
+    try:
+        assert a.wait_for("RESPUESTA: hola")
+        app_client.post(f"/api/runs/{run['id']}/control", json={"action": "take", "client_id": "a"})
+        a.close()  # tab closed or reloaded: it comes back with a new viewer id
+        assert wait_status(app_client, run["id"], "running")["controller"] is None
+        assert b.wait_for("Continúa con la tarea")  # the agent is not left paused
+        taken = app_client.post(
+            f"/api/runs/{run['id']}/control", json={"action": "take", "client_id": "b"}
+        )
+        assert taken.status_code == 200
+    finally:
+        b.close()
+
+
+def test_malformed_frames_are_ignored(app_client: TestClient, tmp_path):
+    run = launch(app_client, tmp_path)
+    viewer = Viewer(app_client, run["id"], "a")
+    try:
+        assert viewer.wait_for("RESPUESTA: hola")
+        app_client.post(f"/api/runs/{run['id']}/control", json={"action": "take", "client_id": "a"})
+        viewer.ws.send_text("esto no es json")
+        viewer.ws.send_text("[1, 2]")
+        viewer.send({"type": "resize", "cols": "ancho"})
+        viewer.send({"type": "input", "data": "sigo\r"})
+        assert viewer.wait_for("RESPUESTA: sigo")
+    finally:
+        viewer.close()
+
+
 def test_take_interrupts_and_release_without_typing_nudges(app_client: TestClient, tmp_path):
     run = launch(app_client, tmp_path)
     viewer = Viewer(app_client, run["id"], "a")
@@ -275,6 +309,59 @@ def test_stop_retries_when_the_cli_was_not_listening(tmp_path: Path):
             assert time.monotonic() - started < 10
         finally:
             viewer.close()
+
+
+def test_double_stop_and_nothing_changes_after_the_end(app_client: TestClient, tmp_path):
+    run = launch(app_client, tmp_path, "adios")
+    manager = app_client.app.state.run_manager
+    session = manager.get(run["id"])
+    viewer = Viewer(app_client, run["id"], "a")
+    try:
+        assert viewer.wait_for("RESPUESTA: adios")
+        app_client.post(f"/api/runs/{run['id']}/stop")
+        app_client.post(f"/api/runs/{run['id']}/stop")  # impatient second click
+        finished = wait_status(app_client, run["id"], "stopped")
+        # Interleaved "/exit/exit" keys would not be understood and the run would be killed.
+        assert finished["exit_code"] == 0
+        assert manager.get(run["id"]) is None  # finished runs are served from their log
+
+        session.take_control("late")  # a late take or ticker update must not revive it
+        session._set(activity=session_module.Activity.BUSY)
+        after = run_status(app_client, run["id"])
+        assert (after["status"], after["activity"]) == ("stopped", "idle")
+    finally:
+        viewer.close()
+
+
+def test_failed_spawn_closes_the_log(tmp_path: Path, monkeypatch):
+    def no_such_cli(*args, **kwargs):
+        raise FileNotFoundError("no-existe.exe")
+
+    monkeypatch.setattr(session_module.pty_service, "spawn", no_such_cli)
+    session = session_module.RunSession(
+        "r1",
+        session_module.Cli.CLAUDE,
+        LaunchSpec(["no-existe.exe"], {}, None),
+        str(tmp_path),
+        tmp_path / "runs" / "r1.log",
+        asyncio.new_event_loop(),
+        lambda changes: None,
+    )
+    with pytest.raises(FileNotFoundError):
+        session.start()
+    assert session._log.closed  # otherwise the handle (and the file lock) leaks
+
+
+def test_reader_failure_ends_the_run(tmp_path: Path, monkeypatch):
+    def broken_feed(self, data):
+        raise ValueError("unparseable escape sequence")
+
+    monkeypatch.setattr(session_module.ScreenState, "feed", broken_feed)
+    with TestClient(create_app(make_settings(tmp_path, "--no-trust"))) as client:
+        run = launch(client, tmp_path)
+        ended = wait_status(client, run["id"], "exited", "stopped", "failed")
+        assert ended["ended_at"]
+        assert client.app.state.run_manager.get(run["id"]) is None
 
 
 def test_forced_stop_when_the_cli_ignores_exit(tmp_path: Path, monkeypatch):

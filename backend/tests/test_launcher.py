@@ -58,3 +58,18 @@ def test_env_drops_session_markers_but_keeps_user_config():
         "CLAUDE_CONFIG_DIR": "D:/claude",
         "CLAUDE_CODE_GIT_BASH_PATH": "C:/git/bash.exe",
     }
+
+
+def test_batch_shims_are_refused(monkeypatch):
+    # cmd.exe would re-parse the prompt: `&` or `%VAR%` could run other commands.
+    monkeypatch.setattr(launcher.shutil, "which", lambda name: f"C:/npm/{name}.CMD")
+    with pytest.raises(ApiError) as error:
+        launcher.build_launch(Cli.CLAUDE, "", 'arregla el "x" & calc')
+    assert error.value.code == "cli_shim_unsupported"
+
+
+def test_prompt_starting_with_a_dash_is_not_an_option():
+    claude = launcher.build_launch(Cli.CLAUDE, "", "--help me con el login").argv
+    assert claude[1] == " --help me con el login"
+    agy = launcher.build_launch(Cli.AGY, "", "-p resume").argv
+    assert agy[-2:] == ["-i", " -p resume"]

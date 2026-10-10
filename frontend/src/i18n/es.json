@@ -127,7 +127,8 @@
     "run_not_found": "La ejecución no existe.",
     "run_not_active": "La ejecución ya no está en marcha.",
     "control_taken": "Otra vista tiene el control de esta terminal.",
-    "cli_not_installed": "El CLI de este agente no está instalado en este equipo."
+    "cli_not_installed": "El CLI de este agente no está instalado en este equipo.",
+    "cli_shim_unsupported": "El CLI está instalado como script (.cmd) y no se puede lanzar de forma segura. Instala la versión nativa (.exe)."
   },
   "cli": {
     "claude": "Claude Code",

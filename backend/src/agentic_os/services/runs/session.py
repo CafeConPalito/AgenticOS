@@ -89,18 +89,25 @@ class RunSession:
         self._last_output = 0.0
         self._typed = False
         self._stop_requested = False
+        self._stopping = False
+        self._ended = False
         self._trust_done = False
         self._finished = threading.Event()
-        self._lock = threading.RLock()  # state + scrollback
+        self._lock = threading.RLock()  # control + scrollback
+        self._state_lock = threading.RLock()  # status/activity changes and their persistence
         self._viewers: dict[str, Viewer] = {}
 
     # ------------------------------------------------------------------ lifecycle
     def start(self) -> None:
         self.log_path.parent.mkdir(parents=True, exist_ok=True)
         self._log = self.log_path.open("a", encoding="utf-8", newline="")
-        self._pty = pty_service.spawn(
-            self.launch.argv, self.cwd, self.launch.env, self.cols, self.rows
-        )
+        try:
+            self._pty = pty_service.spawn(
+                self.launch.argv, self.cwd, self.launch.env, self.cols, self.rows
+            )
+        except Exception:
+            self._log.close()
+            raise
         self.started_at = time.monotonic()
         self._set(status=RunStatus.RUNNING)
         threading.Thread(
@@ -119,8 +126,11 @@ class RunSession:
 
     def stop(self, timeout: float | None = None) -> None:
         """Graceful exit (/exit or double Ctrl+C), killing the process if it does not comply."""
-        if not self.alive or self._pty is None:
-            return
+        with self._lock:
+            # A second stop (double click, app closing meanwhile) would interleave its keys.
+            if not self.alive or self._pty is None or self._stopping:
+                return
+            self._stopping = True
         self._stop_requested = True
         limit = STOP_TIMEOUT if timeout is None else timeout
 
@@ -179,7 +189,8 @@ class RunSession:
     def kill(self) -> None:
         self._stop_requested = True
         if self._pty is not None:
-            self._pty.terminate()
+            with contextlib.suppress(OSError):  # it may be exiting right now
+                self._pty.terminate()
 
     # ------------------------------------------------------------------ viewers
     def attach(self, client_id: str) -> tuple[str, Viewer]:
@@ -193,6 +204,12 @@ class RunSession:
     def detach(self, client_id: str) -> None:
         with self._lock:
             self._viewers.pop(client_id, None)
+            held_control = self.controller == client_id
+        # A view that leaves (closed, reloaded, navigated away) cannot keep the agent paused:
+        # nobody else could take the control, and a reloaded view comes back with a new id.
+        if held_control:
+            with contextlib.suppress(ControlConflict):
+                self.release_control(client_id)
 
     @property
     def viewer_count(self) -> int:
@@ -285,21 +302,29 @@ class RunSession:
     def _read_loop(self) -> None:
         pty = self._pty
         assert pty is not None
-        while True:
-            chunk = pty.read()
-            if not chunk:
-                break
-            with self._lock:
-                self._log.write(chunk)
-                self._log.flush()
-                self._scrollback.append(chunk)
-                self._scrollback_size += len(chunk)
-                while self._scrollback_size > SCROLLBACK_LIMIT and len(self._scrollback) > 1:
-                    self._scrollback_size -= len(self._scrollback.pop(0))
-                self._last_output = time.monotonic()
-            self._screen.feed(chunk)
-            self._publish({"type": "output", "data": chunk})
-        self._finish(pty)
+        try:
+            while True:
+                chunk = pty.read()
+                if not chunk:
+                    break
+                with self._lock:
+                    self._log.write(chunk)
+                    self._log.flush()
+                    self._scrollback.append(chunk)
+                    self._scrollback_size += len(chunk)
+                    while self._scrollback_size > SCROLLBACK_LIMIT and len(self._scrollback) > 1:
+                        self._scrollback_size -= len(self._scrollback.pop(0))
+                    self._last_output = time.monotonic()
+                self._screen.feed(chunk)
+                self._publish({"type": "output", "data": chunk})
+        except Exception:
+            # Disk full, an escape sequence pyte cannot parse…: end the run instead of
+            # leaving it "alive" forever with nobody reading the PTY.
+            log.exception("run reader failed", run_id=self.run_id)
+            with contextlib.suppress(OSError):
+                pty.terminate()
+        finally:
+            self._finish(pty)
 
     def _finish(self, pty: PtyProcess) -> None:
         deadline = time.monotonic() + 5
@@ -308,7 +333,8 @@ class RunSession:
         self.exit_code = pty.exit_code
         with self._lock:
             self.controller = None
-            self._log.close()
+            with contextlib.suppress(OSError):
+                self._log.close()
         status = RunStatus.STOPPED if self._stop_requested else RunStatus.EXITED
         self._set(status=status, activity=Activity.IDLE, exit_code=self.exit_code, ended=True)
         self._publish({"type": "exit", "code": self.exit_code, "status": status.value})
@@ -338,6 +364,21 @@ class RunSession:
         activity: Activity | None = None,
         exit_code: int | None = None,
         ended: bool = False,
+    ) -> None:
+        with self._state_lock:
+            # After the final update nothing may overwrite it (a late take_control, the
+            # ticker seeing the last output as "busy"…).
+            if self._ended:
+                return
+            self._ended = ended
+            self._apply(status, activity, exit_code, ended)
+
+    def _apply(
+        self,
+        status: RunStatus | None,
+        activity: Activity | None,
+        exit_code: int | None,
+        ended: bool,
     ) -> None:
         changes: dict = {}
         if status is not None and status != self.status:

@@ -1,5 +1,6 @@
 import asyncio
 import contextlib
+import json
 from pathlib import Path
 from typing import Annotated
 
@@ -7,10 +8,12 @@ from fastapi import APIRouter, Depends, Query, Request, WebSocket, WebSocketDisc
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from agentic_os.api.agents import _get as get_agent_row
+from agentic_os.api.projects import _get as get_project_row
 from agentic_os.db.base import DEFAULT_WORKSPACE
 from agentic_os.db.session import get_session
 from agentic_os.errors import ApiError, NotFound
-from agentic_os.models import ACTIVE_STATUSES, Agent, Project, Run
+from agentic_os.models import ACTIVE_STATUSES, Run
 from agentic_os.schemas.run import ControlAction, ControlRequest, RunCreate, RunRead
 from agentic_os.services.runs.manager import RunManager
 from agentic_os.services.runs.session import SCROLLBACK_LIMIT, ControlConflict, RunSession
@@ -51,12 +54,8 @@ def _live(manager: RunManager, run_id: str) -> RunSession:
 
 @router.post("/runs", status_code=status.HTTP_201_CREATED)
 def launch_run(payload: RunCreate, db: DbSession, manager: Manager) -> RunRead:
-    agent = db.get(Agent, payload.agent_id)
-    if agent is None or agent.workspace_id != DEFAULT_WORKSPACE:
-        raise NotFound("agent")
-    project = db.get(Project, payload.project_id)
-    if project is None or project.workspace_id != DEFAULT_WORKSPACE:
-        raise NotFound("project")
+    agent = get_agent_row(db, payload.agent_id)
+    project = get_project_row(db, payload.project_id)
     run = manager.launch(db, agent, project, payload.prompt)
     return _read(run, manager)
 
@@ -161,13 +160,20 @@ async def run_terminal(websocket: WebSocket, run_id: str, client_id: str) -> Non
     async def listen() -> None:
         with contextlib.suppress(WebSocketDisconnect, RuntimeError):
             while True:
-                message = await websocket.receive_json()
+                try:
+                    message = json.loads(await websocket.receive_text())
+                except ValueError:
+                    continue  # malformed frame: ignore it, keep the terminal open
+                if not isinstance(message, dict):
+                    continue
                 kind = message.get("type")
+                # PTY writes and resizes (which persist the size) block: keep them off the loop.
                 if kind == "input" and isinstance(message.get("data"), str):
-                    session.write_input(client_id, message["data"])
+                    await asyncio.to_thread(session.write_input, client_id, message["data"])
                 elif kind == "resize":
                     with contextlib.suppress(TypeError, ValueError, KeyError):
-                        session.resize(client_id, int(message["cols"]), int(message["rows"]))
+                        cols, rows = int(message["cols"]), int(message["rows"])
+                        await asyncio.to_thread(session.resize, client_id, cols, rows)
 
     # Whichever ends first (client gone, or the run exited and we closed) ends the other.
     tasks = {asyncio.create_task(pump()), asyncio.create_task(listen())}

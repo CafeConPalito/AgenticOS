@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import threading
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -26,7 +27,9 @@ class RunManager:
     def __init__(self, sessions: sessionmaker[Session], settings: Settings) -> None:
         self._db = sessions
         self._settings = settings
+        # Only runs that are still alive: a finished run is served from its log file.
         self._live: dict[str, RunSession] = {}
+        self._live_lock = threading.Lock()
         self.loop: asyncio.AbstractEventLoop | None = None
 
     @property
@@ -35,10 +38,12 @@ class RunManager:
 
     # ------------------------------------------------------------------ queries
     def get(self, run_id: str) -> RunSession | None:
-        return self._live.get(run_id)
+        with self._live_lock:
+            return self._live.get(run_id)
 
     def live_ids(self) -> list[str]:
-        return [run_id for run_id, s in self._live.items() if s.alive]
+        with self._live_lock:
+            return [run_id for run_id, s in self._live.items() if s.alive]
 
     # ------------------------------------------------------------------ lifecycle
     def recover(self) -> int:
@@ -96,12 +101,14 @@ class RunManager:
             run.status, run.error, run.ended_at = RunStatus.FAILED, str(error), utcnow()
             db.commit()
             return run
-        self._live[run.id] = session
+        with self._live_lock:
+            if session.alive:  # it may already have ended (and been dropped) meanwhile
+                self._live[run.id] = session
         db.refresh(run)
         return run
 
     def stop(self, run_id: str) -> bool:
-        session = self._live.get(run_id)
+        session = self.get(run_id)
         if session is None or not session.alive:
             return False
         session.stop()
@@ -109,7 +116,8 @@ class RunManager:
 
     def shutdown(self, timeout: float = SHUTDOWN_TIMEOUT) -> None:
         """Stops every live run in parallel; whatever does not exit in time is killed."""
-        live = [s for s in self._live.values() if s.alive]
+        with self._live_lock:
+            live = [s for s in self._live.values() if s.alive]
         if not live:
             return
 
@@ -124,6 +132,9 @@ class RunManager:
 
     # ------------------------------------------------------------------ persistence
     def _persist(self, run_id: str, changes: dict) -> None:
+        if changes.get("ended"):
+            with self._live_lock:
+                self._live.pop(run_id, None)
         values: dict = {}
         for key in ("status", "activity", "exit_code", "cols", "rows"):
             if key in changes:

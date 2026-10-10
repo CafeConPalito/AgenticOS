@@ -1,7 +1,7 @@
 import { Eye, Hand, Keyboard, Undo2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-import { useRunControl } from '@/api/runs'
+import { isActive, useRunControl } from '@/api/runs'
 import type { Run } from '@/api/types'
 import { Button } from '@/components/ui/button'
 import { errorMessage } from '@/lib/form-errors'
@@ -37,7 +37,7 @@ export function TerminalPanel({
   const controller = state ? state.controller : run.controller
   const status = exit?.status ?? state?.status ?? run.status
   const activity = state?.activity ?? run.activity
-  const finished = Boolean(exit) || !['starting', 'running', 'intervening'].includes(status)
+  const finished = Boolean(exit) || !isActive({ status })
   const someoneElse = controller !== null && !mine
 
   async function act(action: 'take' | 'release') {

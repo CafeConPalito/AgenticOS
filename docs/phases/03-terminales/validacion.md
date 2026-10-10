@@ -13,7 +13,7 @@ Lint backend (ruff)             OK
 Lint frontend (eslint+prettier) OK
 Lint desktop (rustfmt)          OK
 Lint spikes (ruff)              OK
-Tests backend (pytest)          OK   87 passed  (+32 en esta fase)
+Tests backend (pytest)          OK   94 passed  (+39 en esta fase)
 Tests frontend (vitest)         OK   50 passed  (+16 en esta fase)
 Tests desktop (cargo test)      OK    3 passed
 Tests spikes (pytest)           OK   15 passed
@@ -40,7 +40,23 @@ Los tests del backend lanzan un **CLI falso** (`backend/tests/fake_cli.py`) en u
 | CA9 | `check` en verde; ADR, README y roadmap | ✅ | Salida de arriba; [ADR 0007](../../adr/0007-run-processes.md); README (ejecuciones, API, `AGENTIC_OS_CLI_COMMAND_OVERRIDES`); roadmap |
 
 ## Code review
-`/code-review high` sobre `main...phase/03-terminales`: _pendiente_.
+`/code-review high` sobre `main...phase/03-terminales`. Los fallos de comportamiento tienen un test que **falla sin la corrección** (comprobado revirtiendo `session.py`):
+
+| Hallazgo | Severidad | Resolución |
+|---|---|---|
+| Si la vista que tenía el control se cerraba o recargaba, el control no se liberaba nunca: la ejecución se quedaba «Interviniendo», el agente parado y nadie podía escribir (la vista vuelve con otro id) | Alta | **Corregido**: `detach` devuelve el control (con el empujón «Continúa con la tarea.» si no se escribió nada); test `test_control_is_released_when_its_viewer_leaves` |
+| Prompt en el argv de un shim `.cmd` de npm: `cmd.exe` vuelve a interpretar la línea (`&`, `"`, `%VAR%`), lo que permite ejecutar otros comandos | Alta | **Corregido**: se rechazan los shims `.cmd`/`.bat` con 422 `cli_shim_unsupported` y un texto que pide instalar el CLI nativo (Claude Code y agy lo son); test |
+| El hilo lector moría sin terminar la ejecución si fallaba el log o pyte: la ejecución quedaba «viva» para siempre | Alta | **Corregido**: `try/except/finally` → termina el proceso y cierra la ejecución; test `test_reader_failure_ends_the_run` |
+| Carreras de estado: un `take_control` tardío o el ticker podían sobrescribir el estado final (`intervening`/`busy` en una ejecución terminada) | Media | **Corregido**: los cambios de estado se serializan y se ignoran tras el final; test |
+| Un prompt que empieza por `-` se interpretaba como opción del CLI (`--help…`) | Media | **Corregido**: se antepone un espacio; test para Claude y agy |
+| Las sesiones terminadas se quedaban en memoria (scrollback de hasta 2 MB cada una) | Media | **Corregido**: se retiran del gestor al terminar (con lock); las terminadas se sirven desde el log; test |
+| Dos «Parar» seguidos mezclaban sus teclas (`/exit/exit`) y la ejecución acababa matada | Media | **Corregido**: `stop()` es idempotente; test con doble stop que termina con código 0 |
+| `kill()` sin tolerar la carrera «ya está saliendo»; en el cierre podía saltarse `engine.dispose()` | Media | **Corregido**: se ignora el `OSError` y `dispose()` va en `finally` |
+| El log quedaba abierto (y bloqueado en Windows) si fallaba el arranque del proceso | Baja | **Corregido**: se cierra; test |
+| `resize`/`input` del WebSocket hacían escrituras al PTY y commits de SQLite dentro del event loop | Baja | **Corregido**: `asyncio.to_thread` |
+| Mensajes WebSocket mal formados tiraban la conexión | Baja | **Corregido**: se ignoran; test `test_malformed_frames_are_ignored` |
+| Lista de estados activos duplicada en `TerminalPanel`; búsquedas de agente/proyecto duplicadas en `launch_run` | Baja | **Corregido**: `isActive` y los `_get` de cada API |
+| Roadmap sin actualizar | Baja | **Corregido**: fase 03 en «validación» |
 
 ## Incidencias durante el desarrollo
 La prueba manual con los CLIs reales encontró **cinco fallos que los tests con el CLI falso no veían**. Todos están corregidos y cada uno tiene ahora un test que lo reproduce:

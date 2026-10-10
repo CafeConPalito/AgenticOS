@@ -34,8 +34,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         try:
             yield
         finally:
-            await asyncio.to_thread(manager.shutdown)
-            engine.dispose()
+            try:
+                await asyncio.to_thread(manager.shutdown)
+            finally:
+                engine.dispose()
 
     app = FastAPI(title=APP_NAME, version=__version__, lifespan=lifespan)
     app.add_middleware(

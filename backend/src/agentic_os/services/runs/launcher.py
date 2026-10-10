@@ -11,6 +11,7 @@ import shutil
 import uuid
 from collections.abc import Mapping
 from dataclasses import dataclass
+from pathlib import Path
 
 from agentic_os.errors import ApiError
 from agentic_os.models.agent import Cli
@@ -56,7 +57,18 @@ def resolve_executable(cli: Cli, overrides: Mapping[str, list[str]] | None = Non
     path = shutil.which(EXECUTABLES[cli])
     if not path:
         raise ApiError(422, "cli_not_installed", f"{EXECUTABLES[cli]} is not installed", "cli")
+    if Path(path).suffix.lower() in (".cmd", ".bat"):
+        # cmd.exe would re-parse the command line: a prompt with `&`, `"` or `%VAR%` could run
+        # other commands, and there is no reliable escaping. Only native executables.
+        raise ApiError(
+            422, "cli_shim_unsupported", f"{path} is a batch shim; install the native CLI", "cli"
+        )
     return [path]
+
+
+def safe_prompt(prompt: str) -> str:
+    """A prompt starting with "-" would be parsed as an option (e.g. "--help …")."""
+    return f" {prompt}" if prompt.startswith("-") else prompt
 
 
 def build_launch(
@@ -66,6 +78,7 @@ def build_launch(
     overrides: Mapping[str, list[str]] | None = None,
 ) -> LaunchSpec:
     prefix = resolve_executable(cli, overrides)
+    prompt = safe_prompt(prompt)
     if cli == Cli.CLAUDE:
         session_id = str(uuid.uuid4())
         # The prompt goes first: variadic options would swallow a trailing positional prompt.
