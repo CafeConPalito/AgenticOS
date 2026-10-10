@@ -27,13 +27,15 @@ from agentic_os.services.pty import PtyProcess
 from agentic_os.services.runs.launcher import LaunchSpec
 from agentic_os.services.runs.screen import ScreenState
 
+log = structlog.get_logger(__name__)
+
 SCROLLBACK_LIMIT = 2 * 1024 * 1024  # characters kept in memory per run
 VIEWER_BACKLOG_LIMIT = 4096  # queued messages before a slow viewer is dropped
 BUSY_GRACE = 1.5  # seconds of recent output that still count as "busy"
-log = structlog.get_logger(__name__)
-
 TRUST_WINDOW = 90.0  # seconds after start during which the trust dialog is handled
-STOP_TIMEOUT = 15.0
+STOP_TIMEOUT = 15.0  # to get the CLI to accept the exit
+EXIT_GRACE = 10.0  # once accepted, time it gets to close by itself (agy/Claude need ~6 s)
+EXIT_ARM_DELAY = 0.5  # agy ignores a second Ctrl+C sent right after its notice appears
 CONTINUE_MESSAGE = "Continúa con la tarea."
 
 ESC, ENTER, CTRL_C, DOWN = "\x1b", "\r", "\x03", "\x1b[B"
@@ -126,21 +128,29 @@ class RunSession:
             pty = self._pty
             assert pty is not None
             deadline = time.monotonic() + limit
+            accepted = False
             try:
-                self._request_exit(pty, deadline)
+                accepted = self._request_exit(pty, deadline)
             except Exception:
                 log.exception("graceful stop failed", run_id=self.run_id)
-            if not self._finished.wait(max(0.0, deadline - time.monotonic())):
+            # A CLI that accepted the exit is closing by itself: give it time instead of killing.
+            wait = EXIT_GRACE if accepted else max(0.0, deadline - time.monotonic())
+            if not self._finished.wait(wait):
+                log.warning("exit timed out, terminating", run_id=self.run_id)
                 with contextlib.suppress(OSError):  # it may be exiting right now
                     pty.terminate()
 
         threading.Thread(target=run, name=f"run-{self.run_id}-stop", daemon=True).start()
 
-    def _request_exit(self, pty: PtyProcess, deadline: float) -> None:
-        """Sends the CLI's exit keys until it acknowledges them. The TUIs drop keys while they
-        are busy (e.g. Claude Code right after a turn), so every attempt is verified on screen;
-        agy also needs its second Ctrl+C after the "press ctrl+c again" notice."""
+    def _request_exit(self, pty: PtyProcess, deadline: float) -> bool:
+        """Sends the CLI's exit keys until it acknowledges them (True) or time runs out. The
+        TUIs drop keys while they are busy (e.g. Claude Code right after a turn), so every
+        attempt is verified on screen; agy also needs its second Ctrl+C after the "press ctrl+c
+        again" notice, and a first Ctrl+C during a turn only interrupts it."""
+        attempt = 0
         while time.monotonic() < deadline and not self._finished.is_set():
+            attempt += 1
+            log.info("requesting exit", run_id=self.run_id, cli=self.cli.value, attempt=attempt)
             if self.cli == Cli.CLAUDE:
                 pty.write(ESC)
                 time.sleep(0.5)
@@ -150,10 +160,12 @@ class RunSession:
             else:
                 pty.write(CTRL_C)
                 if self._wait_screen(self._screen.exit_armed, 3, deadline):
-                    time.sleep(0.2)
+                    time.sleep(EXIT_ARM_DELAY)
                     pty.write(CTRL_C)
             if self._wait_screen(self._screen.exit_acknowledged, 3, deadline):
-                return
+                log.info("exit acknowledged", run_id=self.run_id, attempt=attempt)
+                return True
+        return False
 
     def _wait_screen(self, check: Callable[[], bool], seconds: float, deadline: float) -> bool:
         """Waits until `check()` holds on the screen (or the process ended)."""
