@@ -40,7 +40,8 @@ def server(tmp_path: Path) -> Iterator[LiveServer]:
 class Viewer:
     def __init__(self, server: LiveServer, run_id: str) -> None:
         url = server.url.replace("http", "ws") + f"/api/runs/{run_id}/terminal?client_id=v"
-        self.ws = connect(url, open_timeout=10)
+        self._connection = connect(url, open_timeout=10)
+        self.ws = self._connection.__enter__()
         self.messages: list[dict] = []
         self.text = ""
         threading.Thread(target=self._loop, daemon=True).start()
@@ -59,7 +60,7 @@ class Viewer:
         return [m["name"] for m in self.messages if m["type"] == "event"]
 
     def close(self) -> None:
-        self.ws.close()
+        self._connection.__exit__(None, None, None)
 
 
 def seed(server: LiveServer, folder: Path, cli: str, mode: str = "ask") -> tuple[str, str]:
