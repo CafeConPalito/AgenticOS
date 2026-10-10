@@ -14,6 +14,8 @@ export class Terminal {
 
   constructor(options: Record<string, unknown> = {}) {
     this.options = { ...options }
+    if (typeof options.cols === 'number') this.cols = options.cols
+    if (typeof options.rows === 'number') this.rows = options.rows
     Terminal.instances.push(this)
   }
 
@@ -22,8 +24,13 @@ export class Terminal {
   reset() {
     this.output = ''
   }
-  write(data: string) {
+  write(data: string, callback?: () => void) {
     this.output += data
+    callback?.()
+  }
+  resize(cols: number, rows: number) {
+    this.cols = cols
+    this.rows = rows
   }
   focus() {
     this.focused = true

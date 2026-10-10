@@ -164,6 +164,8 @@ class RunSession:
             "status": self.status.value,
             "activity": self.activity.value,
             "controller": self.controller,
+            "cols": self.cols,
+            "rows": self.rows,
         }
 
     def _broadcast(self, message: Message) -> None:
@@ -200,6 +202,8 @@ class RunSession:
         self._pty.resize(cols, rows)
         self._screen.resize(cols, rows)
         self.on_change({"cols": cols, "rows": rows})
+        # Passive viewers (the dock) adopt the PTY size instead of imposing theirs.
+        self._publish(self.state_message())
 
     def take_control(self, client_id: str) -> None:
         with self._lock:

@@ -5,6 +5,9 @@ export interface TerminalState {
   status: RunStatus
   activity: RunActivity
   controller: string | null
+  /** PTY size, set by the view that sizes the terminal. */
+  cols: number
+  rows: number
 }
 
 export type ServerMessage =
@@ -75,6 +78,8 @@ export class TerminalSocket {
           status: message.status,
           activity: message.activity,
           controller: message.controller,
+          cols: message.cols,
+          rows: message.rows,
         })
         break
       case 'exit':

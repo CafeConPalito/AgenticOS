@@ -39,6 +39,8 @@ function state(ws: FakeWebSocket, controller: string | null) {
       status: controller ? 'intervening' : 'running',
       activity: 'idle',
       controller,
+      cols: 120,
+      rows: 32,
     }),
   )
 }
@@ -50,7 +52,14 @@ describe('TerminalPanel', () => {
     act(() =>
       ws.open(
         { type: 'snapshot', data: 'hola ' },
-        { type: 'state', status: 'running', activity: 'busy', controller: null },
+        {
+          type: 'state',
+          status: 'running',
+          activity: 'busy',
+          controller: null,
+          cols: 120,
+          rows: 32,
+        },
       ),
     )
     act(() => ws.push({ type: 'output', data: 'mundo' }))

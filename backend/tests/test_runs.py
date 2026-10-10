@@ -161,6 +161,31 @@ def test_two_viewers_and_control(app_client: TestClient, tmp_path: Path):
         b.close()
 
 
+def test_resize_is_broadcast_and_only_the_controller_resizes(app_client: TestClient, tmp_path):
+    run = launch(app_client, tmp_path)
+    a, b = Viewer(app_client, run["id"], "a"), Viewer(app_client, run["id"], "b")
+
+    def size_seen(viewer: Viewer, cols: int, rows: int) -> bool:
+        return any(
+            m["type"] == "state" and (m["cols"], m["rows"]) == (cols, rows) for m in viewer.messages
+        )
+
+    try:
+        assert a.wait_for("RESPUESTA: hola")
+        a.send({"type": "resize", "cols": 150, "rows": 40})
+        assert b.wait_for(lambda: size_seen(b, 150, 40))  # passive viewers learn the size
+        assert run_status(app_client, run["id"])["cols"] == 150
+
+        app_client.post(f"/api/runs/{run['id']}/control", json={"action": "take", "client_id": "a"})
+        b.send({"type": "resize", "cols": 60, "rows": 10})  # b does not hold the control
+        time.sleep(1)
+        assert not size_seen(a, 60, 10)
+        assert run_status(app_client, run["id"])["cols"] == 150
+    finally:
+        a.close()
+        b.close()
+
+
 def test_take_interrupts_and_release_without_typing_nudges(app_client: TestClient, tmp_path):
     run = launch(app_client, tmp_path)
     viewer = Viewer(app_client, run["id"], "a")

@@ -41,8 +41,16 @@ export interface RunTerminal {
 /**
  * Mounts an xterm.js terminal bound to a run's WebSocket. Keystrokes are only sent while this
  * view holds the control; the backend enforces it as well.
+ *
+ * With `fit` the terminal fills its container and asks the PTY for that size (the backend only
+ * honours it from the controller, or from anyone while nobody has the control). Without it the
+ * view is passive: it adopts the PTY size and its container scrolls, so a small dock never
+ * squeezes the agent's screen.
  */
-export function useRunTerminal(runId: string): RunTerminal {
+export function useRunTerminal(
+  runId: string,
+  { fit = true, size }: { fit?: boolean; size?: { cols: number; rows: number } } = {},
+): RunTerminal {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const queryClient = useQueryClient()
   const [viewerId] = useState(newViewerId)
@@ -53,6 +61,8 @@ export function useRunTerminal(runId: string): RunTerminal {
   const socketRef = useRef<TerminalSocket | null>(null)
   const interactive = state?.controller === viewerId
   const interactiveRef = useRef(interactive)
+  // Only the size at mount matters: later changes arrive through `state` messages.
+  const initialSize = useRef(size)
 
   useEffect(() => {
     const container = containerRef.current
@@ -65,10 +75,11 @@ export function useRunTerminal(runId: string): RunTerminal {
       scrollback: 10000,
       cursorBlink: true,
       disableStdin: !interactiveRef.current,
+      ...(!fit && initialSize.current),
       allowProposedApi: false,
     })
-    const fit = new FitAddon()
-    term.loadAddon(fit)
+    const fitAddon = new FitAddon()
+    term.loadAddon(fitAddon)
     term.loadAddon(new WebLinksAddon())
     term.open(container)
     termRef.current = term
@@ -78,9 +89,16 @@ export function useRunTerminal(runId: string): RunTerminal {
         term.reset()
         term.write(data)
       },
-      onOutput: (data) => term.write(data),
+      onOutput: (data) =>
+        term.write(data, () => {
+          // A passive view follows the bottom of the agent's screen.
+          if (!fit) container.scrollTop = container.scrollHeight
+        }),
       onState: (next) => {
         setState(next)
+        if (!fit && (term.cols !== next.cols || term.rows !== next.rows)) {
+          term.resize(next.cols, next.rows)
+        }
         // Live status for everything else showing this run (header, lists).
         queryClient.setQueryData<Run>(runKeys.detail(runId), (run) => run && { ...run, ...next })
       },
@@ -99,10 +117,11 @@ export function useRunTerminal(runId: string): RunTerminal {
 
     let resizeTimer: ReturnType<typeof setTimeout> | undefined
     const refit = () => {
+      if (!fit) return
       clearTimeout(resizeTimer)
       resizeTimer = setTimeout(() => {
         try {
-          fit.fit()
+          fitAddon.fit()
           socket.sendResize(term.cols, term.rows)
         } catch {
           // container hidden (e.g. collapsed dock): nothing to fit
@@ -122,7 +141,7 @@ export function useRunTerminal(runId: string): RunTerminal {
       termRef.current = null
       socketRef.current = null
     }
-  }, [runId, viewerId, queryClient])
+  }, [runId, viewerId, queryClient, fit])
 
   useEffect(() => {
     interactiveRef.current = interactive

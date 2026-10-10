@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import es from '@/i18n/es.json'
 import { createFakeBackend, makeRun } from '@/test/fake-backend'
 import { installFakeWebSocket } from '@/test/fake-socket'
+import { Terminal } from '@/test/fake-xterm'
 import { renderApp } from '@/test/render'
 import { DOCK_DEFAULTS, useDock } from './dock-store'
 
@@ -62,6 +63,24 @@ describe('TerminalDock', () => {
     await waitFor(() => expect(Socket.instances.at(-1)?.url).toContain(`/runs/${first.id}/`))
     expect(within(dock()!).getByText(es.terminal.dockReadOnly)).toBeVisible()
     expect(within(dock()!).queryByRole('button', { name: es.terminal.take })).toBeNull()
+
+    // Passive viewer: starts at the PTY size, follows it, never imposes its own.
+    const ws = Socket.instances.at(-1)!
+    const term = Terminal.instances.at(-1)!
+    expect([term.cols, term.rows]).toEqual([first.cols, first.rows])
+    act(() => {
+      ws.open({ type: 'snapshot', data: '' })
+      ws.push({
+        type: 'state',
+        status: 'running',
+        activity: 'busy',
+        controller: null,
+        cols: 199,
+        rows: 49,
+      })
+    })
+    expect([term.cols, term.rows]).toEqual([199, 49])
+    expect(ws.sent).toEqual([])
 
     await user.click(tabs[1])
     expect(tabs[1]).toHaveAttribute('aria-selected', 'true')

@@ -24,7 +24,16 @@ export function TerminalPanel({
 }) {
   const { t } = useTranslation()
   const control = useRunControl(run.id)
-  const { containerRef, viewerId, state, exit, interactive: mine } = useRunTerminal(run.id)
+  const {
+    containerRef,
+    viewerId,
+    state,
+    exit,
+    interactive: mine,
+  } = useRunTerminal(run.id, {
+    fit: variant === 'page',
+    size: { cols: run.cols, rows: run.rows },
+  })
   const controller = state ? state.controller : run.controller
   const status = exit?.status ?? state?.status ?? run.status
   const activity = state?.activity ?? run.activity
@@ -104,7 +113,11 @@ export function TerminalPanel({
           </div>
         </header>
       )}
-      <div ref={containerRef} data-testid="xterm" className="min-h-0 flex-1 px-2 py-1.5" />
+      <div
+        ref={containerRef}
+        data-testid="xterm"
+        className={cn('min-h-0 flex-1 px-2 py-1.5', variant === 'dock' && 'overflow-auto')}
+      />
       {variant === 'dock' ? (
         <div className="px-3.5 pb-2 font-mono text-[12px] text-[#7F8DAA]">
           {finished ? t('terminal.finished') : t('terminal.dockReadOnly')}
