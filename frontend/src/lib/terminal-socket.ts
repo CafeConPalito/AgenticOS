@@ -1,4 +1,4 @@
-import type { RunActivity, RunStatus } from '@/api/types'
+import type { RunActivity, RunEvent, RunStatus } from '@/api/types'
 import { getApiBaseUrl } from '@/lib/api'
 
 export interface TerminalState {
@@ -15,12 +15,14 @@ export type ServerMessage =
   | { type: 'output'; data: string }
   | ({ type: 'state' } & TerminalState)
   | { type: 'exit'; code: number | null; status: RunStatus }
+  | ({ type: 'event' } & RunEvent)
 
 export interface TerminalSocketHandlers {
   onSnapshot: (data: string) => void
   onOutput: (data: string) => void
   onState: (state: TerminalState) => void
   onExit: (code: number | null, status: RunStatus) => void
+  onEvent?: (event: RunEvent) => void
   onConnection?: (connected: boolean) => void
 }
 
@@ -85,6 +87,16 @@ export class TerminalSocket {
       case 'exit':
         this.exited = true
         this.handlers.onExit(message.code, message.status)
+        break
+      case 'event':
+        this.handlers.onEvent?.({
+          id: message.id,
+          run_id: message.run_id,
+          at: message.at,
+          kind: message.kind,
+          name: message.name,
+          detail: message.detail,
+        })
         break
     }
   }

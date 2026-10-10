@@ -1,6 +1,7 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { type QueryClient, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
-import { ACTIVE_RUN_STATUSES, type Run } from './types'
+import { projectKeys } from './projects'
+import { ACTIVE_RUN_STATUSES, type Run, type RunEvent } from './types'
 
 export interface RunFilters {
   agentId?: string
@@ -12,6 +13,7 @@ export const runKeys = {
   all: ['runs'] as const,
   list: (filters: RunFilters) => ['runs', 'list', filters] as const,
   detail: (id: string) => ['runs', id] as const,
+  events: (id: string) => ['runs', id, 'events'] as const,
 }
 
 export const isActive = (run: Pick<Run, 'status'>) => ACTIVE_RUN_STATUSES.includes(run.status)
@@ -75,4 +77,31 @@ export function useRunControl(id: string) {
       api.post<Run>(`/api/runs/${id}/control`, body),
     onSuccess: (run) => invalidate(run),
   })
+}
+
+export function useRunEvents(id: string) {
+  return useQuery({
+    queryKey: runKeys.events(id),
+    queryFn: () => api.get<RunEvent[]>(`/api/runs/${id}/events`),
+  })
+}
+
+/**
+ * Applies an event pushed by the run's WebSocket to the cached data: the events list, the
+ * agent's last status and summary, and the project memory it may have written.
+ */
+export function applyRunEvent(queryClient: QueryClient, runId: string, event: RunEvent) {
+  queryClient.setQueryData<RunEvent[]>(runKeys.events(runId), (events) =>
+    events && !events.some((e) => e.id === event.id) ? [...events, event] : events,
+  )
+  if (event.name === 'report_status')
+    queryClient.setQueryData<Run>(runKeys.detail(runId), (run) =>
+      run ? { ...run, last_status: event.detail } : run,
+    )
+  if (event.name === 'complete_task')
+    queryClient.setQueryData<Run>(runKeys.detail(runId), (run) =>
+      run ? { ...run, summary: event.detail } : run,
+    )
+  if (event.name === 'write_project_memory')
+    void queryClient.invalidateQueries({ queryKey: projectKeys.all })
 }
