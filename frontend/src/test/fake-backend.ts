@@ -135,6 +135,7 @@ export function makeRun(overrides: Partial<Run> = {}): Run {
 export interface Call {
   method: string
   path: string
+  query: string
   body: unknown
 }
 
@@ -186,6 +187,8 @@ export function createFakeBackend(
       const project = projects.find((p) => p.id === body.project_id)
       if (!agent) return apiError(404, 'agent_not_found', 'agent_id')
       if (!project) return apiError(404, 'project_not_found', 'project_id')
+      if (!CLIS.find((c) => c.id === agent.cli)?.installed)
+        return apiError(422, 'cli_not_installed', 'cli')
       const run = makeRun({
         agent_id: agent.id,
         project_id: project.id,
@@ -290,7 +293,12 @@ export function createFakeBackend(
     const method = (init?.method ?? 'GET').toUpperCase()
     const body = init?.body ? (JSON.parse(String(init.body)) as Record<string, unknown>) : {}
     const path = url.pathname + url.search
-    calls.push({ method, path: url.pathname, body: init?.body ? body : undefined })
+    calls.push({
+      method,
+      path: url.pathname,
+      query: url.search,
+      body: init?.body ? body : undefined,
+    })
     return (
       handleRuns(method, url.pathname, url.searchParams, body) ??
       handle(method, path.split('?')[0] === '/api/clis' ? '/api/clis' : url.pathname, body)

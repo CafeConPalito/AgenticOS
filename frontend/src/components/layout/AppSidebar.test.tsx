@@ -3,10 +3,19 @@ import userEvent from '@testing-library/user-event'
 import es from '@/i18n/es.json'
 import { mockHealth, renderApp } from '@/test/render'
 
-const SECTIONS = ['dashboard', 'agents', 'projects', 'board', 'inbox', 'usage', 'settings'] as const
+const SECTIONS = [
+  'dashboard',
+  'agents',
+  'projects',
+  'runs',
+  'board',
+  'inbox',
+  'usage',
+  'settings',
+] as const
 
 describe('AppSidebar', () => {
-  it('shows the 7 sections with their Spanish labels', async () => {
+  it('shows the 8 sections with their Spanish labels', async () => {
     mockHealth('ok')
     renderApp('/')
     const nav = await screen.findByRole('navigation', { name: es.nav.main })

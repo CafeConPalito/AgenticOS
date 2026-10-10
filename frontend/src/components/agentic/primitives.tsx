@@ -19,11 +19,14 @@ export function StatusBadge({
   tone,
   label,
   size = 'md',
+  live = tone === 'running',
   className,
 }: {
   tone: StatusTone
   label: string
   size?: keyof typeof BADGE_SIZE
+  /** Pulsing dot; by default for `running`. */
+  live?: boolean
   className?: string
 }) {
   const color = `var(--status-${tone})`
@@ -43,10 +46,7 @@ export function StatusBadge({
     >
       <span
         aria-hidden
-        className={cn(
-          'size-1.5 rounded-full bg-current',
-          tone === 'running' && 'animate-live-pulse',
-        )}
+        className={cn('size-1.5 rounded-full bg-current', live && 'animate-live-pulse')}
       />
       {label}
     </Badge>

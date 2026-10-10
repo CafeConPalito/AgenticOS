@@ -1,5 +1,5 @@
 import { Plus, Search, SquareTerminal } from 'lucide-react'
-import { Fragment } from 'react'
+import { Fragment, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useMatches, useNavigate } from 'react-router'
 import {
@@ -11,6 +11,7 @@ import {
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb'
 import { Button } from '@/components/ui/button'
+import { LaunchRunDialog } from '@/pages/runs/LaunchRunDialog'
 import type { CrumbHandle } from './crumbs'
 import type { NavItem, PrimaryAction } from './nav'
 
@@ -32,6 +33,13 @@ export function AppHeader({ section }: { section: NavItem }) {
   const comingSoon = t('header.comingSoon')
   const crumbs = useCrumbs()
   const primaryRoute = section.primary ? PRIMARY_ROUTES[section.primary] : undefined
+  const [launching, setLaunching] = useState(false)
+  const primaryAvailable = Boolean(primaryRoute) || section.primary === 'launchRun'
+
+  function onPrimary() {
+    if (section.primary === 'launchRun') setLaunching(true)
+    else if (primaryRoute) navigate(primaryRoute)
+  }
 
   return (
     <header className="flex h-[52px] shrink-0 items-center gap-3 border-b bg-background px-[18px]">
@@ -91,15 +99,16 @@ export function AppHeader({ section }: { section: NavItem }) {
       </Button>
       {section.primary && (
         <Button
-          disabled={!primaryRoute}
-          title={primaryRoute ? undefined : comingSoon}
-          onClick={() => primaryRoute && navigate(primaryRoute)}
+          disabled={!primaryAvailable}
+          title={primaryAvailable ? undefined : comingSoon}
+          onClick={onPrimary}
           className="h-8 gap-1.5 bg-primary-action font-medium text-white hover:bg-primary-action-hover"
         >
           <Plus className="size-[15px]" />
           {t(`header.primary.${section.primary}`)}
         </Button>
       )}
+      <LaunchRunDialog open={launching} onOpenChange={setLaunching} />
     </header>
   )
 }

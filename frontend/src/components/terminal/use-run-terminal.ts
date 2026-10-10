@@ -2,8 +2,10 @@ import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
 import { Terminal } from '@xterm/xterm'
 import '@xterm/xterm/css/xterm.css'
+import { useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
-import type { RunStatus } from '@/api/types'
+import { runKeys } from '@/api/runs'
+import type { Run, RunStatus } from '@/api/types'
 import { newViewerId } from '@/lib/client-id'
 import { TerminalSocket, type TerminalState } from '@/lib/terminal-socket'
 
@@ -42,6 +44,7 @@ export interface RunTerminal {
  */
 export function useRunTerminal(runId: string): RunTerminal {
   const containerRef = useRef<HTMLDivElement | null>(null)
+  const queryClient = useQueryClient()
   const [viewerId] = useState(newViewerId)
   const [state, setState] = useState<TerminalState | null>(null)
   const [exit, setExit] = useState<RunTerminal['exit']>(null)
@@ -76,8 +79,15 @@ export function useRunTerminal(runId: string): RunTerminal {
         term.write(data)
       },
       onOutput: (data) => term.write(data),
-      onState: setState,
-      onExit: (code, status) => setExit({ code, status }),
+      onState: (next) => {
+        setState(next)
+        // Live status for everything else showing this run (header, lists).
+        queryClient.setQueryData<Run>(runKeys.detail(runId), (run) => run && { ...run, ...next })
+      },
+      onExit: (code, status) => {
+        setExit({ code, status })
+        void queryClient.invalidateQueries({ queryKey: runKeys.all })
+      },
       onConnection: setConnected,
     })
     socketRef.current = socket
@@ -112,7 +122,7 @@ export function useRunTerminal(runId: string): RunTerminal {
       termRef.current = null
       socketRef.current = null
     }
-  }, [runId, viewerId])
+  }, [runId, viewerId, queryClient])
 
   useEffect(() => {
     interactiveRef.current = interactive

@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { BookOpen, Copy, History, MoreHorizontal, Puzzle, Trash2 } from 'lucide-react'
+import { BookOpen, Copy, MoreHorizontal, Puzzle, Trash2 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { FormProvider, useForm, useWatch } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
@@ -21,9 +21,11 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Skeleton } from '@/components/ui/skeleton'
 import { applyApiError, errorMessage } from '@/lib/form-errors'
+import { LaunchRunButton } from '@/pages/runs/LaunchRunDialog'
 import { AGENT_FIELDS, agentSchema, changedFields, toFormValues } from './agent-form'
 import type { AgentFormValues } from './agent-form'
 import { ExecutionTab } from './tabs/ExecutionTab'
+import { HistoryTab } from './tabs/HistoryTab'
 import { GeneralTab } from './tabs/GeneralTab'
 import { InstructionsTab } from './tabs/InstructionsTab'
 
@@ -136,6 +138,7 @@ function AgentEditor({ agent, tab }: { agent: Agent; tab: Tab }) {
               <span className="font-mono">{model || t('cli.defaultModel')}</span>
             </div>
           </div>
+          <LaunchRunButton agentId={agent.id} disabled={agent.status === 'draft'} />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button type="button" variant="outline" size="icon" aria-label={t('common.more')}>
@@ -167,7 +170,7 @@ function AgentEditor({ agent, tab }: { agent: Agent; tab: Tab }) {
         {tab === 'execution' && <ExecutionTab />}
         {tab === 'knowledge' && <ComingSoonTab icon={BookOpen} />}
         {tab === 'skills' && <ComingSoonTab icon={Puzzle} />}
-        {tab === 'history' && <ComingSoonTab icon={History} />}
+        {tab === 'history' && <HistoryTab agentId={agent.id} />}
       </form>
       <ConfirmDialog
         open={confirmDelete}

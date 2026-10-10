@@ -6,6 +6,7 @@
     "dashboard": "Dashboard",
     "agents": "Agentes",
     "projects": "Proyectos",
+    "runs": "Ejecuciones",
     "board": "Tablero",
     "inbox": "Inbox",
     "usage": "Consumo",
@@ -22,7 +23,8 @@
       "newTask": "Nueva tarea",
       "newAgent": "Nuevo agente",
       "newProject": "Nuevo proyecto",
-      "exportCsv": "Exportar CSV"
+      "exportCsv": "Exportar CSV",
+      "launchRun": "Lanzar agente"
     }
   },
   "theme": {
@@ -121,7 +123,11 @@
     "folder_not_creatable": "No se pudo crear la carpeta.",
     "project_exists": "Ya hay un proyecto en esta carpeta.",
     "worktree_requires_git": "El modo worktree necesita que la carpeta sea un repositorio git.",
-    "path_not_absolute": "Usa la ruta completa de la carpeta (por ejemplo D:\\proyectos\\mi-web)."
+    "path_not_absolute": "Usa la ruta completa de la carpeta (por ejemplo D:\\proyectos\\mi-web).",
+    "run_not_found": "La ejecución no existe.",
+    "run_not_active": "La ejecución ya no está en marcha.",
+    "control_taken": "Otra vista tiene el control de esta terminal.",
+    "cli_not_installed": "El CLI de este agente no está instalado en este equipo."
   },
   "cli": {
     "claude": "Claude Code",
@@ -311,5 +317,81 @@
     "released": "Control devuelto a {{name}}",
     "working": "{{name}} está trabajando…",
     "waiting": "Esperando…"
+  },
+  "runs": {
+    "title": "Ejecuciones",
+    "subtitle": "Cada vez que un agente trabaja en un proyecto, en su propia terminal.",
+    "launch": {
+      "button": "Lanzar",
+      "title": "Lanzar agente",
+      "description": "El agente abrirá su CLI en la carpeta del proyecto y empezará con este prompt.",
+      "agent": "Agente",
+      "project": "Proyecto",
+      "prompt": "Prompt",
+      "promptPlaceholder": "Describe lo que tiene que hacer…",
+      "pickAgent": "Elige un agente",
+      "pickProject": "Elige un proyecto",
+      "noAgents": "Primero crea un agente.",
+      "noProjects": "Primero crea un proyecto.",
+      "submit": "Lanzar",
+      "submitting": "Lanzando…",
+      "hint": "Ctrl+Enter para lanzar"
+    },
+    "status": {
+      "starting": "Arrancando",
+      "running": "En marcha",
+      "busy": "Trabajando",
+      "idle": "Esperando",
+      "intervening": "Interviniendo",
+      "exited": "Terminada",
+      "stopped": "Parada",
+      "failed": "Fallida",
+      "interrupted": "Interrumpida"
+    },
+    "filters": {
+      "agent": "Agente",
+      "project": "Proyecto",
+      "allAgents": "Todos los agentes",
+      "allProjects": "Todos los proyectos",
+      "activeOnly": "Solo activas"
+    },
+    "columns": {
+      "started": "Inicio",
+      "agent": "Agente",
+      "prompt": "Tarea",
+      "project": "Proyecto",
+      "cli": "CLI",
+      "status": "Estado",
+      "duration": "Duración"
+    },
+    "open": "Abrir ejecución de {{name}}: {{prompt}}",
+    "emptyTitle": "Todavía no hay ejecuciones",
+    "emptyDescription": "Lanza un agente sobre un proyecto para verlo trabajar en su terminal.",
+    "emptyFiltered": "Ninguna ejecución coincide con los filtros.",
+    "agentHistoryEmpty": "Este agente todavía no ha ejecutado ninguna tarea.",
+    "notFound": "Esta ejecución no existe o se ha borrado.",
+    "details": {
+      "prompt": "Prompt",
+      "agent": "Agente",
+      "project": "Proyecto",
+      "cli": "CLI",
+      "model": "Modelo",
+      "folder": "Carpeta",
+      "started": "Inicio",
+      "duration": "Duración",
+      "session": "ID de sesión",
+      "exitCode": "Código de salida",
+      "error": "Error",
+      "viewers": "Vistas conectadas"
+    },
+    "stop": {
+      "button": "Parar",
+      "title": "¿Parar la ejecución de {{name}}?",
+      "description": "Se pedirá al CLI que salga; si no responde, se cerrará a la fuerza. Lo que haya hecho hasta ahora se queda en la carpeta.",
+      "confirm": "Parar",
+      "done": "Parando a {{name}}…"
+    },
+    "openFolder": "Abrir carpeta",
+    "terminalInfo": "xterm · {{cols}}×{{rows}}"
   }
 }

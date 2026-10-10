@@ -9,6 +9,7 @@ import { ComingSoonTab, PageContainer, RouteTabs } from '@/components/page'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { errorMessage } from '@/lib/form-errors'
+import { LaunchRunButton } from '@/pages/runs/LaunchRunDialog'
 import { GitLabel } from './ProjectsPage'
 import { MemoryTab } from './tabs/MemoryTab'
 import { SettingsTab } from './tabs/SettingsTab'
@@ -75,6 +76,7 @@ function ProjectDetail({ project, tab }: { project: Project; tab: Tab }) {
           <FolderOpen />
           {t('projects.openFolder')}
         </Button>
+        <LaunchRunButton projectId={project.id} disabled={!project.folder_exists} />
       </header>
       <RouteTabs base={`/proyectos/${project.id}`} tabs={tabs} label={t('projects.title')} />
       {tab === 'summary' && <SummaryTab project={project} />}
