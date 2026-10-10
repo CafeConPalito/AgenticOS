@@ -1,7 +1,7 @@
 # Fase 03: Terminales en vivo · Plan técnico
 
 - **Spec**: [spec.md](spec.md)
-- **Estado**: borrador (pendiente de aprobación, Puerta 2)
+- **Estado**: aprobado (2026-10-10)
 - **Rama**: `phase/03-terminales`
 
 ## Diseño
