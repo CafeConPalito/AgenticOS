@@ -30,6 +30,8 @@ class Settings(BaseSettings):
     log_file: Path | None = None
     # Overrides the SQLite file in data_dir (e.g. postgresql+psycopg://… in server mode).
     database_url: str | None = None
+    # argv prefix replacing a CLI executable, e.g. {"claude": ["python", "fake_cli.py"]} (tests).
+    cli_command_overrides: dict[str, list[str]] = {}
 
 
 @lru_cache
