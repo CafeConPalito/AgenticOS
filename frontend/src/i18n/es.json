@@ -299,5 +299,17 @@
   },
   "time": {
     "justNow": "ahora mismo"
+  },
+  "terminal": {
+    "label": "Terminal del agente",
+    "intervening": "Estás interviniendo",
+    "observing": "Solo lectura (observando)",
+    "otherController": "Otra vista tiene el control",
+    "finished": "Ejecución terminada",
+    "take": "Tomar control",
+    "release": "Devolver al agente",
+    "released": "Control devuelto a {{name}}",
+    "working": "{{name}} está trabajando…",
+    "waiting": "Esperando…"
   }
 }

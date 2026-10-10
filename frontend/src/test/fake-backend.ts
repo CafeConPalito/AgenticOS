@@ -1,4 +1,4 @@
-import type { Agent, AgentTemplate, CliInfo, Project } from '@/api/types'
+import type { Agent, AgentTemplate, CliInfo, Project, Run } from '@/api/types'
 
 /** In-memory stand-in for the backend API, plugged into `fetch` for page tests. */
 
@@ -102,6 +102,36 @@ export function makeProject(overrides: Partial<Project> = {}): Project {
   }
 }
 
+export function makeRun(overrides: Partial<Run> = {}): Run {
+  seq += 1
+  return {
+    id: `run-${seq}`,
+    agent_id: 'agent-1',
+    project_id: 'project-1',
+    agent_name: 'Dev',
+    agent_color: '#4FD1C5',
+    project_name: 'Web',
+    cli: 'claude',
+    model: 'sonnet',
+    prompt: 'Arregla el login',
+    cwd: 'C:/code/web',
+    status: 'running',
+    activity: 'busy',
+    error: null,
+    cli_session_id: '0a1b2c3d-0000-4000-8000-000000000000',
+    exit_code: null,
+    cols: 120,
+    rows: 32,
+    started_at: now(),
+    ended_at: null,
+    created_at: now(),
+    updated_at: now(),
+    controller: null,
+    viewers: 0,
+    ...overrides,
+  }
+}
+
 export interface Call {
   method: string
   path: string
@@ -124,10 +154,73 @@ function apiError(status: number, code: string, field?: string): Response {
   return json(status, { detail: { code, message: code, field } })
 }
 
-export function createFakeBackend(seed: { agents?: Agent[]; projects?: Project[] } = {}) {
+export function createFakeBackend(
+  seed: { agents?: Agent[]; projects?: Project[]; runs?: Run[] } = {},
+) {
   const agents = [...(seed.agents ?? [])]
   const projects = [...(seed.projects ?? [])]
+  const runs = [...(seed.runs ?? [])]
   const calls: Call[] = []
+
+  function handleRuns(
+    method: string,
+    path: string,
+    query: URLSearchParams,
+    body: Record<string, unknown>,
+  ): Response | null {
+    if (path === '/api/runs') {
+      if (method === 'GET') {
+        const active = query.get('active')
+        return json(
+          200,
+          runs.filter(
+            (r) =>
+              (!query.get('agent_id') || r.agent_id === query.get('agent_id')) &&
+              (!query.get('project_id') || r.project_id === query.get('project_id')) &&
+              (active === null ||
+                ['starting', 'running', 'intervening'].includes(r.status) === (active === 'true')),
+          ),
+        )
+      }
+      const agent = agents.find((a) => a.id === body.agent_id)
+      const project = projects.find((p) => p.id === body.project_id)
+      if (!agent) return apiError(404, 'agent_not_found', 'agent_id')
+      if (!project) return apiError(404, 'project_not_found', 'project_id')
+      const run = makeRun({
+        agent_id: agent.id,
+        project_id: project.id,
+        agent_name: agent.name,
+        agent_color: agent.color,
+        project_name: project.name,
+        cli: agent.cli,
+        model: agent.model,
+        prompt: String(body.prompt),
+        cwd: project.path,
+        status: 'starting',
+      })
+      runs.unshift(run)
+      return json(201, run)
+    }
+    const match = path.match(/^\/api\/runs\/([^/]+)(?:\/(control|stop))?$/)
+    if (!match) return null
+    const run = runs.find((r) => r.id === match[1])
+    if (!run) return apiError(404, 'run_not_found')
+    if (match[2] === 'stop') {
+      Object.assign(run, { status: 'stopped', ended_at: now(), controller: null })
+      return json(202, run)
+    }
+    if (match[2] === 'control') {
+      if (body.action === 'take') {
+        if (run.controller && run.controller !== body.client_id)
+          return apiError(409, 'control_taken')
+        Object.assign(run, { controller: body.client_id, status: 'intervening' })
+      } else if (run.controller === body.client_id) {
+        Object.assign(run, { controller: null, status: 'running' })
+      }
+      return json(200, run)
+    }
+    return json(200, run)
+  }
 
   function handle(method: string, path: string, body: Record<string, unknown>): Response {
     if (path === '/api/health')
@@ -198,13 +291,17 @@ export function createFakeBackend(seed: { agents?: Agent[]; projects?: Project[]
     const body = init?.body ? (JSON.parse(String(init.body)) as Record<string, unknown>) : {}
     const path = url.pathname + url.search
     calls.push({ method, path: url.pathname, body: init?.body ? body : undefined })
-    return handle(method, path.split('?')[0] === '/api/clis' ? '/api/clis' : url.pathname, body)
+    return (
+      handleRuns(method, url.pathname, url.searchParams, body) ??
+      handle(method, path.split('?')[0] === '/api/clis' ? '/api/clis' : url.pathname, body)
+    )
   })
   vi.stubGlobal('fetch', fetchMock)
 
   return {
     agents,
     projects,
+    runs,
     calls,
     callsTo: (method: string, path: string) =>
       calls.filter((c) => c.method === method && c.path === path),
