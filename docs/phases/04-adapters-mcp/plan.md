@@ -1,7 +1,7 @@
 # Fase 04: Adapters y MCP · Plan técnico
 
 - **Spec**: [spec.md](spec.md)
-- **Estado**: borrador
+- **Estado**: aprobado
 
 ## Diseño
 
