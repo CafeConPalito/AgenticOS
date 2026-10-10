@@ -39,6 +39,8 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF"]
+# The CLIs draw their menus with ❯; matching it is intentional.
+allowed-confusables = ["❯"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
