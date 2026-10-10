@@ -71,7 +71,7 @@ Tests spikes (pytest)           OK   15 passed
 - **Ajustes** (CLIs detectados): la API ya existe (`/api/clis`); falta la pantalla.
 
 ## Cierre
-- [ ] OK del usuario
-- [ ] Merge a `main` (`--no-ff`)
-- [ ] Tag `v0.3`
-- [ ] `docs/roadmap.md` actualizado
+- [x] OK del usuario (2026-10-10)
+- [x] Merge a `main` (`--no-ff`)
+- [x] Tag `v0.3`
+- [x] `docs/roadmap.md` actualizado
