@@ -56,7 +56,8 @@ export function useUpdateAgent(id: string) {
 export function useDuplicateAgent() {
   const invalidate = useInvalidateAgents()
   return useMutation({
-    mutationFn: (id: string) => api.post<Agent>(`/api/agents/${id}/duplicate`),
+    mutationFn: ({ id, name }: { id: string; name: string }) =>
+      api.post<Agent>(`/api/agents/${id}/duplicate`, { name }),
     onSuccess: (agent) => invalidate(agent),
   })
 }

@@ -8,7 +8,13 @@ from agentic_os.db.base import DEFAULT_WORKSPACE
 from agentic_os.db.session import get_session
 from agentic_os.errors import ApiError, NotFound
 from agentic_os.models import Agent
-from agentic_os.schemas.agent import AgentCreate, AgentRead, AgentTemplate, AgentUpdate
+from agentic_os.schemas.agent import (
+    AgentCreate,
+    AgentDuplicate,
+    AgentRead,
+    AgentTemplate,
+    AgentUpdate,
+)
 from agentic_os.services.templates import BY_ID, TEMPLATES
 
 router = APIRouter(tags=["agents"])
@@ -73,10 +79,13 @@ def update_agent(agent_id: str, payload: AgentUpdate, session: DbSession) -> Age
 
 
 @router.post("/agents/{agent_id}/duplicate", status_code=status.HTTP_201_CREATED)
-def duplicate_agent(agent_id: str, session: DbSession) -> AgentRead:
+def duplicate_agent(
+    agent_id: str, session: DbSession, payload: AgentDuplicate | None = None
+) -> AgentRead:
+    """Copies an agent. The UI sends the localized name for the copy."""
     source = _get(session, agent_id)
     copied = AgentRead.model_validate(source).model_dump(exclude={"id", "created_at", "updated_at"})
-    copied["name"] = f"{source.name} (copia)"[:80]
+    copied["name"] = payload.name if payload and payload.name else f"{source.name} (2)"[:80]
     agent = Agent(workspace_id=DEFAULT_WORKSPACE, **copied)
     session.add(agent)
     session.commit()

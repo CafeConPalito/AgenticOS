@@ -149,7 +149,7 @@ export function createFakeBackend(seed: { agents?: Agent[]; projects?: Project[]
       const index = agents.findIndex((a) => a.id === agentMatch[1])
       if (index < 0) return apiError(404, 'agent_not_found')
       if (agentMatch[2]) {
-        const copy = makeAgent({ ...agents[index], name: `${agents[index].name} (copia)` })
+        const copy = makeAgent({ ...agents[index], name: String(body.name) })
         copy.id = `${agents[index].id}-copy`
         agents.push(copy)
         return json(201, copy)

@@ -1,5 +1,6 @@
 import shutil
 import subprocess
+from functools import cache
 from pathlib import Path
 
 from pydantic import BaseModel
@@ -13,8 +14,13 @@ class GitInfo(BaseModel):
     dirty: bool = False
 
 
+@cache
+def _git_executable() -> str | None:
+    return shutil.which("git")
+
+
 def _git(path: str, *args: str) -> subprocess.CompletedProcess[str] | None:
-    git = shutil.which("git")
+    git = _git_executable()
     if git is None:
         return None
     try:

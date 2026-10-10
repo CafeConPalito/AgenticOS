@@ -120,7 +120,8 @@
     "folder_not_accessible": "No hay permisos para usar esta carpeta.",
     "folder_not_creatable": "No se pudo crear la carpeta.",
     "project_exists": "Ya hay un proyecto en esta carpeta.",
-    "worktree_requires_git": "El modo worktree necesita que la carpeta sea un repositorio git."
+    "worktree_requires_git": "El modo worktree necesita que la carpeta sea un repositorio git.",
+    "path_not_absolute": "Usa la ruta completa de la carpeta (por ejemplo D:\\proyectos\\mi-web)."
   },
   "cli": {
     "claude": "Claude Code",
@@ -132,7 +133,12 @@
     "notDetected": "No detectado",
     "defaultModel": "Predeterminado del CLI",
     "modelsError": "No se pudieron cargar los modelos: {{error}}",
-    "refresh": "Volver a detectar"
+    "refresh": "Volver a detectar",
+    "alias": {
+      "sonnet": "Sonnet (último)",
+      "opus": "Opus (último)",
+      "haiku": "Haiku (último)"
+    }
   },
   "agents": {
     "title": "Agentes",
@@ -214,7 +220,8 @@
       "done": "Agente «{{name}}» borrado"
     },
     "duplicated": "Agente duplicado como «{{name}}»",
-    "notFound": "Este agente no existe o se ha borrado."
+    "notFound": "Este agente no existe o se ha borrado.",
+    "copyName": "{{name}} (copia)"
   },
   "projects": {
     "title": "Proyectos",

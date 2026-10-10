@@ -15,6 +15,14 @@ def _unique_tools(tools: list[Tool] | None) -> list[Tool] | None:
     return None if tools is None else list(dict.fromkeys(tools))
 
 
+def reject_null(value: object) -> object:
+    """Fields are optional (omit them to leave them unchanged) but never nullable: the
+    columns are NOT NULL. Runs only on values present in the request, not on defaults."""
+    if value is None:
+        raise ValueError("null is not allowed; omit the field to leave it unchanged")
+    return value
+
+
 class AgentFields(BaseModel):
     """Editable fields, all optional: shared by create (with template) and update."""
 
@@ -35,6 +43,22 @@ class AgentFields(BaseModel):
     status: AgentStatus | None = None
 
     _dedupe_tools = field_validator("allowed_tools")(_unique_tools)
+    _no_nulls = field_validator(
+        "name",
+        "role",
+        "description",
+        "color",
+        "cli",
+        "model",
+        "instructions",
+        "permission_mode",
+        "allowed_tools",
+        "max_concurrency",
+        "can_spawn_subagents",
+        "can_create_tasks",
+        "status",
+        mode="before",
+    )(reject_null)
 
 
 class AgentCreate(AgentFields):
@@ -43,6 +67,12 @@ class AgentCreate(AgentFields):
 
 class AgentUpdate(AgentFields):
     pass
+
+
+class AgentDuplicate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: Name | None = None
 
 
 class AgentRead(BaseModel):

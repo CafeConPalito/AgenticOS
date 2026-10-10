@@ -6,8 +6,14 @@ from agentic_os.errors import ApiError
 
 def normalize(path: str) -> tuple[str, str]:
     """Returns (display path, comparison key). The key folds case and separators on Windows so
-    `D:\\Proyectos\\Web` and `d:/proyectos/web` are the same project."""
-    resolved = Path(path).expanduser().resolve(strict=False)
+    `D:\\Proyectos\\Web` and `d:/proyectos/web` are the same project.
+
+    Relative paths are rejected: they would resolve against the backend's working directory
+    (the install folder or System32), not anywhere the user meant."""
+    candidate = Path(path).expanduser()
+    if not candidate.is_absolute():
+        raise ApiError(422, "path_not_absolute", "use a full path to the folder", "path")
+    resolved = candidate.resolve(strict=False)
     return str(resolved), os.path.normcase(str(resolved))
 
 

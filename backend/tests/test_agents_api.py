@@ -54,9 +54,13 @@ def test_unknown_template(client: TestClient):
 
 def test_duplicate(client: TestClient):
     source = create(client, template="analyst")
-    copy = client.post(f"/api/agents/{source['id']}/duplicate").json()
+    copy = client.post(
+        f"/api/agents/{source['id']}/duplicate", json={"name": "Analista (copia)"}
+    ).json()
     assert copy["id"] != source["id"]
-    assert copy["name"] == "Analista (copia)"
+    assert copy["name"] == "Analista (copia)"  # localized name chosen by the UI
+    fallback = client.post(f"/api/agents/{source['id']}/duplicate").json()
+    assert fallback["name"] == "Analista (2)"
     assert copy["instructions"] == source["instructions"]
 
 
@@ -91,3 +95,19 @@ def test_not_found(client: TestClient):
     assert client.get("/api/agents/nope").json()["detail"]["code"] == "agent_not_found"
     assert client.patch("/api/agents/nope", json={"name": "x"}).status_code == 404
     assert client.delete("/api/agents/nope").status_code == 404
+
+
+def test_timestamps_keep_utc_after_reading_back(client: TestClient):
+    created = create(client, name="Dev")
+    fetched = client.get(f"/api/agents/{created['id']}").json()
+    listed = client.get("/api/agents").json()[0]
+    for value in (created["created_at"], fetched["created_at"], listed["updated_at"]):
+        assert value.endswith(("Z", "+00:00")), value
+
+
+@pytest.mark.parametrize("field", ["role", "color", "cli", "max_concurrency", "allowed_tools"])
+def test_explicit_null_is_a_422_not_a_500(client: TestClient, field: str):
+    agent = create(client, name="Dev")
+    response = client.patch(f"/api/agents/{agent['id']}", json={field: None})
+    assert response.status_code == 422
+    assert response.json()["detail"]["field"] == field

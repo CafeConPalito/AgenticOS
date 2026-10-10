@@ -132,3 +132,32 @@ def test_validation_errors(client: TestClient, tmp_path: Path):
     )
     response = client.post("/api/projects", json={"name": "X", "path": "  "})
     assert response.json()["detail"]["field"] == "path"
+
+
+def test_explicit_null_is_a_422(client: TestClient, tmp_path: Path):
+    folder = tmp_path / "n"
+    folder.mkdir()
+    project = create(client, name="N", path=str(folder))
+    response = client.patch(f"/api/projects/{project['id']}", json={"memory": None})
+    assert response.status_code == 422
+    assert response.json()["detail"]["field"] == "memory"
+
+
+@pytest.mark.parametrize("relative", ["mi-web", "./mi-web", r"..\otra"])
+def test_relative_paths_are_rejected(client: TestClient, relative: str):
+    response = client.post(
+        "/api/projects", json={"name": "W", "path": relative, "create_folder": True}
+    )
+    assert response.status_code == 422
+    assert response.json()["detail"]["code"] == "path_not_absolute"
+
+
+def test_unique_constraint_race_is_a_409(client: TestClient, tmp_path: Path, monkeypatch):
+    # Simulate the race: both requests pass the pre-check, the second hits the DB constraint.
+    folder = tmp_path / "carrera"
+    folder.mkdir()
+    create(client, name="A", path=str(folder))
+    monkeypatch.setattr(projects_api, "_check_unique", lambda *a, **k: None)
+    response = client.post("/api/projects", json={"name": "B", "path": str(folder)})
+    assert response.status_code == 409
+    assert response.json()["detail"]["code"] == "project_exists"

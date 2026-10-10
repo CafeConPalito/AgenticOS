@@ -143,3 +143,27 @@ describe('Agent editor', () => {
     expect(await within(claude).findByText(/2\.1\.296/)).toBeVisible()
   })
 })
+
+describe('Agent editor edge cases', () => {
+  it('duplicates with a localized name', async () => {
+    const agent = makeAgent({ name: 'Rita' })
+    const backend = createFakeBackend({ agents: [agent] })
+    const user = userEvent.setup()
+    const { router } = renderApp(`/agentes/${agent.id}/general`)
+    await user.click(await screen.findByRole('button', { name: es.common.more }))
+    await user.click(await screen.findByRole('menuitem', { name: es.common.duplicate }))
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe(`/agentes/${agent.id}-copy/general`),
+    )
+    expect(backend.callsTo('POST', `/api/agents/${agent.id}/duplicate`)[0].body).toEqual({
+      name: 'Rita (copia)',
+    })
+  })
+
+  it('shows "not found" for a deleted agent without retrying', async () => {
+    const backend = createFakeBackend()
+    renderApp('/agentes/borrado/general')
+    expect(await screen.findByText(es.agents.notFound, {}, { timeout: 1500 })).toBeVisible()
+    expect(backend.callsTo('GET', '/api/agents/borrado')).toHaveLength(1)
+  })
+})

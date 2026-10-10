@@ -89,7 +89,10 @@ function AgentEditor({ agent, tab }: { agent: Agent; tab: Tab }) {
 
   async function onDuplicate() {
     try {
-      const copy = await duplicate.mutateAsync(agent.id)
+      const copy = await duplicate.mutateAsync({
+        id: agent.id,
+        name: t('agents.copyName', { name: agent.name }),
+      })
       leaving.current = !form.formState.isDirty
       toast.success(t('agents.duplicated', { name: copy.name }))
       navigate(`/agentes/${copy.id}/general`)

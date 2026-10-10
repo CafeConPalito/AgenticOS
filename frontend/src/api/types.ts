@@ -62,7 +62,8 @@ export interface Project extends ProjectFields {
 
 export interface ModelOption {
   id: string
-  label: string
+  /** Label from the CLI itself; null for well-known aliases named by the UI (i18n). */
+  label: string | null
 }
 
 export interface CliInfo {

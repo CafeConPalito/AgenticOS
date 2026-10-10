@@ -2,8 +2,9 @@ import { Check, Hand, Lock, Minus, Plus, RefreshCw, Zap } from 'lucide-react'
 import { useState } from 'react'
 import { Controller, useFormContext, useWatch } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
 import { useClis, useRefreshClis } from '@/api/clis'
-import type { CliId, PermissionMode } from '@/api/types'
+import type { CliId, ModelOption, PermissionMode } from '@/api/types'
 import { MAX_CONCURRENCY, PERMISSION_MODES, TOOLS } from '@/api/types'
 import { CliTag } from '@/components/agentic/primitives'
 import { Field } from '@/components/page'
@@ -16,6 +17,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
+import i18n from '@/i18n'
+import { errorMessage } from '@/lib/form-errors'
 import { cn } from '@/lib/utils'
 import type { AgentFormValues } from '../agent-form'
 
@@ -62,11 +65,18 @@ export function ExecutionTab() {
   const refresh = useRefreshClis()
   const [refreshing, setRefreshing] = useState(false)
   const info = clis?.find((c) => c.id === cli)
+  const modelLabel = (m: ModelOption) => {
+    if (m.label) return m.label
+    const key = `cli.alias.${m.id}`
+    return i18n.exists(key) ? t(key as never) : m.id
+  }
 
   async function onRefresh() {
     setRefreshing(true)
     try {
       await refresh()
+    } catch (error) {
+      toast.error(errorMessage(error))
     } finally {
       setRefreshing(false)
     }
@@ -141,7 +151,7 @@ export function ExecutionTab() {
                       {models.map((m) => (
                         <SelectItem key={m.id} value={m.id}>
                           <span className="font-mono">{m.id}</span>
-                          <span className="text-muted-foreground"> · {m.label}</span>
+                          <span className="text-muted-foreground"> · {modelLabel(m)}</span>
                         </SelectItem>
                       ))}
                     </SelectContent>

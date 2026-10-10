@@ -11,6 +11,7 @@ import subprocess
 import threading
 import time
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 
 from pydantic import BaseModel
@@ -24,7 +25,8 @@ MODELS_TIMEOUT = 45
 
 class ModelOption(BaseModel):
     id: str
-    label: str
+    # Label given by the CLI itself; None for well-known aliases the UI names (i18n).
+    label: str | None = None
 
 
 class CliInfo(BaseModel):
@@ -55,9 +57,9 @@ def run_command(argv: list[str], timeout: int) -> subprocess.CompletedProcess[st
 def _claude_models(_path: str, _run: Runner) -> list[ModelOption]:
     # Claude Code accepts stable aliases that always point to the latest model of each tier.
     return [
-        ModelOption(id="sonnet", label="Sonnet (último)"),
-        ModelOption(id="opus", label="Opus (último)"),
-        ModelOption(id="haiku", label="Haiku (último)"),
+        ModelOption(id="sonnet"),
+        ModelOption(id="opus"),
+        ModelOption(id="haiku"),
     ]
 
 
@@ -104,8 +106,7 @@ class CliCatalog:
             return CliInfo(id=spec.id, name=spec.name, installed=False)
         info = CliInfo(id=spec.id, name=spec.name, installed=True, path=path)
         try:
-            version = self.run([path, "--version"], VERSION_TIMEOUT)
-            info.version = version.stdout.strip().splitlines()[0] if version.stdout else None
+            info.version = parse_version(self.run([path, "--version"], VERSION_TIMEOUT))
         except (OSError, subprocess.TimeoutExpired):
             info.version = None
         try:
@@ -115,9 +116,20 @@ class CliCatalog:
         return info
 
     def list(self, refresh: bool = False) -> list[CliInfo]:
+        # The lock makes concurrent callers share one probe instead of starting their own;
+        # inside it, the CLIs are probed in parallel (each can take tens of seconds).
         with self._lock:
             fresh = self._cache is not None and time.monotonic() - self._cached_at < self.ttl
             if refresh or not fresh:
-                self._cache = [self.probe(spec) for spec in SPECS]
+                with ThreadPoolExecutor(max_workers=len(SPECS)) as pool:
+                    self._cache = list(pool.map(self.probe, SPECS))
                 self._cached_at = time.monotonic()
             return list(self._cache or [])
+
+
+def parse_version(result: subprocess.CompletedProcess[str]) -> str | None:
+    """First non-blank stdout line of a successful `--version`, else None."""
+    if result.returncode != 0:
+        return None
+    lines = [line.strip() for line in (result.stdout or "").splitlines() if line.strip()]
+    return lines[0] if lines else None

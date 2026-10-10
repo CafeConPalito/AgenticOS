@@ -1,10 +1,10 @@
 from datetime import datetime
 from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, StringConstraints
+from pydantic import BaseModel, ConfigDict, StringConstraints, field_validator
 
 from agentic_os.models.project import WorkspaceMode
-from agentic_os.schemas.agent import Color, Name
+from agentic_os.schemas.agent import Color, Name, reject_null
 from agentic_os.services.git import GitInfo
 
 PathStr = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
@@ -21,6 +21,10 @@ class ProjectCreate(BaseModel):
     memory: str | None = None
     create_folder: bool = False
 
+    _no_nulls = field_validator("color", "description", "workspace_mode", "memory", mode="before")(
+        reject_null
+    )
+
 
 class ProjectUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -31,6 +35,10 @@ class ProjectUpdate(BaseModel):
     description: str | None = None
     workspace_mode: WorkspaceMode | None = None
     memory: str | None = None
+
+    _no_nulls = field_validator(
+        "name", "path", "color", "description", "workspace_mode", "memory", mode="before"
+    )(reject_null)
 
 
 class ProjectRead(BaseModel):

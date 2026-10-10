@@ -83,3 +83,40 @@ def test_results_are_cached_unless_refreshed(client: TestClient, refresh: bool):
     first = len(fake.calls)
     client.get("/api/clis", params={"refresh": refresh})
     assert len(fake.calls) == (2 * first if refresh else first)
+
+
+def test_blank_or_failing_version_does_not_break_the_catalog():
+    class BrokenVersion(FakeCli):
+        def run(self, argv, timeout):
+            if argv[1:] == ["--version"]:
+                return subprocess.CompletedProcess(argv, 1, "\n  \n", "boom")
+            return super().run(argv, timeout)
+
+    fake = BrokenVersion({"claude", "agy"})
+    infos = CliCatalog(which=fake.which, run=fake.run).list()
+    assert [i.installed for i in infos] == [True, True]
+    assert [i.version for i in infos] == [None, None]
+    assert infos[1].models  # models still listed
+
+
+def test_clis_are_probed_in_parallel():
+    import threading
+    import time
+
+    class Slow(FakeCli):
+        active = 0
+        peak = 0
+        lock = threading.Lock()
+
+        def run(self, argv, timeout):
+            with Slow.lock:
+                Slow.active += 1
+                Slow.peak = max(Slow.peak, Slow.active)
+            time.sleep(0.2)
+            with Slow.lock:
+                Slow.active -= 1
+            return super().run(argv, timeout)
+
+    fake = Slow({"claude", "agy"})
+    CliCatalog(which=fake.which, run=fake.run).list()
+    assert Slow.peak == 2

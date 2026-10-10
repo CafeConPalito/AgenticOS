@@ -1,11 +1,13 @@
 import os
 import subprocess
 import sys
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, status
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from agentic_os.db.base import DEFAULT_WORKSPACE
@@ -26,12 +28,32 @@ def _get(session: Session, project_id: str) -> Project:
     return project
 
 
-def _read(project: Project, with_git: bool = True) -> ProjectRead:
+def _read(project: Project) -> ProjectRead:
     result = ProjectRead.model_validate(project)
     result.folder_exists = Path(project.path).is_dir()
-    if with_git and result.folder_exists:
+    if result.folder_exists:
         result.git = git.detect(project.path)
     return result
+
+
+def _read_many(projects: list[Project]) -> list[ProjectRead]:
+    """Git state is computed with subprocesses: detect the projects in parallel."""
+    if len(projects) <= 1:
+        return [_read(p) for p in projects]
+    with ThreadPoolExecutor(max_workers=min(8, len(projects))) as pool:
+        return list(pool.map(_read, projects))
+
+
+def _commit(session: Session) -> None:
+    """The only constraint a valid payload can still violate is the unique folder (two
+    requests racing past `_check_unique`): report it as the same 409."""
+    try:
+        session.commit()
+    except IntegrityError as error:
+        session.rollback()
+        raise ApiError(
+            409, "project_exists", "a project already uses this folder", "path"
+        ) from error
 
 
 def _check_unique(session: Session, path_key: str, exclude_id: str | None = None) -> None:
@@ -63,7 +85,7 @@ def list_projects(session: DbSession) -> list[ProjectRead]:
         .where(Project.workspace_id == DEFAULT_WORKSPACE)
         .order_by(Project.updated_at.desc())
     )
-    return [_read(p) for p in session.scalars(query)]
+    return _read_many(list(session.scalars(query)))
 
 
 @router.post("/projects", status_code=status.HTTP_201_CREATED)
@@ -75,7 +97,7 @@ def create_project(payload: ProjectCreate, session: DbSession) -> ProjectRead:
     values = payload.model_dump(exclude_unset=True, exclude={"create_folder", "path"})
     project = Project(workspace_id=DEFAULT_WORKSPACE, path=path, path_key=key, **values)
     session.add(project)
-    session.commit()
+    _commit(session)
     return _read(project)
 
 
@@ -95,10 +117,9 @@ def update_project(project_id: str, payload: ProjectUpdate, session: DbSession) 
         project.path, project.path_key = path, key
     if changes.get("workspace_mode") or "path" in payload.model_fields_set:
         _check_worktree(project.path, changes.get("workspace_mode") or project.workspace_mode)
-    for field, value in changes.items():
-        if value is not None:
-            setattr(project, field, value)
-    session.commit()
+    for field, value in changes.items():  # nulls are rejected by the schema
+        setattr(project, field, value)
+    _commit(session)
     return _read(project)
 
 
