@@ -91,7 +91,8 @@ class TokenGate:
         if run_id is None:
             await _reject(send)
             return
-        self.on_request(run_id)
+        # May touch the DB (first request of a run): never on the event loop.
+        await anyio.to_thread.run_sync(self.on_request, run_id)
         scope = {
             **scope,
             "path": inner,

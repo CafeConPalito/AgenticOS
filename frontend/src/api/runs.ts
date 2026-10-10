@@ -91,9 +91,14 @@ export function useRunEvents(id: string) {
  * agent's last status and summary, and the project memory it may have written.
  */
 export function applyRunEvent(queryClient: QueryClient, runId: string, event: RunEvent) {
-  queryClient.setQueryData<RunEvent[]>(runKeys.events(runId), (events) =>
-    events && !events.some((e) => e.id === event.id) ? [...events, event] : events,
-  )
+  if (queryClient.getQueryData(runKeys.events(runId)) === undefined) {
+    // The list is still loading (or was never loaded): fetch it instead of losing the event.
+    void queryClient.invalidateQueries({ queryKey: runKeys.events(runId) })
+  } else {
+    queryClient.setQueryData<RunEvent[]>(runKeys.events(runId), (events) =>
+      events && !events.some((e) => e.id === event.id) ? [...events, event] : events,
+    )
+  }
   if (event.name === 'report_status')
     queryClient.setQueryData<Run>(runKeys.detail(runId), (run) =>
       run ? { ...run, last_status: event.detail } : run,

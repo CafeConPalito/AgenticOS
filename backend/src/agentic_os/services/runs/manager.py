@@ -10,7 +10,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import structlog
-from sqlalchemy import select, update
+from sqlalchemy import case, func, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from agentic_os.config import Settings
@@ -27,7 +27,7 @@ from agentic_os.models import (
     RunEvent,
     RunStatus,
 )
-from agentic_os.services.adapters import LaunchContext, adapter_for
+from agentic_os.services.adapters import CliAdapter, LaunchContext, adapter_for
 from agentic_os.services.context import build_context, build_instructions
 from agentic_os.services.hooks import HOOK_EVENTS, interpret, write_hook_script
 from agentic_os.services.mcp_server import RunTokens
@@ -46,6 +46,7 @@ class RunManager:
         # Only runs that are still alive: a finished run is served from its log file.
         self._live: dict[str, RunSession] = {}
         self._live_lock = threading.Lock()
+        self._agy_folders: set[str] = set()  # folders with a live (or starting) agy run
         self.tokens = RunTokens()
         self._mcp_seen: set[str] = set()
         self.loop: asyncio.AbstractEventLoop | None = None
@@ -98,9 +99,25 @@ class RunManager:
         cli = Cli(agent.cli)
         adapter = adapter_for(cli)
         resolve_executable(cli, self._settings.cli_command_overrides)  # fail before any write
-        if cli == Cli.AGY and self._agy_busy(project.path):
-            # Two agy runs in one folder would share the workspace plugin (ADR 0004).
-            raise ApiError(409, "agy_folder_busy", "an agy run is already working in this folder")
+        # Two agy runs in one folder would share the workspace plugin (ADR 0004): the folder is
+        # reserved atomically before anything is written, and released when the run ends.
+        folder = self._reserve_agy_folder(project.path) if cli == Cli.AGY else None
+        try:
+            return self._launch(db, agent, project, prompt, cli, adapter, folder)
+        except Exception:
+            self._release_agy_folder(folder)
+            raise
+
+    def _launch(
+        self,
+        db: Session,
+        agent: Agent,
+        project: Project,
+        prompt: str,
+        cli: Cli,
+        adapter: CliAdapter,
+        folder: str | None,
+    ) -> Run:
         run = Run(
             workspace_id=DEFAULT_WORKSPACE,
             agent_id=agent.id,
@@ -153,7 +170,7 @@ class RunManager:
             run.cols,
             run.rows,
             deferred_prompt=adapter.deferred_prompt(ctx),
-            on_end=lambda: adapter.cleanup(ctx),
+            on_end=lambda: (adapter.cleanup(ctx), self._release_agy_folder(folder)),
             on_system_event=lambda name, detail="", run_id=run.id: self.add_event(
                 run_id, EventKind.SYSTEM, name, detail
             ),
@@ -163,6 +180,7 @@ class RunManager:
         except Exception as error:  # spawn failed (bad executable, permissions…)
             self.tokens.revoke(run.id)
             adapter.cleanup(ctx)
+            self._release_agy_folder(folder)
             run.status, run.error, run.ended_at = RunStatus.FAILED, str(error), utcnow()
             db.commit()
             return run
@@ -172,14 +190,20 @@ class RunManager:
         db.refresh(run)
         return run
 
-    def _agy_busy(self, folder: str) -> bool:
+    def _reserve_agy_folder(self, folder: str) -> str:
         key = os.path.normcase(os.path.realpath(folder))
         with self._live_lock:
-            sessions = list(self._live.values())
-        return any(
-            s.alive and s.cli == Cli.AGY and os.path.normcase(os.path.realpath(s.cwd)) == key
-            for s in sessions
-        )
+            if key in self._agy_folders:
+                raise ApiError(
+                    409, "agy_folder_busy", "an agy run is already working in this folder"
+                )
+            self._agy_folders.add(key)
+        return key
+
+    def _release_agy_folder(self, key: str | None) -> None:
+        if key is not None:
+            with self._live_lock:
+                self._agy_folders.discard(key)
 
     def stop(self, run_id: str) -> bool:
         session = self.get(run_id)
@@ -232,12 +256,23 @@ class RunManager:
 
     # ------------------------------------------------------------------ events
     def add_event(self, run_id: str, kind: EventKind, name: str, detail: str = "") -> None:
-        """Stores an event and pushes it to the run's viewers («Eventos MCP» panel)."""
+        """Stores an event and pushes it to the run's viewers («Eventos MCP» panel). Called from
+        the session threads too: an error is logged, never raised into them."""
+        try:
+            message = self._store_event(run_id, kind, name, detail)
+        except Exception:
+            log.exception("could not store run event", run_id=run_id, name=name)
+            return
+        session = self.get(run_id)
+        if session is not None:
+            session.emit(message)
+
+    def _store_event(self, run_id: str, kind: EventKind, name: str, detail: str) -> dict:
         with self._db() as db:
             event = RunEvent(run_id=run_id, kind=kind, name=name, detail=detail)
             db.add(event)
             db.commit()
-            message = {
+            return {
                 "type": "event",
                 "id": event.id,
                 "run_id": run_id,
@@ -246,9 +281,6 @@ class RunManager:
                 "name": event.name,
                 "detail": event.detail,
             }
-        session = self.get(run_id)
-        if session is not None:
-            session.emit(message)
 
     # ------------------------------------------------------------------ agentic-os MCP tools
     def mcp_connected(self, run_id: str) -> None:
@@ -307,7 +339,18 @@ class RunManager:
                 return
             stamp = utcnow().astimezone().strftime("%Y-%m-%d %H:%M")
             block = f"### {stamp} · {run.agent_name}\n{note.strip()}"
-            project.memory = f"{project.memory.rstrip()}\n\n{block}".strip()
+            # Appended in SQL: two writers (two agents, or the user editing the memory) must
+            # not overwrite each other with a read-modify-write.
+            db.execute(
+                update(Project)
+                .where(Project.id == project.id)
+                .values(
+                    memory=case(
+                        (func.trim(Project.memory) == "", block),
+                        else_=func.rtrim(Project.memory) + "\n\n" + block,
+                    )
+                )
+            )
             db.commit()
         self.add_event(run_id, EventKind.MCP, "write_project_memory", note)
 
@@ -327,3 +370,5 @@ class RunManager:
         # agy fires PreInvocation on every model step: only turn boundaries are events.
         if event in HOOK_EVENTS[cli] and (boundary or event not in ("PreInvocation",)):
             self.add_event(run_id, EventKind.HOOK, event)
+        if effect.turn_ended and session is not None:
+            session.after_turn_end()

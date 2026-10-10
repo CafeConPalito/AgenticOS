@@ -277,6 +277,8 @@ def answer(text: str) -> None:
 
 
 def long_turn() -> None:
+    """A turn that only ends when interrupted (Esc): like Claude Code, no Stop hook then."""
+    hook("PreInvocation" if AGY_MODE else "UserPromptSubmit")
     out("esc to interrupt")
     for n in range(1, 10_000):
         out(str(n))

@@ -13,7 +13,7 @@ Lint backend (ruff)             OK
 Lint frontend (eslint+prettier) OK
 Lint desktop (rustfmt)          OK
 Lint spikes (ruff)              OK
-Tests backend (pytest)          OK  121 passed  (+27 en esta fase)
+Tests backend (pytest)          OK  128 passed  (+34 en esta fase)
 Tests frontend (vitest)         OK   52 passed  (+2 en esta fase)
 Tests desktop (cargo test)      OK    3 passed
 Tests spikes (pytest)           OK   15 passed
@@ -41,7 +41,24 @@ Tests spikes (pytest)           OK   15 passed
 | CA9 | `check` en verde; ADR, README y roadmap | ✅ | Salida de arriba; [ADR 0008](../../adr/0008-agent-coordination.md); README (contexto, MCP y la API para los agentes); roadmap. **Sidecar empaquetado**: las ejecuciones de Claude y agy (CLI falso) terminan `completed` con MCP, hooks y memoria, y sin restos del plugin |
 
 ## Code review
-`/code-review high` sobre `main...phase/04-adapters-mcp`: _pendiente_.
+`/code-review high` sobre `main...phase/04-adapters-mcp`. Los tres fallos de comportamiento de la sesión tienen tests en `test_runs_review.py`, que **fallan sin la corrección** (comprobado revirtiendo `session.py` y `manager.py`):
+
+| Hallazgo | Severidad | Resolución |
+|---|---|---|
+| Al tomar el control se envía Esc y Claude no manda `Stop` por un turno interrumpido: la actividad se quedaba en «Trabajando» y el cierre tras `complete_task` esperaba un fin de turno que no llegaba | Alta | **Corregido**: tomar el control cierra el turno (actividad «Esperando»); test `test_taking_control_ends_an_interrupted_turn` |
+| Un error al guardar un evento (BD bloqueada) mataba el hilo de la sesión: sin diálogos, sin prompt diferido y sin cierre | Alta | **Corregido**: `add_event` registra el error y nunca lo propaga; test |
+| Tras `complete_task`, el CLI se cerraba aunque una persona tuviera el control | Alta | **Corregido**: nunca se cierra bajo un humano. Al devolver el control sin escribir se cierra (sin empujón); si escribió algo, se cierra al acabar ese turno. Test `test_a_completed_run_is_not_closed_under_a_human` |
+| El gate del MCP escribía en la BD dentro del event loop en la primera petición | Media | **Corregido**: `anyio.to_thread` |
+| `write_project_memory` hacía leer-modificar-escribir: dos escritores se pisaban | Media | **Corregido**: concatenación atómica en SQL; test con la memoria vacía y dos notas |
+| El reintento del prompt de agy podía enviarlo dos veces | Media | **Corregido**: se escribe una sola vez; si el turno no empieza, la ejecución registra `waiting_for_human` |
+| Dos lanzamientos simultáneos de agy en la misma carpeta pasaban la comprobación y se pisaban el plugin | Media | **Corregido**: la carpeta se reserva de forma atómica antes de escribir nada y se libera al terminar o si falla; test |
+| Al terminar una ejecución en la página, la terminal se reconstruía con un tamaño viejo | Media | **Corregido**: el modo de ajuste se decide al montar el panel |
+| El prompt diferido se escribía aunque el usuario tuviera el control, o a ciegas tras esperar | Media | **Corregido**: nunca bajo un humano ni con un diálogo abierto; si agy no muestra su entrada, se avisa al usuario |
+| Se marcaba «Completada» aunque el usuario hubiera parado la ejecución o el CLI hubiera fallado tras `complete_task` | Media | **Corregido**: solo `completed` si Agentic OS cerró el CLI tras `complete_task`; test `test_a_user_stop_after_complete_task_is_not_completed` |
+| (fuera del top 10) El plugin no se excluía de git en un worktree (su `.git` es un archivo) | Baja | **Corregido**: se resuelve el directorio común del repo; test |
+| (fuera del top 10) Un evento que llegaba antes de cargar la lista se perdía | Baja | **Corregido**: se recarga la lista |
+| (fuera del top 10) «cerrando» aparecía antes de «Fin de turno» | Baja | **Corregido**: el cierre se lanza después de registrar el fin de turno |
+| (fuera del top 10) En «Restringido», Claude y agy pueden editar archivos | — | **Justificado**: es lo que define la spec («Restringido» = edita, pero no ejecuta comandos sin preguntar). Si se quiere un modo de solo lectura, se decidirá en una fase futura |
 
 ## Incidencias durante el desarrollo
 Las pruebas con los CLIs reales encontraron cuatro cosas que ni el spike ni el CLI falso habían mostrado. Todas tienen ya un test con textos reales:

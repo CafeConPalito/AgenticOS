@@ -416,7 +416,9 @@
         "mcp_probe": "Conectando el MCP (/mcp)"
       },
       "human": {
-        "bypass_permissions_consent": "Claude pide aceptar el modo «Autónomo» (sin permisos). Toma el control para responder."
+        "bypass_permissions_consent": "Claude pide aceptar el modo «Autónomo» (sin permisos). Toma el control para responder.",
+        "prompt_not_sent": "agy no muestra su entrada: el prompt no se ha enviado. Toma el control para revisar la terminal.",
+        "prompt_not_started": "El agente no ha empezado con el prompt. Toma el control para revisar la terminal."
       }
     }
   },

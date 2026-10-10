@@ -211,7 +211,7 @@ Habla con el MCP con el cliente oficial (`mcp`), ejecuta los `hook.cmd` configur
 6. [x] Integración en `RunSession`/`RunManager`: actividad por hooks, prompt diferido de agy, cierre tras `complete_task` → `completed`, eventos por WebSocket y, si aplica, autoaprobación del diálogo MCP. CLI falso ampliado; tests de extremo a extremo de los dos adapters.
 7. [x] Frontend: tipos y API, panel «Eventos MCP», estado actual, resumen, «Completada», refresco de la memoria; tests.
 8. [x] Pruebas manuales con Claude y agy reales (CA1, CA2, CA3, CA5) y comparación de la configuración del usuario antes y después (CA6), con capturas en `evidencias/`. Comprobación con el sidecar empaquetado (MCP + hooks).
-9. [ ] ADR 0008, README, `validacion.md`, `/code-review`, correcciones y puerta 3.
+9. [x] ADR 0008, README, `validacion.md`, `/code-review`, correcciones y puerta 3.
 
 ## Tests previstos
 | Test | Cubre |

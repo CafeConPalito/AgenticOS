@@ -104,6 +104,7 @@ class RunSession:
         self._stopping = False
         self._ended = False
         self.completed = False  # the agent called complete_task
+        self._user_stop = False  # Parar / app closing: never reported as completed
         self._completed_at = 0.0
         self._closing_completed = False
         self._prompt_sent = False
@@ -149,8 +150,11 @@ class RunSession:
     def wait(self, timeout: float | None = None) -> bool:
         return self._finished.wait(timeout)
 
-    def stop(self, timeout: float | None = None) -> None:
-        """Graceful exit (/exit or double Ctrl+C), killing the process if it does not comply."""
+    def stop(self, timeout: float | None = None, user: bool = True) -> None:
+        """Graceful exit (/exit or double Ctrl+C), killing the process if it does not comply.
+        `user=False`: Agentic OS closes a completed run (it then ends as completed)."""
+        if user:
+            self._user_stop = True
         with self._lock:
             # A second stop (double click, app closing meanwhile) would interleave its keys.
             if not self.alive or self._pty is None or self._stopping:
@@ -277,9 +281,13 @@ class RunSession:
             self._in_turn, boundary = False, True
         if effect.activity is not None and self.alive:
             self._set(activity=effect.activity)
-        if effect.turn_ended and self.completed:
-            self._close_completed("turn_end")
         return boundary
+
+    def after_turn_end(self) -> None:
+        """Called once the end-of-turn event is recorded: closes a completed run (so the
+        events read «Fin de turno» → «cerrando»)."""
+        if self.completed:
+            self._close_completed("turn_end")
 
     def on_mcp_connected(self) -> None:
         self.mcp_connected = True
@@ -294,17 +302,21 @@ class RunSession:
                 self._close_completed("idle")
 
     def _close_completed(self, reason: str) -> None:
-        if self._closing_completed or not self.alive:
+        # Never under a human who took the control: it closes after they hand it back.
+        if self._closing_completed or not self.alive or self.controller is not None:
             return
         self._closing_completed = True
+        self.stop(user=False)
         self.on_system_event("closing", reason)
-        self.stop()
 
     def _deferred_prompt_step(self, now: float) -> None:
         """agy connects its plugin's MCP server lazily: once its input is ready, `/mcp` makes
         it connect (verified with agy 1.3.3), so the model sees our tools from the first turn.
         Then the panel is closed and the prompt typed. Typed too early, an Enter would answer
-        a dialog (e.g. «No, exit»)."""
+        a dialog (e.g. «No, exit»), so it is never typed blind: if agy's input never looks
+        ready, the human is told instead."""
+        if self.controller is not None:
+            return  # the human is typing in this terminal
         if self._mcp_probe_at == 0.0:
             if self.mcp_connected and self._screen.ready_for_prompt():
                 self._send_deferred_prompt(mcp_timeout=False)
@@ -312,8 +324,9 @@ class RunSession:
                 self._mcp_probe_at = now
                 self._type_line("/mcp")
                 self.on_system_event("mcp_probe")
-            elif now - self.started_at > MCP_WAIT:
-                self._send_deferred_prompt(mcp_timeout=True)  # never got ready: try anyway
+            elif now - self.started_at > MCP_WAIT and "prompt_not_sent" not in self._human_notified:
+                self._human_notified.add("prompt_not_sent")
+                self.on_system_event("waiting_for_human", "prompt_not_sent")
             return
         timed_out = now - self._mcp_probe_at > MCP_PROBE_WAIT
         if (self.mcp_connected or timed_out) and not self._closing_mcp_panel:
@@ -327,8 +340,9 @@ class RunSession:
             self._send_deferred_prompt(mcp_timeout=not self.mcp_connected)
 
     def _send_deferred_prompt(self, mcp_timeout: bool) -> None:
-        """agy: types the prompt once its MCP server is connected, and checks that the turn
-        started (a PreInvocation hook); keys typed while the TUI is busy are dropped."""
+        """agy: types the prompt once its MCP server is connected. It is typed once: retyping
+        could submit it twice (the first copy may still be in the input). If no turn starts,
+        the human is told."""
         self._prompt_sent = True
         prompt = self.deferred_prompt or ""
         pty = self._pty
@@ -336,22 +350,17 @@ class RunSession:
         def run() -> None:
             if mcp_timeout:
                 self.on_system_event("mcp_timeout")
-            for attempt in (1, 2):
-                if pty is None or not self.alive:
-                    return
-                with contextlib.suppress(Exception):
-                    pty.write(prompt)
-                    time.sleep(0.4)  # let the TUI render the text before submitting it
-                    pty.write(ENTER)
-                self.on_system_event("prompt_sent", "" if attempt == 1 else "reintento")
-                if self._turn_seen.wait(PROMPT_CONFIRM) or not self._hooks_working():
-                    return
+            if pty is None or not self.alive:
+                return
+            with contextlib.suppress(Exception):
+                pty.write(prompt)
+                time.sleep(0.4)  # let the TUI render the text before submitting it
+                pty.write(ENTER)
+            self.on_system_event("prompt_sent")
+            if not self._turn_seen.wait(PROMPT_CONFIRM) and self.alive:
+                self.on_system_event("waiting_for_human", "prompt_not_started")
 
         threading.Thread(target=run, name=f"run-{self.run_id}-prompt", daemon=True).start()
-
-    def _hooks_working(self) -> bool:
-        # Without hooks (a CLI that never calls them) there is nothing to confirm with.
-        return self._hooks_seen or self.mcp_connected
 
     def _publish(self, message: Message) -> None:
         """Any thread."""
@@ -390,6 +399,9 @@ class RunSession:
             self._typed = False
         if first_take and self._pty is not None:
             self._pty.write(ESC)  # interrupt the current turn, keep the session (ADR 0003)
+            # An interrupted turn fires no end-of-turn hook (Claude Code): close it here.
+            self._in_turn = False
+            self._set(activity=Activity.IDLE)
         self._set(status=RunStatus.INTERVENING)
 
     def release_control(self, client_id: str) -> None:
@@ -400,6 +412,11 @@ class RunSession:
             nudge = not self._typed
         if self.alive:
             self._set(status=RunStatus.RUNNING)
+            if self.completed:
+                self._completed_at = time.monotonic()  # a new window after the human's turn
+                if nudge:
+                    self._close_completed("released")  # the task was done: no nudge
+                return
             if nudge and self._pty is not None:
                 self._type_line(CONTINUE_MESSAGE)
 
@@ -452,8 +469,8 @@ class RunSession:
             self.controller = None
             with contextlib.suppress(OSError):
                 self._log.close()
-        if self.completed:
-            status = RunStatus.COMPLETED  # the agent finished its task (complete_task)
+        if self.completed and self._closing_completed and not self._user_stop:
+            status = RunStatus.COMPLETED  # complete_task and Agentic OS closed the CLI
         elif self._stop_requested:
             status = RunStatus.STOPPED
         else:

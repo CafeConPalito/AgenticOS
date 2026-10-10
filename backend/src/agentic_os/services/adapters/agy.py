@@ -32,10 +32,31 @@ def plugin_dir(cwd: Path) -> Path:
     return cwd / PLUGIN
 
 
-def exclude_from_git(cwd: Path) -> None:
-    """Adds the plugin to `.git/info/exclude` (local, never committed), once."""
+def git_common_dir(cwd: Path) -> Path | None:
+    """The repo's git dir, also for a worktree (whose `.git` is a file pointing to it)."""
     git = cwd / ".git"
-    if not git.is_dir():  # not a repo (or a worktree, whose .git is a file)
+    if git.is_dir():
+        return git
+    if not git.is_file():
+        return None
+    try:
+        line = git.read_text("utf-8").strip()
+    except OSError:
+        return None
+    if not line.startswith("gitdir:"):
+        return None
+    gitdir = (cwd / line.removeprefix("gitdir:").strip()).resolve()
+    common = gitdir / "commondir"  # worktrees share info/exclude with the main repo
+    if common.is_file():
+        return (gitdir / common.read_text("utf-8").strip()).resolve()
+    return gitdir
+
+
+def exclude_from_git(cwd: Path) -> None:
+    """Adds the plugin to `info/exclude` (local, never committed), once: it holds the run's
+    token in its MCP URL."""
+    git = git_common_dir(cwd)
+    if git is None:  # not a repo
         return
     exclude = git / "info" / "exclude"
     exclude.parent.mkdir(parents=True, exist_ok=True)
