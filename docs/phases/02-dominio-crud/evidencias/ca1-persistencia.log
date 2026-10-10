@@ -1,0 +1,6 @@
+﻿Lanzamiento 1: http://127.0.0.1:50063 · BD: True
+  creado agente baefaedb-dc46-428d-87e6-5b4df308a68f 'Dev persistente' · proyecto 54c900b0-acba-48a8-9f17-3fe13ad03b4d 'Demo'
+Lanzamiento 2: http://127.0.0.1:52667 · agentes: Dev persistente · proyectos: Demo
+  ¿persisten? agente=True proyecto=True
+Procesos backend tras cerrar: 0
+Log del backend (migraciones): 2026-10-09T19:26:40.180016Z [info     ] Context impl SQLiteImpl.       [alembic.runtime.migration] | 2026-10-09T19:26:40.181017Z [info     ] Will assume non-transactional DDL. [alembic.runtime.migration]

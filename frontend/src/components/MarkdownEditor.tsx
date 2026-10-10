@@ -50,7 +50,7 @@ export function MarkdownEditor({
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           rows={minRows}
-          className="min-h-0 resize-y rounded-none border-0 bg-transparent font-mono text-[13px] leading-[1.6] shadow-none focus-visible:ring-0"
+          className="field-sizing-fixed min-h-0 resize-y rounded-none border-0 bg-transparent font-mono text-[13px] leading-[1.6] shadow-none focus-visible:ring-0"
         />
       ) : (
         <div className="markdown-preview min-h-[200px] px-4 py-3 text-[13px] leading-[1.6]">

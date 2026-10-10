@@ -7,10 +7,15 @@ $binaries = Join-Path $root 'desktop\src-tauri\binaries'
 
 Push-Location $backend
 try {
+    # Alembic loads env.py and the revisions from files at runtime: ship them as data.
+    # Paths are absolute because --specpath changes the base for relative --add-data paths.
+    $migrations = Join-Path $backend 'src\agentic_os\db\migrations'
     uv run pyinstaller --noconfirm --clean --onefile --console `
         --name agentic-os-backend `
         --paths src `
         --collect-submodules uvicorn `
+        --collect-submodules agentic_os `
+        --add-data "$migrations;agentic_os\db\migrations" `
         --distpath build\dist --workpath build\work --specpath build `
         packaging\entry.py
     if ($LASTEXITCODE -ne 0) { throw "PyInstaller failed ($LASTEXITCODE)" }
