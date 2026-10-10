@@ -5,6 +5,9 @@ import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { useHealth } from '@/hooks/useHealth'
 import { getApiBaseUrl } from '@/lib/api'
+import { TerminalDock, useDockShortcut } from '@/components/terminal/TerminalDock'
+import { useDock } from '@/components/terminal/dock-store'
+import { cn } from '@/lib/utils'
 import { useTheme } from '@/theme/ThemeProvider'
 import { AppHeader } from './AppHeader'
 import { AppSidebar } from './AppSidebar'
@@ -27,6 +30,8 @@ export function AppShell() {
     retry: false,
   }).data
   const { theme } = useTheme()
+  const dockPosition = useDock((s) => s.position)
+  useDockShortcut()
 
   return (
     <TooltipProvider delayDuration={300}>
@@ -42,9 +47,17 @@ export function AppShell() {
           {health.state === 'disconnected' && (
             <OfflineBanner onRetry={() => void health.refetch()} url={apiUrl} />
           )}
-          <main className="min-h-0 min-w-0 flex-1 overflow-auto">
-            <Outlet />
-          </main>
+          <div
+            className={cn(
+              'flex min-h-0 min-w-0 flex-1',
+              dockPosition === 'right' ? 'flex-row' : 'flex-col',
+            )}
+          >
+            <main className="min-h-0 min-w-0 flex-1 overflow-auto">
+              <Outlet />
+            </main>
+            <TerminalDock />
+          </div>
         </SidebarInset>
       </SidebarProvider>
       <Toaster position="bottom-right" theme={theme} duration={5200} />

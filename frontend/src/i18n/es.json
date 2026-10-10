@@ -316,7 +316,8 @@
     "release": "Devolver al agente",
     "released": "Control devuelto a {{name}}",
     "working": "{{name}} está trabajando…",
-    "waiting": "Esperando…"
+    "waiting": "Esperando…",
+    "dockReadOnly": "Solo lectura · abre el detalle para tomar el control"
   },
   "runs": {
     "title": "Ejecuciones",
@@ -393,5 +394,15 @@
     },
     "openFolder": "Abrir carpeta",
     "terminalInfo": "xterm · {{cols}}×{{rows}}"
+  },
+  "dock": {
+    "label": "Terminal",
+    "tabs": "Ejecuciones activas",
+    "toggle": "Abrir o cerrar la terminal (Ctrl+`)",
+    "toBottom": "Acoplar abajo",
+    "toRight": "Acoplar a la derecha",
+    "expand": "Abrir detalle",
+    "close": "Cerrar terminal",
+    "empty": "No hay ninguna ejecución activa. Lanza un agente para verlo trabajar aquí."
   }
 }

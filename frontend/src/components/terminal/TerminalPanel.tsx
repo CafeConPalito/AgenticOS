@@ -11,14 +11,15 @@ import { useRunTerminal } from './use-run-terminal'
 /**
  * A run's live terminal with the design's frame: read-only by default, «Tomar control» gives
  * this view the keyboard (the agent is interrupted with Esc) until «Devolver al agente».
+ * The `dock` variant is a frameless, always read-only viewer.
  */
 export function TerminalPanel({
   run,
-  compact = false,
+  variant = 'page',
   className,
 }: {
   run: Run
-  compact?: boolean
+  variant?: 'page' | 'dock'
   className?: string
 }) {
   const { t } = useTranslation()
@@ -47,68 +48,77 @@ export function TerminalPanel({
         mine
           ? 'border-2 border-status-intervening shadow-[0_0_0_4px_color-mix(in_oklch,var(--status-intervening)_22%,transparent)]'
           : 'border',
-        compact && 'rounded-none border-0',
+        variant === 'dock' && 'rounded-none border-0',
         className,
       )}
     >
-      <header className="flex items-center gap-2.5 border-b border-terminal-border bg-terminal-header py-2 pr-2.5 pl-3 text-[#E6EDF7]">
-        <span aria-hidden className="flex gap-[5px]">
-          {[0, 1, 2].map((i) => (
-            <span key={i} className="size-[9px] rounded-full bg-[#1E3A66]" />
-          ))}
-        </span>
-        <span className="min-w-0 truncate font-mono text-[12.5px]">
-          {run.agent_name} · {run.cli_session_id?.slice(0, 8) ?? run.id.slice(0, 8)}
-        </span>
-        {mine ? (
-          <span className="inline-flex h-[22px] shrink-0 items-center gap-1.5 rounded-full bg-status-intervening px-[9px] text-[11.5px] font-bold whitespace-nowrap text-[#0A1A33]">
-            <Keyboard className="size-3" />
-            {t('terminal.intervening')}
-          </span>
-        ) : (
-          <span className="inline-flex h-[22px] shrink-0 items-center gap-1.5 rounded-full bg-[#13284D] px-[9px] text-[11.5px] whitespace-nowrap text-[#C9D5EA]">
-            <Eye className="size-3" />
-            {finished
-              ? t('terminal.finished')
-              : someoneElse
-                ? t('terminal.otherController')
-                : t('terminal.observing')}
-          </span>
-        )}
-        <div className="ml-auto shrink-0">
-          {!finished &&
-            (mine ? (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => void act('release')}
-                disabled={control.isPending}
-                className="h-7 border-status-intervening bg-transparent text-status-intervening hover:bg-[#F5B547]/10 hover:text-status-intervening"
-              >
-                <Undo2 />
-                {t('terminal.release')}
-              </Button>
-            ) : (
-              <Button
-                size="sm"
-                onClick={() => void act('take')}
-                disabled={control.isPending || someoneElse}
-                className="h-7 bg-primary-action text-white hover:bg-primary-action-hover"
-              >
-                <Hand />
-                {t('terminal.take')}
-              </Button>
+      {variant === 'page' && (
+        <header className="flex items-center gap-2.5 border-b border-terminal-border bg-terminal-header py-2 pr-2.5 pl-3 text-[#E6EDF7]">
+          <span aria-hidden className="flex gap-[5px]">
+            {[0, 1, 2].map((i) => (
+              <span key={i} className="size-[9px] rounded-full bg-[#1E3A66]" />
             ))}
-        </div>
-      </header>
+          </span>
+          <span className="min-w-0 truncate font-mono text-[12.5px]">
+            {run.agent_name} · {run.cli_session_id?.slice(0, 8) ?? run.id.slice(0, 8)}
+          </span>
+          {mine ? (
+            <span className="inline-flex h-[22px] shrink-0 items-center gap-1.5 rounded-full bg-status-intervening px-[9px] text-[11.5px] font-bold whitespace-nowrap text-[#0A1A33]">
+              <Keyboard className="size-3" />
+              {t('terminal.intervening')}
+            </span>
+          ) : (
+            <span className="inline-flex h-[22px] shrink-0 items-center gap-1.5 rounded-full bg-[#13284D] px-[9px] text-[11.5px] whitespace-nowrap text-[#C9D5EA]">
+              <Eye className="size-3" />
+              {finished
+                ? t('terminal.finished')
+                : someoneElse
+                  ? t('terminal.otherController')
+                  : t('terminal.observing')}
+            </span>
+          )}
+          <div className="ml-auto shrink-0">
+            {!finished &&
+              (mine ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => void act('release')}
+                  disabled={control.isPending}
+                  className="h-7 border-status-intervening bg-transparent text-status-intervening hover:bg-[#F5B547]/10 hover:text-status-intervening"
+                >
+                  <Undo2 />
+                  {t('terminal.release')}
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  onClick={() => void act('take')}
+                  disabled={control.isPending || someoneElse}
+                  className="h-7 bg-primary-action text-white hover:bg-primary-action-hover"
+                >
+                  <Hand />
+                  {t('terminal.take')}
+                </Button>
+              ))}
+          </div>
+        </header>
+      )}
       <div ref={containerRef} data-testid="xterm" className="min-h-0 flex-1 px-2 py-1.5" />
-      {!finished && !mine && (
-        <div className="flex items-center gap-2 px-3.5 pb-2 font-mono text-[12px] text-[#7F8DAA]">
-          {activity === 'busy'
-            ? t('terminal.working', { name: run.agent_name })
-            : t('terminal.waiting')}
-          <span className="inline-block h-[13px] w-[7px] animate-blink bg-status-running align-[-2px]" />
+      {variant === 'dock' ? (
+        <div className="px-3.5 pb-2 font-mono text-[12px] text-[#7F8DAA]">
+          {finished ? t('terminal.finished') : t('terminal.dockReadOnly')}
         </div>
+      ) : (
+        !finished &&
+        !mine && (
+          <div className="flex items-center gap-2 px-3.5 pb-2 font-mono text-[12px] text-[#7F8DAA]">
+            {activity === 'busy'
+              ? t('terminal.working', { name: run.agent_name })
+              : t('terminal.waiting')}
+            <span className="inline-block h-[13px] w-[7px] animate-blink bg-status-running align-[-2px]" />
+          </div>
+        )
       )}
     </section>
   )

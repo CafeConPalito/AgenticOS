@@ -10,7 +10,9 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb'
+import { useDock } from '@/components/terminal/dock-store'
 import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import { LaunchRunDialog } from '@/pages/runs/LaunchRunDialog'
 import type { CrumbHandle } from './crumbs'
 import type { NavItem, PrimaryAction } from './nav'
@@ -34,6 +36,8 @@ export function AppHeader({ section }: { section: NavItem }) {
   const crumbs = useCrumbs()
   const primaryRoute = section.primary ? PRIMARY_ROUTES[section.primary] : undefined
   const [launching, setLaunching] = useState(false)
+  const dockOpen = useDock((s) => s.open)
+  const toggleDock = useDock((s) => s.toggle)
   const primaryAvailable = Boolean(primaryRoute) || section.primary === 'launchRun'
 
   function onPrimary() {
@@ -90,9 +94,10 @@ export function AppHeader({ section }: { section: NavItem }) {
       </button>
       <Button
         variant="outline"
-        disabled
-        title={comingSoon}
-        className="h-8 gap-[7px] bg-transparent"
+        aria-pressed={dockOpen}
+        title={t('dock.toggle')}
+        onClick={toggleDock}
+        className={cn('h-8 gap-[7px]', dockOpen ? 'bg-accent' : 'bg-transparent')}
       >
         <SquareTerminal className="size-[15px]" />
         {t('header.terminal')}
