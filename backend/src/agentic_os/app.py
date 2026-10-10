@@ -1,15 +1,36 @@
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from agentic_os import APP_NAME, __version__
 from agentic_os.api import api_router
 from agentic_os.config import Settings, get_settings
+from agentic_os.db.migrate import upgrade_to_head
+from agentic_os.db.session import create_db_engine, database_url, make_sessionmaker
+from agentic_os.errors import register_error_handlers
 from agentic_os.logging_setup import configure_logging
+from agentic_os.services.clis import CliCatalog
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or get_settings()
-    app = FastAPI(title=APP_NAME, version=__version__)
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+        engine = create_db_engine(database_url(settings))
+        upgrade_to_head(engine)
+        app.state.engine = engine
+        app.state.sessionmaker = make_sessionmaker(engine)
+        app.state.settings = settings
+        app.state.cli_catalog = CliCatalog()
+        try:
+            yield
+        finally:
+            engine.dispose()
+
+    app = FastAPI(title=APP_NAME, version=__version__, lifespan=lifespan)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
@@ -17,6 +38,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    register_error_handlers(app)
     app.include_router(api_router)
     return app
 

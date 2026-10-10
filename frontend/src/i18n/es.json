@@ -75,5 +75,229 @@
       "emptyDescription": "CLIs detectados, carpeta de datos, notificaciones, idioma y tema."
     },
     "comingSoon": "Disponible en próximas fases"
+  },
+  "common": {
+    "cancel": "Cancelar",
+    "save": "Guardar cambios",
+    "saving": "Guardando…",
+    "saved": "Cambios guardados",
+    "create": "Crear",
+    "creating": "Creando…",
+    "delete": "Borrar",
+    "duplicate": "Duplicar",
+    "more": "Más acciones",
+    "none": "—",
+    "loading": "Cargando…",
+    "comingSoonPhase": "Disponible en próximas fases",
+    "required": "Obligatorio",
+    "back": "Volver"
+  },
+  "markdown": {
+    "edit": "Editar",
+    "preview": "Vista previa",
+    "empty": "Nada que mostrar todavía."
+  },
+  "unsaved": {
+    "title": "Tienes cambios sin guardar",
+    "description": "Si sales ahora, se perderán los cambios que no has guardado.",
+    "discard": "Descartar cambios"
+  },
+  "folderPicker": {
+    "placeholder": "D:\\proyectos\\mi-proyecto",
+    "browse": "Examinar…",
+    "dialogTitle": "Elige la carpeta del proyecto"
+  },
+  "errors": {
+    "generic": "Algo ha fallado: {{message}}",
+    "network": "No se pudo contactar con el backend.",
+    "agent_not_found": "El agente no existe o se ha borrado.",
+    "project_not_found": "El proyecto no existe o se ha borrado.",
+    "name_required": "El nombre es obligatorio.",
+    "unknown_template": "La plantilla no existe.",
+    "validation_error": "Revisa los datos del formulario.",
+    "folder_not_found": "La carpeta no existe.",
+    "not_a_folder": "La ruta apunta a un archivo, no a una carpeta.",
+    "folder_not_accessible": "No hay permisos para usar esta carpeta.",
+    "folder_not_creatable": "No se pudo crear la carpeta.",
+    "project_exists": "Ya hay un proyecto en esta carpeta.",
+    "worktree_requires_git": "El modo worktree necesita que la carpeta sea un repositorio git.",
+    "path_not_absolute": "Usa la ruta completa de la carpeta (por ejemplo D:\\proyectos\\mi-web)."
+  },
+  "cli": {
+    "claude": "Claude Code",
+    "agy": "Antigravity",
+    "vendor": {
+      "claude": "Anthropic",
+      "agy": "Google"
+    },
+    "notDetected": "No detectado",
+    "defaultModel": "Predeterminado del CLI",
+    "modelsError": "No se pudieron cargar los modelos: {{error}}",
+    "refresh": "Volver a detectar",
+    "alias": {
+      "sonnet": "Sonnet (último)",
+      "opus": "Opus (último)",
+      "haiku": "Haiku (último)"
+    }
+  },
+  "agents": {
+    "title": "Agentes",
+    "subtitle": "Tu equipo. Cada agente es un CLI de IA con su propio rol, instrucciones y permisos.",
+    "architect": "Crear con el Arquitecto",
+    "columns": {
+      "agent": "Agente",
+      "cli": "CLI",
+      "model": "Modelo",
+      "status": "Estado",
+      "queue": "En cola",
+      "usage": "Consumo del mes"
+    },
+    "status": {
+      "active": "Activo",
+      "draft": "Borrador"
+    },
+    "open": "Abrir {{name}}",
+    "new": {
+      "title": "Nuevo agente",
+      "subtitle": "Empieza desde una plantilla o en blanco. Después podrás cambiarlo todo.",
+      "blank": "En blanco",
+      "blankDescription": "Un agente vacío para configurar desde cero.",
+      "blankName": "Nuevo agente",
+      "created": "Agente «{{name}}» creado"
+    },
+    "tabs": {
+      "general": "General",
+      "instructions": "Instrucciones",
+      "execution": "Ejecución",
+      "knowledge": "Conocimiento",
+      "skills": "Skills",
+      "history": "Historial"
+    },
+    "fields": {
+      "name": "Nombre",
+      "role": "Rol",
+      "avatar": "Avatar y color",
+      "colorHelp": "El color identifica al agente en el tablero, las colas y las pestañas de terminal.",
+      "color": "Color {{color}}",
+      "description": "Descripción",
+      "descriptionPlaceholder": "Qué hace este agente y en qué es bueno.",
+      "instructions": "Instrucciones del agente",
+      "instructionsHelp": "Rol, forma de trabajar y reglas. Se añaden a las instrucciones del CLI en cada ejecución.",
+      "cli": "CLI",
+      "model": "Modelo",
+      "permissions": "Modo de permisos",
+      "tools": "Herramientas permitidas",
+      "concurrency": "Concurrencia máxima",
+      "concurrencyHelp": "Tareas a la vez",
+      "decrease": "Reducir",
+      "increase": "Aumentar",
+      "spawn": "Puede lanzar subagentes",
+      "spawnHelp": "Ejecuciones hijas en paralelo",
+      "createTasks": "Puede crear tareas",
+      "createTasksHelp": "En el backlog de sus proyectos",
+      "status": "Estado"
+    },
+    "permission": {
+      "autonomous": "Autónomo",
+      "autonomousHelp": "Ejecuta comandos y edita sin preguntar, siempre dentro de su workspace.",
+      "restricted": "Restringido",
+      "restrictedHelp": "Solo usa las herramientas permitidas. Sin red ni comandos de sistema salvo que los permitas.",
+      "ask": "Preguntar",
+      "askHelp": "Pide aprobación en el Inbox antes de cada acción sensible."
+    },
+    "tool": {
+      "read": "Leer archivos",
+      "edit": "Editar archivos",
+      "terminal": "Terminal",
+      "git": "Git",
+      "web": "Web",
+      "browser": "Navegador",
+      "mcp_agentic_os": "MCP agentic-os"
+    },
+    "delete": {
+      "title": "¿Borrar a {{name}}?",
+      "description": "Se borrará el agente y su configuración. Esta acción no se puede deshacer.",
+      "done": "Agente «{{name}}» borrado"
+    },
+    "duplicated": "Agente duplicado como «{{name}}»",
+    "notFound": "Este agente no existe o se ha borrado.",
+    "copyName": "{{name}} (copia)"
+  },
+  "projects": {
+    "title": "Proyectos",
+    "subtitle": "Cada proyecto es una carpeta con su pipeline, memoria y conocimiento.",
+    "columns": {
+      "project": "Proyecto",
+      "folder": "Carpeta",
+      "git": "Git",
+      "pipeline": "Pipeline",
+      "open": "Abiertas",
+      "activity": "Último movimiento"
+    },
+    "open": "Abrir {{name}}",
+    "noGit": "Sin git",
+    "dirty": "Con cambios sin commitear",
+    "folderMissing": "La carpeta ya no existe",
+    "mode": {
+      "direct": "Carpeta directa",
+      "directHelp": "Los agentes trabajan sobre la carpeta del proyecto, una tarea de código a la vez.",
+      "worktree": "Git worktree por tarea",
+      "worktreeHelp": "Cada tarea en su propia rama y carpeta: varios agentes en paralelo sin pisarse."
+    },
+    "new": {
+      "title": "Nuevo proyecto",
+      "subtitle": "Registra una carpeta existente o crea una nueva. Agentic OS no mueve ni borra tus archivos.",
+      "createFolder": "Crear la carpeta",
+      "created": "Proyecto «{{name}}» creado"
+    },
+    "tabs": {
+      "summary": "Resumen",
+      "tasks": "Tareas",
+      "pipeline": "Pipeline",
+      "memory": "Memoria del proyecto",
+      "knowledge": "Conocimiento",
+      "settings": "Ajustes"
+    },
+    "fields": {
+      "name": "Nombre",
+      "path": "Carpeta",
+      "color": "Color",
+      "description": "Descripción",
+      "descriptionPlaceholder": "De qué va el proyecto.",
+      "workspaceMode": "Modo de workspace",
+      "memory": "Memoria del proyecto",
+      "memoryHelp": "Notas que los agentes leen al empezar cada tarea y amplían al terminarla. Puedes editarlas.",
+      "memoryPlaceholder": "# Decisiones\n- …"
+    },
+    "summary": {
+      "openTasks": "Tareas abiertas",
+      "running": "En ejecución",
+      "waiting": "Esperando humano",
+      "cost": "Coste del mes",
+      "folder": "Carpeta y git",
+      "branch": "Rama",
+      "repo": "Repositorio",
+      "changes": "Cambios",
+      "clean": "Sin cambios",
+      "dirty": "Cambios sin commitear",
+      "isRepo": "Repositorio git",
+      "notRepo": "No es un repositorio git",
+      "gitUnavailable": "git no está disponible",
+      "description": "Descripción",
+      "noDescription": "Sin descripción."
+    },
+    "openFolder": "Abrir carpeta",
+    "danger": "Zona peligrosa",
+    "deleteHelp": "Quita el proyecto de Agentic OS. La carpeta y sus archivos no se tocan.",
+    "delete": {
+      "title": "¿Quitar el proyecto {{name}}?",
+      "description": "Se borrará de Agentic OS junto con su memoria. La carpeta y sus archivos no se tocan.",
+      "confirm": "Quitar proyecto",
+      "done": "Proyecto «{{name}}» quitado"
+    },
+    "notFound": "Este proyecto no existe o se ha borrado."
+  },
+  "time": {
+    "justNow": "ahora mismo"
   }
 }

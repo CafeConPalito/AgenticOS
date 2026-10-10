@@ -28,6 +28,8 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     log_json: bool = False
     log_file: Path | None = None
+    # Overrides the SQLite file in data_dir (e.g. postgresql+psycopg://… in server mode).
+    database_url: str | None = None
 
 
 @lru_cache

@@ -18,6 +18,11 @@ export default tseslint.config(
       ...jsxA11y.flatConfigs.recommended.rules,
       // UI copy must come from src/i18n (CA3).
       'i18next/no-literal-string': ['error', { mode: 'jsx-text-only' }],
+      // The shadcn CLI sometimes generates `import { cn } from "cn"` (an unrelated npm package).
+      'no-restricted-imports': [
+        'error',
+        { paths: [{ name: 'cn', message: "Use `cn` from '@/lib/utils'." }] },
+      ],
     },
   },
   {

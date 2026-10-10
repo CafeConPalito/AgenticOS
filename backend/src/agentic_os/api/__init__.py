@@ -1,6 +1,9 @@
 from fastapi import APIRouter
 
-from agentic_os.api import health
+from agentic_os.api import agents, clis, health, projects
 
 api_router = APIRouter(prefix="/api")
 api_router.include_router(health.router)
+api_router.include_router(agents.router)
+api_router.include_router(projects.router)
+api_router.include_router(clis.router)
