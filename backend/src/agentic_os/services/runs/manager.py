@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
+import os
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import structlog
-from sqlalchemy import update
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from agentic_os.config import Settings
@@ -19,15 +21,17 @@ from agentic_os.models import (
     Agent,
     Cli,
     EventKind,
+    PermissionMode,
     Project,
     Run,
     RunEvent,
     RunStatus,
 )
+from agentic_os.services.adapters import LaunchContext, adapter_for
 from agentic_os.services.context import build_context, build_instructions
-from agentic_os.services.hooks import HOOK_EVENTS, interpret
+from agentic_os.services.hooks import HOOK_EVENTS, interpret, write_hook_script
 from agentic_os.services.mcp_server import RunTokens
-from agentic_os.services.runs.launcher import build_launch
+from agentic_os.services.runs.launcher import resolve_executable
 from agentic_os.services.runs.session import RunSession
 
 SHUTDOWN_TIMEOUT = 5.0
@@ -68,6 +72,14 @@ class RunManager:
     def recover(self) -> int:
         """Runs left active by a previous backend (crash, forced close) cannot be resumed."""
         with self._db() as db:
+            leftovers = db.execute(
+                select(Run.id, Run.cli, Run.cwd).where(
+                    Run.status.in_([st.value for st in ACTIVE_STATUSES])
+                )
+            ).all()
+            for run_id, cli, cwd in leftovers:
+                with contextlib.suppress(Exception):  # a plugin left by a crashed run
+                    adapter_for(Cli(cli)).recover(Path(cwd), run_id)
             result = db.execute(
                 update(Run)
                 .where(Run.status.in_([s.value for s in ACTIVE_STATUSES]))
@@ -84,7 +96,11 @@ class RunManager:
                 422, "folder_not_found", "the project folder does not exist", "project_id"
             )
         cli = Cli(agent.cli)
-        spec = build_launch(cli, agent.model, prompt, self._settings.cli_command_overrides)
+        adapter = adapter_for(cli)
+        resolve_executable(cli, self._settings.cli_command_overrides)  # fail before any write
+        if cli == Cli.AGY and self._agy_busy(project.path):
+            # Two agy runs in one folder would share the workspace plugin (ADR 0004).
+            raise ApiError(409, "agy_folder_busy", "an agy run is already working in this folder")
         run = Run(
             workspace_id=DEFAULT_WORKSPACE,
             agent_id=agent.id,
@@ -96,11 +112,34 @@ class RunManager:
             model=agent.model,
             prompt=prompt,
             cwd=project.path,
-            cli_session_id=spec.session_id,
         )
         db.add(run)
         db.flush()
         run.log_path = str(self.runs_dir / f"{run.id}.log")
+        run_dir = self.runs_dir / run.id
+        token = self.tokens.issue(run.id)
+        ctx = LaunchContext(
+            run_id=run.id,
+            cli=cli,
+            model=agent.model,
+            prompt=prompt,
+            permission_mode=PermissionMode(agent.permission_mode),
+            allowed_tools=tuple(agent.allowed_tools),
+            cwd=Path(project.path),
+            run_dir=run_dir,
+            base_url=self.public_url,
+            token=token,
+            instructions=build_instructions(agent, project, project.path),
+            hook_command=write_hook_script(run_dir, self.public_url, token),
+            overrides=self._settings.cli_command_overrides,
+        )
+        try:
+            spec = adapter.prepare(ctx)
+        except Exception:
+            self.tokens.revoke(run.id)
+            adapter.cleanup(ctx)
+            raise
+        run.cli_session_id = spec.session_id
         db.commit()
 
         session = RunSession(
@@ -113,10 +152,17 @@ class RunManager:
             lambda changes, run_id=run.id: self._persist(run_id, changes),
             run.cols,
             run.rows,
+            deferred_prompt=adapter.deferred_prompt(ctx),
+            on_end=lambda: adapter.cleanup(ctx),
+            on_system_event=lambda name, detail="", run_id=run.id: self.add_event(
+                run_id, EventKind.SYSTEM, name, detail
+            ),
         )
         try:
             session.start()
         except Exception as error:  # spawn failed (bad executable, permissions…)
+            self.tokens.revoke(run.id)
+            adapter.cleanup(ctx)
             run.status, run.error, run.ended_at = RunStatus.FAILED, str(error), utcnow()
             db.commit()
             return run
@@ -125,6 +171,15 @@ class RunManager:
                 self._live[run.id] = session
         db.refresh(run)
         return run
+
+    def _agy_busy(self, folder: str) -> bool:
+        key = os.path.normcase(os.path.realpath(folder))
+        with self._live_lock:
+            sessions = list(self._live.values())
+        return any(
+            s.alive and s.cli == Cli.AGY and os.path.normcase(os.path.realpath(s.cwd)) == key
+            for s in sessions
+        )
 
     def stop(self, run_id: str) -> bool:
         session = self.get(run_id)

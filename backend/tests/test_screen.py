@@ -67,3 +67,34 @@ def test_exit_acknowledged_per_cli():
     assert screen_with(Cli.AGY, agy).exit_acknowledged()
     assert not screen_with(Cli.CLAUDE, "? for shortcuts\r\n").exit_acknowledged()
     assert not screen_with(Cli.AGY, "press ctrl+c again to exit\r\n").exit_acknowledged()
+
+
+AGY_TOOL_DIALOG = (
+    "MCP\r\n"
+    "agentic-os_agentic-os/report_status\r\n"
+    "Allow calling this tool?\r\n"
+    "> 1. Yes, allow tool call\r\n"
+    "  2. Yes, and always allow tool 'agentic-os_agentic-os/report_status' in this conversation\r\n"
+    "  3. Yes, and always allow tool 'agentic-os_agentic-os/report_status'"
+    " (Persist to settings.json)\r\n"
+    "  4. No, deny tool call\r\n"
+    "esc to cancel\r\n"
+)
+
+
+def test_agy_dialog_for_our_tools_only():
+    # Text of the real dialog (spike p5-agy-mcp-connected.raw.log).
+    screen = screen_with(Cli.AGY, AGY_TOOL_DIALOG)
+    assert screen.agentic_os_tool_request() == ("agentic-os_agentic-os/report_status", False)
+    moved = AGY_TOOL_DIALOG.replace("> 1.", "  1.").replace("  2. Yes", "> 2. Yes")
+    assert screen_with(Cli.AGY, moved).agentic_os_tool_request()[1] is True
+    other = AGY_TOOL_DIALOG.replace("agentic-os_agentic-os/", "github_github/")
+    assert screen_with(Cli.AGY, other).agentic_os_tool_request() is None
+    stale = AGY_TOOL_DIALOG + "".join(f"línea {n}\r\n" for n in range(20))
+    assert screen_with(Cli.AGY, stale).agentic_os_tool_request() is None
+
+
+def test_agy_ready_for_prompt():
+    assert screen_with(Cli.AGY, ">\r\n? for shortcuts\r\n").ready_for_prompt()
+    assert not screen_with(Cli.AGY, AGY_TRUST).ready_for_prompt()
+    assert not screen_with(Cli.AGY, "Loading…\r\n").ready_for_prompt()

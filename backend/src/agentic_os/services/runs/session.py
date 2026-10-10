@@ -37,6 +37,9 @@ TRUST_WINDOW = 90.0  # seconds after start during which the trust dialog is hand
 STOP_TIMEOUT = 15.0  # to get the CLI to accept the exit
 EXIT_GRACE = 10.0  # once accepted, time it gets to close by itself (agy/Claude need ~6 s)
 EXIT_ARM_DELAY = 0.5  # agy ignores a second Ctrl+C sent right after its notice appears
+MCP_WAIT = 45.0  # agy: send the prompt anyway if its MCP server has not connected by then
+PROMPT_CONFIRM = 10.0  # agy: retype the prompt once if no turn started meanwhile
+COMPLETE_CLOSE_AFTER = 60.0  # after complete_task, close even if no end-of-turn hook arrives
 CONTINUE_MESSAGE = "Continúa con la tarea."
 
 ESC, ENTER, CTRL_C, DOWN = "\x1b", "\r", "\x03", "\x1b[B"
@@ -67,6 +70,9 @@ class RunSession:
         on_change: StateCallback,
         cols: int = 120,
         rows: int = 32,
+        deferred_prompt: str | None = None,
+        on_end: Callable[[], None] | None = None,
+        on_system_event: Callable[..., None] | None = None,
     ) -> None:
         self.run_id = run_id
         self.cli = cli
@@ -76,6 +82,10 @@ class RunSession:
         self.loop = loop
         self.on_change = on_change
         self.cols, self.rows = cols, rows
+        # agy: the prompt is typed once its MCP server is connected (ADR 0004).
+        self.deferred_prompt = deferred_prompt
+        self.on_end = on_end
+        self.on_system_event = on_system_event or (lambda *args, **kwargs: None)
 
         self.status = RunStatus.STARTING
         self.activity = Activity.IDLE
@@ -93,6 +103,11 @@ class RunSession:
         self._stopping = False
         self._ended = False
         self.completed = False  # the agent called complete_task
+        self._completed_at = 0.0
+        self._closing_completed = False
+        self._prompt_sent = False
+        self._turn_seen = threading.Event()
+        self._mcp_dialog_at = 0.0
         self._hooks_seen = False  # once hooks arrive they drive the activity, not the screen
         self._in_turn = False
         self.mcp_connected = False
@@ -249,19 +264,63 @@ class RunSession:
         """Applies a CLI hook. True when it marks a turn boundary (start or end)."""
         self._hooks_seen = True
         boundary = False
-        if effect.turn_started and not self._in_turn:
-            self._in_turn = boundary = True
+        if effect.turn_started:
+            self._turn_seen.set()
+            if not self._in_turn:
+                self._in_turn = boundary = True
         if effect.turn_ended:
             self._in_turn, boundary = False, True
         if effect.activity is not None and self.alive:
             self._set(activity=effect.activity)
+        if effect.turn_ended and self.completed:
+            self._close_completed("turn_end")
         return boundary
 
     def on_mcp_connected(self) -> None:
         self.mcp_connected = True
 
     def mark_completed(self) -> None:
-        self.completed = True
+        """complete_task: Agentic OS closes the CLI when the current turn ends (or after
+        COMPLETE_CLOSE_AFTER if no end-of-turn hook arrives)."""
+        if not self.completed:
+            self.completed = True
+            self._completed_at = time.monotonic()
+            if not self._in_turn and self._hooks_seen:
+                self._close_completed("idle")
+
+    def _close_completed(self, reason: str) -> None:
+        if self._closing_completed or not self.alive:
+            return
+        self._closing_completed = True
+        self.on_system_event("closing", reason)
+        self.stop()
+
+    def _send_deferred_prompt(self, mcp_timeout: bool) -> None:
+        """agy: types the prompt once its MCP server is connected, and checks that the turn
+        started (a PreInvocation hook); keys typed while the TUI is busy are dropped."""
+        self._prompt_sent = True
+        prompt = self.deferred_prompt or ""
+        pty = self._pty
+
+        def run() -> None:
+            if mcp_timeout:
+                self.on_system_event("mcp_timeout")
+            for attempt in (1, 2):
+                if pty is None or not self.alive:
+                    return
+                with contextlib.suppress(Exception):
+                    pty.write(prompt)
+                    time.sleep(0.4)  # let the TUI render the text before submitting it
+                    pty.write(ENTER)
+                self.on_system_event("prompt_sent", "" if attempt == 1 else "reintento")
+                if self._turn_seen.wait(PROMPT_CONFIRM) or not self._hooks_working():
+                    return
+
+        threading.Thread(target=run, name=f"run-{self.run_id}-prompt", daemon=True).start()
+
+    def _hooks_working(self) -> bool:
+        # Without hooks (a CLI that never calls them) there is nothing to confirm with.
+        return self._hooks_seen or self.mcp_connected
 
     def _publish(self, message: Message) -> None:
         """Any thread."""
@@ -362,9 +421,19 @@ class RunSession:
             self.controller = None
             with contextlib.suppress(OSError):
                 self._log.close()
-        status = RunStatus.STOPPED if self._stop_requested else RunStatus.EXITED
+        if self.completed:
+            status = RunStatus.COMPLETED  # the agent finished its task (complete_task)
+        elif self._stop_requested:
+            status = RunStatus.STOPPED
+        else:
+            status = RunStatus.EXITED
         self._set(status=status, activity=Activity.IDLE, exit_code=self.exit_code, ended=True)
         self._publish({"type": "exit", "code": self.exit_code, "status": status.value})
+        if self.on_end is not None:
+            try:
+                self.on_end()
+            except Exception:
+                log.exception("run cleanup failed", run_id=self.run_id)
         self._finished.set()
 
     def _tick_loop(self) -> None:
@@ -379,12 +448,36 @@ class RunSession:
                     last_trust_action = now
                 elif not visible and last_trust_action:
                     self._trust_done = True
+            if self.deferred_prompt and not self._prompt_sent:
+                waited = now - self.started_at > MCP_WAIT
+                # Typed too early, the Enter would answer a dialog (e.g. «No, exit»).
+                if (self.mcp_connected or waited) and self._screen.ready_for_prompt():
+                    self._send_deferred_prompt(mcp_timeout=not self.mcp_connected)
+            if self.cli == Cli.AGY and self.controller is None:
+                self._approve_agentic_os_tool(now)
+            if (
+                self.completed
+                and not self._closing_completed
+                and now - self._completed_at > COMPLETE_CLOSE_AFTER
+            ):
+                self._close_completed("timeout")
             if self._hooks_seen:
                 continue  # the hooks report turn start/end exactly
             busy = self._screen.footer_busy() or now - self._last_output < BUSY_GRACE
             activity = Activity.BUSY if busy else Activity.IDLE
             if activity != self.activity and self.alive:
                 self._set(activity=activity)
+
+    def _approve_agentic_os_tool(self, now: float) -> None:
+        """agy asks before every MCP call unless autonomous, and no project or plugin file can
+        pre-approve tools (phase 04, task 1): approve *our* tools for the conversation from the
+        screen. Any other permission dialog is left to the human."""
+        request = self._screen.agentic_os_tool_request()
+        if request is None or self._pty is None or now - self._mcp_dialog_at < 0.6:
+            return
+        _tool, always_selected = request
+        self._pty.write(ENTER if always_selected else DOWN)
+        self._mcp_dialog_at = now + (1.0 if always_selected else 0.0)
 
     # ------------------------------------------------------------------ state
     def _set(

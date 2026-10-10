@@ -26,6 +26,14 @@ BUSY_FOOTER = {
 # agy's first Ctrl+C only arms the exit; a second one counts once this notice is shown.
 EXIT_ARMED = re.compile(r"ctrl\+c again to exit", re.IGNORECASE)
 
+# agy's idle input footer: the prompt can be typed (spike P5 waited for the same).
+INPUT_READY = re.compile(r"\? for shortcuts")
+
+# agy's permission dialog for an MCP tool of our plugin (`<plugin>_<server>/<tool>`).
+AGENTIC_OS_TOOL_PREFIX = "agentic-os_agentic-os/"
+ALWAYS_ALLOW = re.compile(r"2\. Yes, and always allow tool .* in this conversation")
+MCP_DIALOG_LINES = 14  # the dialog must be at the bottom: an answered one scrolls away
+
 # Printed once the CLI accepted the exit (it may still take a few seconds to end).
 EXIT_ACK = {
     Cli.CLAUDE: re.compile(r"Resume this session|claude --resume"),
@@ -56,6 +64,30 @@ class ScreenState:
         """(dialog visible, "Yes" option selected)."""
         screen = self.text()
         return bool(TRUST_OPTION.search(screen)), bool(TRUST_SELECTED.search(screen))
+
+    def ready_for_prompt(self) -> bool:
+        """agy shows its input (footer «? for shortcuts») and no dialog is waiting."""
+        if self.trust_dialog()[0]:
+            return False
+        lines = [line for line in self.text().splitlines() if line.strip()]
+        return bool(INPUT_READY.search("\n".join(lines[-4:])))
+
+    def agentic_os_tool_request(self) -> tuple[str, bool] | None:
+        """agy's «Allow calling this tool?» dialog for one of *our* MCP tools, if it is the
+        latest thing on screen: (tool id, "always allow in this conversation" selected)."""
+        lines = [line.strip() for line in self.text().splitlines() if line.strip()]
+        tail = lines[-MCP_DIALOG_LINES:]
+        indexes = [i for i, line in enumerate(tail) if line == "Allow calling this tool?"]
+        if not indexes or indexes[-1] == 0:
+            return None
+        at = indexes[-1]
+        tool = tail[at - 1]
+        if not tool.startswith(AGENTIC_OS_TOOL_PREFIX):
+            return None  # someone else's tool (or a command): the human decides
+        option = next((line for line in tail[at + 1 :] if ALWAYS_ALLOW.search(line)), None)
+        if option is None:
+            return None
+        return tool, option.startswith((">", "❯"))
 
     def exit_armed(self) -> bool:
         return bool(EXIT_ARMED.search(self.text()))
