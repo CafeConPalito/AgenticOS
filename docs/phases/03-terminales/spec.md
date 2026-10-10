@@ -1,6 +1,6 @@
 # Fase 03: Terminales en vivo · Spec
 
-- **Estado**: borrador (pendiente de aprobación)
+- **Estado**: aprobada (2026-10-10)
 - **Rama**: `phase/03-terminales`
 
 ## Objetivo
