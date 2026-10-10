@@ -13,8 +13,14 @@ from agentic_os.api.projects import _get as get_project_row
 from agentic_os.db.base import DEFAULT_WORKSPACE
 from agentic_os.db.session import get_session
 from agentic_os.errors import ApiError, NotFound
-from agentic_os.models import ACTIVE_STATUSES, Run
-from agentic_os.schemas.run import ControlAction, ControlRequest, RunCreate, RunRead
+from agentic_os.models import ACTIVE_STATUSES, Run, RunEvent
+from agentic_os.schemas.run import (
+    ControlAction,
+    ControlRequest,
+    RunCreate,
+    RunEventRead,
+    RunRead,
+)
 from agentic_os.services.runs.manager import RunManager
 from agentic_os.services.runs.session import SCROLLBACK_LIMIT, ControlConflict, RunSession
 
@@ -86,6 +92,16 @@ def list_runs(
 @router.get("/runs/{run_id}")
 def get_run(run_id: str, db: DbSession, manager: Manager) -> RunRead:
     return _read(_get(db, run_id), manager)
+
+
+@router.get("/runs/{run_id}/events")
+def list_run_events(run_id: str, db: DbSession) -> list[RunEventRead]:
+    """What the agent reported (MCP) and what happened (hooks, Agentic OS), oldest first."""
+    _get(db, run_id)
+    events = db.scalars(
+        select(RunEvent).where(RunEvent.run_id == run_id).order_by(RunEvent.at, RunEvent.id)
+    )
+    return [RunEventRead.model_validate(e) for e in events]
 
 
 @router.post("/runs/{run_id}/control")

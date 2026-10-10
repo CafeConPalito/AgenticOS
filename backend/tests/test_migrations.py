@@ -17,7 +17,7 @@ def test_fresh_database_is_created_and_migrated(settings: Settings):
     assert db_file.exists()
     engine = create_db_engine(database_url(settings))
     tables = set(inspect(engine).get_table_names())
-    assert {"agents", "projects", "runs", "alembic_version"} <= tables
+    assert {"agents", "projects", "runs", "run_events", "alembic_version"} <= tables
     with engine.connect() as conn:
         current = conn.execute(text("SELECT version_num FROM alembic_version")).scalar()
     head = ScriptDirectory.from_config(alembic_config(engine)).get_current_head()

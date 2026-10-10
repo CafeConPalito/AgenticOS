@@ -5,7 +5,7 @@ from typing import Annotated
 from pydantic import BaseModel, ConfigDict, StringConstraints
 
 from agentic_os.models.agent import Cli
-from agentic_os.models.run import Activity, RunStatus
+from agentic_os.models.run import Activity, EventKind, RunStatus
 
 Prompt = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=20000)]
 
@@ -40,6 +40,9 @@ class RunRead(BaseModel):
     rows: int
     started_at: datetime | None
     ended_at: datetime | None
+    summary: str | None
+    last_status: str | None
+    mcp_connected_at: datetime | None
     created_at: datetime
     updated_at: datetime
     # Live state, only while the run has a session in this backend.
@@ -57,3 +60,14 @@ class ControlRequest(BaseModel):
 
     action: ControlAction
     client_id: Annotated[str, StringConstraints(min_length=1, max_length=64)]
+
+
+class RunEventRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    run_id: str
+    at: datetime
+    kind: EventKind
+    name: str
+    detail: str
