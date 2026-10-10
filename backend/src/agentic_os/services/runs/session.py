@@ -128,13 +128,26 @@ class RunSession:
                     time.sleep(0.4)
                     pty.write(ENTER)
                 else:
-                    pty.write(CTRL_C)
-                    time.sleep(0.5)
-                    pty.write(CTRL_C)
+                    self._double_ctrl_c(pty)
             if not self._finished.wait(STOP_TIMEOUT if timeout is None else timeout):
                 pty.terminate()
 
         threading.Thread(target=run, name=f"run-{self.run_id}-stop", daemon=True).start()
+
+    def _double_ctrl_c(self, pty: PtyProcess) -> None:
+        """agy: the second Ctrl+C only exits once the "press ctrl+c again" notice is shown;
+        sent any earlier it is lost, so wait for the notice (and retry a couple of times)."""
+        for _ in range(3):
+            pty.write(CTRL_C)
+            deadline = time.monotonic() + 3
+            while time.monotonic() < deadline and not self._finished.is_set():
+                if self._screen.exit_armed():
+                    time.sleep(0.2)
+                    pty.write(CTRL_C)
+                    break
+                time.sleep(0.1)
+            if self._finished.wait(2):
+                return
 
     def kill(self) -> None:
         self._stop_requested = True

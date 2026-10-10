@@ -6,6 +6,8 @@ Behaviour (keys are read raw, like the real TUIs):
 - Typing "LARGO" starts a long turn (footer "esc to interrupt", numbers every 0.1 s);
   Esc interrupts it with "Interrupted · What should Claude do instead?".
 - "/exit" exits with code 0, unless --ignore-exit (then it also ignores Ctrl+C).
+- Ctrl+C works like agy: the first one shows "press ctrl+c again to exit" after a short
+  delay (presses in between are lost); a second Ctrl+C after the notice exits with 130.
 
 Usage: python fake_cli.py [--ignore-exit] [--no-trust] [-i] "<prompt>"
 """
@@ -101,18 +103,30 @@ def long_turn() -> None:
             time.sleep(0.01)
 
 
+CTRL_C_NOTICE_DELAY = 0.8
+
+
 def main() -> None:
     if not NO_TRUST:
         trust_dialog()
     if PROMPT:
         answer(PROMPT)
     line = ""
+    exit_armed = False
     while True:
         key = read_key()
         if key == "\x03":
             if IGNORE_EXIT:
                 continue
-            sys.exit(130)
+            if exit_armed:
+                sys.exit(130)
+            # Keys typed while agy arms the exit are lost, like in the real TUI.
+            time.sleep(CTRL_C_NOTICE_DELAY)
+            while key_available():
+                read_key()
+            out("press ctrl+c again to exit")
+            exit_armed = True
+            continue
         if key == "\x1b" or key in ("down", "up", "other"):
             continue
         if key in ("\r", "\n"):

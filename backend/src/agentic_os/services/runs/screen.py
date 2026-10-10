@@ -23,6 +23,9 @@ BUSY_FOOTER = {
     Cli.AGY: re.compile(r"esc to cancel|Generating", re.IGNORECASE),
 }
 
+# agy's first Ctrl+C only arms the exit; a second one counts once this notice is shown.
+EXIT_ARMED = re.compile(r"ctrl\+c again to exit", re.IGNORECASE)
+
 
 class ScreenState:
     def __init__(self, cli: Cli, cols: int, rows: int) -> None:
@@ -47,6 +50,9 @@ class ScreenState:
         """(dialog visible, "Yes" option selected)."""
         screen = self.text()
         return bool(TRUST_OPTION.search(screen)), bool(TRUST_SELECTED.search(screen))
+
+    def exit_armed(self) -> bool:
+        return bool(EXIT_ARMED.search(self.text()))
 
     def footer_busy(self) -> bool:
         lines = [line for line in self.text().splitlines() if line.strip()]

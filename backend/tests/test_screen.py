@@ -51,3 +51,9 @@ def test_busy_footer_per_cli():
     assert not screen_with(Cli.CLAUDE, "● UNO\r\n? for shortcuts\r\n").footer_busy()
     assert screen_with(Cli.AGY, "⡿  Generating...\r\nesc to cancel\r\n").footer_busy()
     assert not screen_with(Cli.AGY, "UNO\r\n? for shortcuts\r\n").footer_busy()
+
+
+def test_agy_exit_armed_notice():
+    # Text seen in the real agy log after the first Ctrl+C (phase 03 manual test).
+    assert screen_with(Cli.AGY, "> \r\npress ctrl+c again to exit\r\n").exit_armed()
+    assert not screen_with(Cli.AGY, "> \r\n? for shortcuts\r\n").exit_armed()

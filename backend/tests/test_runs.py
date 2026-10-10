@@ -245,6 +245,21 @@ def test_graceful_stop_and_finished_run_replays_its_log(app_client: TestClient, 
     )
 
 
+def test_agy_graceful_stop_waits_for_the_exit_notice(app_client: TestClient, tmp_path):
+    run = launch(app_client, tmp_path, "adios", cli="agy")
+    viewer = Viewer(app_client, run["id"], "a")
+    try:
+        assert viewer.wait_for("RESPUESTA: adios")
+        started = time.monotonic()
+        app_client.post(f"/api/runs/{run['id']}/stop")
+        finished = wait_status(app_client, run["id"], "stopped")
+        assert "press ctrl+c again to exit" in viewer.text
+        assert finished["exit_code"] == 130  # left by itself, not terminated
+        assert time.monotonic() - started < 8
+    finally:
+        viewer.close()
+
+
 def test_forced_stop_when_the_cli_ignores_exit(tmp_path: Path, monkeypatch):
     monkeypatch.setattr(session_module, "STOP_TIMEOUT", 1.5)
     with TestClient(create_app(make_settings(tmp_path, "--ignore-exit"))) as client:
