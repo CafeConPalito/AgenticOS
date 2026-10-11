@@ -1,6 +1,6 @@
 # Fase 05: Scheduler y pipelines · Spec
 
-- **Estado**: borrador
+- **Estado**: aprobada
 - **Rama**: `phase/05-scheduler-pipelines`
 
 ## Objetivo
@@ -159,9 +159,7 @@ Se apoya en la señal de fin que dejó la fase 04: `complete_task` + resumen y e
 - Claude Code y agy instalados y con sesión iniciada; git instalado (para los worktrees).
 
 ## Riesgos y preguntas abiertas
-- **Cola estricta y workspace ocupado**: si la primera tarea de la cola de un agente no puede arrancar porque su carpeta directa está ocupada, ¿espera el agente o adelanta la siguiente de otro proyecto?
-  - Propuesta: **adelanta solo por esa causa**, y la tarjeta lo indica («Carpeta ocupada»). Si no, un agente se quedaría parado con trabajo disponible.
-  - Se decidirá en el plan (ADR).
+- **Cola estricta y workspace ocupado** (decidido al aprobar la spec): si la primera tarea de la cola de un agente no puede arrancar porque su carpeta directa está ocupada, el agente **adelanta** la siguiente que sí pueda, y la tarjeta de la bloqueada lo indica («Carpeta ocupada»). Es la única causa por la que se salta el orden.
 - **El modelo no llama a `complete_task`** y deja la ejecución abierta en «Esperando»: la tarea se queda «En ejecución» y ocupa un hueco del agente.
   - El usuario la resuelve con «Dar por terminada» o «Cancelar».
   - El plan valorará un aviso tras N minutos de inactividad (sin cerrarla sola).
