@@ -128,7 +128,8 @@
     "run_not_active": "La ejecución ya no está en marcha.",
     "control_taken": "Otra vista tiene el control de esta terminal.",
     "cli_not_installed": "El CLI de este agente no está instalado en este equipo.",
-    "cli_shim_unsupported": "El CLI está instalado como script (.cmd) y no se puede lanzar de forma segura. Instala la versión nativa (.exe)."
+    "cli_shim_unsupported": "El CLI está instalado como script (.cmd) y no se puede lanzar de forma segura. Instala la versión nativa (.exe).",
+    "agy_folder_busy": "Ya hay una ejecución de Antigravity trabajando en esta carpeta. Espera a que termine o párala."
   },
   "cli": {
     "claude": "Claude Code",
@@ -348,7 +349,8 @@
       "exited": "Terminada",
       "stopped": "Parada",
       "failed": "Fallida",
-      "interrupted": "Interrumpida"
+      "interrupted": "Interrumpida",
+      "completed": "Completada"
     },
     "filters": {
       "agent": "Agente",
@@ -384,7 +386,8 @@
       "session": "ID de sesión",
       "exitCode": "Código de salida",
       "error": "Error",
-      "viewers": "Vistas conectadas"
+      "viewers": "Vistas conectadas",
+      "lastStatus": "Estado actual"
     },
     "stop": {
       "button": "Parar",
@@ -394,7 +397,30 @@
       "done": "Parando a {{name}}…"
     },
     "openFolder": "Abrir carpeta",
-    "terminalInfo": "xterm · {{cols}}×{{rows}}"
+    "terminalInfo": "xterm · {{cols}}×{{rows}}",
+    "summary": "Resumen del agente",
+    "events": {
+      "title": "Eventos MCP",
+      "empty": "El agente todavía no ha informado de nada.",
+      "names": {
+        "mcp_connected": "MCP conectado",
+        "prompt_sent": "Prompt enviado",
+        "mcp_timeout": "El MCP no conectó a tiempo: prompt enviado igualmente",
+        "closing": "Tarea completada: cerrando la sesión",
+        "Stop": "Fin de turno",
+        "UserPromptSubmit": "Inicio de turno",
+        "PreInvocation": "Inicio de turno",
+        "SessionStart": "Sesión iniciada",
+        "SessionEnd": "Sesión cerrada",
+        "waiting_for_human": "Espera tu respuesta en la terminal",
+        "mcp_probe": "Conectando el MCP (/mcp)"
+      },
+      "human": {
+        "bypass_permissions_consent": "Claude pide aceptar el modo «Autónomo» (sin permisos). Toma el control para responder.",
+        "prompt_not_sent": "agy no muestra su entrada: el prompt no se ha enviado. Toma el control para revisar la terminal.",
+        "prompt_not_started": "El agente no ha empezado con el prompt. Toma el control para revisar la terminal."
+      }
+    }
   },
   "dock": {
     "label": "Terminal",

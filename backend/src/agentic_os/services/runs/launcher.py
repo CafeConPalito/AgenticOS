@@ -1,14 +1,13 @@
 """Command line and environment to start an agent CLI interactively (spike: ADR 0003/0004).
 
-Phase 03 keeps it minimal: every run uses the "ask" permission mode and no injected
-instructions or MCP; the adapters of phase 04 replace this with the full per-agent setup.
+The pieces shared by the CLI adapters (services/adapters): a clean environment, the
+executable and a prompt that cannot be read as an option.
 """
 
 from __future__ import annotations
 
 import os
 import shutil
-import uuid
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
@@ -69,35 +68,3 @@ def resolve_executable(cli: Cli, overrides: Mapping[str, list[str]] | None = Non
 def safe_prompt(prompt: str) -> str:
     """A prompt starting with "-" would be parsed as an option (e.g. "--help …")."""
     return f" {prompt}" if prompt.startswith("-") else prompt
-
-
-def build_launch(
-    cli: Cli,
-    model: str,
-    prompt: str,
-    overrides: Mapping[str, list[str]] | None = None,
-) -> LaunchSpec:
-    prefix = resolve_executable(cli, overrides)
-    prompt = safe_prompt(prompt)
-    if cli == Cli.CLAUDE:
-        session_id = str(uuid.uuid4())
-        # The prompt goes first: variadic options would swallow a trailing positional prompt.
-        argv = [
-            *prefix,
-            prompt,
-            "--session-id",
-            session_id,
-            "--setting-sources",
-            "project,local",
-            "--strict-mcp-config",
-            "--permission-mode",
-            "manual",
-        ]
-        if model:
-            argv += ["--model", model]
-        return LaunchSpec(argv, clean_env(), session_id)
-    argv = [*prefix]
-    if model:
-        argv += ["--model", model]
-    argv += ["-i", prompt]
-    return LaunchSpec(argv, clean_env(), None)

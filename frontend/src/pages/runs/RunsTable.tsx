@@ -70,10 +70,16 @@ export function RunsTable({ runs, showAgent = true }: { runs: Run[]; showAgent?:
                     <CliTag cli={run.cli} label={t(`cli.${run.cli}`)} size={20} />
                     <div className="min-w-0">
                       <div className="truncate">{run.prompt}</div>
-                      {run.cli_session_id && (
-                        <div className="truncate font-mono text-[11px] text-muted-foreground">
-                          {run.cli_session_id}
+                      {run.last_status ? (
+                        <div className="truncate text-[11.5px] text-muted-foreground">
+                          {run.last_status}
                         </div>
+                      ) : (
+                        run.cli_session_id && (
+                          <div className="truncate font-mono text-[11px] text-muted-foreground">
+                            {run.cli_session_id}
+                          </div>
+                        )
                       )}
                     </div>
                   </div>

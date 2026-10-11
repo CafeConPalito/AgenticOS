@@ -1,8 +1,8 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import es from '@/i18n/es.json'
 import { createFakeBackend, makeAgent, makeProject, makeRun } from '@/test/fake-backend'
-import { installFakeWebSocket } from '@/test/fake-socket'
+import { FakeWebSocket, installFakeWebSocket } from '@/test/fake-socket'
 import { renderApp } from '@/test/render'
 
 vi.mock('@xterm/xterm', () => import('@/test/fake-xterm'))
@@ -89,6 +89,60 @@ describe('Launch a run', () => {
 })
 
 describe('Run page', () => {
+  it('shows the MCP events, the current status and, live, the summary', async () => {
+    const run = makeRun({ agent_name: 'Dev', last_status: 'Leyendo el login' })
+    const at = new Date().toISOString()
+    createFakeBackend({
+      runs: [run],
+      events: [
+        { id: 'e1', run_id: run.id, at, kind: 'system', name: 'mcp_connected', detail: '' },
+        {
+          id: 'e2',
+          run_id: run.id,
+          at,
+          kind: 'mcp',
+          name: 'report_status',
+          detail: 'Leyendo el login',
+        },
+        { id: 'e3', run_id: run.id, at, kind: 'hook', name: 'Stop', detail: '' },
+      ],
+    })
+    renderApp(`/ejecuciones/${run.id}`)
+
+    const panel = await screen.findByRole('region', { name: es.runs.events.title })
+    expect(await within(panel).findByText(es.runs.events.names.mcp_connected)).toBeVisible()
+    expect(within(panel).getByText('report_status')).toBeVisible()
+    expect(within(panel).getByText(es.runs.events.names.Stop)).toBeVisible()
+    expect(screen.getByText(es.runs.details.lastStatus)).toBeVisible()
+
+    await waitFor(() => expect(FakeWebSocket.instances).toHaveLength(1))
+    const ws = FakeWebSocket.instances[0]
+    act(() => {
+      ws.open({ type: 'snapshot', data: '' })
+      ws.push({
+        type: 'event',
+        id: 'e4',
+        run_id: run.id,
+        at,
+        kind: 'mcp',
+        name: 'complete_task',
+        detail: 'Login arreglado con PKCE',
+      })
+    })
+    expect(await within(panel).findByText('complete_task')).toBeVisible()
+    const summary = screen.getByRole('heading', { name: es.runs.summary }).parentElement!
+    expect(within(summary).getByText('Login arreglado con PKCE')).toBeVisible()
+    expect(screen.queryByText(es.runs.details.lastStatus)).not.toBeInTheDocument()
+  })
+
+  it('a completed run shows «Completada»', async () => {
+    const run = makeRun({ status: 'completed', exit_code: 0, summary: 'Hecho' })
+    createFakeBackend({ runs: [run] })
+    renderApp(`/ejecuciones/${run.id}`)
+    expect(await screen.findByText(es.runs.status.completed)).toBeVisible()
+    expect(screen.getByText(es.runs.events.empty)).toBeVisible()
+  })
+
   it('shows the run details and stops it after confirmation', async () => {
     const run = makeRun({ prompt: 'Migra la base de datos\ncon cuidado', agent_name: 'Dev' })
     const backend = createFakeBackend({ runs: [run] })

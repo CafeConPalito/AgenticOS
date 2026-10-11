@@ -4,7 +4,7 @@ import { Terminal } from '@xterm/xterm'
 import '@xterm/xterm/css/xterm.css'
 import { useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
-import { runKeys } from '@/api/runs'
+import { applyRunEvent, runKeys } from '@/api/runs'
 import type { Run, RunStatus } from '@/api/types'
 import { newViewerId } from '@/lib/client-id'
 import { TerminalSocket, type TerminalState } from '@/lib/terminal-socket'
@@ -106,6 +106,7 @@ export function useRunTerminal(
         setExit({ code, status })
         void queryClient.invalidateQueries({ queryKey: runKeys.all })
       },
+      onEvent: (event) => applyRunEvent(queryClient, runId, event),
       onConnection: setConnected,
     })
     socketRef.current = socket

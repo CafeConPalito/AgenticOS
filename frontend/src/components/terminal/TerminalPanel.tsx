@@ -1,4 +1,5 @@
 import { Eye, Hand, Keyboard, Undo2 } from 'lucide-react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { isActive, useRunControl } from '@/api/runs'
@@ -23,6 +24,7 @@ export function TerminalPanel({
   className?: string
 }) {
   const { t } = useTranslation()
+  const [fitAtMount] = useState(() => variant === 'page' && isActive(run))
   const control = useRunControl(run.id)
   const {
     containerRef,
@@ -31,7 +33,9 @@ export function TerminalPanel({
     exit,
     interactive: mine,
   } = useRunTerminal(run.id, {
-    fit: variant === 'page',
+    // A finished run is replayed at the size it was drawn at; only a live one is fitted.
+    // Decided at mount: a run ending while it is shown keeps its (already right) terminal.
+    fit: fitAtMount,
     size: { cols: run.cols, rows: run.rows },
   })
   const controller = state ? state.controller : run.controller

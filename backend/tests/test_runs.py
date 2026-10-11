@@ -6,6 +6,7 @@ import sys
 import threading
 import time
 from collections.abc import Callable, Iterator
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 import pytest
@@ -19,11 +20,38 @@ from agentic_os.services.runs.launcher import LaunchSpec
 FAKE = str(Path(__file__).with_name("fake_cli.py"))
 
 
+class _NotHere(BaseHTTPRequestHandler):
+    def do_GET(self) -> None:
+        self.send_response(404)
+        self.end_headers()
+
+    do_POST = do_DELETE = do_GET
+
+    def log_message(self, *args) -> None:
+        pass
+
+
+_sink: ThreadingHTTPServer | None = None
+
+
+def sink_port() -> int:
+    """These tests use a TestClient (no listening backend), so the fake CLI's hooks and MCP
+    calls go to this port, which answers 404 at once: on Windows a connection to a closed
+    port takes ~2 s to be refused, and every hook would pay it. The MCP and hooks end to end
+    are covered by test_runs_mcp.py against a real server."""
+    global _sink
+    if _sink is None:
+        _sink = ThreadingHTTPServer(("127.0.0.1", 0), _NotHere)
+        threading.Thread(target=_sink.serve_forever, daemon=True).start()
+    return _sink.server_port
+
+
 def make_settings(tmp_path: Path, *extra_args: str) -> Settings:
     command = [sys.executable, FAKE, *extra_args]
     return Settings(
         _env_file=None,
         data_dir=tmp_path / "data",
+        port=sink_port(),
         cli_command_overrides={"claude": command, "agy": command},
     )
 
@@ -279,7 +307,9 @@ def test_graceful_stop_and_finished_run_replays_its_log(app_client: TestClient, 
     )
 
 
-def test_agy_graceful_stop_waits_for_the_exit_notice(app_client: TestClient, tmp_path):
+def test_agy_graceful_stop_waits_for_the_exit_notice(app_client: TestClient, tmp_path, monkeypatch):
+    # No real server here: agy's MCP never connects, so the prompt goes after the probe.
+    monkeypatch.setattr(session_module, "MCP_PROBE_WAIT", 1.0)
     run = launch(app_client, tmp_path, "adios", cli="agy")
     viewer = Viewer(app_client, run["id"], "a")
     try:
@@ -289,7 +319,7 @@ def test_agy_graceful_stop_waits_for_the_exit_notice(app_client: TestClient, tmp
         finished = wait_status(app_client, run["id"], "stopped")
         assert "press ctrl+c again to exit" in viewer.text
         assert finished["exit_code"] == 130  # left by itself, not terminated
-        assert time.monotonic() - started < 8
+        assert time.monotonic() - started < session_module.STOP_TIMEOUT  # never the kill
     finally:
         viewer.close()
 
@@ -306,7 +336,7 @@ def test_stop_retries_when_the_cli_was_not_listening(tmp_path: Path):
             finished = wait_status(client, run["id"], "stopped")
             assert "Resume this session" in viewer.text
             assert finished["exit_code"] == 0  # left by itself, not terminated
-            assert time.monotonic() - started < 10
+            assert time.monotonic() - started < session_module.STOP_TIMEOUT  # never the kill
         finally:
             viewer.close()
 
@@ -376,7 +406,8 @@ def test_forced_stop_when_the_cli_ignores_exit(tmp_path: Path, monkeypatch):
         viewer.close()
 
 
-def test_agy_style_launch(app_client: TestClient, tmp_path: Path):
+def test_agy_style_launch(app_client: TestClient, tmp_path: Path, monkeypatch):
+    monkeypatch.setattr(session_module, "MCP_PROBE_WAIT", 1.0)
     run = launch(app_client, tmp_path, "revisa", cli="agy")
     assert run["cli"] == "agy" and run["cli_session_id"] is None
     viewer = Viewer(app_client, run["id"], "a")

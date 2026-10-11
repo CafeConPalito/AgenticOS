@@ -1,0 +1,31 @@
+{
+ "status": "stopped",
+ "exit_code": 0,
+ "summary": null,
+ "last_status": null,
+ "cli_session_id": "5cb0d82f-760b-4327-9bc8-e1c15693b3ff",
+ "events": [
+  [
+   "hook",
+   "SessionStart",
+   ""
+  ],
+  [
+   "system",
+   "mcp_connected",
+   ""
+  ],
+  [
+   "hook",
+   "UserPromptSubmit",
+   ""
+  ],
+  [
+   "hook",
+   "SessionEnd",
+   ""
+  ]
+ ],
+ "asked for permission": true,
+ "file created": false
+}

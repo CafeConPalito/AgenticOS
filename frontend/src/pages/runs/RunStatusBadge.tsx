@@ -18,6 +18,8 @@ function toneAndLabel(run: RunLike): { tone: StatusTone; key: StatusKey; live: b
       return { tone: 'waiting', key: 'intervening', live: false }
     case 'exited':
       return { tone: run.exit_code ? 'failed' : 'done', key: 'exited', live: false }
+    case 'completed':
+      return { tone: 'done', key: 'completed', live: false }
     case 'failed':
       return { tone: 'failed', key: 'failed', live: false }
     default: // stopped, interrupted

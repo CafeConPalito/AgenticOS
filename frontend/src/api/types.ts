@@ -61,7 +61,14 @@ export interface Project extends ProjectFields {
 }
 
 export type RunStatus =
-  'starting' | 'running' | 'intervening' | 'exited' | 'stopped' | 'failed' | 'interrupted'
+  | 'starting'
+  | 'running'
+  | 'intervening'
+  | 'exited'
+  | 'stopped'
+  | 'completed'
+  | 'failed'
+  | 'interrupted'
 export type RunActivity = 'busy' | 'idle'
 export const ACTIVE_RUN_STATUSES: RunStatus[] = ['starting', 'running', 'intervening']
 
@@ -85,6 +92,10 @@ export interface Run {
   rows: number
   started_at: string | null
   ended_at: string | null
+  /** Reported by the agent through the agentic-os MCP server. */
+  summary: string | null
+  last_status: string | null
+  mcp_connected_at: string | null
   created_at: string
   updated_at: string
   controller: string | null
@@ -105,4 +116,16 @@ export interface CliInfo {
   version: string | null
   models: ModelOption[]
   models_error: string | null
+}
+
+export type RunEventKind = 'mcp' | 'hook' | 'system'
+
+/** What happened in a run: agentic-os MCP calls, CLI hooks and Agentic OS actions. */
+export interface RunEvent {
+  id: string
+  run_id: string
+  at: string
+  kind: RunEventKind
+  name: string
+  detail: string
 }

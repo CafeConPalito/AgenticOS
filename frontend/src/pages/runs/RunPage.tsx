@@ -16,6 +16,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useNow } from '@/hooks/use-now'
 import { errorMessage } from '@/lib/form-errors'
 import { formatDateTime, formatDuration } from '@/lib/time'
+import { RunEventsPanel } from './RunEventsPanel'
 import { RunStatusBadge } from './RunStatusBadge'
 import { useProjectColor } from './RunsTable'
 
@@ -107,7 +108,7 @@ function RunDetail({ run }: { run: Run }) {
           )}
         </div>
       </header>
-      <div className="grid min-h-0 flex-1 grid-cols-[300px_minmax(0,1fr)] grid-rows-[minmax(0,1fr)]">
+      <div className="grid min-h-0 flex-1 grid-cols-[300px_minmax(0,1fr)_316px] grid-rows-[minmax(0,1fr)]">
         <RunSidePanel run={run} />
         <div className="flex min-h-0 flex-col gap-2 p-3.5">
           <TerminalPanel run={run} />
@@ -117,6 +118,9 @@ function RunDetail({ run }: { run: Run }) {
             <span className="truncate">{run.cwd}</span>
           </div>
         </div>
+        <aside className="flex min-h-0 flex-col overflow-auto border-l p-4">
+          <RunEventsPanel runId={run.id} />
+        </aside>
       </div>
       <ConfirmDialog
         open={confirmStop}
@@ -181,6 +185,20 @@ function RunSidePanel({ run }: { run: Run }) {
         <h2 className="mb-1.5 text-[12.5px] text-muted-foreground">{t('runs.details.prompt')}</h2>
         <p className="text-[13.5px] whitespace-pre-wrap">{run.prompt}</p>
       </section>
+      {run.last_status && !run.summary && (
+        <section>
+          <h2 className="mb-1.5 text-[12.5px] text-muted-foreground">
+            {t('runs.details.lastStatus')}
+          </h2>
+          <p className="text-[13px]">{run.last_status}</p>
+        </section>
+      )}
+      {run.summary && (
+        <section className="rounded-[10px] border bg-subtle px-3.5 py-3">
+          <h2 className="mb-1.5 text-[12.5px] text-muted-foreground">{t('runs.summary')}</h2>
+          <p className="text-[13.5px] whitespace-pre-wrap">{run.summary}</p>
+        </section>
+      )}
       {run.error && (
         <section>
           <h2 className="mb-1.5 text-[12.5px] text-muted-foreground">{t('runs.details.error')}</h2>

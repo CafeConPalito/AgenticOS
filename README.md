@@ -71,7 +71,23 @@ En la app empaquetada, el backend usa un puerto libre asignado al arrancar (ver 
 
 ## Ejecuciones (terminales en vivo)
 - Cada ejecución es el CLI del agente en una terminal real (ConPTY) que gestiona el backend ([ADR 0007](docs/adr/0007-run-processes.md)). La salida se guarda en `<data_dir>\runs\<id>.log`.
-- Claude Code se lanza aislado de tu configuración global (`--setting-sources project,local --strict-mcp-config`) y en modo de permisos manual: las peticiones de permiso aparecen en la terminal y las respondes tú ([ADR 0003](docs/adr/0003-execution-mode.md), [ADR 0004](docs/adr/0004-per-run-context-and-mcp.md)).
+- Cada ejecución arranca con el **contexto de su agente**:
+  - su rol e instrucciones;
+  - la memoria del proyecto;
+  - su modo de permisos («Autónomo», «Restringido» o «Preguntar»);
+  - el servidor MCP `agentic-os` con un token propio.
+
+  Lo recibe así ([ADR 0004](docs/adr/0004-per-run-context-and-mcp.md), [ADR 0008](docs/adr/0008-agent-coordination.md)):
+  - **Claude Code**: por opciones, aislado de tu configuración global (`--setting-sources project,local --strict-mcp-config`). Sus archivos van en `<data_dir>\runs\<id>\`.
+  - **agy**: por un plugin temporal en `.agents/plugins/agentic-os/` del proyecto, excluido de git y borrado al terminar. Solo puede haber una ejecución de agy a la vez por carpeta.
+- Herramientas del MCP `agentic-os`:
+  - `report_status`: el agente cuenta en qué está;
+  - `write_project_memory`: añade notas a la memoria del proyecto;
+  - `complete_task`: deja el resumen; Agentic OS cierra el CLI y la ejecución queda «Completada»;
+  - `get_context`.
+
+  Los eventos se ven en vivo en la columna «Eventos MCP».
+- La primera vez que lances un agente de Claude en modo «Autónomo», Claude Code pide aceptar ese modo. Agentic OS no lo acepta por ti: toma el control de la terminal y respóndelo una vez.
 - Los CLIs tienen que estar instalados como ejecutable nativo (`claude.exe`, `agy.exe`): un shim `.cmd` de npm se rechaza, porque `cmd.exe` reinterpretaría el prompt.
 - Al cerrar la app, las ejecuciones activas se cortan (no queda ningún CLI vivo) y aparecen como «Interrumpida» al volver a abrirla.
 - Para probar con un CLI falso o con otra ruta: `AGENTIC_OS_CLI_COMMAND_OVERRIDES='{"claude": ["ruta\\a\\claude.exe"]}'`.
@@ -85,6 +101,8 @@ En la app empaquetada, el backend usa un puerto libre asignado al arrancar (ver 
 | `GET /api/clis?refresh=true` | CLIs detectados: versión y modelos |
 | `POST /api/runs`, `GET /api/runs?agent_id&project_id&active`, `GET /api/runs/{id}` | Ejecuciones: lanzar un agente sobre un proyecto con un prompt, listar y consultar |
 | `POST /api/runs/{id}/control` (`take`/`release`), `POST /api/runs/{id}/stop` | Tomar o devolver el control de la terminal; parar (salida ordenada y, si no, forzada) |
-| `WS /api/runs/{id}/terminal?client_id=` | Terminal en vivo: `snapshot`, `output`, `state`, `exit`; el cliente envía `input` y `resize` |
+| `GET /api/runs/{id}/events` | Eventos de la ejecución (herramientas MCP, hooks y acciones de Agentic OS) |
+| `WS /api/runs/{id}/terminal?client_id=` | Terminal en vivo: `snapshot`, `output`, `state`, `event`, `exit`; el cliente envía `input` y `resize` |
+| `/r/<token>/mcp`, `POST /r/<token>/hook/<evento>` | Para los CLIs de los agentes: servidor MCP `agentic-os` y hooks (token por ejecución) |
 
 Los errores tienen la forma `{"detail": {"code", "message", "field"}}`; la interfaz traduce por `code`.

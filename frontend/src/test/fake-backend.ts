@@ -1,4 +1,4 @@
-import type { Agent, AgentTemplate, CliInfo, Project, Run } from '@/api/types'
+import type { Agent, AgentTemplate, CliInfo, Project, Run, RunEvent } from '@/api/types'
 
 /** In-memory stand-in for the backend API, plugged into `fetch` for page tests. */
 
@@ -124,6 +124,9 @@ export function makeRun(overrides: Partial<Run> = {}): Run {
     rows: 32,
     started_at: now(),
     ended_at: null,
+    summary: null,
+    last_status: null,
+    mcp_connected_at: null,
     created_at: now(),
     updated_at: now(),
     controller: null,
@@ -156,11 +159,12 @@ function apiError(status: number, code: string, field?: string): Response {
 }
 
 export function createFakeBackend(
-  seed: { agents?: Agent[]; projects?: Project[]; runs?: Run[] } = {},
+  seed: { agents?: Agent[]; projects?: Project[]; runs?: Run[]; events?: RunEvent[] } = {},
 ) {
   const agents = [...(seed.agents ?? [])]
   const projects = [...(seed.projects ?? [])]
   const runs = [...(seed.runs ?? [])]
+  const events = [...(seed.events ?? [])]
   const calls: Call[] = []
 
   function handleRuns(
@@ -204,6 +208,12 @@ export function createFakeBackend(
       runs.unshift(run)
       return json(201, run)
     }
+    const eventsMatch = path.match(/^\/api\/runs\/([^/]+)\/events$/)
+    if (eventsMatch)
+      return json(
+        200,
+        events.filter((e) => e.run_id === eventsMatch[1]),
+      )
     const match = path.match(/^\/api\/runs\/([^/]+)(?:\/(control|stop))?$/)
     if (!match) return null
     const run = runs.find((r) => r.id === match[1])

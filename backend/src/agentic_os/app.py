@@ -7,13 +7,27 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from agentic_os import APP_NAME, __version__
 from agentic_os.api import api_router
+from agentic_os.api.hooks import router as hooks_router
 from agentic_os.config import Settings, get_settings
 from agentic_os.db.migrate import upgrade_to_head
 from agentic_os.db.session import create_db_engine, database_url, make_sessionmaker
 from agentic_os.errors import register_error_handlers
 from agentic_os.logging_setup import configure_logging
 from agentic_os.services.clis import CliCatalog
+from agentic_os.services.mcp_server import mount_app
 from agentic_os.services.runs.manager import RunManager
+
+
+class AgentGateway:
+    """`/r/<token>/…`: the agent-facing MCP server, created with the RunManager in the lifespan."""
+
+    async def __call__(self, scope, receive, send) -> None:
+        gate = getattr(scope["app"].state, "mcp_gate", None)
+        if gate is None:  # lifespan not started (or already shut down)
+            await send({"type": "http.response.start", "status": 503, "headers": []})
+            await send({"type": "http.response.body", "body": b""})
+            return
+        await gate(scope, receive, send)
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -31,9 +45,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         manager.loop = asyncio.get_running_loop()
         manager.recover()
         app.state.run_manager = manager
+        app.state.mcp_gate, session_manager = mount_app(manager, manager.tokens)
         try:
-            yield
+            async with session_manager.run():
+                yield
         finally:
+            app.state.mcp_gate = None
             try:
                 await asyncio.to_thread(manager.shutdown)
             finally:
@@ -49,6 +66,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     register_error_handlers(app)
     app.include_router(api_router)
+    app.include_router(hooks_router)  # /r/<token>/hook/… before the /r mount (MCP)
+    app.mount("/r", AgentGateway())
     return app
 
 
