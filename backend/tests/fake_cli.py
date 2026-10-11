@@ -30,6 +30,7 @@ Usage: python fake_cli.py [--ignore-exit] [--no-trust] [--deaf] [-i] "<prompt>" 
 from __future__ import annotations
 
 import json
+import signal
 import subprocess
 import sys
 import time
@@ -152,10 +153,16 @@ def hook(event: str) -> None:
         payload = {"hook_event_name": event, "session_id": (OPTIONS.get("--session-id") or [""])[0]}
     else:
         payload = {"conversationId": CONVERSATION_ID, "workspacePaths": [str(Path.cwd())]}
+    # While the hook runs the console is not raw: a Ctrl+C becomes a signal instead of a key.
+    # The real CLIs just lose that key press (Agentic OS retries the stop); without this the
+    # fake died with KeyboardInterrupt (the intermittent test of phase 04).
+    previous = signal.signal(signal.SIGINT, signal.SIG_IGN)
     try:  # like the real CLIs: through the shell, JSON on stdin
         subprocess.run(command, shell=True, input=json.dumps(payload).encode(), timeout=15)
     except Exception as error:
         out(f"(hook {event} failed: {error!r})")
+    finally:
+        signal.signal(signal.SIGINT, previous)
 
 
 def mcp(tool: str | None, args: dict | None = None) -> str:
