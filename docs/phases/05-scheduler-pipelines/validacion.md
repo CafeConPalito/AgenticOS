@@ -99,7 +99,7 @@ Tests nuevos de la fase:
 - Las pruebas reales dejaron entradas de confianza de Claude para las carpetas de prueba (`scratchpad\real\projects\…`). Se pueden quitar con Claude Code cerrado.
 
 ## Cierre
-- [ ] OK del usuario
-- [ ] Merge a `main` (`--no-ff`)
-- [ ] Tag `v0.6`
-- [ ] `docs/roadmap.md` actualizado
+- [x] OK del usuario (2026-10-11)
+- [x] Merge a `main` (`--no-ff`)
+- [x] Tag `v0.6`
+- [x] `docs/roadmap.md` actualizado
