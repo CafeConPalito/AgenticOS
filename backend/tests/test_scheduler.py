@@ -238,14 +238,9 @@ def test_retry_goes_to_the_front_and_manual_completion(db_factory, scheduler, la
     assert [code for code, _ in launcher.launched] == ["T-1", "T-2", "T-1"]
 
     # The user ends the stage while the run is alive: when the run ends (stopped), it counts.
-    scheduler.complete_manually(next(t for t in _ids(db_factory) if t[0] == 1)[1], "lo cierro yo")
+    scheduler.complete_manually(launcher.launched[2][1], "lo cierro yo")
     end_run(db_factory, scheduler, launcher.launched[2][1], RunStatus.STOPPED)
     assert status_of(db_factory, "T-1") == ("done", None)
-
-
-def _ids(db_factory) -> list[tuple[int, str]]:
-    with db_factory() as db:
-        return [(t.number, t.id) for t in db.query(Task).all()]
 
 
 def test_pause_and_resume(db_factory, scheduler, launcher):
@@ -463,3 +458,96 @@ def test_a_stage_without_agent_waits_and_agent_changes_move_the_queue(
         "no_agent",
         stages[1],
     )
+
+
+# ---------------------------------------------------------------- code review (phase 05)
+def test_a_first_stage_without_agent_waits_instead_of_queueing_on_nobody(
+    db_factory, scheduler, launcher
+):
+    with db_factory() as db:
+        ana, dev, qa = make_agent(db, "Ana"), make_agent(db, "Dev"), make_agent(db, "QA")
+        web = make_project(db, "web")
+        stages = web_pipeline(db, web, [ana, dev, qa])
+        pipelines.save(
+            db,
+            web,
+            PipelineWrite(
+                stages=[
+                    StageWrite(id=stages[0], name="Requisitos", agent_id=None),
+                    StageWrite(id=stages[1], name="Desarrollo", agent_id=dev.id),
+                    StageWrite(id=stages[2], name="QA", agent_id=qa.id, reject_to=1),
+                ]
+            ),
+        )
+        task_ops.create_task(db, web, "sin analista")
+        db.commit()
+    task = current(db_factory)
+    assert (task.status, task.waiting_reason, task.agent_id) == ("waiting_human", "no_agent", None)
+
+    with db_factory() as db:  # the stage gets an agent: retrying uses it
+        pipelines.save(
+            db,
+            db.get(Project, task.project_id),
+            PipelineWrite(
+                stages=[
+                    StageWrite(id=stages[0], name="Requisitos", agent_id=ana.id),
+                    StageWrite(id=stages[1], name="Desarrollo", agent_id=dev.id),
+                    StageWrite(id=stages[2], name="QA", agent_id=qa.id, reject_to=1),
+                ]
+            ),
+        )
+        task_ops.retry(db, db.get(Task, task.id))
+        db.commit()
+    assert (current(db_factory).status, current(db_factory).agent_id) == ("queued", ana.id)
+
+
+def test_retry_after_too_many_rejections_goes_back_to_the_fixing_stage(
+    db_factory, scheduler, launcher
+):
+    with db_factory() as db:
+        agents = [make_agent(db, n) for n in ("Ana", "Dev", "QA")]
+        web = make_project(db, "web")
+        _, desarrollo, _ = web_pipeline(db, web, agents, max_rejections=1)
+        task_ops.create_task(db, web, "bucle")
+        db.commit()
+    scheduler.step()
+    for _ in range(2):
+        end_run(db_factory, scheduler, last_run(launcher), RunStatus.COMPLETED)
+    end_run(db_factory, scheduler, last_run(launcher), RunStatus.COMPLETED, "mal", "rejected")
+    end_run(db_factory, scheduler, last_run(launcher), RunStatus.COMPLETED)
+    end_run(db_factory, scheduler, last_run(launcher), RunStatus.COMPLETED, "peor", "rejected")
+    assert current(db_factory).waiting_reason == "max_rejections"
+
+    with db_factory() as db:
+        task_ops.retry(db, db.get(Task, current(db_factory).id))
+        db.commit()
+    task = current(db_factory)
+    assert (task.status, task.stage_id, task.rejections) == ("queued", desarrollo, 0)
+
+
+def test_a_failed_launch_keeps_the_prepared_worktree(db_factory, scheduler, launcher):
+    def prepare(db, task, project):
+        task.worktree_path, task.branch = "D:/web.wt/T-1", "agentic/T-1"
+        return task.worktree_path
+
+    scheduler.prepare_workspace = prepare
+    with db_factory() as db:
+        dev = make_agent(db)
+        add_task(db, make_project(db, "web", WorkspaceMode.WORKTREE), dev, "sin CLI")
+        db.commit()
+    launcher.error = ApiError(422, "cli_not_installed", "claude is not installed", "cli")
+    scheduler.step()
+    task = current(db_factory)
+    assert (task.status, task.waiting_reason) == ("waiting_human", "launch_failed")
+    assert (task.worktree_path, task.branch) == ("D:/web.wt/T-1", "agentic/T-1")
+
+
+def test_a_manual_summary_only_applies_to_its_own_run(db_factory, scheduler, launcher):
+    with db_factory() as db:
+        dev = make_agent(db)
+        add_task(db, make_project(db, "web"), dev, "carrera")
+        db.commit()
+    scheduler.step()
+    scheduler.complete_manually("another-run", "no es para esta")
+    end_run(db_factory, scheduler, last_run(launcher), RunStatus.EXITED)
+    assert status_of(db_factory, "T-1") == ("waiting_human", WaitingReason.RUN_EXITED)

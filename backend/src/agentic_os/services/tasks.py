@@ -140,8 +140,22 @@ def create_task(
     db.flush()
     add_event(db, task, TaskEventKind.CREATED)
     if enqueue_now:
-        enqueue(db, task)
+        requeue(db, task)
     return task
+
+
+def requeue(db: Session, task: Task, front: bool = False) -> None:
+    """Queues the task on the agent of its *current* stage (the pipeline may have changed since
+    the task got there); with no agent there, it waits for the user."""
+    if task.stage_id:
+        stage = db.get(Stage, task.stage_id)
+        if stage is not None:
+            _move_to_stage(db, task, stage, front=front)
+            return
+    if task.agent_id is None:
+        wait_for_human(db, task, WaitingReason.NO_AGENT)
+        return
+    enqueue(db, task, front=front)
 
 
 def enqueue(db: Session, task: Task, front: bool = False) -> None:
@@ -313,18 +327,26 @@ def review(
             )
     add_event(db, task, TaskEventKind.REVIEW_REJECTED, reason.strip())
     if target is None:  # no pipeline: the same agent does it again
-        enqueue(db, task, front=True)
+        requeue(db, task, front=True)
         return
     _move_to_stage(db, task, target, front=True)
 
 
 def retry(db: Session, task: Task) -> None:
+    """Back to the queue (front). After too many rejections the retry restarts the loop: the
+    task goes back to the stage that has to fix it, with the counter at zero."""
     check_status(task, CAN_RETRY, "retry")
     add_event(db, task, TaskEventKind.RETRIED)
-    if task.agent_id is None:
-        wait_for_human(db, task, WaitingReason.NO_AGENT)
-        return
-    enqueue(db, task, front=True)
+    if task.waiting_reason == WaitingReason.MAX_REJECTIONS and task.stage_id:
+        stage = db.get(Stage, task.stage_id)
+        target = (
+            db.get(Stage, stage.reject_to_stage_id) if stage and stage.reject_to_stage_id else None
+        )
+        task.rejections = 0
+        if target is not None:
+            _move_to_stage(db, task, target, front=True)
+            return
+    requeue(db, task, front=True)
 
 
 # ---------------------------------------------------------------- context for a run

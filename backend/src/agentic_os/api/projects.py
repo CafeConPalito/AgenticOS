@@ -5,7 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -129,7 +129,7 @@ def update_project(project_id: str, payload: ProjectUpdate, session: DbSession) 
 
 
 @router.delete("/projects/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_project(project_id: str, session: DbSession) -> None:
+def delete_project(project_id: str, session: DbSession, request: Request) -> None:
     """Removes the project (and its tasks) from Agentic OS. The folder on disk is never
     touched. Not while one of its tasks is running."""
     project = get_project_or_404(session, project_id)
@@ -138,6 +138,13 @@ def delete_project(project_id: str, session: DbSession) -> None:
     )
     if running:
         raise ApiError(409, "project_busy", "a task of the project is running", "id")
+    # Its tasks go with it (cascade): their worktrees first, or nothing could remove them later.
+    scheduler = request.app.state.scheduler
+    with_worktree = session.scalars(
+        select(Task).where(Task.project_id == project.id, Task.worktree_path.is_not(None))
+    )
+    for task in with_worktree:
+        scheduler.release_finished(session, task)
     session.delete(project)
     session.commit()
 

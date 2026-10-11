@@ -1,6 +1,6 @@
 # ADR 0009: Scheduler, colas y workspaces
 
-- **Estado**: borrador (se completa con los worktrees, hito H4 de la fase 05)
+- **Estado**: aceptado
 - **Fecha**: 2026-10-11
 - **Contexto de decisión**: fase 05 ([`spec.md`](../phases/05-scheduler-pipelines/spec.md), [`plan.md`](../phases/05-scheduler-pipelines/plan.md))
 

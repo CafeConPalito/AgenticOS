@@ -13,8 +13,8 @@ Lint backend (ruff)                 OK
 Lint frontend (eslint+prettier+tsc) OK
 Lint desktop (rustfmt)              OK
 Lint spikes (ruff)                  OK
-Tests backend (pytest)              OK  176 passed  (+48 en esta fase)
-Tests frontend (vitest)             OK   59 passed  (+6 en esta fase)
+Tests backend (pytest)              OK  181 passed  (+53 en esta fase)
+Tests frontend (vitest)             OK   60 passed  (+7 en esta fase)
 Tests desktop (cargo test)          OK    3 passed
 Tests spikes (pytest)               OK   15 passed
 ```
@@ -53,7 +53,20 @@ Tests nuevos de la fase:
 | CA10 | `check` en verde; ADR, README y roadmap | ✅ | Salida de arriba. [ADR 0009](../../adr/0009-scheduler-and-workspaces.md). README (sección «Tareas, colas y pipelines», variables y API). Roadmap |
 
 ## Code review
-(pendiente: `/code-review` sobre `main...phase/05-scheduler-pipelines`)
+`/code-review high` sobre `main...phase/05-scheduler-pipelines`: 10 hallazgos, todos corregidos. Los de lógica tienen test de regresión.
+
+| Hallazgo | Severidad | Resolución |
+|---|---|---|
+| Una tarea cuya primera etapa no tiene agente quedaba «En cola» sin agente para siempre, y desde el backlog no se podía encolar | Alta | **Corregido**: `requeue()` usa el agente de la etapa *actual* y, si no hay, la tarea pasa a «Esperando humano» (`no_agent`). Lo usan crear, encolar, reintentar y la revisión. Test `test_a_first_stage_without_agent_waits_instead_of_queueing_on_nobody` |
+| En modo worktree, un fallo al lanzar hacía *rollback* de `worktree_path` con la carpeta ya creada en disco, así que todos los reintentos fallaban | Alta | **Corregido**: el worktree preparado se guarda antes de lanzar. Test `test_a_failed_launch_keeps_the_prepared_worktree` |
+| Con un filtro de proyecto en el tablero, reordenar enviaba solo parte de la cola y la API respondía 409 | Media | **Corregido**: la fila conoce la cola completa del agente y envía el orden entero. Test de UI |
+| Reintentar volvía a encolar con el agente guardado, no con el de la etapa tras editar el pipeline | Media | **Corregido** con `requeue()`. El mismo test que el primero |
+| El resumen de «Dar por terminada» se guardaba por tarea: si la ejecución acababa justo antes, se aplicaba a la siguiente ejecución | Media | **Corregido**: va ligado a la ejecución (`run_id`), y si la ejecución ya no se puede parar se descarta y se responde 409. Test `test_a_manual_summary_only_applies_to_its_own_run` |
+| Cancelar paraba la ejecución antes de hacer commit del estado: el fin de la ejecución podía leer la tarea como «En ejecución» o chocar con el bloqueo de SQLite, y no liberar el worktree | Media | **Corregido**: commit de «Cancelada» antes de parar. Lo cubre el e2e de cancelación |
+| Borrar un proyecto (o una tarea con un worktree que no se pudo quitar) dejaba carpetas `.wt\T-n` que la app ya no podía limpiar | Media | **Corregido**: se liberan antes de borrar. Test `test_deleting_a_project_releases_its_task_worktrees` |
+| Reordenar podía cruzar prioridades: el aviso decía «posición #1», pero la prioridad volvía a mandar | Baja | **Corregido**: solo se mueve entre tareas de la misma prioridad (los botones se desactivan). Test de UI |
+| La migración ponía el texto libre del usuario después de las notas de los agentes (fecha de la migración) | Baja | **Corregido**: toma una fecha anterior a la nota más antigua. Test de la migración |
+| Tras superar el máximo de rechazos, «Reintentar» volvía a lanzar QA sin que Desarrollo corrigiera, con el contador sin reiniciar | Baja | **Corregido**: el reintento vuelve a la etapa de destino del rechazo con el contador a cero. Test `test_retry_after_too_many_rejections_goes_back_to_the_fixing_stage` |
 
 ## Incidencias durante el desarrollo
 1. **Migraciones de SQLite con las claves foráneas activas.** El modo *batch* recrea las tablas con `DROP TABLE` y disparaba los `ON DELETE`. La migración `0004` habría borrado todos los eventos de las ejecuciones y las notas recién convertidas, y dejado las ejecuciones sin proyecto. Ahora se migra con `foreign_keys=OFF` y se comprueba `foreign_key_check` al terminar. Hay un test con datos reales de la fase 04.

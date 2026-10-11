@@ -78,6 +78,45 @@ describe('Board', () => {
   })
 })
 
+describe('Board queues (code review)', () => {
+  it('reorders with a project filter on by sending the whole queue', async () => {
+    const { dev, tienda, blog } = seed()
+    const a = makeTask({ title: 'A1', project_id: tienda.id, agent_id: dev.id, queue_position: 0 })
+    const b = makeTask({ title: 'B1', project_id: blog.id, agent_id: dev.id, queue_position: 1 })
+    const c = makeTask({ title: 'A2', project_id: tienda.id, agent_id: dev.id, queue_position: 2 })
+    const high = makeTask({
+      title: 'Urgente',
+      project_id: tienda.id,
+      agent_id: dev.id,
+      priority: 'high',
+      queue_position: 0,
+    })
+    const backend = createFakeBackend({
+      agents: [dev],
+      projects: [tienda, blog],
+      tasks: [a, b, c, high],
+    })
+    const user = userEvent.setup()
+    renderApp('/tablero?vista=queues')
+    await user.click(await screen.findByRole('button', { name: 'Tienda online' }))
+    const row = await screen.findByRole('region', { name: 'Dev' })
+    expect(within(row).queryByText('B1')).toBeNull()
+
+    // A high-priority task always goes first: A1 cannot move above it.
+    const earlier = (title: string) =>
+      within(row).getByRole('button', { name: es.board.moveEarlier.replace('{{title}}', title) })
+    expect(earlier('A1')).toBeDisabled()
+
+    await user.click(earlier('A2'))
+    await waitFor(() =>
+      expect(backend.callsTo('PUT', `/api/agents/${dev.id}/queue`)).toHaveLength(1),
+    )
+    expect(backend.callsTo('PUT', `/api/agents/${dev.id}/queue`)[0].body).toEqual({
+      task_ids: [high.id, c.id, a.id, b.id],
+    })
+  })
+})
+
 describe('Task page', () => {
   it('explains why a task waits and retries it', async () => {
     const { dev, tienda } = seed()

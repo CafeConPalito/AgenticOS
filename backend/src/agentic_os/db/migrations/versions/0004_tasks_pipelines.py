@@ -11,7 +11,7 @@ agent, and any other text one note of the user.
 
 import re
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import sqlalchemy as sa
 from alembic import op
@@ -294,13 +294,17 @@ def _memory_to_notes() -> None:
     now = datetime.now(UTC)
     rows = []
     for project_id, memory in conn.execute(sa.text("SELECT id, memory FROM projects")):
-        for kind, name, at, text in split_memory(memory or ""):
+        notes = split_memory(memory or "")
+        # The user's text came first: it keeps its place before the oldest agent note.
+        dated = [at for _, _, at, _ in notes if at is not None]
+        before_all = min(dated) - timedelta(minutes=1) if dated else now
+        for kind, name, at, text in notes:
             agent_id = None
             if kind == "agent":
                 agent_id = conn.execute(
                     sa.text("SELECT id FROM agents WHERE name = :name LIMIT 1"), {"name": name}
                 ).scalar()
-            stamp = at or now
+            stamp = at or before_all
             rows.append(
                 {
                     "id": str(uuid.uuid4()),

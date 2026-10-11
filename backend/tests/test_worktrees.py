@@ -133,3 +133,32 @@ def test_a_bad_base_branch_fails_clearly(db_factory, tmp_path: Path):  # noqa: F
         project.base_branch = "develop"
         with pytest.raises(git.GitError):
             Worktrees().prepare(db, task, project)
+
+
+def test_deleting_a_project_releases_its_task_worktrees(settings, tmp_path: Path):
+    from fastapi.testclient import TestClient
+
+    from agentic_os.app import create_app
+
+    repo = make_repo(tmp_path / "web")
+    with TestClient(create_app(settings)) as client:
+        client.post("/api/scheduler/pause")
+        agent = client.post("/api/agents", json={"name": "Dev"}).json()
+        project = client.post(
+            "/api/projects",
+            json={"name": "Web", "path": str(repo), "workspace_mode": "worktree"},
+        ).json()
+        task = client.post(
+            "/api/tasks",
+            json={"project_id": project["id"], "agent_id": agent["id"], "title": "x"},
+        ).json()
+        state = client.app.state
+        with state.sessionmaker() as db:  # as the scheduler does before a launch
+            row = db.get(Task, task["id"])
+            path = state.scheduler.prepare_workspace(db, row, db.get(Project, project["id"]))
+            db.commit()
+        assert Path(path).is_dir()
+        assert client.delete(f"/api/projects/{project['id']}").status_code == 204
+    assert not Path(path).exists()
+    assert git.branch_exists(str(repo), "agentic/T-1")
+    assert sh(repo, "worktree", "list").count("\n") == 0

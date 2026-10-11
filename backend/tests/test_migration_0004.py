@@ -74,11 +74,11 @@ def test_memory_becomes_notes_and_back(settings: Settings, tmp_path: Path):
                 " ORDER BY created_at"
             )
         ).all()
-    # The user's text has no date: it gets the migration time, after the agents' notes.
-    assert sorted(notes, key=lambda n: n.author_kind) == [
+    # The user's text has no date: it keeps its place, before the oldest agent note.
+    assert notes == [
+        ("p1", "user", "", None, "# Convenciones\nUsa pnpm."),
         ("p1", "agent", "Dev", "a1", "El login usa PKCE."),
         ("p1", "agent", "Gema", None, "Los tests e2e van en /e2e.\nDos líneas."),
-        ("p1", "user", "", None, "# Convenciones\nUsa pnpm."),
     ]
 
     command.downgrade(config, "0003")

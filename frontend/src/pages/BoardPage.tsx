@@ -170,6 +170,7 @@ export default function BoardPage() {
           <AgentQueues
             agents={agentId ? agents.filter((a) => a.id === agentId) : agents}
             tasks={visible}
+            allTasks={tasks.data ?? []}
           />
         )}
       </div>
@@ -309,8 +310,19 @@ function StageColumns({ tasks }: { tasks: Task[] }) {
   )
 }
 
-function AgentQueues({ agents, tasks }: { agents: Agent[]; tasks: Task[] }) {
+function AgentQueues({
+  agents,
+  tasks,
+  allTasks,
+}: {
+  agents: Agent[]
+  /** What the filters show. */
+  tasks: Task[]
+  /** Every task: a reorder always sends an agent's whole queue (the API rejects a part). */
+  allTasks: Task[]
+}) {
   const { t } = useTranslation()
+  const visible = new Set(tasks.map((task) => task.id))
   return (
     <div className="flex flex-col gap-3">
       <p className="text-[12.5px] text-muted-foreground">{t('board.queuesHelp')}</p>
@@ -319,9 +331,10 @@ function AgentQueues({ agents, tasks }: { agents: Agent[]; tasks: Task[] }) {
           key={agent.id}
           agent={agent}
           running={tasks.filter((task) => task.agent_id === agent.id && task.status === 'running')}
-          queued={queueOrder(
-            tasks.filter((task) => task.agent_id === agent.id && task.status === 'queued'),
+          queue={queueOrder(
+            allTasks.filter((task) => task.agent_id === agent.id && task.status === 'queued'),
           )}
+          visible={visible}
         />
       ))}
     </div>
@@ -331,28 +344,37 @@ function AgentQueues({ agents, tasks }: { agents: Agent[]; tasks: Task[] }) {
 function AgentQueueRow({
   agent,
   running,
-  queued,
+  queue,
+  visible,
 }: {
   agent: Agent
   running: Task[]
-  queued: Task[]
+  /** The agent's whole queue, in the scheduler's order. */
+  queue: Task[]
+  visible: Set<string>
 }) {
   const { t } = useTranslation()
   const reorder = useReorderQueue(agent.id)
   const [order, setOrder] = useState<string[] | null>(null)
-  const ids = queued.map((task) => task.id)
+  const ids = queue.map((task) => task.id)
   // While a reorder is saving, show the order the user chose.
-  const shown = order && order.length === ids.length ? order : ids
-  const byId = new Map(queued.map((task) => [task.id, task]))
+  const full = order && order.length === ids.length ? order : ids
+  const byId = new Map(queue.map((task) => [task.id, task]))
+  const shown = full.filter((id) => visible.has(id))
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   )
 
-  function move(from: number, to: number) {
-    if (to < 0 || to >= shown.length || from === to) return
-    const next = arrayMove(shown, from, to)
-    const task = byId.get(shown[from])
+  /** Priority comes before position: a task only moves among tasks of its own priority. */
+  const samePriority = (a: string, b: string | undefined) =>
+    b !== undefined && byId.get(a)?.priority === byId.get(b)?.priority
+
+  function move(fromId: string, toId: string | undefined) {
+    if (!toId || fromId === toId || !samePriority(fromId, toId)) return
+    const to = full.indexOf(toId)
+    const next = arrayMove(full, full.indexOf(fromId), to)
+    const task = byId.get(fromId)
     setOrder(next)
     reorder.mutate(next, {
       onSuccess: () =>
@@ -365,8 +387,7 @@ function AgentQueueRow({
   }
 
   function onDragEnd(event: DragEndEvent) {
-    if (!event.over || event.active.id === event.over.id) return
-    move(shown.indexOf(String(event.active.id)), shown.indexOf(String(event.over.id)))
+    if (event.over) move(String(event.active.id), String(event.over.id))
   }
 
   return (
@@ -388,12 +409,12 @@ function AgentQueueRow({
         <p className="text-xs text-muted-foreground">
           {t('board.queueStats', {
             running: running.length,
-            queued: queued.length,
+            queued: queue.length,
             max: agent.max_concurrency,
           })}
         </p>
       </div>
-      {running.length === 0 && queued.length === 0 ? (
+      {running.length === 0 && shown.length === 0 ? (
         <p className="grid place-items-center rounded-lg border border-dashed py-6 text-[12.5px] text-muted-foreground">
           {t('board.emptyQueue', { name: agent.name })}
         </p>
@@ -407,13 +428,15 @@ function AgentQueueRow({
               {shown.map((id, index) => {
                 const task = byId.get(id)
                 if (!task) return null
+                const before = shown[index - 1]
+                const after = shown[index + 1]
                 return (
                   <SortableQueueCard
                     key={id}
                     task={task}
-                    label={`#${index + 1}`}
-                    onEarlier={index > 0 ? () => move(index, index - 1) : undefined}
-                    onLater={index < shown.length - 1 ? () => move(index, index + 1) : undefined}
+                    label={`#${full.indexOf(id) + 1}`}
+                    onEarlier={samePriority(id, before) ? () => move(id, before) : undefined}
+                    onLater={samePriority(id, after) ? () => move(id, after) : undefined}
                   />
                 )
               })}

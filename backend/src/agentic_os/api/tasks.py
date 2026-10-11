@@ -200,11 +200,13 @@ def update_task(
 
 
 @router.delete("/tasks/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_task(task_id: str, db: DbSession) -> None:
-    """Only finished tasks or tasks in the backlog: anything else is cancelled first."""
+def delete_task(task_id: str, db: DbSession, scheduler: SchedulerDep) -> None:
+    """Only finished tasks or tasks in the backlog: anything else is cancelled first. A
+    worktree whose removal failed earlier gets another try (the row is its only record)."""
     task = _get(db, task_id)
     if task.status not in (TaskStatus.BACKLOG, TaskStatus.DONE, TaskStatus.CANCELLED):
         raise ApiError(409, "task_status", "cancel the task before deleting it", "status")
+    scheduler.release_finished(db, task)
     db.delete(task)
     db.commit()
 
@@ -221,9 +223,7 @@ def task_events(task_id: str, db: DbSession) -> list[TaskEventRead]:
 def enqueue_task(task_id: str, db: DbSession, scheduler: SchedulerDep) -> TaskRead:
     task = _get(db, task_id)
     task_ops.check_status(task, task_ops.CAN_ENQUEUE, "enqueue")
-    if task.agent_id is None:
-        raise ApiError(409, "task_without_agent", "the task has no agent", "agent_id")
-    task_ops.enqueue(db, task)
+    task_ops.requeue(db, task)  # its current stage's agent, or «Esperando humano» if none
     db.commit()
     scheduler.poke()
     return read_task(db, task)
@@ -268,8 +268,11 @@ def complete_task(
     task_ops.check_status(task, task_ops.CAN_COMPLETE, "complete")
     run = _active_run(db, task)
     if run is not None and manager.get(run.id) is not None:
-        scheduler.complete_manually(task.id, payload.summary)
-        manager.stop(run.id)
+        # Tied to this run: if it ends on its own first, the summary is not applied elsewhere.
+        scheduler.complete_manually(run.id, payload.summary)
+        if not manager.stop(run.id):
+            scheduler.discard_manual(run.id)
+            raise ApiError(409, "task_status", "the run has just ended: reload the task", "status")
         return read_task(db, task)
     task_ops.stage_completed(db, task, payload.summary, None, manual=True)
     if task.status == TaskStatus.DONE:
@@ -302,11 +305,13 @@ def cancel_task(
     task_ops.check_status(task, task_ops.CAN_CANCEL, "cancel")
     run = _active_run(db, task)
     task_ops.finish(db, task, TaskStatus.CANCELLED, TaskEventKind.CANCELLED)
-    if run is not None and manager.stop(run.id):
-        pass  # its workspace is released when the run has ended (Scheduler._handle_run_end)
-    else:
-        scheduler.release_finished(db, task)
+    # Committed before the run is stopped: its end (on the scheduler thread) must find the task
+    # cancelled, and the API must not hold the SQLite write lock meanwhile.
     db.commit()
+    if run is None or not manager.stop(run.id):
+        scheduler.release_finished(db, task)
+        db.commit()
+    # else: its workspace is released when the run has ended (Scheduler._handle_run_end)
     scheduler.poke()
     return read_task(db, task)
 

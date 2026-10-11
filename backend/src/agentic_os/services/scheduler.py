@@ -70,7 +70,7 @@ class _Inbox:
     """Work for the scheduler thread, filled from any thread."""
 
     ended: deque[str] = field(default_factory=deque)
-    # task id → summary: the user finished the stage by hand while its run was alive.
+    # run id → summary: the user finished the stage by hand while this run was alive.
     manual: dict[str, str] = field(default_factory=dict)
 
 
@@ -115,11 +115,15 @@ class Scheduler:
             self._inbox.ended.append(run_id)
         self.poke()
 
-    def complete_manually(self, task_id: str, summary: str) -> None:
-        """The user ends the stage of a running task: its run is stopped, and when it ends the
-        stage counts as approved with this summary."""
+    def complete_manually(self, run_id: str, summary: str) -> None:
+        """The user ends the stage of a running task: its run is stopped, and when *that run*
+        ends the stage counts as approved with this summary."""
         with self._lock:
-            self._inbox.manual[task_id] = summary
+            self._inbox.manual[run_id] = summary
+
+    def discard_manual(self, run_id: str) -> None:
+        with self._lock:
+            self._inbox.manual.pop(run_id, None)
 
     def _loop(self) -> None:
         while not self._stopping.is_set():
@@ -220,6 +224,9 @@ class Scheduler:
             task_ops.wait_for_human(db, task, WaitingReason.WORKSPACE_FAILED, str(error))
             db.commit()
             return False
+        # The worktree exists on disk now: record it before launching, so a failed launch (and
+        # its rollback) does not lose it and a retry reuses it.
+        db.commit()
         try:
             run = self._launcher.launch(db, agent, project, task_ops.task_prompt(task), task, cwd)
         except ApiError as error:
@@ -267,7 +274,7 @@ class Scheduler:
             if task.status != TaskStatus.RUNNING:
                 return  # already handled
             with self._lock:
-                manual = self._inbox.manual.pop(task.id, None)
+                manual = self._inbox.manual.pop(run.id, None)
             if manual is not None:
                 task_ops.stage_completed(db, task, manual, run.id, manual=True)
             elif run.status == RunStatus.COMPLETED and run.verdict == Verdict.REJECTED:
