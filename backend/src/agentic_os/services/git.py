@@ -54,3 +54,35 @@ def detect(path: str) -> GitInfo | None:
     status = _git(path, "status", "--porcelain")
     dirty = bool(status and status.returncode == 0 and status.stdout.strip())
     return GitInfo(is_repo=True, branch=name, dirty=dirty)
+
+
+class GitError(RuntimeError):
+    pass
+
+
+def run(path: str, *args: str, timeout: float = 60, config: tuple[str, ...] = ()) -> str:
+    """Runs a git command that must succeed (worktrees, commits); returns its stdout."""
+    git = _git_executable()
+    if git is None:
+        raise GitError("git is not installed")
+    command = [git, *(arg for pair in config for arg in ("-c", pair)), "-C", path, *args]
+    try:
+        result = subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=timeout,
+        )
+    except (OSError, subprocess.TimeoutExpired) as error:
+        raise GitError(f"git {args[0]}: {error}") from error
+    if result.returncode != 0:
+        message = (result.stderr or result.stdout).strip().splitlines()
+        raise GitError(f"git {args[0]}: {message[-1] if message else result.returncode}")
+    return result.stdout
+
+
+def branch_exists(path: str, branch: str) -> bool:
+    found = _git(path, "rev-parse", "--verify", "--quiet", f"refs/heads/{branch}")
+    return bool(found and found.returncode == 0)

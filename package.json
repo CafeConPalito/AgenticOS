@@ -18,7 +18,7 @@
     "test:frontend": "npm -w frontend run test",
     "lint": "npm run lint:backend && npm run lint:frontend && npm run lint:desktop && npm run lint:spikes",
     "lint:backend": "uv run --project backend ruff check backend && uv run --project backend ruff format --check backend",
-    "lint:frontend": "npm -w frontend run lint && npm -w frontend run format:check",
+    "lint:frontend": "npm -w frontend run lint && npm -w frontend run format:check && npm -w frontend run typecheck",
     "check": "npm run lint && npm run test",
     "build:backend": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-backend.ps1",
     "build:frontend": "npm -w frontend run build",

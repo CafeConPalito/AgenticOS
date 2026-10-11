@@ -129,7 +129,20 @@
     "control_taken": "Otra vista tiene el control de esta terminal.",
     "cli_not_installed": "El CLI de este agente no está instalado en este equipo.",
     "cli_shim_unsupported": "El CLI está instalado como script (.cmd) y no se puede lanzar de forma segura. Instala la versión nativa (.exe).",
-    "agy_folder_busy": "Ya hay una ejecución de Antigravity trabajando en esta carpeta. Espera a que termine o párala."
+    "agy_folder_busy": "Ya hay una ejecución de Antigravity trabajando en esta carpeta. Espera a que termine o párala.",
+    "unknown_branch": "Esa rama no existe en el repositorio.",
+    "agent_required": "Elige el agente que hará la tarea.",
+    "task_status": "La tarea ya no está en un estado que permita esta acción. Recarga la página.",
+    "queue_changed": "La cola ha cambiado mientras tanto. Vuelve a intentarlo.",
+    "stage_in_use": "Hay tareas en esa etapa: termínalas o cancélalas antes de quitarla.",
+    "invalid_reject_to": "Una etapa solo puede devolver la tarea a una etapa anterior.",
+    "pipeline_exists": "El proyecto ya tiene pipeline.",
+    "agent_busy": "El agente está trabajando en una tarea.",
+    "project_busy": "Hay una tarea del proyecto en ejecución.",
+    "no_worktree": "La tarea no tiene worktree.",
+    "task_without_agent": "La tarea no tiene agente.",
+    "task_has_pipeline": "En un proyecto con pipeline, el agente lo decide la etapa.",
+    "reason_required": "Escribe el motivo del rechazo."
   },
   "cli": {
     "claude": "Claude Code",
@@ -273,9 +286,8 @@
       "description": "Descripción",
       "descriptionPlaceholder": "De qué va el proyecto.",
       "workspaceMode": "Modo de workspace",
-      "memory": "Memoria del proyecto",
-      "memoryHelp": "Notas que los agentes leen al empezar cada tarea y amplían al terminarla. Puedes editarlas.",
-      "memoryPlaceholder": "# Decisiones\n- …"
+      "baseBranch": "Rama base para worktrees",
+      "baseBranchHelp": "Cada tarea crea su rama agentic/T-n desde esta rama."
     },
     "summary": {
       "openTasks": "Tareas abiertas",
@@ -292,7 +304,9 @@
       "notRepo": "No es un repositorio git",
       "gitUnavailable": "git no está disponible",
       "description": "Descripción",
-      "noDescription": "Sin descripción."
+      "noDescription": "Sin descripción.",
+      "now": "Ahora mismo",
+      "nobody": "Ningún agente trabaja en este proyecto ahora mismo."
     },
     "openFolder": "Abrir carpeta",
     "danger": "Zona peligrosa",
@@ -303,7 +317,22 @@
       "confirm": "Quitar proyecto",
       "done": "Proyecto «{{name}}» quitado"
     },
-    "notFound": "Este proyecto no existe o se ha borrado."
+    "notFound": "Este proyecto no existe o se ha borrado.",
+    "memory": {
+      "title": "Memoria del proyecto",
+      "help": "Notas que los agentes escriben con write_project_memory y que leen al empezar cada tarea. Puedes editarlas.",
+      "add": "Añadir nota",
+      "edit": "Editar",
+      "save": "Guardar",
+      "delete": "Borrar nota",
+      "deleteTitle": "¿Borrar esta nota?",
+      "deleteDescription": "Los agentes dejarán de verla en sus próximas tareas.",
+      "noteLabel": "Texto de la nota",
+      "placeholder": "Algo que los agentes deban saber de este proyecto…",
+      "you": "Tú",
+      "empty": "Todavía no hay notas. Los agentes las añaden al aprender algo del proyecto, y tú también puedes.",
+      "tooLong": "La memoria supera {{limit}} caracteres: los agentes solo ven las notas más recientes. Borra o resume las antiguas."
+    }
   },
   "time": {
     "justNow": "ahora mismo"
@@ -431,5 +460,168 @@
     "expand": "Abrir detalle",
     "close": "Cerrar terminal",
     "empty": "No hay ninguna ejecución activa. Lanza un agente para verlo trabajar aquí."
+  },
+  "tasks": {
+    "status": {
+      "backlog": "Backlog",
+      "queued": "En cola",
+      "running": "En ejecución",
+      "waiting_human": "Esperando humano",
+      "review": "En revisión",
+      "done": "Hecho",
+      "cancelled": "Cancelada"
+    },
+    "priority": {
+      "high": "Alta",
+      "normal": "Media",
+      "low": "Baja"
+    },
+    "waiting": {
+      "run_exited": "El agente terminó sin dar la tarea por acabada",
+      "run_failed": "La ejecución falló",
+      "run_stopped": "Se paró la ejecución",
+      "interrupted": "Agentic OS se cerró mientras trabajaba",
+      "max_rejections": "Se superó el máximo de rechazos",
+      "launch_failed": "No se pudo lanzar el agente",
+      "no_agent": "La etapa no tiene agente",
+      "workspace_failed": "No se pudo preparar el worktree"
+    },
+    "blocked": {
+      "folder_busy": "Carpeta ocupada"
+    },
+    "noAgent": "Sin agente",
+    "noStage": "Sin pipeline",
+    "notFound": "Esta tarea no existe o se ha borrado.",
+    "open": "Abrir {{code}}: {{title}}",
+    "columns": {
+      "id": "ID",
+      "task": "Tarea",
+      "stage": "Etapa",
+      "status": "Estado",
+      "agent": "Agente",
+      "priority": "Prioridad",
+      "cost": "Coste"
+    },
+    "empty": "Este proyecto todavía no tiene tareas.",
+    "new": {
+      "title": "Nueva tarea",
+      "description": "Se pondrá en la cola del agente de la primera etapa, o del agente que elijas si el proyecto no tiene pipeline.",
+      "project": "Proyecto",
+      "pickProject": "Elige un proyecto",
+      "titleField": "Título",
+      "titlePlaceholder": "Login con Google",
+      "descriptionField": "Descripción",
+      "descriptionPlaceholder": "Qué hay que hacer, criterios de aceptación…",
+      "priority": "Prioridad",
+      "agent": "Agente",
+      "pickAgent": "Elige un agente",
+      "pipelineNote": "Empieza en «{{stage}}» con {{agent}}.",
+      "pipelineNoAgent": "Empieza en «{{stage}}», que todavía no tiene agente.",
+      "backlog": "Dejar en el backlog",
+      "submit": "Crear tarea",
+      "submitting": "Creando…",
+      "created": "{{code}} creada",
+      "hint": "Ctrl+Enter para crear"
+    },
+    "detail": {
+      "description": "Descripción",
+      "noDescription": "Sin descripción.",
+      "stages": "Etapa del pipeline",
+      "history": "Historial",
+      "runs": "Ejecuciones",
+      "noRuns": "Todavía no se ha ejecutado.",
+      "waiting": "Necesita tu atención",
+      "branch": "Rama",
+      "worktree": "Worktree",
+      "noRun": "La terminal aparecerá cuando un agente empiece a trabajar en la tarea.",
+      "lastSummary": "Resumen del agente",
+      "rejections": "Rechazos: {{count}}"
+    },
+    "events": {
+      "created": "Creada",
+      "queued": "En cola",
+      "stage_started": "Empieza",
+      "stage_completed": "Terminó",
+      "rejected": "Rechazó",
+      "review_approved": "Revisión aprobada",
+      "review_rejected": "Rechazada en revisión",
+      "waiting_human": "Esperando humano",
+      "retried": "Reintento",
+      "completed_manually": "Dada por terminada",
+      "cancelled": "Cancelada",
+      "done": "Hecho",
+      "workspace": "Workspace"
+    },
+    "actions": {
+      "enqueue": "Encolar",
+      "retry": "Reintentar",
+      "cancel": "Cancelar",
+      "complete": "Dar por terminada",
+      "approve": "Aprobar",
+      "reject": "Rechazar",
+      "openWorktree": "Abrir worktree",
+      "done": "Hecho",
+      "cancelTitle": "¿Cancelar {{code}}?",
+      "cancelDescription": "Se parará el agente si está trabajando. Lo hecho se conserva (en un worktree, en su rama).",
+      "completeTitle": "Dar {{code}} por terminada",
+      "completeDescription": "La etapa actual cuenta como aprobada con tu resumen y la tarea sigue su camino. Si el agente está trabajando, se cerrará su sesión.",
+      "summary": "Resumen",
+      "summaryPlaceholder": "Qué se ha hecho…",
+      "rejectTitle": "Rechazar {{code}}",
+      "rejectDescription": "La tarea vuelve a la etapa que elijas con tu motivo.",
+      "reason": "Motivo",
+      "reasonPlaceholder": "Qué hay que corregir…",
+      "target": "Vuelve a"
+    }
+  },
+  "board": {
+    "views": {
+      "status": "Por estado",
+      "stage": "Por etapa",
+      "queues": "Colas por agente"
+    },
+    "allProjects": "Todos los proyectos",
+    "agentFilter": "Agente",
+    "allAgents": "Todos los agentes",
+    "emptyColumn": "Sin tareas",
+    "noPipeline": "Sin pipeline",
+    "queuesHelp": "Arrastra las tareas para cambiar el orden en que cada agente las ejecutará. La primera tarjeta es la actual.",
+    "now": "Ahora",
+    "queueStats": "{{running}} en curso · {{queued}} en cola · concurrencia {{running}}/{{max}}",
+    "emptyQueue": "Cola vacía · {{name}} está disponible",
+    "reordered": "Cola de {{name}} reordenada · «{{title}}» pasa a la posición #{{position}}",
+    "moveEarlier": "Adelantar «{{title}}»",
+    "moveLater": "Retrasar «{{title}}»",
+    "pause": "Pausar scheduler",
+    "resume": "Reanudar scheduler",
+    "paused": "Scheduler en pausa: no arranca tareas nuevas"
+  },
+  "pipeline": {
+    "title": "Editor de pipeline",
+    "help": "Cada etapa la ejecuta un agente. Elige el agente de cada una y usa las flechas para reordenar.",
+    "addStage": "Añadir etapa",
+    "newStage": "Nueva etapa",
+    "stage": "Etapa {{n}}",
+    "stageName": "Nombre de la etapa {{n}}",
+    "moveLeft": "Mover a la izquierda",
+    "moveRight": "Mover a la derecha",
+    "remove": "Quitar etapa",
+    "agent": "Agente de la etapa {{n}}",
+    "noAgent": "Sin agente",
+    "requiresReview": "Requiere revisión",
+    "canReject": "Puede rechazar",
+    "rejectTo": "Si rechaza, vuelve a",
+    "noReject": "No rechaza",
+    "rejectLabel": "Si {{from}} rechaza → vuelve a {{to}}",
+    "maxRejections": "Máximo de rechazos por tarea",
+    "inUse": "{{count}} tareas en esta etapa",
+    "emptyTitle": "Este proyecto no tiene pipeline",
+    "emptyDescription": "Sin pipeline, cada tarea la hace el agente que elijas. Con uno, cada tarea pasa por sus etapas.",
+    "useTemplate": "Usar «Desarrollo web»",
+    "startBlank": "Empezar en blanco",
+    "delete": "Quitar pipeline",
+    "deleteTitle": "¿Quitar el pipeline?",
+    "deleteDescription": "Las tareas nuevas irán directamente al agente que elijas.",
+    "saved": "Pipeline guardado"
   }
 }

@@ -8,6 +8,7 @@ from agentic_os.schemas.agent import Color, Name, reject_null
 from agentic_os.services.git import GitInfo
 
 PathStr = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
+BranchName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=120)]
 
 
 class ProjectCreate(BaseModel):
@@ -18,10 +19,10 @@ class ProjectCreate(BaseModel):
     color: Color | None = None
     description: str | None = None
     workspace_mode: WorkspaceMode = WorkspaceMode.DIRECT
-    memory: str | None = None
+    base_branch: BranchName | None = None
     create_folder: bool = False
 
-    _no_nulls = field_validator("color", "description", "workspace_mode", "memory", mode="before")(
+    _no_nulls = field_validator("color", "description", "workspace_mode", mode="before")(
         reject_null
     )
 
@@ -34,10 +35,10 @@ class ProjectUpdate(BaseModel):
     color: Color | None = None
     description: str | None = None
     workspace_mode: WorkspaceMode | None = None
-    memory: str | None = None
+    base_branch: BranchName | None = None
 
     _no_nulls = field_validator(
-        "name", "path", "color", "description", "workspace_mode", "memory", mode="before"
+        "name", "path", "color", "description", "workspace_mode", mode="before"
     )(reject_null)
 
 
@@ -50,7 +51,7 @@ class ProjectRead(BaseModel):
     description: str
     path: str
     workspace_mode: WorkspaceMode
-    memory: str
+    base_branch: str | None
     created_at: datetime
     updated_at: datetime
     git: GitInfo | None = None

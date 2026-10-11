@@ -11,7 +11,12 @@ import { UnsavedChangesGuard } from '@/components/UnsavedChangesGuard'
 import { Button } from '@/components/ui/button'
 import { ApiError } from '@/lib/api'
 import { applyApiError } from '@/lib/form-errors'
-import { PROJECT_FORM_FIELDS, type ProjectFormValues, projectSchema } from './project-form'
+import {
+  PROJECT_FORM_FIELDS,
+  type ProjectFormValues,
+  projectSchema,
+  toApiValues,
+} from './project-form'
 import { ProjectFormFields } from './ProjectFormFields'
 
 export default function NewProjectPage() {
@@ -30,13 +35,17 @@ export default function NewProjectPage() {
       color: PALETTE[4],
       description: '',
       workspace_mode: 'direct',
+      base_branch: '',
     },
   })
 
   const submit = (createFolder: boolean) =>
     form.handleSubmit(async (values) => {
       try {
-        const project = await create.mutateAsync({ ...values, create_folder: createFolder })
+        const project = await create.mutateAsync({
+          ...toApiValues(values),
+          create_folder: createFolder,
+        })
         leaving.current = true
         toast.success(t('projects.new.created', { name: project.name }))
         navigate(`/proyectos/${project.id}/summary`)

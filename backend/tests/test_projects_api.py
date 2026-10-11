@@ -37,10 +37,9 @@ def test_crud_roundtrip(client: TestClient, tmp_path: Path):
     assert project["folder_exists"] is True
     assert project["git"] == {"is_repo": False, "branch": None, "dirty": False}
 
-    updated = client.patch(
-        f"/api/projects/{project['id']}", json={"memory": "# Notas\nUsar Stripe."}
-    ).json()
-    assert updated["memory"].startswith("# Notas")
+    updated = client.patch(f"/api/projects/{project['id']}", json={"description": "Tienda"})
+    assert updated.json()["description"] == "Tienda"
+    assert "memory" not in updated.json()  # the memory is a list of notes (/memory)
 
     assert [p["id"] for p in client.get("/api/projects").json()] == [project["id"]]
     assert client.delete(f"/api/projects/{project['id']}").status_code == 204
@@ -138,9 +137,9 @@ def test_explicit_null_is_a_422(client: TestClient, tmp_path: Path):
     folder = tmp_path / "n"
     folder.mkdir()
     project = create(client, name="N", path=str(folder))
-    response = client.patch(f"/api/projects/{project['id']}", json={"memory": None})
+    response = client.patch(f"/api/projects/{project['id']}", json={"description": None})
     assert response.status_code == 422
-    assert response.json()["detail"]["field"] == "memory"
+    assert response.json()["detail"]["field"] == "description"
 
 
 @pytest.mark.parametrize("relative", ["mi-web", "./mi-web", r"..\otra"])

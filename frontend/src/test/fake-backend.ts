@@ -1,4 +1,15 @@
-import type { Agent, AgentTemplate, CliInfo, Project, Run, RunEvent } from '@/api/types'
+import type {
+  Agent,
+  AgentTemplate,
+  CliInfo,
+  MemoryNote,
+  Pipeline,
+  Project,
+  Run,
+  RunEvent,
+  Task,
+  TaskEvent,
+} from '@/api/types'
 
 /** In-memory stand-in for the backend API, plugged into `fetch` for page tests. */
 
@@ -78,6 +89,8 @@ export function makeAgent(overrides: Partial<Agent> = {}): Agent {
     can_create_tasks: false,
     status: 'active',
     template: null,
+    queued_count: 0,
+    running_count: 0,
     created_at: now(),
     updated_at: now(),
     ...overrides,
@@ -93,7 +106,7 @@ export function makeProject(overrides: Partial<Project> = {}): Project {
     description: '',
     path: 'D:\\proyectos\\tienda',
     workspace_mode: 'direct',
-    memory: '',
+    base_branch: null,
     created_at: now(),
     updated_at: now(),
     git: { is_repo: true, branch: 'main', dirty: false },
@@ -127,10 +140,68 @@ export function makeRun(overrides: Partial<Run> = {}): Run {
     summary: null,
     last_status: null,
     mcp_connected_at: null,
+    task_id: null,
+    stage_id: null,
+    verdict: null,
+    task_code: null,
+    stage_name: null,
     created_at: now(),
     updated_at: now(),
     controller: null,
     viewers: 0,
+    ...overrides,
+  }
+}
+
+export function makeNote(overrides: Partial<MemoryNote> = {}): MemoryNote {
+  seq += 1
+  return {
+    id: `note-${seq}`,
+    author_kind: 'user',
+    author_name: '',
+    agent_id: null,
+    text: 'Usa pnpm.',
+    created_at: now(),
+    updated_at: now(),
+    ...overrides,
+  }
+}
+
+export function makeTask(overrides: Partial<Task> = {}): Task {
+  seq += 1
+  return {
+    id: `task-${seq}`,
+    code: `T-${seq}`,
+    number: seq,
+    project_id: 'project-1',
+    project_name: 'Tienda online',
+    project_color: '#7C9CFF',
+    title: 'Login con Google',
+    description: '',
+    priority: 'normal',
+    status: 'queued',
+    stage_id: null,
+    stage_name: null,
+    stage_index: 0,
+    stage_count: 0,
+    requires_review: false,
+    agent_id: 'agent-1',
+    agent_name: 'Dev',
+    agent_color: '#4FD1C5',
+    queue_position: seq,
+    rejections: 0,
+    waiting_reason: null,
+    waiting_detail: null,
+    worktree_path: null,
+    branch: null,
+    blocked: null,
+    active_run_id: null,
+    last_run_id: null,
+    queued_at: now(),
+    started_at: null,
+    finished_at: null,
+    created_at: now(),
+    updated_at: now(),
     ...overrides,
   }
 }
@@ -159,13 +230,184 @@ function apiError(status: number, code: string, field?: string): Response {
 }
 
 export function createFakeBackend(
-  seed: { agents?: Agent[]; projects?: Project[]; runs?: Run[]; events?: RunEvent[] } = {},
+  seed: {
+    agents?: Agent[]
+    projects?: Project[]
+    runs?: Run[]
+    events?: RunEvent[]
+    /** Memory notes by project id, oldest first. */
+    notes?: Record<string, MemoryNote[]>
+    tasks?: Task[]
+    taskEvents?: Record<string, TaskEvent[]>
+    pipelines?: Record<string, Pipeline>
+    paused?: boolean
+  } = {},
 ) {
+  const tasks = [...(seed.tasks ?? [])]
+  const taskEvents = { ...(seed.taskEvents ?? {}) }
+  const pipelines: Record<string, Pipeline | null> = { ...(seed.pipelines ?? {}) }
+  const scheduler = { paused: seed.paused ?? false }
   const agents = [...(seed.agents ?? [])]
   const projects = [...(seed.projects ?? [])]
   const runs = [...(seed.runs ?? [])]
   const events = [...(seed.events ?? [])]
+  const notes: Record<string, MemoryNote[]> = Object.fromEntries(
+    Object.entries(seed.notes ?? {}).map(([id, list]) => [id, [...list]]),
+  )
   const calls: Call[] = []
+
+  function handleTasks(
+    method: string,
+    path: string,
+    query: URLSearchParams,
+    body: Record<string, unknown>,
+  ): Response | null {
+    if (path === '/api/scheduler' || path.startsWith('/api/scheduler/')) {
+      if (path.endsWith('/pause')) scheduler.paused = true
+      if (path.endsWith('/resume')) scheduler.paused = false
+      const count = (status: string) => tasks.filter((t) => t.status === status).length
+      return json(200, {
+        paused: scheduler.paused,
+        queued: count('queued'),
+        running: count('running'),
+        waiting_human: count('waiting_human'),
+        review: count('review'),
+      })
+    }
+    const queueMatch = path.match(/^\/api\/agents\/([^/]+)\/queue$/)
+    if (queueMatch) {
+      const mine = tasks.filter((t) => t.agent_id === queueMatch[1])
+      if (method === 'PUT') {
+        ;(body.task_ids as string[]).forEach((id, position) => {
+          const task = tasks.find((t) => t.id === id)
+          if (task) task.queue_position = position
+        })
+      }
+      return json(200, {
+        agent_id: queueMatch[1],
+        running: mine.filter((t) => t.status === 'running'),
+        queued: mine.filter((t) => t.status === 'queued'),
+      })
+    }
+    const pipelineMatch = path.match(/^\/api\/projects\/([^/]+)\/pipeline(\/template)?$/)
+    if (pipelineMatch) {
+      const projectId = pipelineMatch[1]
+      if (method === 'GET') return json(200, pipelines[projectId] ?? null)
+      if (method === 'DELETE') {
+        pipelines[projectId] = null
+        return json(204, null)
+      }
+      type StageBody = {
+        id?: string | null
+        name: string
+        agent_id: string | null
+        requires_review: boolean
+        reject_to: number | null
+      }
+      const stages: StageBody[] = pipelineMatch[2]
+        ? [
+            { name: 'Requisitos', agent_id: null, requires_review: false, reject_to: null },
+            { name: 'Desarrollo', agent_id: null, requires_review: false, reject_to: null },
+            { name: 'QA', agent_id: null, requires_review: false, reject_to: 1 },
+          ]
+        : (body.stages as StageBody[])
+      const ids = stages.map((st, i) => st.id || `stage-${projectId}-${i}`)
+      const pipeline: Pipeline = {
+        id: `pipeline-${projectId}`,
+        project_id: projectId,
+        name: pipelineMatch[2] ? 'Desarrollo web' : String(body.name ?? ''),
+        max_rejections: pipelineMatch[2] ? 3 : Number(body.max_rejections ?? 3),
+        stages: stages.map((st, i) => {
+          const agent = agents.find((a) => a.id === st.agent_id)
+          return {
+            id: ids[i],
+            position: i,
+            name: st.name,
+            agent_id: st.agent_id,
+            agent_name: agent?.name ?? null,
+            agent_color: agent?.color ?? null,
+            requires_review: st.requires_review,
+            reject_to_stage_id: st.reject_to === null ? null : ids[st.reject_to],
+            active_tasks: 0,
+          }
+        }),
+      }
+      pipelines[projectId] = pipeline
+      return json(pipelineMatch[2] ? 201 : 200, pipeline)
+    }
+    if (path === '/api/tasks') {
+      if (method === 'GET') {
+        const statuses = query.getAll('status')
+        return json(
+          200,
+          tasks.filter(
+            (t) =>
+              (!query.get('project_id') || t.project_id === query.get('project_id')) &&
+              (!query.get('agent_id') || t.agent_id === query.get('agent_id')) &&
+              (statuses.length === 0 || statuses.includes(t.status)),
+          ),
+        )
+      }
+      const project = projects.find((p) => p.id === body.project_id)
+      if (!project) return apiError(404, 'project_not_found', 'project_id')
+      const first = pipelines[project.id]?.stages[0]
+      if (!first && !body.agent_id) return apiError(422, 'agent_required', 'agent_id')
+      const agent = agents.find((a) => a.id === (first ? first.agent_id : body.agent_id))
+      const task = makeTask({
+        project_id: project.id,
+        project_name: project.name,
+        project_color: project.color,
+        title: String(body.title),
+        description: String(body.description ?? ''),
+        priority: (body.priority as Task['priority']) ?? 'normal',
+        status: body.enqueue === false ? 'backlog' : 'queued',
+        stage_id: first?.id ?? null,
+        stage_name: first?.name ?? null,
+        agent_id: agent?.id ?? null,
+        agent_name: agent?.name ?? null,
+        agent_color: agent?.color ?? null,
+      })
+      tasks.unshift(task)
+      return json(201, task)
+    }
+    const taskMatch = path.match(/^\/api\/tasks\/([^/]+)(?:\/([a-z-]+))?$/)
+    if (!taskMatch) return null
+    const task = tasks.find((t) => t.id === taskMatch[1])
+    if (!task) return apiError(404, 'task_not_found')
+    const action = taskMatch[2]
+    if (action === 'events') return json(200, taskEvents[task.id] ?? [])
+    if (action === 'open-worktree') return json(204, null)
+    if (action === 'retry' || action === 'enqueue' || action === 'review')
+      Object.assign(task, { status: 'queued' })
+    if (action === 'cancel') Object.assign(task, { status: 'cancelled', finished_at: now() })
+    if (action === 'complete') Object.assign(task, { status: 'done', finished_at: now() })
+    if (method === 'PATCH') Object.assign(task, body)
+    return json(200, task)
+  }
+
+  function handleMemory(method: string, path: string, body: Record<string, unknown>) {
+    const match = path.match(/^\/api\/projects\/([^/]+)\/memory(?:\/([^/]+))?$/)
+    if (!match) return null
+    if (!projects.some((p) => p.id === match[1])) return apiError(404, 'project_not_found')
+    const list = (notes[match[1]] ??= [])
+    if (!match[2]) {
+      if (method === 'GET') {
+        const size = list.reduce((n, note) => n + note.text.length + 30, 0)
+        return json(200, { notes: list, size, limit: 12000 })
+      }
+      const note = makeNote({ text: String(body.text).trim() })
+      list.push(note)
+      return json(201, note)
+    }
+    const index = list.findIndex((n) => n.id === match[2])
+    if (index < 0) return apiError(404, 'note_not_found')
+    if (method === 'PATCH') {
+      list[index] = { ...list[index], text: String(body.text), updated_at: now() }
+      return json(200, list[index])
+    }
+    list.splice(index, 1)
+    return json(204, null)
+  }
 
   function handleRuns(
     method: string,
@@ -311,6 +553,8 @@ export function createFakeBackend(
     })
     return (
       handleRuns(method, url.pathname, url.searchParams, body) ??
+      handleMemory(method, url.pathname, body) ??
+      handleTasks(method, url.pathname, url.searchParams, body) ??
       handle(method, path.split('?')[0] === '/api/clis' ? '/api/clis' : url.pathname, body)
     )
   })
@@ -320,6 +564,10 @@ export function createFakeBackend(
     agents,
     projects,
     runs,
+    notes,
+    tasks,
+    pipelines,
+    scheduler,
     calls,
     callsTo: (method: string, path: string) =>
       calls.filter((c) => c.method === method && c.path === path),

@@ -1,11 +1,12 @@
 import { type QueryClient, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
-import { projectKeys } from './projects'
+import { memoryKeys } from './memory'
 import { ACTIVE_RUN_STATUSES, type Run, type RunEvent } from './types'
 
 export interface RunFilters {
   agentId?: string
   projectId?: string
+  taskId?: string
   active?: boolean
 }
 
@@ -22,6 +23,7 @@ function query(filters: RunFilters): string {
   const params = new URLSearchParams()
   if (filters.agentId) params.set('agent_id', filters.agentId)
   if (filters.projectId) params.set('project_id', filters.projectId)
+  if (filters.taskId) params.set('task_id', filters.taskId)
   if (filters.active !== undefined) params.set('active', String(filters.active))
   const text = params.toString()
   return text ? `?${text}` : ''
@@ -108,5 +110,5 @@ export function applyRunEvent(queryClient: QueryClient, runId: string, event: Ru
       run ? { ...run, summary: event.detail } : run,
     )
   if (event.name === 'write_project_memory')
-    void queryClient.invalidateQueries({ queryKey: projectKeys.all })
+    void queryClient.invalidateQueries({ queryKey: memoryKeys.all })
 }

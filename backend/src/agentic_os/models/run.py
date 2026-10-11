@@ -68,6 +68,19 @@ class Run(IdMixin, WorkspaceMixin, TimestampMixin, Base):
     summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     last_status: Mapped[str | None] = mapped_column(Text, nullable=True)
     mcp_connected_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    # Set when the scheduler launched the run for a task (null for a manual run).
+    task_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("tasks.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    stage_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("stages.id", ondelete="SET NULL"), nullable=True
+    )
+    verdict: Mapped[str | None] = mapped_column(String(8), nullable=True)  # from complete_task
+
+
+class Verdict(StrEnum):
+    APPROVED = "approved"
+    REJECTED = "rejected"
 
 
 class EventKind(StrEnum):

@@ -1,6 +1,7 @@
 import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -16,6 +17,9 @@ from agentic_os.logging_setup import configure_logging
 from agentic_os.services.clis import CliCatalog
 from agentic_os.services.mcp_server import mount_app
 from agentic_os.services.runs.manager import RunManager
+from agentic_os.services.scheduler import Scheduler
+from agentic_os.services.trust import TrustCleaner, agy_settings, claude_config
+from agentic_os.services.worktrees import Worktrees
 
 
 class AgentGateway:
@@ -45,12 +49,32 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         manager.loop = asyncio.get_running_loop()
         manager.recover()
         app.state.run_manager = manager
+        scheduler = Scheduler(app.state.sessionmaker, manager)
+        trust = TrustCleaner(
+            Path(settings.data_dir) / "trust-cleanup.json",
+            {
+                "claude": settings.claude_config_file or claude_config(),
+                "agy": settings.agy_settings_file or agy_settings(),
+            },
+        )
+        worktrees = Worktrees(trust)
+        scheduler.prepare_workspace = worktrees.prepare
+        scheduler.release_workspace = worktrees.release
+        scheduler.housekeeping = trust.flush
+        manager.on_run_ended = scheduler.run_ended
+        scheduler.recover()
+        app.state.scheduler = scheduler
         app.state.mcp_gate, session_manager = mount_app(manager, manager.tokens)
+        scheduler.start()
         try:
             async with session_manager.run():
                 yield
         finally:
             app.state.mcp_gate = None
+            # The scheduler stops first: the runs closed by the shutdown are not "stopped by the
+            # user"; their tasks are found interrupted on the next start.
+            scheduler.stop()
+            manager.on_run_ended = None
             try:
                 await asyncio.to_thread(manager.shutdown)
             finally:

@@ -14,6 +14,7 @@ import { useDock } from '@/components/terminal/dock-store'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { LaunchRunDialog } from '@/pages/runs/LaunchRunDialog'
+import { NewTaskDialog } from '@/pages/tasks/NewTaskDialog'
 import type { CrumbHandle } from './crumbs'
 import type { NavItem, PrimaryAction } from './nav'
 
@@ -36,12 +37,15 @@ export function AppHeader({ section }: { section: NavItem }) {
   const crumbs = useCrumbs()
   const primaryRoute = section.primary ? PRIMARY_ROUTES[section.primary] : undefined
   const [launching, setLaunching] = useState(false)
+  const [creatingTask, setCreatingTask] = useState(false)
   const dockOpen = useDock((s) => s.open)
   const toggleDock = useDock((s) => s.toggle)
-  const primaryAvailable = Boolean(primaryRoute) || section.primary === 'launchRun'
+  const primaryAvailable =
+    Boolean(primaryRoute) || section.primary === 'launchRun' || section.primary === 'newTask'
 
   function onPrimary() {
     if (section.primary === 'launchRun') setLaunching(true)
+    else if (section.primary === 'newTask') setCreatingTask(true)
     else if (primaryRoute) navigate(primaryRoute)
   }
 
@@ -114,6 +118,7 @@ export function AppHeader({ section }: { section: NavItem }) {
         </Button>
       )}
       <LaunchRunDialog open={launching} onOpenChange={setLaunching} />
+      <NewTaskDialog open={creatingTask} onOpenChange={setCreatingTask} />
     </header>
   )
 }

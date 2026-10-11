@@ -6,14 +6,14 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, Request, WebSocket, WebSocketDisconnect, status
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, object_session
 
 from agentic_os.api.agents import _get as get_agent_row
-from agentic_os.api.projects import _get as get_project_row
+from agentic_os.api.projects import get_project_or_404 as get_project_row
 from agentic_os.db.base import DEFAULT_WORKSPACE
 from agentic_os.db.session import get_session
 from agentic_os.errors import ApiError, NotFound
-from agentic_os.models import ACTIVE_STATUSES, Run, RunEvent
+from agentic_os.models import ACTIVE_STATUSES, Run, RunEvent, Stage, Task
 from agentic_os.schemas.run import (
     ControlAction,
     ControlRequest,
@@ -44,6 +44,12 @@ def _get(db: Session, run_id: str) -> Run:
 
 def _read(run: Run, manager: RunManager) -> RunRead:
     result = RunRead.model_validate(run)
+    db = object_session(run)
+    if run.task_id and db is not None:
+        task = db.get(Task, run.task_id)
+        stage = db.get(Stage, run.stage_id) if run.stage_id else None
+        result.task_code = task.code if task else None
+        result.stage_name = stage.name if stage else None
     session = manager.get(run.id)
     if session is not None and session.alive:
         result.controller = session.controller
@@ -72,12 +78,15 @@ def list_runs(
     manager: Manager,
     agent_id: str | None = None,
     project_id: str | None = None,
+    task_id: str | None = None,
     active: bool | None = None,
     limit: Annotated[int, Query(ge=1, le=500)] = 200,
 ) -> list[RunRead]:
     query = select(Run).where(Run.workspace_id == DEFAULT_WORKSPACE)
     if agent_id:
         query = query.where(Run.agent_id == agent_id)
+    if task_id:
+        query = query.where(Run.task_id == task_id)
     if project_id:
         query = query.where(Run.project_id == project_id)
     statuses = [s.value for s in ACTIVE_STATUSES]

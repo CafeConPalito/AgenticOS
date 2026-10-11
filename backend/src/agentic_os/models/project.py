@@ -27,4 +27,5 @@ class Project(IdMixin, WorkspaceMixin, TimestampMixin, Base):
     workspace_mode: Mapped[str] = mapped_column(
         String(16), nullable=False, default=WorkspaceMode.DIRECT
     )
-    memory: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    # Worktree mode: the branch each task worktree starts from.
+    base_branch: Mapped[str | None] = mapped_column(String(120), nullable=True)

@@ -1,0 +1,45 @@
+texto
+«hola».
+Si
+la
+tarea
+vuelve
+rechazada,
+corrige
+lo
+que
+diga
+el
+motivo.
+Checking branch,
+status
+and
+files
+in
+worktree
+⎿
+$
+printf
+'hola\n'
+>
+saludo.txt
+&&
+cat
+git
+add
+commit
+-m
+"T-3:
+añade
+saludo.txt
+con
+el texto «hola»
+Co-Authored-By: Claude Ha
+ku 5.5 <noreply@anthropic.com>" &&
+git
+log
+--oneline
+-2
+&&
+status
+--short

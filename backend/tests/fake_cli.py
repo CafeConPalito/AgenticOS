@@ -30,6 +30,7 @@ Usage: python fake_cli.py [--ignore-exit] [--no-trust] [--deaf] [-i] "<prompt>" 
 from __future__ import annotations
 
 import json
+import signal
 import subprocess
 import sys
 import time
@@ -152,10 +153,16 @@ def hook(event: str) -> None:
         payload = {"hook_event_name": event, "session_id": (OPTIONS.get("--session-id") or [""])[0]}
     else:
         payload = {"conversationId": CONVERSATION_ID, "workspacePaths": [str(Path.cwd())]}
+    # While the hook runs the console is not raw: a Ctrl+C becomes a signal instead of a key.
+    # The real CLIs just lose that key press (Agentic OS retries the stop); without this the
+    # fake died with KeyboardInterrupt (the intermittent test of phase 04).
+    previous = signal.signal(signal.SIGINT, signal.SIG_IGN)
     try:  # like the real CLIs: through the shell, JSON on stdin
         subprocess.run(command, shell=True, input=json.dumps(payload).encode(), timeout=15)
     except Exception as error:
         out(f"(hook {event} failed: {error!r})")
+    finally:
+        signal.signal(signal.SIGINT, previous)
 
 
 def mcp(tool: str | None, args: dict | None = None) -> str:
@@ -226,16 +233,61 @@ TOOLS = {"ESTADO": "report_status", "MEMORIA": "write_project_memory", "TERMINA"
 ARGS = {"report_status": "message", "write_project_memory": "note", "complete_task": "summary"}
 
 
-def use_tools(text: str) -> None:
-    for part in text.split(";"):
+def use_tools(text: str) -> int | None:
+    """Runs the directives of a prompt; returns the exit code asked for by `SALE: n`.
+
+    Phase 05 directives: `RECHAZA: x` → complete_task rejecting; `RECHAZA1: x` → rejects only
+    the first time in this folder (a marker file), approves afterwards; `CONTEXTO: <file>` →
+    writes what get_context returns; `GIT: <file>` → writes `git status` of the folder;
+    `SALE: n` → exits with n after the turn. A task's title
+    drives all its stages: a rejection the stage does not accept is ignored, and only the first
+    accepted complete_task counts.
+    """
+    exit_code = None
+    completed = False
+    first_line = text.strip().splitlines()[0] if text.strip() else ""  # a task's title
+    for part in first_line.split(";"):
         keyword, _, value = part.strip().partition(":")
-        tool = TOOLS.get(keyword.strip())
-        if tool is None or MCP_URL is None:
+        keyword, value = keyword.strip(), value.strip()
+        if keyword == "SALE":
+            exit_code = int(value)
             continue
+        if keyword == "GIT":  # what git sees in the working folder
+            status = subprocess.run(
+                ["git", "status", "--porcelain", "--untracked-files=all"],
+                capture_output=True,
+                text=True,
+            ).stdout
+            Path(value).write_text(status, "utf-8")
+            continue
+        if keyword == "CONTEXTO" and MCP_URL is not None:
+            Path(value).write_text(mcp("get_context", {}), "utf-8")
+            out("● MCP get_context")
+            continue
+        args: dict[str, str] = {}
+        marker = Path.cwd() / ".fake-rejected"
+        rejecting = False
+        if keyword in ("RECHAZA", "RECHAZA1"):
+            rejecting = keyword == "RECHAZA" or not marker.exists()
+            tool, args = "complete_task", {"summary": value}
+            if rejecting:
+                args["verdict"] = "rejected"
+        else:
+            tool = TOOLS.get(keyword)
+            if tool is not None:
+                args = {ARGS[tool]: value}
+        if tool is None or MCP_URL is None or (tool == "complete_task" and completed):
+            continue  # one title drives every stage: the first accepted completion wins
         if AGY_MODE and not agy_permission(f"agentic-os_agentic-os/{tool}"):
             out(f"(denied {tool})")
             continue
-        out(f"● MCP {tool}: {mcp(tool, {ARGS[tool]: value.strip()})}")
+        result = mcp(tool, args)
+        out(f"● MCP {tool}: {result}")
+        if tool == "complete_task" and result.startswith("Tarea completada"):
+            completed = True
+            if rejecting and keyword == "RECHAZA1":
+                marker.write_text("1")  # only a rejection the stage accepted counts
+    return exit_code
 
 
 # ---------------------------------------------------------------- TUI
@@ -268,10 +320,12 @@ def answer(text: str) -> None:
     global deaf_until
     hook("PreInvocation" if AGY_MODE else "UserPromptSubmit")
     out(f"> {text}")
-    use_tools(text)
+    exit_code = use_tools(text)
     out(f"● RESPUESTA: {text}")
     out("? for shortcuts")
     hook("Stop")
+    if exit_code is not None:
+        sys.exit(exit_code)
     if DEAF:
         deaf_until = time.monotonic() + DEAF_AFTER_ANSWER
 

@@ -5,7 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from agentic_os.db.base import DEFAULT_WORKSPACE
 from agentic_os.db.session import get_session
 from agentic_os.errors import ApiError, NotFound
-from agentic_os.models import Project, WorkspaceMode
+from agentic_os.models import Project, Task, TaskStatus, WorkspaceMode
 from agentic_os.schemas.project import ProjectCreate, ProjectRead, ProjectUpdate
 from agentic_os.services import git, paths
 
@@ -21,7 +21,7 @@ router = APIRouter(tags=["projects"])
 DbSession = Annotated[Session, Depends(get_session)]
 
 
-def _get(session: Session, project_id: str) -> Project:
+def get_project_or_404(session: Session, project_id: str) -> Project:
     project = session.get(Project, project_id)
     if project is None or project.workspace_id != DEFAULT_WORKSPACE:
         raise NotFound("project")
@@ -66,16 +66,20 @@ def _check_unique(session: Session, path_key: str, exclude_id: str | None = None
         raise ApiError(409, "project_exists", "a project already uses this folder", "path")
 
 
-def _check_worktree(path: str, mode: WorkspaceMode) -> None:
-    if mode == WorkspaceMode.WORKTREE:
-        info = git.detect(path)
-        if not (info and info.is_repo):
-            raise ApiError(
-                422,
-                "worktree_requires_git",
-                "worktree mode needs a git repository",
-                "workspace_mode",
-            )
+def _check_worktree(project: Project) -> None:
+    """Worktree mode needs a git repo and an existing base branch (the current branch when the
+    user gives none)."""
+    if project.workspace_mode != WorkspaceMode.WORKTREE:
+        return
+    info = git.detect(project.path)
+    if not (info and info.is_repo):
+        raise ApiError(
+            422, "worktree_requires_git", "worktree mode needs a git repository", "workspace_mode"
+        )
+    if not project.base_branch:
+        project.base_branch = info.branch
+    if not project.base_branch or not git.branch_exists(project.path, project.base_branch):
+        raise ApiError(422, "unknown_branch", "the base branch does not exist", "base_branch")
 
 
 @router.get("/projects")
@@ -93,9 +97,10 @@ def create_project(payload: ProjectCreate, session: DbSession) -> ProjectRead:
     path, key = paths.normalize(payload.path)
     _check_unique(session, key)
     paths.ensure_folder(path, create=payload.create_folder)
-    _check_worktree(path, payload.workspace_mode)
     values = payload.model_dump(exclude_unset=True, exclude={"create_folder", "path"})
     project = Project(workspace_id=DEFAULT_WORKSPACE, path=path, path_key=key, **values)
+    project.workspace_mode = payload.workspace_mode
+    _check_worktree(project)
     session.add(project)
     _commit(session)
     return _read(project)
@@ -103,30 +108,44 @@ def create_project(payload: ProjectCreate, session: DbSession) -> ProjectRead:
 
 @router.get("/projects/{project_id}")
 def get_project(project_id: str, session: DbSession) -> ProjectRead:
-    return _read(_get(session, project_id))
+    return _read(get_project_or_404(session, project_id))
 
 
 @router.patch("/projects/{project_id}")
 def update_project(project_id: str, payload: ProjectUpdate, session: DbSession) -> ProjectRead:
-    project = _get(session, project_id)
+    project = get_project_or_404(session, project_id)
     changes = payload.model_dump(exclude_unset=True)
     if changes.get("path"):
         path, key = paths.normalize(changes.pop("path"))
         _check_unique(session, key, exclude_id=project.id)
         paths.ensure_folder(path, create=False)
         project.path, project.path_key = path, key
-    if changes.get("workspace_mode") or "path" in payload.model_fields_set:
-        _check_worktree(project.path, changes.get("workspace_mode") or project.workspace_mode)
     for field, value in changes.items():  # nulls are rejected by the schema
         setattr(project, field, value)
+    if {"workspace_mode", "path", "base_branch"} & payload.model_fields_set:
+        _check_worktree(project)
     _commit(session)
     return _read(project)
 
 
 @router.delete("/projects/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_project(project_id: str, session: DbSession) -> None:
-    """Removes the project from Agentic OS. The folder on disk is never touched."""
-    session.delete(_get(session, project_id))
+def delete_project(project_id: str, session: DbSession, request: Request) -> None:
+    """Removes the project (and its tasks) from Agentic OS. The folder on disk is never
+    touched. Not while one of its tasks is running."""
+    project = get_project_or_404(session, project_id)
+    running = session.scalar(
+        select(Task.id).where(Task.project_id == project.id, Task.status == TaskStatus.RUNNING)
+    )
+    if running:
+        raise ApiError(409, "project_busy", "a task of the project is running", "id")
+    # Its tasks go with it (cascade): their worktrees first, or nothing could remove them later.
+    scheduler = request.app.state.scheduler
+    with_worktree = session.scalars(
+        select(Task).where(Task.project_id == project.id, Task.worktree_path.is_not(None))
+    )
+    for task in with_worktree:
+        scheduler.release_finished(session, task)
+    session.delete(project)
     session.commit()
 
 
@@ -141,7 +160,7 @@ def open_in_file_manager(path: str) -> None:
 
 @router.post("/projects/{project_id}/open", status_code=status.HTTP_204_NO_CONTENT)
 def open_project_folder(project_id: str, session: DbSession) -> None:
-    project = _get(session, project_id)
+    project = get_project_or_404(session, project_id)
     if not Path(project.path).is_dir():
         raise ApiError(422, "folder_not_found", "the folder does not exist", "path")
     open_in_file_manager(project.path)

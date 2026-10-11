@@ -11,7 +11,12 @@ import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { UnsavedChangesGuard } from '@/components/UnsavedChangesGuard'
 import { Button } from '@/components/ui/button'
 import { applyApiError, errorMessage } from '@/lib/form-errors'
-import { PROJECT_FORM_FIELDS, type ProjectFormValues, projectSchema } from '../project-form'
+import {
+  PROJECT_FORM_FIELDS,
+  type ProjectFormValues,
+  projectSchema,
+  toApiValues,
+} from '../project-form'
 import { ProjectFormFields } from '../ProjectFormFields'
 
 function toValues(project: Project): ProjectFormValues {
@@ -21,6 +26,7 @@ function toValues(project: Project): ProjectFormValues {
     color: project.color,
     description: project.description,
     workspace_mode: project.workspace_mode,
+    base_branch: project.base_branch ?? '',
   }
 }
 
@@ -48,7 +54,7 @@ export function SettingsTab({ project }: { project: Project }) {
       PROJECT_FORM_FIELDS.filter((f) => dirty[f]).map((f) => [f, values[f]]),
     )
     try {
-      const saved = await update.mutateAsync(changes)
+      const saved = await update.mutateAsync(toApiValues(changes))
       form.reset(toValues(saved))
       toast.success(t('common.saved'))
     } catch (error) {

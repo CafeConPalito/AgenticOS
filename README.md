@@ -58,6 +58,7 @@ Variables de entorno con prefijo `AGENTIC_OS_` (o un archivo `backend/.env`):
 | `AGENTIC_OS_LOG_FILE` | (en la app empaquetada: `<data_dir>\logs\backend.log`) |
 | `AGENTIC_OS_DATABASE_URL` | SQLite en `<data_dir>\agentic-os.db` |
 | `AGENTIC_OS_CLI_COMMAND_OVERRIDES` | `{}` (JSON `{"claude": [...], "agy": [...]}` con el comando de cada CLI) |
+| `AGENTIC_OS_CLAUDE_CONFIG_FILE`, `AGENTIC_OS_AGY_SETTINGS_FILE` | Los reales (`~/.claude.json`, `~/.gemini/antigravity-cli/settings.json`): de dónde se borra la confianza de los worktrees de tareas. Los tests los apuntan a archivos temporales |
 
 En la app empaquetada, el backend usa un puerto libre asignado al arrancar (ver [ADR 0002](docs/adr/0002-sidecar-protocol.md)).
 
@@ -83,7 +84,7 @@ En la app empaquetada, el backend usa un puerto libre asignado al arrancar (ver 
 - Herramientas del MCP `agentic-os`:
   - `report_status`: el agente cuenta en qué está;
   - `write_project_memory`: añade notas a la memoria del proyecto;
-  - `complete_task`: deja el resumen; Agentic OS cierra el CLI y la ejecución queda «Completada»;
+  - `complete_task`: deja el resumen (y, en las etapas que revisan, el veredicto); Agentic OS cierra el CLI y la ejecución queda «Completada»;
   - `get_context`.
 
   Los eventos se ven en vivo en la columna «Eventos MCP».
@@ -92,14 +93,38 @@ En la app empaquetada, el backend usa un puerto libre asignado al arrancar (ver 
 - Al cerrar la app, las ejecuciones activas se cortan (no queda ningún CLI vivo) y aparecen como «Interrumpida» al volver a abrirla.
 - Para probar con un CLI falso o con otra ruta: `AGENTIC_OS_CLI_COMMAND_OVERRIDES='{"claude": ["ruta\\a\\claude.exe"]}'`.
 
+## Tareas, colas y pipelines
+- Una **tarea** (`T-142`) pertenece a un proyecto y la hace el agente de su **etapa** actual o, si el proyecto no tiene pipeline, el agente que elijas ([ADR 0009](docs/adr/0009-scheduler-and-workspaces.md)).
+- **Colas**:
+  - cada agente recorre la suya en orden: por prioridad y después por posición. Puedes reordenarla en el tablero, en «Colas por agente»;
+  - un agente trabaja a la vez en tantas tareas como diga su concurrencia;
+  - cada tarea es una sesión nueva del CLI, con el contexto de su proyecto y nada más.
+- **Pipeline** (pestaña «Pipeline» del proyecto):
+  - etapas en orden, cada una con su agente;
+  - una etapa puede **requerir revisión** (la tarea espera en «En revisión» a que la apruebes o la rechaces) o **rechazar** y devolver la tarea a una etapa anterior. El agente lo hace con `complete_task(summary, verdict="rejected")`, hasta un máximo de rechazos;
+  - plantilla «Desarrollo web»: Requisitos → Desarrollo → QA.
+- **Cuando algo falla**, la tarea queda **«Esperando humano»** con el motivo, y el agente sigue con su cola. Desde la tarea puedes reintentarla, darla por terminada con un resumen o cancelarla. Una ejecución cortada por un reinicio nunca se relanza sola.
+- **Workspaces**, según el modo del proyecto:
+  - **Carpeta directa**: como mucho una tarea a la vez por proyecto; mientras, el agente adelanta trabajo de otros proyectos.
+  - **Git worktree por tarea**: `<carpeta>.wt\T-142` en la rama `agentic/T-142`, creada desde la rama base. Al terminar, lo que quede sin commitear se commitea en la rama y se borra la carpeta. **La rama se conserva** y el merge lo haces tú.
+- **Confianza de las carpetas**: la de los worktrees se borra de la configuración de Claude Code y de agy **solo cuando ese CLI no está abierto**, porque los CLIs reescriben esos archivos. Lo pendiente espera en `<data_dir>\trust-cleanup.json`.
+- **Pausar el scheduler** (botón del tablero): no arranca tareas nuevas; las que están en marcha siguen.
+- **Memoria del proyecto**: son notas con autor. A los agentes les llegan las más recientes hasta unos 12 000 caracteres, y la pestaña avisa cuando no caben todas.
+
 ## API (backend)
 | Ruta | Para qué |
 |---|---|
 | `GET /api/health` | Estado y versión |
 | `/api/agents`, `/api/agents/{id}`, `POST /api/agents/{id}/duplicate`, `GET /api/agent-templates` | Agentes y plantillas |
 | `/api/projects`, `/api/projects/{id}`, `POST /api/projects/{id}/open` | Proyectos (con el estado git calculado al leerlos) |
+| `/api/projects/{id}/memory`, `/api/projects/{id}/memory/{note_id}` | Notas de la memoria del proyecto |
+| `GET/PUT/DELETE /api/projects/{id}/pipeline`, `POST /api/projects/{id}/pipeline/template` | Pipeline del proyecto (las etapas conservan su id) |
+| `/api/tasks?project_id&agent_id&status`, `/api/tasks/{id}`, `GET /api/tasks/{id}/events` | Tareas e historial |
+| `POST /api/tasks/{id}/enqueue · retry · complete · review · cancel · open-worktree` | Acciones sobre una tarea |
+| `GET/PUT /api/agents/{id}/queue` | Cola de un agente / reordenarla |
+| `GET /api/scheduler`, `POST /api/scheduler/pause · resume` | Estado y pausa global del scheduler |
 | `GET /api/clis?refresh=true` | CLIs detectados: versión y modelos |
-| `POST /api/runs`, `GET /api/runs?agent_id&project_id&active`, `GET /api/runs/{id}` | Ejecuciones: lanzar un agente sobre un proyecto con un prompt, listar y consultar |
+| `POST /api/runs`, `GET /api/runs?agent_id&project_id&task_id&active`, `GET /api/runs/{id}` | Ejecuciones: lanzar un agente sobre un proyecto con un prompt, listar y consultar |
 | `POST /api/runs/{id}/control` (`take`/`release`), `POST /api/runs/{id}/stop` | Tomar o devolver el control de la terminal; parar (salida ordenada y, si no, forzada) |
 | `GET /api/runs/{id}/events` | Eventos de la ejecución (herramientas MCP, hooks y acciones de Agentic OS) |
 | `WS /api/runs/{id}/terminal?client_id=` | Terminal en vivo: `snapshot`, `output`, `state`, `event`, `exit`; el cliente envía `input` y `resize` |

@@ -32,6 +32,10 @@ class Settings(BaseSettings):
     database_url: str | None = None
     # argv prefix replacing a CLI executable, e.g. {"claude": ["python", "fake_cli.py"]} (tests).
     cli_command_overrides: dict[str, list[str]] = {}
+    # The CLIs' global config files whose folder-trust entries are cleaned when a task worktree
+    # is removed (None: the real ones; tests point them elsewhere).
+    claude_config_file: Path | None = None
+    agy_settings_file: Path | None = None
 
 
 @lru_cache

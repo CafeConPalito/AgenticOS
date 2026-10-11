@@ -1,4 +1,4 @@
-import { Controller, useFormContext } from 'react-hook-form'
+import { Controller, useFormContext, useWatch } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import type { WorkspaceMode } from '@/api/types'
 import { FolderPicker } from '@/components/FolderPicker'
@@ -18,6 +18,7 @@ export function ProjectFormFields({ pathAction }: { pathAction?: React.ReactNode
     control,
     formState: { errors },
   } = useFormContext<ProjectFormValues>()
+  const mode = useWatch({ control, name: 'workspace_mode' })
 
   return (
     <div className="grid grid-cols-2 gap-x-5 gap-y-5">
@@ -93,6 +94,23 @@ export function ProjectFormFields({ pathAction }: { pathAction?: React.ReactNode
           )}
         />
       </Field>
+      {mode === 'worktree' && (
+        <Field
+          label={t('projects.fields.baseBranch')}
+          htmlFor="project-base-branch"
+          help={t('projects.fields.baseBranchHelp')}
+          error={errors.base_branch?.message}
+          className="col-span-2"
+        >
+          <Input
+            id="project-base-branch"
+            {...register('base_branch')}
+            placeholder="main"
+            className="max-w-[280px] font-mono"
+            aria-invalid={!!errors.base_branch || undefined}
+          />
+        </Field>
+      )}
       <Field
         label={t('projects.fields.description')}
         htmlFor="project-description"

@@ -4,7 +4,7 @@ Set-Location (Join-Path $PSScriptRoot '..')
 
 $steps = @(
     @{ Name = 'Lint backend (ruff)';           Cmd = 'npm run lint:backend' },
-    @{ Name = 'Lint frontend (eslint+prettier)'; Cmd = 'npm run lint:frontend' },
+    @{ Name = 'Lint frontend (eslint+prettier+tsc)'; Cmd = 'npm run lint:frontend' },
     @{ Name = 'Lint desktop (rustfmt)';        Cmd = 'npm run lint:desktop' },
     @{ Name = 'Lint spikes (ruff)';            Cmd = 'npm run lint:spikes' },
     @{ Name = 'Tests backend (pytest)';        Cmd = 'npm run test:backend' },

@@ -135,8 +135,8 @@ def test_claude_reports_completes_and_closes_by_itself(server: LiveServer, tmp_p
         assert names.index("complete_task") < names.index("closing")
         assert "complete_task" in viewer.events()  # pushed live to the viewers
 
-        memory = httpx.get(f"{server.url}/api/projects/{project_id}").json()["memory"]
-        assert memory.endswith("· Dev\nel login usa PKCE")
+        notes = httpx.get(f"{server.url}/api/projects/{project_id}/memory").json()["notes"]
+        assert [(n["author_name"], n["text"]) for n in notes][-1] == ("Dev", "el login usa PKCE")
     finally:
         viewer.close()
     # The token died with the run.
