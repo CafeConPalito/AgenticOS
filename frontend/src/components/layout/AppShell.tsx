@@ -3,6 +3,8 @@ import { Outlet, useLocation } from 'react-router'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import { useInboxSummary } from '@/api/inbox'
+import { useInboxNotifier } from '@/hooks/use-inbox-notifier'
 import { useHealth } from '@/hooks/useHealth'
 import { getApiBaseUrl } from '@/lib/api'
 import { TerminalDock, useDockShortcut } from '@/components/terminal/TerminalDock'
@@ -32,13 +34,15 @@ export function AppShell() {
   const { theme } = useTheme()
   const dockPosition = useDock((s) => s.position)
   useDockShortcut()
+  useInboxNotifier()
+  const inbox = useInboxSummary().data
 
   return (
     <TooltipProvider delayDuration={300}>
       <SidebarProvider style={SIDEBAR_STYLE} className="h-screen">
         <AppSidebar
           active={section.id}
-          inboxCount={0}
+          inboxCount={typeof inbox?.pending === 'number' ? inbox.pending : 0}
           backendState={health.state}
           backendVersion={health.data?.version}
         />

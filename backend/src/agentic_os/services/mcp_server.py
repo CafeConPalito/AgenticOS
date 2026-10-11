@@ -63,6 +63,8 @@ class AgentBackend(Protocol):
     def complete_task(self, run_id: str, summary: str, verdict: Verdict) -> str | None: ...
     def write_project_memory(self, run_id: str, note: str) -> None: ...
     def request_human(self, run_id: str, title: str, detail: str, options: list[str]) -> str: ...
+    def spawn_subagent(self, run_id: str, prompt: str, agent_name: str) -> str: ...
+    def create_subtask(self, run_id: str, title: str, description: str, agent_name: str) -> str: ...
 
 
 class TokenGate:
@@ -181,6 +183,23 @@ def build_mcp(backend: AgentBackend) -> MCPServer:
             _clip(title)[:300],
             _clip(detail),
             [_clip(o)[:80] for o in (options or [])][:5],
+        )
+
+    @server.tool()
+    async def spawn_subagent(prompt: str, ctx: Context, agent: str = "") -> str:
+        """Lanza un subagente que trabaja en paralelo, en tu misma carpeta, en una parte
+        independiente de la tarea. `prompt`: qué tiene que hacer exactamente; `agent`: el nombre
+        de otro agente (vacío: uno como tú). Su resultado te llegará como un mensaje."""
+        return await call(backend.spawn_subagent, _run_id(ctx), _clip(prompt), agent.strip())
+
+    @server.tool()
+    async def create_subtask(
+        title: str, ctx: Context, description: str = "", agent: str = ""
+    ) -> str:
+        """Crea una tarea nueva en este proyecto, ligada a la tuya, que entra en cola: trabajo
+        que debe hacerse después o que hará otro agente (`agent`, por su nombre)."""
+        return await call(
+            backend.create_subtask, _run_id(ctx), _clip(title)[:200], _clip(description), agent
         )
 
     @server.tool()

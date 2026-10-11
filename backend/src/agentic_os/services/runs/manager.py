@@ -4,14 +4,16 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import json
 import os
 import threading
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import structlog
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from agentic_os.config import Settings
@@ -20,6 +22,7 @@ from agentic_os.errors import ApiError
 from agentic_os.models import (
     ACTIVE_STATUSES,
     Agent,
+    AgentStatus,
     Cli,
     EventKind,
     InboxItem,
@@ -56,6 +59,16 @@ PERMISSION_DETAIL = {
 }
 
 SHUTDOWN_TIMEOUT = 5.0
+MAX_SUBAGENTS = 3  # live subagents per run
+
+
+@dataclass
+class NativeState:
+    """Native subagents of a run being paired: announced (pending) → started (by_key)."""
+
+    pending: list[str] = field(default_factory=list)
+    by_key: dict[str, str] = field(default_factory=dict)  # agent id / conversation → node
+
 
 log = structlog.get_logger()
 
@@ -70,6 +83,7 @@ class RunManager:
         self._agy_folders: set[str] = set()  # folders with a live (or starting) agy run
         self.tokens = RunTokens()
         self._mcp_seen: set[str] = set()
+        self._natives: dict[str, NativeState] = {}  # native subagents being tracked, by run
         # Claude's PermissionRequest hook: what the open dialog asks, by run (the screen
         # cannot always be read cleanly).
         self._permission_requests: dict[str, str] = {}
@@ -125,9 +139,11 @@ class RunManager:
         prompt: str,
         task: Task | None = None,
         cwd: str | None = None,
+        parent: Run | None = None,
     ) -> Run:
         """Starts a CLI session. `task`: a run the scheduler launches for a task's current stage;
-        `cwd`: its workspace (the task's worktree), the project folder by default."""
+        `cwd`: its workspace (the task's worktree), the project folder by default; `parent`: the
+        run that launched this one as its subagent (spawn_subagent)."""
         if self.loop is None:
             raise RuntimeError("RunManager.loop is not set (lifespan not started)")
         cwd = cwd or project.path
@@ -142,7 +158,7 @@ class RunManager:
         # reserved atomically before anything is written, and released when the run ends.
         folder = self._reserve_agy_folder(cwd) if cli == Cli.AGY else None
         try:
-            return self._launch(db, agent, project, prompt, task, cwd, cli, adapter, folder)
+            return self._launch(db, agent, project, prompt, task, cwd, cli, adapter, folder, parent)
         except Exception:
             self._release_agy_folder(folder)
             raise
@@ -158,6 +174,7 @@ class RunManager:
         cli: Cli,
         adapter: CliAdapter,
         folder: str | None,
+        parent: Run | None = None,
     ) -> Run:
         run = Run(
             workspace_id=DEFAULT_WORKSPACE,
@@ -172,6 +189,7 @@ class RunManager:
             cwd=cwd,
             task_id=task.id if task else None,
             stage_id=task.stage_id if task else None,
+            parent_run_id=parent.id if parent else None,
         )
         db.add(run)
         db.flush()
@@ -189,13 +207,7 @@ class RunManager:
             run_dir=run_dir,
             base_url=self.public_url,
             token=token,
-            instructions=build_instructions(
-                agent,
-                project,
-                cwd,
-                self._memory(db, project),
-                task_context(db, task) if task else None,
-            ),
+            instructions=self._instructions(db, run, agent, project, task),
             hook_command=write_hook_script(run_dir, self.public_url, token),
             overrides=self._settings.cli_command_overrides,
         )
@@ -248,8 +260,39 @@ class RunManager:
             adapter.cleanup(ctx)
         finally:
             self._release_agy_folder(folder)
+            try:
+                self._after_run_end(run_id)
+            except Exception:
+                log.exception("could not finish the run's links", run_id=run_id)
             if self.on_run_ended is not None:  # the scheduler moves the task on
                 self.on_run_ended(run_id)
+
+    def _after_run_end(self, run_id: str) -> None:
+        """A subagent's result goes to its parent; a parent's end stops its subagents."""
+        with self._db() as db:
+            run = db.get(Run, run_id)
+            if run is None:
+                return
+            children = list(
+                db.scalars(
+                    select(Run.id).where(
+                        Run.parent_run_id == run_id,
+                        Run.status.in_([s.value for s in ACTIVE_STATUSES]),
+                    )
+                )
+            )
+            parent_id, name, status, summary = (
+                run.parent_run_id,
+                run.agent_name,
+                run.status,
+                run.summary,
+            )
+        for child in children:
+            self.stop(child)
+        if parent_id:
+            result = summary or f"terminó sin resumen (estado: {status})"
+            self.deliver(parent_id, f"Resultado del subagente {name}: {result}")
+            self.add_event(parent_id, EventKind.SYSTEM, "subagent_finished", f"{name}: {result}")
 
     def _reserve_agy_folder(self, folder: str) -> str:
         key = os.path.normcase(os.path.realpath(folder))
@@ -267,10 +310,22 @@ class RunManager:
                 self._agy_folders.discard(key)
 
     def stop(self, run_id: str) -> bool:
+        """Stops a run and its live subagents."""
         session = self.get(run_id)
         if session is None or not session.alive:
             return False
         session.stop()
+        with self._db() as db:
+            children = list(
+                db.scalars(
+                    select(Run.id).where(
+                        Run.parent_run_id == run_id,
+                        Run.status.in_([s.value for s in ACTIVE_STATUSES]),
+                    )
+                )
+            )
+        for child in children:
+            self.stop(child)
         return True
 
     def shutdown(self, timeout: float = SHUTDOWN_TIMEOUT) -> None:
@@ -307,6 +362,14 @@ class RunManager:
                     return
                 for key, value in values.items():
                     setattr(run, key, value)
+                if "activity" in values:
+                    if values["activity"] == "idle":
+                        run.idle_since = run.idle_since or now
+                    else:  # working again: an «Sin terminar» notice no longer applies
+                        run.idle_since = None
+                        inbox.resolve_pending(
+                            db, Resolution.DISMISSED, run_id=run_id, kinds=(InboxKind.STALLED,)
+                        )
                 if changes.get("started") and run.started_at is None:
                     run.started_at = now
                 if changes.get("ended"):
@@ -344,6 +407,24 @@ class RunManager:
             }
 
     # ------------------------------------------------------------------ agentic-os MCP tools
+    def _instructions(
+        self,
+        db: Session,
+        run: Run,
+        agent: Agent | None,
+        project: Project | None,
+        task: Task | None,
+    ) -> str:
+        parent = db.get(Run, run.parent_run_id) if run.parent_run_id else None
+        return build_instructions(
+            agent,
+            project,
+            run.cwd,
+            self._memory(db, project),
+            task_context(db, task) if task else None,
+            subagent=(parent.agent_name, run.prompt) if parent else None,
+        )
+
     @staticmethod
     def _memory(db: Session, project: Project | None) -> str:
         return render_memory(list_notes(db, project.id)) if project is not None else ""
@@ -371,13 +452,7 @@ class RunManager:
             agent = db.get(Agent, run.agent_id) if run.agent_id else None
             project = db.get(Project, run.project_id) if run.project_id else None
             task = db.get(Task, run.task_id) if run.task_id else None
-            instructions = build_instructions(
-                agent,
-                project,
-                run.cwd,
-                self._memory(db, project),
-                task_context(db, task) if task else None,
-            )
+            instructions = self._instructions(db, run, agent, project, task)
             prompt = None if task else run.prompt
         self.add_event(run_id, EventKind.MCP, "get_context")
         return build_context(instructions, prompt)
@@ -533,6 +608,109 @@ class RunManager:
             self.add_event(item.run_id, EventKind.SYSTEM, "human_answered", text[:200])
         self._notify_change()
 
+    # ------------------------------------------------------------------ subagents, subtasks
+    def spawn_subagent(self, run_id: str, prompt: str, agent_name: str = "") -> str:
+        """MCP spawn_subagent: a child run in the same workspace, in parallel. Errors are
+        returned to the model as text."""
+        with self._db() as db:
+            parent = db.get(Run, run_id)
+            if parent is None:
+                return "Error: ejecución desconocida."
+            if parent.parent_run_id is not None:
+                return "Error: un subagente no puede lanzar otros subagentes."
+            launcher = db.get(Agent, parent.agent_id) if parent.agent_id else None
+            if launcher is None or not launcher.can_spawn_subagents:
+                return (
+                    "Error: tu agente no tiene permiso para lanzar subagentes "
+                    "(«Puede lanzar subagentes»)."
+                )
+            alive = db.scalar(
+                select(func.count())
+                .select_from(Run)
+                .where(
+                    Run.parent_run_id == run_id,
+                    Run.status.in_([s.value for s in ACTIVE_STATUSES]),
+                )
+            )
+            if (alive or 0) >= MAX_SUBAGENTS:
+                return f"Error: ya tienes {MAX_SUBAGENTS} subagentes trabajando; espera a uno."
+            agent = launcher
+            if agent_name.strip():
+                agent = db.scalar(
+                    select(Agent).where(
+                        func.lower(Agent.name) == agent_name.strip().lower(),
+                        Agent.status == AgentStatus.ACTIVE,
+                    )
+                )
+                if agent is None:
+                    names = ", ".join(db.scalars(select(Agent.name).order_by(Agent.name)))
+                    return f"Error: no hay ningún agente «{agent_name}». Agentes: {names}."
+            project = db.get(Project, parent.project_id) if parent.project_id else None
+            if project is None:
+                return "Error: la ejecución no tiene proyecto."
+            task = db.get(Task, parent.task_id) if parent.task_id else None
+            try:
+                child = self.launch(
+                    db, agent, project, prompt.strip(), task=task, cwd=parent.cwd, parent=parent
+                )
+            except ApiError as error:
+                if error.code == "agy_folder_busy":
+                    return (
+                        "Error: ya hay un agente de agy trabajando en esta carpeta; agy no puede "
+                        "tener dos sesiones en la misma. Elige un agente de otro CLI."
+                    )
+                return f"Error: no se pudo lanzar el subagente ({error.message})."
+            child_id, child_status = child.id, child.status
+        if child_status == RunStatus.FAILED:
+            return "Error: el subagente no pudo arrancar."
+        self.add_event(run_id, EventKind.MCP, "spawn_subagent", f"{agent.name}: {prompt[:160]}")
+        return (
+            f"Subagente {agent.name} lanzado (ejecución {child_id[:8]}). Su resultado te llegará "
+            "como un mensaje cuando termine; mientras, sigue con tu parte."
+        )
+
+    def create_subtask(
+        self, run_id: str, title: str, description: str = "", agent_name: str = ""
+    ) -> str:
+        """MCP create_subtask: a new task in the same project, queued like any other."""
+        with self._db() as db:
+            run = db.get(Run, run_id)
+            if run is None or run.project_id is None:
+                return "Error: la ejecución no tiene proyecto."
+            creator = db.get(Agent, run.agent_id) if run.agent_id else None
+            if creator is None or not creator.can_create_tasks:
+                return "Error: tu agente no tiene permiso para crear tareas («Puede crear tareas»)."
+            project = db.get(Project, run.project_id)
+            agent = creator
+            if agent_name.strip():
+                agent = db.scalar(
+                    select(Agent).where(func.lower(Agent.name) == agent_name.strip().lower())
+                )
+                if agent is None:
+                    return f"Error: no hay ningún agente «{agent_name}»."
+            parent_task = db.get(Task, run.task_id) if run.task_id else None
+            subtask = task_ops.create_task(
+                db,
+                project,
+                title.strip(),
+                description.strip(),
+                agent_id=agent.id,
+                parent_task_id=parent_task.id if parent_task else None,
+            )
+            if parent_task is not None:
+                task_ops.add_event(
+                    db,
+                    parent_task,
+                    TaskEventKind.SUBTASK,
+                    f"{subtask.code} · {subtask.title}",
+                    run_id,
+                )
+            db.commit()
+            code = subtask.code
+        self.add_event(run_id, EventKind.MCP, "create_subtask", f"{code}: {title[:160]}")
+        self._notify_change()
+        return f"Subtarea {code} creada y en cola."
+
     def deliver(self, run_id: str, text: str) -> bool:
         session = self.get(run_id)
         if session is None or not session.alive:
@@ -543,6 +721,56 @@ class RunManager:
     def answer_permission(self, run_id: str, approve: bool) -> bool:
         session = self.get(run_id)
         return session is not None and session.answer_permission(approve)
+
+    # ------------------------------------------------------------------ native subagents
+    def _native_subagent(
+        self, run_id: str, cli: Cli, event: str, payload: object, foreign: bool
+    ) -> None:
+        """The CLIs' own subagents, from their hooks (ADR 0010), as run events
+        `subagent_start` / `subagent_stop` with a JSON detail {id, description}."""
+        data = payload if isinstance(payload, dict) else {}
+        state = self._natives.setdefault(run_id, NativeState())
+        if cli == Cli.CLAUDE:
+            if event == "PreToolUse" and data.get("tool_name") in ("Agent", "Task"):
+                tool_input = (
+                    data.get("tool_input") if isinstance(data.get("tool_input"), dict) else {}
+                )
+                node = str(data.get("tool_use_id") or f"agent-{len(state.pending)}")
+                state.pending.append(node)
+                description = tool_input.get("description") or tool_input.get("subagent_type")
+                self._native_event(run_id, "subagent_start", node, description or "Subagente")
+            elif event == "SubagentStart" and state.pending:
+                state.by_key[str(data.get("agent_id"))] = state.pending.pop(0)
+            elif event == "SubagentStop":
+                # Claude also stops internal agents it never announced: only ours count.
+                node = state.by_key.pop(str(data.get("agent_id")), None)
+                if node is not None:
+                    self._native_event(run_id, "subagent_stop", node, "")
+            return
+        tool_call = data.get("toolCall") if isinstance(data.get("toolCall"), dict) else {}
+        if event == "PreToolUse" and tool_call.get("name") == "invoke_subagent":
+            args = tool_call.get("args") if isinstance(tool_call.get("args"), dict) else {}
+            subagents = args.get("Subagents") or [{}]
+            for i, sub in enumerate(subagents):
+                node = f"{data.get('conversationId', '')}:{data.get('stepIdx', '')}:{i}"
+                role = (sub or {}).get("Role") or "Subagente"
+                summary = args.get("toolSummary") or ""
+                state.pending.append(node)
+                self._native_event(run_id, "subagent_start", node, f"{role}: {summary}".strip(": "))
+        elif foreign:
+            # agy runs the subagent in its own conversation, which never sends its Stop.
+            conversation = str(data.get("conversationId"))
+            if conversation not in state.by_key and state.pending:
+                state.by_key[conversation] = state.pending.pop(0)
+        elif event == "PreInvocation" and data.get("invocationNum") == 0 and state.by_key:
+            # The main conversation starts a new turn (with the subagents' results): done.
+            for node in state.by_key.values():
+                self._native_event(run_id, "subagent_stop", node, "")
+            state.by_key.clear()
+
+    def _native_event(self, run_id: str, name: str, node: str, description: str) -> None:
+        detail = json.dumps({"id": node, "description": description[:300]}, ensure_ascii=False)
+        self.add_event(run_id, EventKind.HOOK, name, detail)
 
     # ------------------------------------------------------------------ CLI hooks
     def on_hook(self, run_id: str, event: str, payload: object) -> None:
@@ -567,6 +795,10 @@ class RunManager:
             if effect.session_id and run.cli_session_id is None:
                 run.cli_session_id = effect.session_id
                 db.commit()
+        try:
+            self._native_subagent(run_id, cli, event, payload, foreign)
+        except Exception:
+            log.exception("could not track a native subagent", run_id=run_id, hook=event)
         if foreign:
             return
         boundary = session.on_hook(effect) if session is not None else False

@@ -158,6 +158,7 @@ def create_task(
     priority: Priority = Priority.NORMAL,
     agent_id: str | None = None,
     enqueue_now: bool = True,
+    parent_task_id: str | None = None,
 ) -> Task:
     """With a pipeline the task starts at its first stage (and that stage's agent); without
     one it goes to `agent_id`."""
@@ -179,6 +180,7 @@ def create_task(
         priority=priority,
         stage_id=stage_id,
         agent_id=agent_id,
+        parent_task_id=parent_task_id,
     )
     db.add(task)
     db.flush()

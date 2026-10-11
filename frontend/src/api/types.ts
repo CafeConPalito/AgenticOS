@@ -102,6 +102,7 @@ export interface Run {
   task_id: string | null
   stage_id: string | null
   verdict: 'approved' | 'rejected' | null
+  parent_run_id: string | null
   task_code: string | null
   stage_name: string | null
   created_at: string
@@ -177,6 +178,8 @@ export type WaitingReason =
   | 'launch_failed'
   | 'no_agent'
   | 'workspace_failed'
+  | 'human_request'
+  | 'permission'
 
 export interface Task {
   id: string
@@ -212,6 +215,10 @@ export interface Task {
   finished_at: string | null
   created_at: string
   updated_at: string
+  parent_task_id: string | null
+  parent_code: string | null
+  subtasks_done: number
+  subtasks_total: number
 }
 
 export type TaskEventKind =
@@ -228,6 +235,9 @@ export type TaskEventKind =
   | 'cancelled'
   | 'done'
   | 'workspace'
+  | 'human_request'
+  | 'human_answered'
+  | 'subtask'
 
 export interface TaskEvent {
   id: string
@@ -286,4 +296,62 @@ export interface PipelineWrite {
   name: string
   max_rejections: number
   stages: StageWrite[]
+}
+
+export type InboxKind =
+  'approval' | 'question' | 'blocker' | 'review' | 'stalled' | 'delivery' | 'attention'
+
+export type InboxResolution =
+  'approved' | 'rejected' | 'answered' | 'answered_in_terminal' | 'reviewed' | 'dismissed'
+
+export interface InboxItem {
+  id: string
+  kind: InboxKind
+  status: 'pending' | 'resolved'
+  task_id: string | null
+  task_code: string | null
+  task_title: string | null
+  run_id: string | null
+  agent_id: string | null
+  agent_name: string
+  agent_color: string
+  project_id: string | null
+  project_name: string
+  project_color: string
+  title: string
+  detail: string
+  command: string | null
+  options: string[]
+  response: string | null
+  resolution: InboxResolution | null
+  notified_at: string | null
+  created_at: string
+  resolved_at: string | null
+}
+
+export interface InboxSummary {
+  pending: number
+  resolved: number
+  unnotified: InboxItem[]
+}
+
+export interface NotificationSettings {
+  approval: boolean
+  question: boolean
+  review: boolean
+  stalled: boolean
+  delivery: boolean
+  sound: boolean
+}
+
+export interface TreeNode {
+  kind: 'run' | 'native'
+  id: string
+  label: string
+  color: string | null
+  stage_name: string | null
+  status: string
+  started_at: string | null
+  ended_at: string | null
+  children: TreeNode[]
 }

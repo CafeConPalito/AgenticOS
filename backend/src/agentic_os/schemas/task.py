@@ -72,6 +72,10 @@ class TaskRead(BaseModel):
     finished_at: datetime | None
     created_at: datetime
     updated_at: datetime
+    parent_task_id: str | None = None
+    parent_code: str | None = None
+    subtasks_done: int = 0
+    subtasks_total: int = 0
 
 
 class TaskEventRead(BaseModel):
@@ -115,6 +119,20 @@ class AgentQueue(BaseModel):
     agent_id: str
     running: list[TaskRead]
     queued: list[TaskRead]
+
+
+class TreeNode(BaseModel):
+    """A node of a task's execution tree: a run (with a terminal) or a native subagent."""
+
+    kind: str  # "run" or "native"
+    id: str  # run id, or the native subagent's id
+    label: str  # agent name / subagent description
+    color: str | None = None
+    stage_name: str | None = None
+    status: str  # run status, or "running" / "done" for a native subagent
+    started_at: datetime | None = None
+    ended_at: datetime | None = None
+    children: list["TreeNode"] = []
 
 
 class SchedulerState(BaseModel):

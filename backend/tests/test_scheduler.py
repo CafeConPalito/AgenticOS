@@ -4,18 +4,20 @@ run ends, pause, recovery and launch errors."""
 from __future__ import annotations
 
 from collections.abc import Iterator
+from datetime import timedelta
 from pathlib import Path
 
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
 from agentic_os.config import Settings
-from agentic_os.db.base import DEFAULT_WORKSPACE
+from agentic_os.db.base import DEFAULT_WORKSPACE, utcnow
 from agentic_os.db.migrate import upgrade_to_head
 from agentic_os.db.session import create_db_engine, database_url, make_sessionmaker
 from agentic_os.errors import ApiError
 from agentic_os.models import (
     Agent,
+    InboxItem,
     Priority,
     Project,
     Run,
@@ -551,3 +553,24 @@ def test_a_manual_summary_only_applies_to_its_own_run(db_factory, scheduler, lau
     scheduler.complete_manually("another-run", "no es para esta")
     end_run(db_factory, scheduler, last_run(launcher), RunStatus.EXITED)
     assert status_of(db_factory, "T-1") == ("waiting_human", WaitingReason.RUN_EXITED)
+
+
+def test_a_run_idle_for_too_long_is_reported_as_stalled(db_factory, scheduler, launcher):
+    with db_factory() as db:
+        dev = make_agent(db)
+        add_task(db, make_project(db, "web"), dev, "sin terminar")
+        db.commit()
+    scheduler.step()
+    run_id = last_run(launcher)
+    with db_factory() as db:
+        db.get(Run, run_id).idle_since = utcnow() - timedelta(minutes=11)
+        db.commit()
+    assert scheduler.check_stalled() == 1
+    assert scheduler.check_stalled() == 0  # one notice per run
+    with db_factory() as db:
+        [item] = db.query(InboxItem).all()
+        assert (item.kind, item.status, item.run_id) == ("stalled", "pending", run_id)
+
+    end_run(db_factory, scheduler, run_id, RunStatus.COMPLETED)  # it ends: no longer stalled
+    with db_factory() as db:
+        assert db.query(InboxItem).filter_by(kind="stalled").one().status == "resolved"

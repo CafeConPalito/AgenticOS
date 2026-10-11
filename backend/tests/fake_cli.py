@@ -251,7 +251,9 @@ def use_tools(text: str) -> int | None:
     `SALE: n` → exits with n after the turn. Phase 06: `PREGUNTA: título|opción|…` →
     request_human (ends the turn; a later «Respuesta de la persona…» message completes the task);
     `PERMISO: comando` → shows the CLI's permission dialog (Claude's or agy's real texts) and
-    waits for Enter (approve) or Esc (reject). A task's title
+    waits for Enter (approve) or Esc (reject); `SUBAGENTE: [agente|]prompt` → spawn_subagent;
+    `SUBTAREA: título` → create_subtask; `NATIVO: descripción` → the hooks of a native subagent
+    (Claude's Agent tool / agy's invoke_subagent, real payload shapes). A task's title
     drives all its stages: a rejection the stage does not accept is ignored, and only the first
     accepted complete_task counts.
     """
@@ -280,6 +282,21 @@ def use_tools(text: str) -> int | None:
             if AGY_MODE and not agy_permission("agentic-os_agentic-os/request_human"):
                 continue
             out(f"● MCP request_human: {mcp('request_human', args_q)}")
+            continue
+        if keyword == "SUBAGENTE" and MCP_URL is not None:
+            agent, _, prompt = value.rpartition("|")
+            if AGY_MODE and not agy_permission("agentic-os_agentic-os/spawn_subagent"):
+                continue
+            result = mcp("spawn_subagent", {"prompt": prompt, "agent": agent})
+            out(f"● MCP spawn_subagent: {result}")
+            continue
+        if keyword == "SUBTAREA" and MCP_URL is not None:
+            if AGY_MODE and not agy_permission("agentic-os_agentic-os/create_subtask"):
+                continue
+            out(f"● MCP create_subtask: {mcp('create_subtask', {'title': value})}")
+            continue
+        if keyword == "NATIVO":
+            native_subagent(value)
             continue
         if keyword == "PERMISO":
             out(f"● permission {'granted' if permission_dialog(value) else 'denied'}: {value}")
@@ -312,6 +329,34 @@ def use_tools(text: str) -> int | None:
             if rejecting and keyword == "RECHAZA1":
                 marker.write_text("1")  # only a rejection the stage accepted counts
     return exit_code
+
+
+def native_subagent(description: str) -> None:
+    """The hooks a CLI fires around its own subagent (shapes captured in phase 06)."""
+    if CLAUDE_MODE:
+        tool_use = f"toolu_{uuid.uuid4().hex[:12]}"
+        agent_id = uuid.uuid4().hex[:17]
+        tool_input = {"description": description, "prompt": description}
+        hook_payload(
+            "PreToolUse", {"tool_name": "Agent", "tool_use_id": tool_use, "tool_input": tool_input}
+        )
+        hook_payload("SubagentStart", {"agent_id": agent_id, "agent_type": "general-purpose"})
+        hook_payload("PostToolUse", {"tool_name": "Agent", "tool_use_id": tool_use})
+        hook_payload("SubagentStop", {"agent_id": uuid.uuid4().hex[:17], "agent_type": ""})
+        hook_payload("SubagentStop", {"agent_id": agent_id, "agent_type": "general-purpose"})
+        out(f"● Agent({description}) done")
+        return
+    call = {
+        "name": "invoke_subagent",
+        "args": {"Subagents": [{"Role": description}], "toolSummary": description},
+    }
+    hook_payload("PreToolUse", {"toolCall": call, "stepIdx": 7})
+    hook_payload("PostToolUse", {"toolCall": call, "stepIdx": 7})
+    child = str(uuid.uuid4())
+    hook_payload("PreInvocation", {"conversationId": child, "invocationNum": 0})
+    hook_payload("PreInvocation", {"conversationId": child, "invocationNum": 1})
+    hook_payload("PreInvocation", {"invocationNum": 0})  # the main conversation's next turn
+    out(f"● Agent({description}) done")
 
 
 def permission_dialog(command: str) -> bool:
@@ -379,7 +424,7 @@ def answer(text: str) -> None:
     global deaf_until
     hook("PreInvocation" if AGY_MODE else "UserPromptSubmit")
     out(f"> {text}")
-    if text.startswith("Respuesta de la persona") and MCP_URL is not None:
+    if text.startswith(("Respuesta de la persona", "Resultado del subagente")) and MCP_URL:
         # An answer to request_human: like a model, use it and finish.
         if AGY_MODE:
             agy_permission("agentic-os_agentic-os/complete_task")

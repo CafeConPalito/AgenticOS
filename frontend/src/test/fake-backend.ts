@@ -7,8 +7,11 @@ import type {
   Project,
   Run,
   RunEvent,
+  InboxItem,
+  NotificationSettings,
   Task,
   TaskEvent,
+  TreeNode,
 } from '@/api/types'
 
 /** In-memory stand-in for the backend API, plugged into `fetch` for page tests. */
@@ -143,6 +146,7 @@ export function makeRun(overrides: Partial<Run> = {}): Run {
     task_id: null,
     stage_id: null,
     verdict: null,
+    parent_run_id: null,
     task_code: null,
     stage_name: null,
     created_at: now(),
@@ -202,6 +206,39 @@ export function makeTask(overrides: Partial<Task> = {}): Task {
     finished_at: null,
     created_at: now(),
     updated_at: now(),
+    parent_task_id: null,
+    parent_code: null,
+    subtasks_done: 0,
+    subtasks_total: 0,
+    ...overrides,
+  }
+}
+
+export function makeInboxItem(overrides: Partial<InboxItem> = {}): InboxItem {
+  seq += 1
+  return {
+    id: `inbox-${seq}`,
+    kind: 'question',
+    status: 'pending',
+    task_id: null,
+    task_code: null,
+    task_title: null,
+    run_id: null,
+    agent_id: 'agent-1',
+    agent_name: 'Dev',
+    agent_color: '#4FD1C5',
+    project_id: 'project-1',
+    project_name: 'Tienda online',
+    project_color: '#7C9CFF',
+    title: '¿Postgres o SQLite?',
+    detail: '',
+    command: null,
+    options: [],
+    response: null,
+    resolution: null,
+    notified_at: null,
+    created_at: now(),
+    resolved_at: null,
     ...overrides,
   }
 }
@@ -241,8 +278,60 @@ export function createFakeBackend(
     taskEvents?: Record<string, TaskEvent[]>
     pipelines?: Record<string, Pipeline>
     paused?: boolean
+    inbox?: InboxItem[]
+    trees?: Record<string, TreeNode[]>
+    notificationSettings?: NotificationSettings
   } = {},
 ) {
+  const inbox = [...(seed.inbox ?? [])]
+  const trees = { ...(seed.trees ?? {}) }
+  let notificationSettings: NotificationSettings = seed.notificationSettings ?? {
+    approval: true,
+    question: true,
+    review: true,
+    stalled: true,
+    delivery: false,
+    sound: true,
+  }
+
+  function handleInbox(
+    method: string,
+    path: string,
+    query: URLSearchParams,
+    body: Record<string, unknown>,
+  ): Response | null {
+    if (path === '/api/settings/notifications') {
+      if (method === 'PUT') notificationSettings = body as unknown as NotificationSettings
+      return json(200, notificationSettings)
+    }
+    if (path === '/api/inbox/summary') {
+      const pending = inbox.filter((i) => i.status === 'pending')
+      return json(200, {
+        pending: pending.length,
+        resolved: inbox.length - pending.length,
+        unnotified: pending.filter((i) => !i.notified_at),
+      })
+    }
+    if (path === '/api/inbox')
+      return json(
+        200,
+        inbox.filter((i) => i.status === (query.get('status') ?? 'pending')),
+      )
+    const match = path.match(/^\/api\/inbox\/([^/]+)\/([a-z]+)$/)
+    if (!match) return null
+    const item = inbox.find((i) => i.id === match[1])
+    if (!item) return apiError(404, 'inbox_item_not_found')
+    const resolve = (resolution: InboxItem['resolution'], response: string | null = null) =>
+      Object.assign(item, { status: 'resolved', resolution, response, resolved_at: now() })
+    if (match[2] === 'notified') item.notified_at = now()
+    if (match[2] === 'answer') resolve('answered', String(body.text))
+    if (match[2] === 'approve') resolve('approved')
+    if (match[2] === 'reject') resolve('rejected')
+    if (match[2] === 'review')
+      resolve(body.approve ? 'approved' : 'rejected', String(body.reason ?? ''))
+    if (match[2] === 'dismiss') resolve(item.kind === 'delivery' ? 'reviewed' : 'dismissed')
+    return json(200, item)
+  }
   const tasks = [...(seed.tasks ?? [])]
   const taskEvents = { ...(seed.taskEvents ?? {}) }
   const pipelines: Record<string, Pipeline | null> = { ...(seed.pipelines ?? {}) }
@@ -344,6 +433,7 @@ export function createFakeBackend(
             (t) =>
               (!query.get('project_id') || t.project_id === query.get('project_id')) &&
               (!query.get('agent_id') || t.agent_id === query.get('agent_id')) &&
+              (!query.get('parent_task_id') || t.parent_task_id === query.get('parent_task_id')) &&
               (statuses.length === 0 || statuses.includes(t.status)),
           ),
         )
@@ -370,6 +460,8 @@ export function createFakeBackend(
       tasks.unshift(task)
       return json(201, task)
     }
+    const treeMatch = path.match(/^\/api\/tasks\/([^/]+)\/tree$/)
+    if (treeMatch) return json(200, trees[treeMatch[1]] ?? [])
     const taskMatch = path.match(/^\/api\/tasks\/([^/]+)(?:\/([a-z-]+))?$/)
     if (!taskMatch) return null
     const task = tasks.find((t) => t.id === taskMatch[1])
@@ -555,6 +647,7 @@ export function createFakeBackend(
       handleRuns(method, url.pathname, url.searchParams, body) ??
       handleMemory(method, url.pathname, body) ??
       handleTasks(method, url.pathname, url.searchParams, body) ??
+      handleInbox(method, url.pathname, url.searchParams, body) ??
       handle(method, path.split('?')[0] === '/api/clis' ? '/api/clis' : url.pathname, body)
     )
   })
@@ -566,6 +659,7 @@ export function createFakeBackend(
     runs,
     notes,
     tasks,
+    inbox,
     pipelines,
     scheduler,
     calls,

@@ -13,14 +13,17 @@ import time
 from collections import deque
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 from typing import Protocol
 
 import structlog
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from agentic_os.db.base import utcnow
 from agentic_os.errors import ApiError
 from agentic_os.models import (
+    ACTIVE_STATUSES,
     SCHEDULER_PAUSED,
     Agent,
     AgentStatus,
@@ -40,6 +43,7 @@ from agentic_os.services import inbox
 from agentic_os.services import tasks as task_ops
 
 BACKUP_TICK = 5.0
+STALLED_AFTER = timedelta(minutes=10)
 HOUSEKEEPING = 60.0
 # Launch errors worth retrying on the next tick (the task stays queued).
 TRANSIENT_ERRORS = {"agy_folder_busy"}
@@ -316,6 +320,42 @@ class Scheduler:
             self.release_workspace(db, task, project)
         except Exception:
             log.exception("could not release the workspace", task=task.code)
+
+    def check_stalled(self, now: datetime | None = None) -> int:
+        """«Sin terminar»: a task's run that has waited for input for STALLED_AFTER without
+        complete_task gets an Inbox item (never closed by itself)."""
+        now = now or utcnow()
+        created = 0
+        with self._db() as db:
+            runs = db.scalars(
+                select(Run).where(
+                    Run.status.in_([s.value for s in ACTIVE_STATUSES]),
+                    Run.task_id.is_not(None),
+                    Run.parent_run_id.is_(None),
+                    Run.summary.is_(None),
+                    Run.idle_since.is_not(None),
+                    Run.idle_since < now - STALLED_AFTER,
+                )
+            )
+            for run in runs:
+                if inbox.pending(db, run_id=run.id, kinds=(InboxKind.STALLED,)):
+                    continue
+                task = db.get(Task, run.task_id)
+                if task is None or task.status != TaskStatus.RUNNING:
+                    continue
+                minutes = int(STALLED_AFTER.total_seconds() // 60)
+                inbox.create(
+                    db,
+                    InboxKind.STALLED,
+                    f"{task.code} · {task.title}",
+                    f"{run.agent_name} lleva más de {minutes} minutos esperando sin dar la "
+                    "tarea por terminada.",
+                    task=task,
+                    run=run,
+                )
+                created += 1
+            db.commit()
+        return created
 
     def release_finished(self, db: Session, task: Task) -> None:
         """For tasks finished outside a run end (cancelled, approved in review…)."""

@@ -47,6 +47,7 @@ class RunRead(BaseModel):
     task_id: str | None
     stage_id: str | None
     verdict: Verdict | None
+    parent_run_id: str | None = None
     task_code: str | None = None
     stage_name: str | None = None
     created_at: datetime

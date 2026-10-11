@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 from typing import Annotated
 
@@ -15,6 +16,7 @@ from agentic_os.models import (
     Agent,
     Project,
     Run,
+    RunEvent,
     Stage,
     Task,
     TaskEvent,
@@ -32,6 +34,7 @@ from agentic_os.schemas.task import (
     TaskEventRead,
     TaskRead,
     TaskUpdate,
+    TreeNode,
 )
 from agentic_os.services import tasks as task_ops
 from agentic_os.services.runs.manager import RunManager
@@ -75,16 +78,35 @@ def read_tasks(db: Session, tasks: list[Task]) -> list[TaskRead]:
     active = dict(
         db.execute(
             select(Run.task_id, Run.id).where(
-                Run.task_id.in_(ids), Run.status.in_([s.value for s in ACTIVE_STATUSES])
+                Run.task_id.in_(ids),
+                Run.parent_run_id.is_(None),  # the task's own runs, not its subagents
+                Run.status.in_([s.value for s in ACTIVE_STATUSES]),
             )
         ).all()
     )
     last_rows = db.execute(
         select(Run.task_id, Run.id, Run.created_at)
-        .where(Run.task_id.in_(ids))
+        .where(Run.task_id.in_(ids), Run.parent_run_id.is_(None))
         .order_by(Run.created_at)
     ).all()
     last = {task_id: run_id for task_id, run_id, _ in last_rows}
+    parents = {
+        t.id: t.code
+        for t in db.scalars(
+            select(Task).where(Task.id.in_({t.parent_task_id for t in tasks if t.parent_task_id}))
+        )
+    }
+    subtask_rows = db.execute(
+        select(Task.parent_task_id, Task.status, func.count())
+        .where(Task.parent_task_id.in_(ids))
+        .group_by(Task.parent_task_id, Task.status)
+    ).all()
+    subtasks: dict[str, list[int]] = {}
+    for parent_id, sub_status, count in subtask_rows:
+        done_total = subtasks.setdefault(parent_id, [0, 0])
+        done_total[1] += count
+        if sub_status == TaskStatus.DONE:
+            done_total[0] += count
 
     result = []
     for task in tasks:
@@ -127,6 +149,10 @@ def read_tasks(db: Session, tasks: list[Task]) -> list[TaskRead]:
                 finished_at=task.finished_at,
                 created_at=task.created_at,
                 updated_at=task.updated_at,
+                parent_task_id=task.parent_task_id,
+                parent_code=parents.get(task.parent_task_id) if task.parent_task_id else None,
+                subtasks_done=subtasks.get(task.id, [0, 0])[0],
+                subtasks_total=subtasks.get(task.id, [0, 0])[1],
             )
         )
     return result
@@ -143,8 +169,11 @@ def list_tasks(
     project_id: str | None = None,
     agent_id: str | None = None,
     status_: Annotated[list[TaskStatus] | None, Query(alias="status")] = None,
+    parent_task_id: str | None = None,
 ) -> list[TaskRead]:
     query = select(Task).where(Task.workspace_id == DEFAULT_WORKSPACE)
+    if parent_task_id:
+        query = query.where(Task.parent_task_id == parent_task_id)
     if project_id:
         query = query.where(Task.project_id == project_id)
     if agent_id:
@@ -216,6 +245,71 @@ def task_events(task_id: str, db: DbSession) -> list[TaskEventRead]:
     _get(db, task_id)
     query = select(TaskEvent).where(TaskEvent.task_id == task_id).order_by(TaskEvent.seq)
     return [TaskEventRead.model_validate(e) for e in db.scalars(query)]
+
+
+@router.get("/tasks/{task_id}/tree")
+def task_tree(task_id: str, db: DbSession) -> list[TreeNode]:
+    """The task's runs (one per stage and retry, newest first), each with its subagents of
+    Agentic OS (runs) and the CLI's native subagents (from the hooks, ADR 0010)."""
+    _get(db, task_id)
+    runs = list(
+        db.scalars(select(Run).where(Run.task_id == task_id).order_by(Run.created_at.desc()))
+    )
+    stages = {
+        s.id: s.name
+        for s in db.scalars(select(Stage).where(Stage.id.in_({r.stage_id for r in runs})))
+    }
+    events = list(
+        db.scalars(
+            select(RunEvent)
+            .where(
+                RunEvent.run_id.in_([r.id for r in runs]),
+                RunEvent.name.in_(["subagent_start", "subagent_stop"]),
+            )
+            .order_by(RunEvent.at)
+        )
+    )
+
+    def natives(run: Run) -> list[TreeNode]:
+        nodes: dict[str, TreeNode] = {}
+        for event in events:
+            if event.run_id != run.id:
+                continue
+            try:
+                data = json.loads(event.detail)
+            except ValueError:
+                continue
+            if event.name == "subagent_start":
+                nodes[data["id"]] = TreeNode(
+                    kind="native",
+                    id=data["id"],
+                    label=data.get("description") or "Subagente",
+                    status="running",
+                    started_at=event.at,
+                )
+            elif data.get("id") in nodes:
+                nodes[data["id"]].status, nodes[data["id"]].ended_at = "done", event.at
+        if run.status not in [s.value for s in ACTIVE_STATUSES]:
+            for node in nodes.values():  # agy never says when its subagents end
+                if node.status == "running":
+                    node.status, node.ended_at = "done", run.ended_at
+        return list(nodes.values())
+
+    def node(run: Run) -> TreeNode:
+        children = [node(child) for child in runs[::-1] if child.parent_run_id == run.id]
+        return TreeNode(
+            kind="run",
+            id=run.id,
+            label=run.agent_name,
+            color=run.agent_color,
+            stage_name=stages.get(run.stage_id) if run.stage_id else None,
+            status=run.status,
+            started_at=run.started_at,
+            ended_at=run.ended_at,
+            children=children + natives(run),
+        )
+
+    return [node(run) for run in runs if run.parent_run_id is None]
 
 
 # ---------------------------------------------------------------------- actions
