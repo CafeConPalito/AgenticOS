@@ -1,7 +1,7 @@
 # Fase 05: Scheduler y pipelines · Plan técnico
 
 - **Spec**: [spec.md](spec.md)
-- **Estado**: borrador
+- **Estado**: aprobado
 
 ## Diseño
 

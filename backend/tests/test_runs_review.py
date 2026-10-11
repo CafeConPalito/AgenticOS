@@ -15,8 +15,8 @@ from test_runs_mcp import FAKE, Viewer, launch, run, seed, wait_ended, wait_unti
 
 from agentic_os.config import Settings
 from agentic_os.errors import ApiError
-from agentic_os.models import Project
 from agentic_os.services.adapters.agy import EXCLUDE_LINE, exclude_from_git
+from agentic_os.services.memory import list_notes
 
 
 @pytest.fixture
@@ -97,15 +97,17 @@ def test_event_errors_never_reach_the_session_threads(server: LiveServer, monkey
     server.manager.add_event("whatever", "system", "closing")  # logged, not raised
 
 
-def test_memory_append_on_an_empty_memory(server: LiveServer, tmp_path: Path):
+def test_each_memory_write_is_its_own_note(server: LiveServer, tmp_path: Path):
     started, viewer = started_idle(server, tmp_path)
     try:
         server.manager.write_project_memory(started["id"], "primera nota")
         server.manager.write_project_memory(started["id"], "segunda nota")
         with server.db() as db:
-            memory = db.get(Project, started["project_id"]).memory
-        assert memory.startswith("### ") and "primera nota\n\n### " in memory
-        assert memory.endswith("segunda nota")
+            notes = list_notes(db, started["project_id"])
+        assert [(n.author_name, n.text) for n in notes] == [
+            ("Dev", "primera nota"),
+            ("Dev", "segunda nota"),
+        ]
     finally:
         viewer.close()
         httpx.post(f"{server.url}/api/runs/{started['id']}/stop")

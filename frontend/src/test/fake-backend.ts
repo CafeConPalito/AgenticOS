@@ -1,4 +1,4 @@
-import type { Agent, AgentTemplate, CliInfo, Project, Run, RunEvent } from '@/api/types'
+import type { Agent, AgentTemplate, CliInfo, MemoryNote, Project, Run, RunEvent } from '@/api/types'
 
 /** In-memory stand-in for the backend API, plugged into `fetch` for page tests. */
 
@@ -93,7 +93,7 @@ export function makeProject(overrides: Partial<Project> = {}): Project {
     description: '',
     path: 'D:\\proyectos\\tienda',
     workspace_mode: 'direct',
-    memory: '',
+    base_branch: null,
     created_at: now(),
     updated_at: now(),
     git: { is_repo: true, branch: 'main', dirty: false },
@@ -135,6 +135,20 @@ export function makeRun(overrides: Partial<Run> = {}): Run {
   }
 }
 
+export function makeNote(overrides: Partial<MemoryNote> = {}): MemoryNote {
+  seq += 1
+  return {
+    id: `note-${seq}`,
+    author_kind: 'user',
+    author_name: '',
+    agent_id: null,
+    text: 'Usa pnpm.',
+    created_at: now(),
+    updated_at: now(),
+    ...overrides,
+  }
+}
+
 export interface Call {
   method: string
   path: string
@@ -159,13 +173,47 @@ function apiError(status: number, code: string, field?: string): Response {
 }
 
 export function createFakeBackend(
-  seed: { agents?: Agent[]; projects?: Project[]; runs?: Run[]; events?: RunEvent[] } = {},
+  seed: {
+    agents?: Agent[]
+    projects?: Project[]
+    runs?: Run[]
+    events?: RunEvent[]
+    /** Memory notes by project id, oldest first. */
+    notes?: Record<string, MemoryNote[]>
+  } = {},
 ) {
   const agents = [...(seed.agents ?? [])]
   const projects = [...(seed.projects ?? [])]
   const runs = [...(seed.runs ?? [])]
   const events = [...(seed.events ?? [])]
+  const notes: Record<string, MemoryNote[]> = Object.fromEntries(
+    Object.entries(seed.notes ?? {}).map(([id, list]) => [id, [...list]]),
+  )
   const calls: Call[] = []
+
+  function handleMemory(method: string, path: string, body: Record<string, unknown>) {
+    const match = path.match(/^\/api\/projects\/([^/]+)\/memory(?:\/([^/]+))?$/)
+    if (!match) return null
+    if (!projects.some((p) => p.id === match[1])) return apiError(404, 'project_not_found')
+    const list = (notes[match[1]] ??= [])
+    if (!match[2]) {
+      if (method === 'GET') {
+        const size = list.reduce((n, note) => n + note.text.length + 30, 0)
+        return json(200, { notes: list, size, limit: 12000 })
+      }
+      const note = makeNote({ text: String(body.text).trim() })
+      list.push(note)
+      return json(201, note)
+    }
+    const index = list.findIndex((n) => n.id === match[2])
+    if (index < 0) return apiError(404, 'note_not_found')
+    if (method === 'PATCH') {
+      list[index] = { ...list[index], text: String(body.text), updated_at: now() }
+      return json(200, list[index])
+    }
+    list.splice(index, 1)
+    return json(204, null)
+  }
 
   function handleRuns(
     method: string,
@@ -311,6 +359,7 @@ export function createFakeBackend(
     })
     return (
       handleRuns(method, url.pathname, url.searchParams, body) ??
+      handleMemory(method, url.pathname, body) ??
       handle(method, path.split('?')[0] === '/api/clis' ? '/api/clis' : url.pathname, body)
     )
   })
@@ -320,6 +369,7 @@ export function createFakeBackend(
     agents,
     projects,
     runs,
+    notes,
     calls,
     callsTo: (method: string, path: string) =>
       calls.filter((c) => c.method === method && c.path === path),

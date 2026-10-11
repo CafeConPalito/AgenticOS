@@ -49,7 +49,7 @@ export interface ProjectFields {
   description: string
   path: string
   workspace_mode: WorkspaceMode
-  memory: string
+  base_branch: string | null
 }
 
 export interface Project extends ProjectFields {
@@ -128,4 +128,21 @@ export interface RunEvent {
   kind: RunEventKind
   name: string
   detail: string
+}
+
+export interface MemoryNote {
+  id: string
+  author_kind: 'agent' | 'user'
+  author_name: string
+  agent_id: string | null
+  text: string
+  created_at: string
+  updated_at: string
+}
+
+export interface ProjectMemory {
+  notes: MemoryNote[]
+  /** Characters of the memory as the agents get it; above `limit` the oldest notes are left out. */
+  size: number
+  limit: number
 }

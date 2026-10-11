@@ -272,10 +272,7 @@
       "color": "Color",
       "description": "Descripción",
       "descriptionPlaceholder": "De qué va el proyecto.",
-      "workspaceMode": "Modo de workspace",
-      "memory": "Memoria del proyecto",
-      "memoryHelp": "Notas que los agentes leen al empezar cada tarea y amplían al terminarla. Puedes editarlas.",
-      "memoryPlaceholder": "# Decisiones\n- …"
+      "workspaceMode": "Modo de workspace"
     },
     "summary": {
       "openTasks": "Tareas abiertas",
@@ -303,7 +300,22 @@
       "confirm": "Quitar proyecto",
       "done": "Proyecto «{{name}}» quitado"
     },
-    "notFound": "Este proyecto no existe o se ha borrado."
+    "notFound": "Este proyecto no existe o se ha borrado.",
+    "memory": {
+      "title": "Memoria del proyecto",
+      "help": "Notas que los agentes escriben con write_project_memory y que leen al empezar cada tarea. Puedes editarlas.",
+      "add": "Añadir nota",
+      "edit": "Editar",
+      "save": "Guardar",
+      "delete": "Borrar nota",
+      "deleteTitle": "¿Borrar esta nota?",
+      "deleteDescription": "Los agentes dejarán de verla en sus próximas tareas.",
+      "noteLabel": "Texto de la nota",
+      "placeholder": "Algo que los agentes deban saber de este proyecto…",
+      "you": "Tú",
+      "empty": "Todavía no hay notas. Los agentes las añaden al aprender algo del proyecto, y tú también puedes.",
+      "tooLong": "La memoria supera {{limit}} caracteres: los agentes solo ven las notas más recientes. Borra o resume las antiguas."
+    }
   },
   "time": {
     "justNow": "ahora mismo"

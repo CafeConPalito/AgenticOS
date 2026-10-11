@@ -1,6 +1,6 @@
 import { type QueryClient, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
-import { projectKeys } from './projects'
+import { memoryKeys } from './memory'
 import { ACTIVE_RUN_STATUSES, type Run, type RunEvent } from './types'
 
 export interface RunFilters {
@@ -108,5 +108,5 @@ export function applyRunEvent(queryClient: QueryClient, runId: string, event: Ru
       run ? { ...run, summary: event.detail } : run,
     )
   if (event.name === 'write_project_memory')
-    void queryClient.invalidateQueries({ queryKey: projectKeys.all })
+    void queryClient.invalidateQueries({ queryKey: memoryKeys.all })
 }
