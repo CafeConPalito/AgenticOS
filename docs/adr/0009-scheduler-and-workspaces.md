@@ -63,7 +63,23 @@ La memoria pasa a ser una **tabla de notas** (`memory_notes`) con su autor. A lo
 Las migraciones se ejecutan con `PRAGMA foreign_keys=OFF` y comprueban `PRAGMA foreign_key_check` al terminar. El modo *batch* recrea las tablas con `DROP TABLE`; con las claves foráneas activas, eso disparaba las acciones `ON DELETE`. Con la migración `0004`, se habrían borrado todos los eventos de las ejecuciones y las notas recién convertidas, y las ejecuciones habrían perdido su proyecto.
 
 ### Workspaces
-*(Se completa en el hito H4: layout `<proyecto>.wt\T-n`, rama `agentic/T-n`, commit de lo que quede sin commitear, limpieza de la confianza, plugin de agy excluido de git también en los worktrees.)*
+- **Carpeta directa**: la tarea trabaja en la carpeta del proyecto. Como mucho una tarea en ejecución por proyecto, lo que también cubre la regla de agy de una ejecución por carpeta (ADR 0004).
+- **Git worktree por tarea** (`services/worktrees.py`):
+  - **Requisitos**: el proyecto tiene git y una **rama base** que existe. Si no se indica, se toma la rama actual al elegir el modo.
+  - **Al arrancar la tarea por primera vez** se crea `<carpeta del proyecto>.wt\T-142` con la rama `agentic/T-142`. Si la rama ya existe (un reintento), se reutiliza.
+  - **Todas las etapas y reintentos** de la tarea comparten el worktree: QA ve lo que hizo Dev. Las instrucciones dicen al agente en qué rama trabaja.
+  - **Al terminar o cancelar**, con el CLI ya cerrado:
+    1. lo que quede sin commitear se commitea en la rama (`chore(agentic): uncommitted work of T-142`), con la identidad del repo o, si no hay ninguna, `Agentic OS <agentic-os@localhost>`. **El trabajo del agente nunca se pierde.**
+    2. `git worktree remove --force` (con reintentos: Windows puede retener archivos de un proceso recién terminado) y `prune`.
+    3. **La rama se conserva**: el merge lo hace el usuario.
+
+    Si el borrado sigue fallando, la tarea termina igualmente, con un evento que lo explica, y conserva `worktree_path`.
+  - **El plugin de agy** va dentro del worktree y **sigue excluido de git** con el `.git/info/exclude` del repositorio común. Esto cambia lo previsto en el ADR 0004: si no se excluyera, un agente que haga `git add -A` commitearía el plugin con su token.
+- **Confianza de las carpetas** (`services/trust.py`):
+  - cada worktree nuevo es una carpeta en la que Claude Code y agy guardan su confianza (`~/.claude.json → projects` y `settings.json → trustedWorkspaces`);
+  - **esos archivos los reescriben los CLIs mientras están abiertos**: editarlos con un CLI en marcha podría pisar sus cambios (lo vimos en el spike);
+  - por eso, al borrar un worktree solo se **apunta** en `<data_dir>/trust-cleanup.json`. Las entradas de cada CLI se quitan cuando ese CLI no está abierto: en el momento, si se puede, o en una ronda del scheduler cada minuto;
+  - solo se tocan las claves de esos worktrees. Un archivo que no existe o que no se puede leer como JSON no se toca nunca.
 
 ### UI
 La UI se actualiza consultando la API cada 2–3 s mientras hay tareas activas, y usa el WebSocket de cada ejecución para la terminal y los eventos. Un canal global de eventos queda para más adelante.

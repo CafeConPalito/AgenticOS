@@ -9,6 +9,7 @@ pause switched…), on `run_ended()` and every BACKUP_TICK seconds as a safety n
 from __future__ import annotations
 
 import threading
+import time
 from collections import deque
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -36,6 +37,7 @@ from agentic_os.models import (
 from agentic_os.services import tasks as task_ops
 
 BACKUP_TICK = 5.0
+HOUSEKEEPING = 60.0
 # Launch errors worth retrying on the next tick (the task stays queued).
 TRANSIENT_ERRORS = {"agy_folder_busy"}
 
@@ -88,6 +90,9 @@ class Scheduler:
         self.release_workspace: Callable[[Session, Task, Project], None] = (
             lambda db, task, project: None
         )
+        # Slow periodic chores (e.g. pending folder-trust cleanups), every HOUSEKEEPING seconds.
+        self.housekeeping: Callable[[], None] | None = None
+        self._last_housekeeping = 0.0
 
     # ------------------------------------------------------------------ thread
     def start(self) -> None:
@@ -126,6 +131,13 @@ class Scheduler:
                 self.step()
             except Exception:  # never let the scheduler die: the next tick retries
                 log.exception("scheduler step failed")
+            now = time.monotonic()
+            if self.housekeeping is not None and now - self._last_housekeeping > HOUSEKEEPING:
+                self._last_housekeeping = now
+                try:
+                    self.housekeeping()
+                except Exception:
+                    log.exception("scheduler housekeeping failed")
 
     def step(self) -> None:
         """One round: process the ended runs, then start what can start. Public for tests."""

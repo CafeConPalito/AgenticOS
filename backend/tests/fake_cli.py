@@ -238,7 +238,8 @@ def use_tools(text: str) -> int | None:
 
     Phase 05 directives: `RECHAZA: x` → complete_task rejecting; `RECHAZA1: x` → rejects only
     the first time in this folder (a marker file), approves afterwards; `CONTEXTO: <file>` →
-    writes what get_context returns; `SALE: n` → exits with n after the turn. A task's title
+    writes what get_context returns; `GIT: <file>` → writes `git status` of the folder;
+    `SALE: n` → exits with n after the turn. A task's title
     drives all its stages: a rejection the stage does not accept is ignored, and only the first
     accepted complete_task counts.
     """
@@ -250,6 +251,14 @@ def use_tools(text: str) -> int | None:
         keyword, value = keyword.strip(), value.strip()
         if keyword == "SALE":
             exit_code = int(value)
+            continue
+        if keyword == "GIT":  # what git sees in the working folder
+            status = subprocess.run(
+                ["git", "status", "--porcelain", "--untracked-files=all"],
+                capture_output=True,
+                text=True,
+            ).stdout
+            Path(value).write_text(status, "utf-8")
             continue
         if keyword == "CONTEXTO" and MCP_URL is not None:
             Path(value).write_text(mcp("get_context", {}), "utf-8")

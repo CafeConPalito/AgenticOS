@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, Request, status
@@ -5,7 +6,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from agentic_os.api.agents import _get as get_agent_row
-from agentic_os.api.projects import get_project_or_404
+from agentic_os.api.projects import get_project_or_404, open_in_file_manager
 from agentic_os.db.base import DEFAULT_WORKSPACE
 from agentic_os.db.session import get_session
 from agentic_os.errors import ApiError, NotFound
@@ -211,9 +212,7 @@ def delete_task(task_id: str, db: DbSession) -> None:
 @router.get("/tasks/{task_id}/events")
 def task_events(task_id: str, db: DbSession) -> list[TaskEventRead]:
     _get(db, task_id)
-    query = (
-        select(TaskEvent).where(TaskEvent.task_id == task_id).order_by(TaskEvent.at, TaskEvent.id)
-    )
+    query = select(TaskEvent).where(TaskEvent.task_id == task_id).order_by(TaskEvent.seq)
     return [TaskEventRead.model_validate(e) for e in db.scalars(query)]
 
 
@@ -228,6 +227,14 @@ def enqueue_task(task_id: str, db: DbSession, scheduler: SchedulerDep) -> TaskRe
     db.commit()
     scheduler.poke()
     return read_task(db, task)
+
+
+@router.post("/tasks/{task_id}/open-worktree", status_code=status.HTTP_204_NO_CONTENT)
+def open_worktree(task_id: str, db: DbSession) -> None:
+    task = _get(db, task_id)
+    if not task.worktree_path or not Path(task.worktree_path).is_dir():
+        raise ApiError(409, "no_worktree", "the task has no worktree", "worktree_path")
+    open_in_file_manager(task.worktree_path)
 
 
 @router.post("/tasks/{task_id}/retry")

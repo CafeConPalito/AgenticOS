@@ -193,6 +193,7 @@ def upgrade() -> None:
     op.create_table(
         "task_events",
         sa.Column("task_id", sa.String(length=36), nullable=False),
+        sa.Column("seq", sa.Integer(), nullable=False),
         sa.Column("at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("kind", sa.String(length=24), nullable=False),
         sa.Column("stage_name", sa.String(length=80), nullable=True),

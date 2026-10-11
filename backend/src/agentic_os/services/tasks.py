@@ -86,8 +86,10 @@ def add_event(
         stage if stage is not None else (db.get(Stage, task.stage_id) if task.stage_id else None)
     )
     agent = db.get(Agent, task.agent_id) if task.agent_id else None
+    last = db.scalar(select(func.max(TaskEvent.seq)).where(TaskEvent.task_id == task.id))
     event = TaskEvent(
         task_id=task.id,
+        seq=(last or 0) + 1,
         kind=kind,
         stage_name=stage.name if stage else None,
         agent_name=agent.name if agent else None,
@@ -358,7 +360,7 @@ def task_context(db: Session, task: Task) -> TaskContext:
             .where(
                 TaskEvent.task_id == task.id, TaskEvent.kind.in_([k.value for k in HISTORY_KINDS])
             )
-            .order_by(TaskEvent.at, TaskEvent.id)
+            .order_by(TaskEvent.seq)
         )
     )
     labels = {

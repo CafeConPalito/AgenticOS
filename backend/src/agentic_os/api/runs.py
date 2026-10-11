@@ -78,12 +78,15 @@ def list_runs(
     manager: Manager,
     agent_id: str | None = None,
     project_id: str | None = None,
+    task_id: str | None = None,
     active: bool | None = None,
     limit: Annotated[int, Query(ge=1, le=500)] = 200,
 ) -> list[RunRead]:
     query = select(Run).where(Run.workspace_id == DEFAULT_WORKSPACE)
     if agent_id:
         query = query.where(Run.agent_id == agent_id)
+    if task_id:
+        query = query.where(Run.task_id == task_id)
     if project_id:
         query = query.where(Run.project_id == project_id)
     statuses = [s.value for s in ACTIVE_STATUSES]

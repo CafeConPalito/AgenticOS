@@ -66,16 +66,20 @@ def _check_unique(session: Session, path_key: str, exclude_id: str | None = None
         raise ApiError(409, "project_exists", "a project already uses this folder", "path")
 
 
-def _check_worktree(path: str, mode: WorkspaceMode) -> None:
-    if mode == WorkspaceMode.WORKTREE:
-        info = git.detect(path)
-        if not (info and info.is_repo):
-            raise ApiError(
-                422,
-                "worktree_requires_git",
-                "worktree mode needs a git repository",
-                "workspace_mode",
-            )
+def _check_worktree(project: Project) -> None:
+    """Worktree mode needs a git repo and an existing base branch (the current branch when the
+    user gives none)."""
+    if project.workspace_mode != WorkspaceMode.WORKTREE:
+        return
+    info = git.detect(project.path)
+    if not (info and info.is_repo):
+        raise ApiError(
+            422, "worktree_requires_git", "worktree mode needs a git repository", "workspace_mode"
+        )
+    if not project.base_branch:
+        project.base_branch = info.branch
+    if not project.base_branch or not git.branch_exists(project.path, project.base_branch):
+        raise ApiError(422, "unknown_branch", "the base branch does not exist", "base_branch")
 
 
 @router.get("/projects")
@@ -93,9 +97,10 @@ def create_project(payload: ProjectCreate, session: DbSession) -> ProjectRead:
     path, key = paths.normalize(payload.path)
     _check_unique(session, key)
     paths.ensure_folder(path, create=payload.create_folder)
-    _check_worktree(path, payload.workspace_mode)
     values = payload.model_dump(exclude_unset=True, exclude={"create_folder", "path"})
     project = Project(workspace_id=DEFAULT_WORKSPACE, path=path, path_key=key, **values)
+    project.workspace_mode = payload.workspace_mode
+    _check_worktree(project)
     session.add(project)
     _commit(session)
     return _read(project)
@@ -115,10 +120,10 @@ def update_project(project_id: str, payload: ProjectUpdate, session: DbSession) 
         _check_unique(session, key, exclude_id=project.id)
         paths.ensure_folder(path, create=False)
         project.path, project.path_key = path, key
-    if changes.get("workspace_mode") or "path" in payload.model_fields_set:
-        _check_worktree(project.path, changes.get("workspace_mode") or project.workspace_mode)
     for field, value in changes.items():  # nulls are rejected by the schema
         setattr(project, field, value)
+    if {"workspace_mode", "path", "base_branch"} & payload.model_fields_set:
+        _check_worktree(project)
     _commit(session)
     return _read(project)
 

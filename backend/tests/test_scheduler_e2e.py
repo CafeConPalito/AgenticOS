@@ -26,6 +26,8 @@ def settings_for(tmp_path: Path) -> Settings:
         _env_file=None,
         data_dir=tmp_path / "data",
         cli_command_overrides={"claude": command, "agy": command},
+        claude_config_file=tmp_path / "claude.json",
+        agy_settings_file=tmp_path / "agy-settings.json",
     )
 
 
@@ -244,3 +246,68 @@ def test_a_pipeline_with_a_rejection_and_an_agy_stage(tmp_path: Path):
         assert "Etapa 3 de 3: QA" in last_qa and 'verdict="rejected"' in last_qa
         assert "- QA · Gema rechazó: falta el test del callback" in last_qa
         assert not (folder / ".agents" / "plugins" / "agentic-os").exists()
+
+
+def test_worktree_tasks_run_in_parallel_on_their_own_branches(tmp_path: Path):
+    from test_worktrees import make_repo, sh
+
+    repo = make_repo(tmp_path / "mi web")
+    with live_server(settings_for(tmp_path)) as server:
+        api = Api(server)
+        api.post("/api/scheduler/pause")
+        project = api.post(
+            "/api/projects", {"name": "Mi web", "path": str(repo), "workspace_mode": "worktree"}
+        )
+        assert project["base_branch"] == "main"
+        dev = api.post("/api/agents", {"name": "Dev", "cli": "claude", "max_concurrency": 2})["id"]
+        gema = api.post("/api/agents", {"name": "Gema", "cli": "agy"})["id"]
+        ctx = {n: tmp_path / f"ctx-{n}.txt" for n in (1, 2)}
+        first, second = (
+            api.post(
+                "/api/tasks",
+                {
+                    "project_id": project["id"],
+                    "agent_id": dev,
+                    "title": f"tarea {n}; CONTEXTO: {ctx[n]}; TERMINA: hecha {n}",
+                },
+            )
+            for n in (1, 2)
+        )
+        status_file = tmp_path / "git-status.txt"
+        third = api.post(
+            "/api/tasks",
+            {
+                "project_id": project["id"],
+                "agent_id": gema,
+                "title": f"con agy; GIT: {status_file}; TERMINA: vista",
+            },
+        )
+        api.post("/api/scheduler/resume")
+
+        done = [api.wait_status(t["id"], "done", "waiting_human") for t in (first, second, third)]
+        assert [t["status"] for t in done] == ["done", "done", "done"], done
+
+        runs = {t["code"]: api.get(f"/api/runs/{t['last_run_id']}") for t in done}
+        # The same project ran two tasks at once (worktree mode), each in its own folder.
+        a, b = runs["T-1"], runs["T-2"]
+        assert a["started_at"] < b["ended_at"] and b["started_at"] < a["ended_at"]
+        assert a["cwd"] == str(tmp_path / "mi web.wt" / "T-1")
+        assert "Rama de trabajo: agentic/T-2" in ctx[2].read_text("utf-8")
+        assert str(tmp_path / "mi web.wt" / "T-2") in ctx[2].read_text("utf-8")
+
+        # agy's plugin lived in its worktree but git never saw it.
+        assert ".agents" not in status_file.read_text("utf-8")
+
+        # Folders gone, branches kept; the main checkout untouched.
+        for task in done:
+            assert task["worktree_path"] is None and task["branch"] == f"agentic/{task['code']}"
+            assert not (tmp_path / "mi web.wt" / task["code"]).exists()
+            assert git_branch_exists(repo, task["branch"])
+        assert sh(repo, "status", "--porcelain") == ""
+        assert sh(repo, "branch", "--show-current") == "main"
+
+
+def git_branch_exists(repo: Path, branch: str) -> bool:
+    from agentic_os.services import git
+
+    return git.branch_exists(str(repo), branch)

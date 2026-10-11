@@ -113,6 +113,9 @@ class TaskEvent(IdMixin, Base):
     task_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("tasks.id", ondelete="CASCADE"), nullable=False, index=True
     )
+    # Order within the task: several events can share a timestamp (one transaction, and a
+    # Windows clock that ticks every ~15 ms).
+    seq: Mapped[int] = mapped_column(Integer, nullable=False)
     at: Mapped[datetime] = mapped_column(UTCDateTime(), nullable=False, default=utcnow)
     kind: Mapped[str] = mapped_column(String(24), nullable=False)
     stage_name: Mapped[str | None] = mapped_column(String(80), nullable=True)

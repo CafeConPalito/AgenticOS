@@ -10,7 +10,13 @@ from agentic_os.config import Settings
 
 @pytest.fixture
 def settings(tmp_path: Path) -> Settings:
-    return Settings(_env_file=None, data_dir=tmp_path / "data")
+    return Settings(
+        _env_file=None,
+        data_dir=tmp_path / "data",
+        # Never the user's real CLI configs (trust cleanup of task worktrees).
+        claude_config_file=tmp_path / "claude.json",
+        agy_settings_file=tmp_path / "agy-settings.json",
+    )
 
 
 @pytest.fixture
