@@ -90,7 +90,7 @@ Tests nuevos:
 - Las de fases anteriores.
 
 ## Cierre
-- [ ] OK del usuario
-- [ ] Merge a `main` (`--no-ff`)
-- [ ] Tag `v0.7`
-- [ ] `docs/roadmap.md` actualizado
+- [x] OK del usuario (2026-10-11)
+- [x] Merge a `main` (`--no-ff`)
+- [x] Tag `v0.7`
+- [x] `docs/roadmap.md` actualizado
