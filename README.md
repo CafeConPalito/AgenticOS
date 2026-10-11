@@ -111,6 +111,18 @@ En la app empaquetada, el backend usa un puerto libre asignado al arrancar (ver 
 - **Pausar el scheduler** (botón del tablero): no arranca tareas nuevas; las que están en marcha siguen.
 - **Memoria del proyecto**: son notas con autor. A los agentes les llegan las más recientes hasta unos 12 000 caracteres, y la pestaña avisa cuando no caben todas.
 
+## Inbox y subagentes
+- **La Inbox** recoge lo que los agentes necesitan de ti ([ADR 0010](docs/adr/0010-human-in-the-loop.md)):
+  - **aprobaciones** de los diálogos de permiso de Claude Code y agy, que se responden desde la Inbox sin tomar el control;
+  - **preguntas y bloqueos** (`request_human`): tu respuesta le llega al agente como un mensaje en su terminal;
+  - **revisiones**, tareas **sin terminar** (10 minutos esperando sin `complete_task`), tareas que necesitan **atención** porque algo falló, y **entregas**.
+- **Notificaciones**: de Windows en la app de escritorio, o del navegador. En Ajustes eliges de qué tipos y si suenan.
+- **Subagentes**:
+  - un agente con «Puede lanzar subagentes» reparte trabajo con `spawn_subagent`: una ejecución hija en la misma carpeta, cuyo resultado le llega como un mensaje;
+  - los subagentes nativos de cada CLI (`Agent` en Claude Code, `invoke_subagent` en agy) también se ven en el **árbol de ejecución** de la tarea.
+- **Subtareas**: con «Puede crear tareas», `create_subtask` deja trabajo en cola, ligado a la tarea.
+- Depuración: `AGENTIC_OS_HOOK_LOG=<archivo>` guarda en JSONL las cargas de los hooks de los CLIs.
+
 ## API (backend)
 | Ruta | Para qué |
 |---|---|
@@ -123,6 +135,11 @@ En la app empaquetada, el backend usa un puerto libre asignado al arrancar (ver 
 | `POST /api/tasks/{id}/enqueue · retry · complete · review · cancel · open-worktree` | Acciones sobre una tarea |
 | `GET/PUT /api/agents/{id}/queue` | Cola de un agente / reordenarla |
 | `GET /api/scheduler`, `POST /api/scheduler/pause · resume` | Estado y pausa global del scheduler |
+| `GET /api/inbox?status=`, `GET /api/inbox/summary` | Inbox y contador (con los elementos aún sin notificar) |
+| `POST /api/inbox/{id}/answer · approve · reject · review · dismiss · notified` | Acciones de la Inbox |
+| `GET/PUT /api/settings/notifications` | Ajustes de notificaciones |
+| `GET /api/tasks/{id}/tree`, `GET /api/tasks?parent_task_id=` | Árbol de ejecución y subtareas |
+| `POST /api/runs/{id}/permission {approve}` | Responder al diálogo de permiso abierto del CLI |
 | `GET /api/clis?refresh=true` | CLIs detectados: versión y modelos |
 | `POST /api/runs`, `GET /api/runs?agent_id&project_id&task_id&active`, `GET /api/runs/{id}` | Ejecuciones: lanzar un agente sobre un proyecto con un prompt, listar y consultar |
 | `POST /api/runs/{id}/control` (`take`/`release`), `POST /api/runs/{id}/stop` | Tomar o devolver el control de la terminal; parar (salida ordenada y, si no, forzada) |
