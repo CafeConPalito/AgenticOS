@@ -1,0 +1,14 @@
+{
+ "event": "PreInvocation",
+ "payload": {
+  "artifactDirectoryPath": "C:/Users/usuario/.gemini/antigravity-cli/brain/c978bba4-3683-4543-9914-2880a0e4e886",
+  "conversationId": "c978bba4-3683-4543-9914-2880a0e4e886",
+  "initialNumSteps": 1,
+  "invocationNum": 0,
+  "modelName": "gemini-3.8-flash-high",
+  "transcriptPath": "C:/Users/usuario/.gemini/antigravity-cli/brain/c978bba4-3683-4543-9914-2880a0e4e886/.system_generated/logs/transcript_full.jsonl",
+  "workspacePaths": [
+   "C:/Users/usuario/AppData/Local/Temp/claude/D--agentic-os/23a11e3a-78d5-40ad-8be7-b1c4ecaa0704/scratchpad/cap/projects3/agy-subagent"
+  ]
+ }
+}

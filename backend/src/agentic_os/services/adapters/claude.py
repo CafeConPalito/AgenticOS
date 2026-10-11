@@ -11,7 +11,7 @@ from agentic_os.services.adapters.base import (
     claude_permissions,
     write_json,
 )
-from agentic_os.services.hooks import HOOK_EVENTS
+from agentic_os.services.hooks import CLAUDE_TOOL_MATCHER, HOOK_EVENTS, TOOL_EVENTS
 from agentic_os.services.runs.launcher import (
     LaunchSpec,
     clean_env,
@@ -32,7 +32,10 @@ class ClaudeAdapter(CliAdapter):
         # Claude runs hooks through a shell (Git Bash on Windows): a quoted path keeps the
         # backslashes literal.
         hooks = {
-            event: [{"hooks": [{"type": "command", "command": f'"{ctx.hook_command}" {event}'}]}]
+            event: [
+                {"hooks": [{"type": "command", "command": f'"{ctx.hook_command}" {event}'}]}
+                | ({"matcher": CLAUDE_TOOL_MATCHER} if event in TOOL_EVENTS else {})
+            ]
             for event in HOOK_EVENTS[self.cli]
         }
         settings = write_json(run_dir / "settings.json", {"hooks": hooks})

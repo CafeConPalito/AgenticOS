@@ -17,6 +17,7 @@ from agentic_os.models import ACTIVE_STATUSES, Run, RunEvent, Stage, Task
 from agentic_os.schemas.run import (
     ControlAction,
     ControlRequest,
+    PermissionAnswer,
     RunCreate,
     RunEventRead,
     RunRead,
@@ -125,6 +126,17 @@ def control_run(run_id: str, payload: ControlRequest, db: DbSession, manager: Ma
     except ControlConflict as error:
         raise ApiError(409, "control_taken", "another viewer has the control") from error
     db.refresh(run)
+    return _read(run, manager)
+
+
+@router.post("/runs/{run_id}/permission")
+def answer_permission(
+    run_id: str, payload: PermissionAnswer, db: DbSession, manager: Manager
+) -> RunRead:
+    """Answers the CLI's open permission dialog («Yes» / «No»)."""
+    run = _get(db, run_id)
+    if not manager.answer_permission(run.id, payload.approve):
+        raise ApiError(409, "no_permission_dialog", "no permission dialog is waiting")
     return _read(run, manager)
 
 

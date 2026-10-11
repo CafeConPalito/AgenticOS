@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import re
 import threading
+from dataclasses import dataclass
 
 import pyte
 
@@ -41,6 +42,28 @@ AGENTIC_OS_TOOL_PREFIX = "agentic-os_agentic-os/"
 ALWAYS_ALLOW = re.compile(r"2\. Yes, and always allow tool .* in this conversation")
 MCP_DIALOG_LINES = 14  # the dialog must be at the bottom: an answered one scrolls away
 DIALOG_LINES = 12  # same for the trust dialog
+
+# Permission dialogs of the CLIs (phase 06, captured with Claude Code 2.1.296 and agy 1.3.3).
+# The emulated screen may misplace Claude's text (wide glyphs): only short, stable fragments
+# are matched, and the details of Claude's request come from its PermissionRequest hook.
+CLAUDE_PERMISSION = re.compile(r"\bamend\b")  # «Tab to amend», sometimes «Tab t  amend»
+CLAUDE_YES_OPTION = re.compile(r"\b1\.?\s+Yes\b")
+CLAUDE_QUESTION = re.compile(r"(?:Do )?you want to [^?]*\?")
+CLAUDE_NO_OPTION = re.compile(r"\bNo\b")
+AGY_COMMAND_REQUEST = "Requesting permission for:"
+AGY_DENY_OPTION = re.compile(r"No, (cancel|deny)")
+PERMISSION_LINES = 24  # the dialog must be at the bottom of the screen
+
+
+@dataclass(frozen=True)
+class PermissionDialog:
+    kind: str  # "command" (agy), "tool" (agy, not ours) or "claude"
+    subject: str  # the command, the tool or Claude's question
+
+    @property
+    def signature(self) -> str:
+        return f"{self.kind}:{self.subject}"
+
 
 # Printed once the CLI accepted the exit (it may still take a few seconds to end).
 EXIT_ACK = {
@@ -107,6 +130,37 @@ class ScreenState:
         if option is None:
             return None
         return tool, option.startswith((">", "❯"))
+
+    def permission_dialog(self) -> PermissionDialog | None:
+        """A permission dialog of the CLI waiting for an answer, at the bottom of the screen.
+        In both CLIs the first option («Yes») is selected: Enter approves, Esc rejects. Our own
+        MCP tools in agy are not reported (they are approved automatically)."""
+        lines = [line.strip() for line in self.text().splitlines() if line.strip()]
+        tail = lines[-PERMISSION_LINES:]
+        if self.cli == Cli.CLAUDE:
+            if not any(CLAUDE_PERMISSION.search(line) for line in tail[-6:]):
+                return None
+            if not any(CLAUDE_YES_OPTION.search(line) for line in tail):
+                return None
+            if not any(CLAUDE_NO_OPTION.search(line) for line in tail):
+                return None
+            question = next(
+                (m.group(0) for line in tail if (m := CLAUDE_QUESTION.search(line))), ""
+            )
+            return PermissionDialog("claude", question)
+        if not any(AGY_DENY_OPTION.search(line) for line in tail):
+            return None
+        if AGY_COMMAND_REQUEST in tail:
+            at = tail.index(AGY_COMMAND_REQUEST)
+            command = tail[at + 1] if at + 1 < len(tail) else ""
+            return PermissionDialog("command", command)
+        if "Allow calling this tool?" in tail:
+            at = len(tail) - 1 - tail[::-1].index("Allow calling this tool?")
+            tool = tail[at - 1] if at > 0 else ""
+            if tool.startswith(AGENTIC_OS_TOOL_PREFIX):
+                return None
+            return PermissionDialog("tool", tool)
+        return None
 
     def exit_armed(self) -> bool:
         return bool(EXIT_ARMED.search(self.text()))

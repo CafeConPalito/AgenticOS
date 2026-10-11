@@ -1,7 +1,7 @@
 # Fase 06: Subagentes y human-in-the-loop · Plan técnico
 
 - **Spec**: [spec.md](spec.md)
-- **Estado**: borrador
+- **Estado**: aprobado
 
 ## Diseño
 

@@ -1,5 +1,7 @@
+from pathlib import Path
+
 from agentic_os.models.agent import Cli
-from agentic_os.services.runs.screen import ScreenState
+from agentic_os.services.runs.screen import PermissionDialog, ScreenState
 
 # Screens captured in the phase 01 spike (docs/phases/01-spike-clis/evidencias).
 CLAUDE_TRUST = (
@@ -114,3 +116,45 @@ def test_claude_bypass_consent_is_left_to_the_human():
     assert screen.waiting_for_human() == "bypass_permissions_consent"
     assert screen.trust_dialog() == (False, False)  # never auto-answered as a trust dialog
     assert screen_with(Cli.CLAUDE, "? for shortcuts\r\n").waiting_for_human() is None
+
+
+# ---------------------------------------------------------------- permission dialogs (phase 06)
+SCREENS = Path(__file__).parent / "fixtures" / "screens"
+
+
+def real_screen(name: str, cli: Cli) -> ScreenState:
+    """A screen fed with the raw output of a real CLI run (captured with Claude Code 2.1.296
+    and agy 1.3.3, «Preguntar» mode, dialog still open)."""
+    screen = ScreenState(cli, 120, 32)
+    screen.feed((SCREENS / f"{name}.log").read_text("utf-8"))
+    return screen
+
+
+def test_claude_permission_dialogs_from_real_screens():
+    write = real_screen("claude-write", Cli.CLAUDE).permission_dialog()
+    assert write is not None and write.kind == "claude"
+    command = real_screen("claude-subagent", Cli.CLAUDE).permission_dialog()
+    assert command is not None
+    # git --version needed no permission: the run went on, no dialog at the bottom.
+    assert real_screen("claude-bash", Cli.CLAUDE).permission_dialog() is None
+
+
+def test_agy_command_dialog_from_a_real_screen():
+    dialog = real_screen("agy-command", Cli.AGY).permission_dialog()
+    assert dialog is not None
+    assert (dialog.kind, dialog.subject) == ("command", "git --version")
+
+
+def test_agy_dialogs_for_our_own_tools_are_not_permission_requests():
+    screen = ScreenState(Cli.AGY, 100, 30)
+    screen.feed(
+        "MCP\r\nagentic-os_agentic-os/report_status\r\nAllow calling this tool?\r\n"
+        "> 1. Yes, allow tool call\r\n  4. No, deny tool call\r\nesc to cancel\r\n"
+    )
+    assert screen.permission_dialog() is None
+    other = ScreenState(Cli.AGY, 100, 30)
+    other.feed(
+        "MCP\r\ngithub_github/create_issue\r\nAllow calling this tool?\r\n"
+        "> 1. Yes, allow tool call\r\n  4. No, deny tool call\r\nesc to cancel\r\n"
+    )
+    assert other.permission_dialog() == PermissionDialog("tool", "github_github/create_issue")

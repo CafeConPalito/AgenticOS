@@ -68,6 +68,12 @@ class ControlRequest(BaseModel):
     client_id: Annotated[str, StringConstraints(min_length=1, max_length=64)]
 
 
+class PermissionAnswer(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    approve: bool
+
+
 class RunEventRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

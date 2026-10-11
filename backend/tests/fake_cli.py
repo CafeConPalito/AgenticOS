@@ -136,7 +136,11 @@ def load_config() -> tuple[str | None, dict[str, str], dict[str, str]]:
     if AGY_MODE:
         mcp = json.loads((PLUGIN / "mcp_config.json").read_text("utf-8"))
         hooks_file = json.loads((PLUGIN / "hooks.json").read_text("utf-8"))["agentic-os"]
-        hooks = {e: h[0]["command"] for e, h in hooks_file.items()}
+        # Tool events nest their hooks under a matcher (like agy's real format).
+        hooks = {
+            e: (h[0]["hooks"][0] if "hooks" in h[0] else h[0])["command"]
+            for e, h in hooks_file.items()
+        }
         return mcp["mcpServers"]["agentic-os"]["url"], {}, hooks
     return None, {}, {}
 

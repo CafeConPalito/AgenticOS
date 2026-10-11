@@ -33,10 +33,11 @@ from agentic_os.models import (
 )
 from agentic_os.services.adapters import CliAdapter, LaunchContext, adapter_for
 from agentic_os.services.context import build_context, build_instructions
-from agentic_os.services.hooks import HOOK_EVENTS, interpret, write_hook_script
+from agentic_os.services.hooks import HOOK_EVENTS, TOOL_EVENTS, interpret, write_hook_script
 from agentic_os.services.mcp_server import RunTokens
 from agentic_os.services.memory import add_agent_note, list_notes, render_memory
 from agentic_os.services.runs.launcher import resolve_executable
+from agentic_os.services.runs.screen import PermissionDialog
 from agentic_os.services.runs.session import RunSession
 from agentic_os.services.tasks import task_context
 
@@ -55,6 +56,9 @@ class RunManager:
         self._agy_folders: set[str] = set()  # folders with a live (or starting) agy run
         self.tokens = RunTokens()
         self._mcp_seen: set[str] = set()
+        # Claude's PermissionRequest hook: what the open dialog asks, by run (the screen
+        # cannot always be read cleanly).
+        self._permission_requests: dict[str, str] = {}
         self.loop: asyncio.AbstractEventLoop | None = None
         # Called (from the run's thread) once a run has ended and its state is persisted.
         self.on_run_ended: Callable[[str], None] | None = None
@@ -203,6 +207,8 @@ class RunManager:
             on_system_event=lambda name, detail="", run_id=run.id: self.add_event(
                 run_id, EventKind.SYSTEM, name, detail
             ),
+            on_permission=lambda dialog, run_id=run.id: self.permission_requested(run_id, dialog),
+            on_permission_gone=lambda run_id=run.id: self.permission_gone(run_id),
         )
         try:
             session.start()
@@ -405,6 +411,21 @@ class RunManager:
             db.commit()
         self.add_event(run_id, EventKind.MCP, "write_project_memory", note)
 
+    # ------------------------------------------------------------------ permission dialogs
+    def permission_requested(self, run_id: str, dialog: PermissionDialog) -> None:
+        """A permission dialog of the CLI is waiting (from the session's thread)."""
+        request = self._permission_requests.get(run_id)
+        detail = request or dialog.subject
+        self.add_event(run_id, EventKind.SYSTEM, "permission_requested", detail)
+
+    def permission_gone(self, run_id: str) -> None:
+        self._permission_requests.pop(run_id, None)
+        self.add_event(run_id, EventKind.SYSTEM, "permission_answered")
+
+    def answer_permission(self, run_id: str, approve: bool) -> bool:
+        session = self.get(run_id)
+        return session is not None and session.answer_permission(approve)
+
     # ------------------------------------------------------------------ CLI hooks
     def on_hook(self, run_id: str, event: str, payload: object) -> None:
         session = self.get(run_id)
@@ -414,12 +435,25 @@ class RunManager:
                 return
             cli = Cli(run.cli)
             effect = interpret(cli, event, payload)
-            if effect.session_id and run.cli_session_id != effect.session_id:
-                run.cli_session_id = effect.session_id  # agy: its conversation id
+            if effect.permission_request:
+                self._permission_requests[run_id] = effect.permission_request
+            # agy: the first conversation is the run's. A native subagent has its own
+            # conversation and fires hooks through the same plugin: they are not the run's
+            # turns (and must not replace its id).
+            foreign = bool(
+                effect.session_id
+                and run.cli_session_id
+                and cli == Cli.AGY
+                and effect.session_id != run.cli_session_id
+            )
+            if effect.session_id and run.cli_session_id is None:
+                run.cli_session_id = effect.session_id
                 db.commit()
+        if foreign:
+            return
         boundary = session.on_hook(effect) if session is not None else False
         # agy fires PreInvocation on every model step: only turn boundaries are events.
-        if event in HOOK_EVENTS[cli] and (boundary or event not in ("PreInvocation",)):
+        if event in HOOK_EVENTS[cli] and (boundary or event not in ("PreInvocation", *TOOL_EVENTS)):
             self.add_event(run_id, EventKind.HOOK, event)
         if effect.turn_ended and session is not None:
             session.after_turn_end()

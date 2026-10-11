@@ -1,0 +1,13 @@
+{
+ "event": "SubagentStart",
+ "payload": {
+  "session_id": "3a61f076-6a24-426c-8d1a-394510870587",
+  "transcript_path": "C:\\Users\\usuario\\.claude\\projects\\C--Users-usuario-AppData-Local-Temp-claude-D--agentic-os-23a11e3a-78d5-40ad-8be7-b1c4ecaa0704-scratchpad-cap-projects-claude-subagent\\3a61f076-6a24-426c-8d1a-394510870587.jsonl",
+  "cwd": "C:\\Users\\usuario\\AppData\\Local\\Temp\\claude\\D--agentic-os\\23a11e3a-78d5-40ad-8be7-b1c4ecaa0704\\scratchpad\\cap\\projects\\claude-subagent",
+  "scratchpad_dir": "C:\\Users\\usuario\\AppData\\Local\\Temp\\claude\\C--Users-usuario-AppData-Local-Temp-claude-D--agentic-os-23a11e3a-78d5-40ad-8be7-b1c4ecaa0704-scratchpad-cap-projects-claude-subagent\\3a61f076-6a24-426c-8d1a-394510870587\\scratchpad",
+  "prompt_id": "1aaaa2d9-07b0-4dc8-a01b-ced1f2f81bdf",
+  "agent_id": "a4ce5d613f8622fde",
+  "agent_type": "general-purpose",
+  "hook_event_name": "SubagentStart"
+ }
+}

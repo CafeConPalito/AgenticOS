@@ -26,7 +26,7 @@ from agentic_os.services import pty as pty_service
 from agentic_os.services.hooks import HookEffect
 from agentic_os.services.pty import PtyProcess
 from agentic_os.services.runs.launcher import LaunchSpec
-from agentic_os.services.runs.screen import ScreenState
+from agentic_os.services.runs.screen import PermissionDialog, ScreenState
 
 log = structlog.get_logger(__name__)
 
@@ -44,6 +44,8 @@ COMPLETE_CLOSE_AFTER = 60.0  # after complete_task, close even if no end-of-turn
 CONTINUE_MESSAGE = "Continúa con la tarea."
 
 ESC, ENTER, CTRL_C, DOWN = "\x1b", "\r", "\x03", "\x1b[B"
+PERMISSION_SHOW = 0.5  # seconds a permission dialog must be on screen to be reported
+PERMISSION_GONE = 1.5  # seconds it must be missing to count as answered
 
 Message = dict
 StateCallback = Callable[[dict], None]
@@ -74,6 +76,8 @@ class RunSession:
         deferred_prompt: str | None = None,
         on_end: Callable[[], None] | None = None,
         on_system_event: Callable[..., None] | None = None,
+        on_permission: Callable[[PermissionDialog], None] | None = None,
+        on_permission_gone: Callable[[], None] | None = None,
     ) -> None:
         self.run_id = run_id
         self.cli = cli
@@ -87,6 +91,9 @@ class RunSession:
         self.deferred_prompt = deferred_prompt
         self.on_end = on_end
         self.on_system_event = on_system_event or (lambda *args, **kwargs: None)
+        # A permission dialog of the CLI appeared / went away (Inbox «Aprobación», phase 06).
+        self.on_permission = on_permission or (lambda dialog: None)
+        self.on_permission_gone = on_permission_gone or (lambda: None)
 
         self.status = RunStatus.STARTING
         self.activity = Activity.IDLE
@@ -118,6 +125,10 @@ class RunSession:
         self._in_turn = False
         self.mcp_connected = False
         self._trust_done = False
+        self._permission_sig: str | None = None  # the dialog currently reported
+        self._permission_candidate: str | None = None
+        self._permission_seen_at = 0.0
+        self._permission_missing_at = 0.0
         self._finished = threading.Event()
         self._lock = threading.RLock()  # control + scrollback
         self._state_lock = threading.RLock()  # status/activity changes and their persistence
@@ -397,7 +408,8 @@ class RunSession:
             first_take = self.controller is None
             self.controller = client_id
             self._typed = False
-        if first_take and self._pty is not None:
+        # Esc would answer an open permission dialog («No»): leave it for the human.
+        if first_take and self._pty is not None and self._screen.permission_dialog() is None:
             self._pty.write(ESC)  # interrupt the current turn, keep the session (ADR 0003)
             # An interrupted turn fires no end-of-turn hook (Claude Code): close it here.
             self._in_turn = False
@@ -500,6 +512,7 @@ class RunSession:
                 self._deferred_prompt_step(now)
             if self.cli == Cli.AGY and self.controller is None:
                 self._approve_agentic_os_tool(now)
+            self._permission_step(now)
             human = self._screen.waiting_for_human()
             if human is not None and human not in self._human_notified:
                 self._human_notified.add(human)
@@ -516,6 +529,43 @@ class RunSession:
             activity = Activity.BUSY if busy else Activity.IDLE
             if activity != self.activity and self.alive:
                 self._set(activity=activity)
+
+    def _permission_step(self, now: float) -> None:
+        """Reports permission dialogs as they appear and go. TUIs redraw: a dialog must be
+        seen for PERMISSION_SHOW s to count, and missing for PERMISSION_GONE s to be gone."""
+        dialog = self._screen.permission_dialog()
+        if dialog is not None:
+            self._permission_missing_at = 0.0
+            if dialog.signature == self._permission_sig:
+                return
+            if self._permission_candidate != dialog.signature:
+                self._permission_candidate, self._permission_seen_at = dialog.signature, now
+                return
+            if now - self._permission_seen_at >= PERMISSION_SHOW:
+                if self._permission_sig is not None:
+                    self.on_permission_gone()
+                self._permission_sig = dialog.signature
+                self.on_permission(dialog)
+            return
+        self._permission_candidate = None
+        if self._permission_sig is None:
+            return
+        if self._permission_missing_at == 0.0:
+            self._permission_missing_at = now
+        elif now - self._permission_missing_at >= PERMISSION_GONE:
+            self._permission_sig = None
+            self._permission_missing_at = 0.0
+            self.on_permission_gone()
+
+    def answer_permission(self, approve: bool) -> bool:
+        """Answers the CLI's permission dialog (Enter = «Yes», Esc = «No»). False if no dialog
+        is on screen any more."""
+        pty = self._pty
+        if pty is None or not self.alive or self._screen.permission_dialog() is None:
+            return False
+        with contextlib.suppress(Exception):
+            pty.write(ENTER if approve else ESC)
+        return True
 
     def _approve_agentic_os_tool(self, now: float) -> None:
         """agy asks before every MCP call unless autonomous, and no project or plugin file can
