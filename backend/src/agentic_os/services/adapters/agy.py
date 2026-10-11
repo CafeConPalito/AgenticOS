@@ -20,7 +20,7 @@ from agentic_os.services.adapters.base import (
     agy_permissions,
     write_json,
 )
-from agentic_os.services.hooks import HOOK_EVENTS
+from agentic_os.services.hooks import AGY_TOOL_MATCHER, HOOK_EVENTS, TOOL_EVENTS
 from agentic_os.services.runs.launcher import LaunchSpec, clean_env, resolve_executable
 
 PLUGIN = Path(".agents") / "plugins" / "agentic-os"
@@ -104,6 +104,10 @@ def plugin_rules(instructions: str, prompt: str) -> str:
 class AgyAdapter(CliAdapter):
     cli = Cli.AGY
 
+    @staticmethod
+    def _hook(ctx: LaunchContext, event: str) -> dict:
+        return {"type": "command", "command": f"{ctx.hook_command} {event}"}
+
     def prepare(self, ctx: LaunchContext) -> LaunchSpec:
         prefix = resolve_executable(self.cli, ctx.overrides)
         folder = plugin_dir(ctx.cwd)
@@ -111,9 +115,14 @@ class AgyAdapter(CliAdapter):
         write_json(folder / "plugin.json", {"name": "agentic-os", RUN_MARKER: ctx.run_id})
         write_json(folder / "mcp_config.json", {"mcpServers": {"agentic-os": {"url": ctx.mcp_url}}})
         # agy runs hooks through cmd.exe and mangles quoted paths: the short path, unquoted.
+        # Tool events take a matcher and nested hooks (spike P9); the others, a flat list.
         hooks = {
             "agentic-os": {
-                event: [{"type": "command", "command": f"{ctx.hook_command} {event}"}]
+                event: [
+                    {"matcher": AGY_TOOL_MATCHER, "hooks": [self._hook(ctx, event)]}
+                    if event in TOOL_EVENTS
+                    else self._hook(ctx, event)
+                ]
                 for event in HOOK_EVENTS[self.cli]
             }
         }

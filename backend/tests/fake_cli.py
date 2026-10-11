@@ -136,7 +136,11 @@ def load_config() -> tuple[str | None, dict[str, str], dict[str, str]]:
     if AGY_MODE:
         mcp = json.loads((PLUGIN / "mcp_config.json").read_text("utf-8"))
         hooks_file = json.loads((PLUGIN / "hooks.json").read_text("utf-8"))["agentic-os"]
-        hooks = {e: h[0]["command"] for e, h in hooks_file.items()}
+        # Tool events nest their hooks under a matcher (like agy's real format).
+        hooks = {
+            e: (h[0]["hooks"][0] if "hooks" in h[0] else h[0])["command"]
+            for e, h in hooks_file.items()
+        }
         return mcp["mcpServers"]["agentic-os"]["url"], {}, hooks
     return None, {}, {}
 
@@ -146,6 +150,10 @@ always_allowed: set[str] = set()
 
 
 def hook(event: str) -> None:
+    hook_payload(event, {})
+
+
+def hook_payload(event: str, extra: dict) -> None:
     command = HOOKS.get(event)
     if not command:
         return
@@ -153,6 +161,7 @@ def hook(event: str) -> None:
         payload = {"hook_event_name": event, "session_id": (OPTIONS.get("--session-id") or [""])[0]}
     else:
         payload = {"conversationId": CONVERSATION_ID, "workspacePaths": [str(Path.cwd())]}
+    payload |= extra
     # While the hook runs the console is not raw: a Ctrl+C becomes a signal instead of a key.
     # The real CLIs just lose that key press (Agentic OS retries the stop); without this the
     # fake died with KeyboardInterrupt (the intermittent test of phase 04).
@@ -239,7 +248,12 @@ def use_tools(text: str) -> int | None:
     Phase 05 directives: `RECHAZA: x` → complete_task rejecting; `RECHAZA1: x` → rejects only
     the first time in this folder (a marker file), approves afterwards; `CONTEXTO: <file>` →
     writes what get_context returns; `GIT: <file>` → writes `git status` of the folder;
-    `SALE: n` → exits with n after the turn. A task's title
+    `SALE: n` → exits with n after the turn. Phase 06: `PREGUNTA: título|opción|…` →
+    request_human (ends the turn; a later «Respuesta de la persona…» message completes the task);
+    `PERMISO: comando` → shows the CLI's permission dialog (Claude's or agy's real texts) and
+    waits for Enter (approve) or Esc (reject); `SUBAGENTE: [agente|]prompt` → spawn_subagent;
+    `SUBTAREA: título` → create_subtask; `NATIVO: descripción` → the hooks of a native subagent
+    (Claude's Agent tool / agy's invoke_subagent, real payload shapes). A task's title
     drives all its stages: a rejection the stage does not accept is ignored, and only the first
     accepted complete_task counts.
     """
@@ -259,6 +273,33 @@ def use_tools(text: str) -> int | None:
                 text=True,
             ).stdout
             Path(value).write_text(status, "utf-8")
+            continue
+        if keyword == "PREGUNTA" and MCP_URL is not None:
+            title, *options = [x.strip() for x in value.split("|")]
+            args_q: dict = {"title": title, "detail": "Necesito tu decisión."}
+            if options:
+                args_q["options"] = options
+            if AGY_MODE and not agy_permission("agentic-os_agentic-os/request_human"):
+                continue
+            out(f"● MCP request_human: {mcp('request_human', args_q)}")
+            continue
+        if keyword == "SUBAGENTE" and MCP_URL is not None:
+            agent, _, prompt = value.rpartition("|")
+            if AGY_MODE and not agy_permission("agentic-os_agentic-os/spawn_subagent"):
+                continue
+            result = mcp("spawn_subagent", {"prompt": prompt, "agent": agent})
+            out(f"● MCP spawn_subagent: {result}")
+            continue
+        if keyword == "SUBTAREA" and MCP_URL is not None:
+            if AGY_MODE and not agy_permission("agentic-os_agentic-os/create_subtask"):
+                continue
+            out(f"● MCP create_subtask: {mcp('create_subtask', {'title': value})}")
+            continue
+        if keyword == "NATIVO":
+            native_subagent(value)
+            continue
+        if keyword == "PERMISO":
+            out(f"● permission {'granted' if permission_dialog(value) else 'denied'}: {value}")
             continue
         if keyword == "CONTEXTO" and MCP_URL is not None:
             Path(value).write_text(mcp("get_context", {}), "utf-8")
@@ -288,6 +329,69 @@ def use_tools(text: str) -> int | None:
             if rejecting and keyword == "RECHAZA1":
                 marker.write_text("1")  # only a rejection the stage accepted counts
     return exit_code
+
+
+def native_subagent(description: str) -> None:
+    """The hooks a CLI fires around its own subagent (shapes captured in phase 06)."""
+    if CLAUDE_MODE:
+        tool_use = f"toolu_{uuid.uuid4().hex[:12]}"
+        agent_id = uuid.uuid4().hex[:17]
+        tool_input = {"description": description, "prompt": description}
+        hook_payload(
+            "PreToolUse", {"tool_name": "Agent", "tool_use_id": tool_use, "tool_input": tool_input}
+        )
+        hook_payload("SubagentStart", {"agent_id": agent_id, "agent_type": "general-purpose"})
+        hook_payload("PostToolUse", {"tool_name": "Agent", "tool_use_id": tool_use})
+        hook_payload("SubagentStop", {"agent_id": uuid.uuid4().hex[:17], "agent_type": ""})
+        hook_payload("SubagentStop", {"agent_id": agent_id, "agent_type": "general-purpose"})
+        out(f"● Agent({description}) done")
+        return
+    call = {
+        "name": "invoke_subagent",
+        "args": {"Subagents": [{"Role": description}], "toolSummary": description},
+    }
+    hook_payload("PreToolUse", {"toolCall": call, "stepIdx": 7})
+    hook_payload("PostToolUse", {"toolCall": call, "stepIdx": 7})
+    child = str(uuid.uuid4())
+    hook_payload("PreInvocation", {"conversationId": child, "invocationNum": 0})
+    hook_payload("PreInvocation", {"conversationId": child, "invocationNum": 1})
+    hook_payload("PreInvocation", {"invocationNum": 0})  # the main conversation's next turn
+    out(f"● Agent({description}) done")
+
+
+def permission_dialog(command: str) -> bool:
+    """The CLI's own permission dialog (texts captured from Claude Code 2.1.296 / agy 1.3.3):
+    Enter on the preselected «Yes» approves, Esc rejects."""
+    if CLAUDE_MODE:
+        hook_payload("PermissionRequest", {"tool_name": "Bash", "tool_input": {"command": command}})
+        out(f"● Bash({command})")
+        out("Bash command")
+        out(f"  {command}")
+        out("Do you want to proceed?")
+        out("❯ 1. Yes")
+        out("  2. Yes, and don’t ask again for this command")  # noqa: RUF001 (real text)
+        out("  3. No")
+        out("Esc to cancel · Tab to amend")
+    else:
+        out("Command")
+        out("Requesting permission for:")
+        out(command)
+        out("Run this command?")
+        out("> 1. Yes, run command")
+        out(f"  2. Yes, and always allow in this conversation for commands like '{command}'")
+        out("  4. No, cancel")
+        out("↑/↓ Navigate · tab Amend · ctrl+g edit/expand command")
+        out("esc to cancel")
+    while True:
+        key = read_key()
+        if key in ("\r", "\n"):
+            sys.stdout.write("\x1b[2J\x1b[H")  # the dialog goes away
+            out(f"● Ran {command}")
+            return True
+        if key == "\x1b":
+            sys.stdout.write("\x1b[2J\x1b[H")
+            out("User rejected the command. What should Claude do instead?")
+            return False
 
 
 # ---------------------------------------------------------------- TUI
@@ -320,6 +424,13 @@ def answer(text: str) -> None:
     global deaf_until
     hook("PreInvocation" if AGY_MODE else "UserPromptSubmit")
     out(f"> {text}")
+    if text.startswith(("Respuesta de la persona", "Resultado del subagente")) and MCP_URL:
+        # An answer to request_human: like a model, use it and finish.
+        if AGY_MODE:
+            agy_permission("agentic-os_agentic-os/complete_task")
+        out(
+            f"● MCP complete_task: {mcp('complete_task', {'summary': 'Con la respuesta: ' + text})}"
+        )
     exit_code = use_tools(text)
     out(f"● RESPUESTA: {text}")
     out("? for shortcuts")

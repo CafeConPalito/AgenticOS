@@ -76,6 +76,12 @@ class Run(IdMixin, WorkspaceMixin, TimestampMixin, Base):
         String(36), ForeignKey("stages.id", ondelete="SET NULL"), nullable=True
     )
     verdict: Mapped[str | None] = mapped_column(String(8), nullable=True)  # from complete_task
+    # A subagent of Agentic OS (spawn_subagent): the run that launched it.
+    parent_run_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("runs.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    # Since when the agent waits for input (no turn running): «Sin terminar» after a while.
+    idle_since: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
 
 
 class Verdict(StrEnum):

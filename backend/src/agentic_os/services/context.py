@@ -20,6 +20,13 @@ Trabajas dentro de Agentic OS, que coordina a varios agentes. Tienes el servidor
 - `complete_task`: cuando hayas terminado, llámala con un resumen de lo hecho y de lo que \
 queda pendiente. Después no sigas trabajando: Agentic OS cerrará la sesión.
 - `get_context`: vuelve a leer estas instrucciones, la tarea y la memoria del proyecto.
+- `spawn_subagent`: si tu agente puede lanzar subagentes, reparte en paralelo una parte \
+independiente del trabajo (otro agente o tú mismo); su resultado te llegará como un mensaje.
+- `create_subtask`: si tu agente puede crear tareas, deja en cola trabajo para más adelante.
+- `request_human`: si necesitas una decisión o un dato de la persona, o algo que solo ella \
+puede hacer (una clave, un acceso), pídeselo con una pregunta corta y el contexto necesario. \
+Después termina tu turno: su respuesta te llegará como un mensaje nuevo. No lo uses para lo \
+que puedas decidir tú.
 """
 
 VERDICT_RULES = """\
@@ -66,6 +73,7 @@ def build_instructions(
     cwd: str,
     memory: str = "",
     task: TaskContext | None = None,
+    subagent: tuple[str, str] | None = None,
 ) -> str:
     """`memory` is the rendered project memory (services.memory.render_memory); `task`, the
     task and stage of a run launched by the scheduler (None for a manual run)."""
@@ -88,8 +96,17 @@ def build_instructions(
     parts.append(f"## Memoria del proyecto\n{memory}")
     if task is not None:
         parts.append(task_section(task))
+    if subagent is not None:
+        parent, prompt = subagent
+        parts.append(
+            f"# Eres un subagente de {parent}\n"
+            f"{parent} te ha lanzado para una parte concreta de su trabajo. Haz solo esto:\n\n"
+            f"{prompt.strip()}\n\n"
+            f"Trabajas en la misma carpeta que {parent}: no toques lo que no te pide. Cuando "
+            f"termines, llama a complete_task con el resultado; le llegará a {parent}."
+        )
     parts.append(AGENTIC_OS_RULES)
-    if task is not None and task.can_reject:
+    if task is not None and task.can_reject and subagent is None:
         parts.append(VERDICT_RULES)
     return "\n\n".join(parts).strip() + "\n"
 

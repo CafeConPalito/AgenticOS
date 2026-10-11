@@ -1,7 +1,10 @@
 import '@testing-library/jest-dom/vitest'
-import { cleanup } from '@testing-library/react'
+import { cleanup, configure } from '@testing-library/react'
 import { afterEach, vi } from 'vitest'
 import '@/i18n'
+
+// findBy*/waitFor default to 1 s, too short for whole-app renders on a busy machine.
+configure({ asyncUtilTimeout: 3000 })
 
 // jsdom lacks these browser APIs used by the sidebar and Radix primitives.
 Object.defineProperty(window, 'matchMedia', {

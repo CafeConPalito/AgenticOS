@@ -1,0 +1,27 @@
+{
+ "event": "PermissionRequest",
+ "payload": {
+  "session_id": "d0523a59-4274-43fd-965f-d3068c02f084",
+  "transcript_path": "C:\\Users\\usuario\\.claude\\projects\\C--Users-usuario-AppData-Local-Temp-claude-D--agentic-os-23a11e3a-78d5-40ad-8be7-b1c4ecaa0704-scratchpad-cap-projects2-claude-write\\d0523a59-4274-43fd-965f-d3068c02f084.jsonl",
+  "cwd": "C:\\Users\\usuario\\AppData\\Local\\Temp\\claude\\D--agentic-os\\23a11e3a-78d5-40ad-8be7-b1c4ecaa0704\\scratchpad\\cap\\projects2\\claude-write",
+  "scratchpad_dir": "C:\\Users\\usuario\\AppData\\Local\\Temp\\claude\\C--Users-usuario-AppData-Local-Temp-claude-D--agentic-os-23a11e3a-78d5-40ad-8be7-b1c4ecaa0704-scratchpad-cap-projects2-claude-write\\d0523a59-4274-43fd-965f-d3068c02f084\\scratchpad",
+  "prompt_id": "581a701c-70b7-4308-9431-86273ad0dd17",
+  "permission_mode": "default",
+  "effort": {
+   "level": "medium"
+  },
+  "hook_event_name": "PermissionRequest",
+  "tool_name": "Write",
+  "tool_input": {
+   "file_path": "C:\\Users\\usuario\\AppData\\Local\\Temp\\claude\\D--agentic-os\\23a11e3a-78d5-40ad-8be7-b1c4ecaa0704\\scratchpad\\cap\\projects2\\claude-write\\nota.txt",
+   "content": "hola"
+  },
+  "permission_suggestions": [
+   {
+    "type": "setMode",
+    "mode": "acceptEdits",
+    "destination": "session"
+   }
+  ]
+ }
+}

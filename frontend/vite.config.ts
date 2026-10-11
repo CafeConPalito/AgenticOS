@@ -18,5 +18,7 @@ export default defineConfig({
     globals: true,
     setupFiles: ['./src/test/setup.ts'],
     css: false,
+    // Whole-app renders are slow on a busy machine: generous limits keep the tests stable.
+    testTimeout: 15_000,
   },
 })

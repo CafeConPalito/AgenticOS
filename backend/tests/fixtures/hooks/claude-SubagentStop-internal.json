@@ -1,0 +1,30 @@
+{
+ "event": "SubagentStop",
+ "payload": {
+  "session_id": "3a61f076-6a24-426c-8d1a-394510870587",
+  "transcript_path": "C:\\Users\\usuario\\.claude\\projects\\C--Users-usuario-AppData-Local-Temp-claude-D--agentic-os-23a11e3a-78d5-40ad-8be7-b1c4ecaa0704-scratchpad-cap-projects-claude-subagent\\3a61f076-6a24-426c-8d1a-394510870587.jsonl",
+  "cwd": "C:\\Users\\usuario\\AppData\\Local\\Temp\\claude\\D--agentic-os\\23a11e3a-78d5-40ad-8be7-b1c4ecaa0704\\scratchpad\\cap\\projects\\claude-subagent",
+  "scratchpad_dir": "C:\\Users\\usuario\\AppData\\Local\\Temp\\claude\\C--Users-usuario-AppData-Local-Temp-claude-D--agentic-os-23a11e3a-78d5-40ad-8be7-b1c4ecaa0704-scratchpad-cap-projects-claude-subagent\\3a61f076-6a24-426c-8d1a-394510870587\\scratchpad",
+  "prompt_id": "1aaaa2d9-07b0-4dc8-a01b-ced1f2f81bdf",
+  "permission_mode": "default",
+  "agent_id": "aa28eb0d4648cd6b7",
+  "agent_type": "",
+  "effort": {
+   "level": "medium"
+  },
+  "hook_event_name": "SubagentStop",
+  "stop_hook_active": false,
+  "agent_transcript_path": "C:\\Users\\usuario\\.claude\\projects\\C--Users-usuario-AppData-Local-Temp-claude-D--agentic-os-23a11e3a-78d5-40ad-8be7-b1c4ecaa0704-scratchpad-cap-projects-claude-subagent\\3a61f076-6a24-426c-8d1a-394510870587\\subagents\\agent-aa28eb0d4648cd6b7.jsonl",
+  "last_assistant_message": "dame el número de archivos",
+  "background_tasks": [
+   {
+    "id": "a4ce5d613f8622fde",
+    "type": "subagent",
+    "status": "running",
+    "description": "Contar archivos de la carpeta",
+    "agent_type": "general-purpose"
+   }
+  ],
+  "session_crons": []
+ }
+}

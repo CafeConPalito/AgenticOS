@@ -484,7 +484,10 @@
       "max_rejections": "Se superó el máximo de rechazos",
       "launch_failed": "No se pudo lanzar el agente",
       "no_agent": "La etapa no tiene agente",
-      "workspace_failed": "No se pudo preparar el worktree"
+      "workspace_failed": "No se pudo preparar el worktree",
+      "human_request": "El agente te ha hecho una pregunta",
+      "permission": "El agente pide permiso para una acción",
+      "question_pending": "Tiene una pregunta sin responder en la Inbox"
     },
     "blocked": {
       "folder_busy": "Carpeta ocupada"
@@ -535,7 +538,13 @@
       "worktree": "Worktree",
       "noRun": "La terminal aparecerá cuando un agente empiece a trabajar en la tarea.",
       "lastSummary": "Resumen del agente",
-      "rejections": "Rechazos: {{count}}"
+      "rejections": "Rechazos: {{count}}",
+      "subtasks": "Subtareas · {{done}}/{{total}}",
+      "tree": "Árbol de ejecución",
+      "treeEmpty": "Todavía no hay ejecuciones.",
+      "openInbox": "Responder en la Inbox",
+      "parent": "Subtarea de {{code}}",
+      "native": "Subagente del CLI"
     },
     "events": {
       "created": "Creada",
@@ -550,7 +559,10 @@
       "completed_manually": "Dada por terminada",
       "cancelled": "Cancelada",
       "done": "Hecho",
-      "workspace": "Workspace"
+      "workspace": "Workspace",
+      "human_request": "Preguntó",
+      "human_answered": "Respondiste",
+      "subtask": "Creó una subtarea"
     },
     "actions": {
       "enqueue": "Encolar",
@@ -623,5 +635,76 @@
     "deleteTitle": "¿Quitar el pipeline?",
     "deleteDescription": "Las tareas nuevas irán directamente al agente que elijas.",
     "saved": "Pipeline guardado"
+  },
+  "inbox": {
+    "title": "Inbox",
+    "subtitle": "Peticiones de tus agentes: aprobaciones, preguntas, bloqueos y entregas.",
+    "pending": "Pendientes",
+    "resolved": "Resueltas",
+    "emptyTitle": "Bandeja al día",
+    "emptyDescription": "Cuando un agente necesite algo de ti, aparecerá aquí y te llegará un aviso.",
+    "emptyResolved": "Todavía no has resuelto nada.",
+    "kinds": {
+      "approval": "Aprobación",
+      "question": "Pregunta",
+      "blocker": "Bloqueo",
+      "review": "Revisión",
+      "stalled": "Sin terminar",
+      "delivery": "Tarea completada",
+      "attention": "Necesita atención"
+    },
+    "approvalTitle": "¿Puedo continuar?",
+    "answerPlaceholder": "Responder con texto…",
+    "answer": "Responder",
+    "approve": "Aprobar",
+    "reject": "Rechazar",
+    "reviewApprove": "Aprobar",
+    "reviewReject": "Rechazar",
+    "reasonPlaceholder": "Motivo del rechazo…",
+    "complete": "Dar por terminada",
+    "retry": "Reintentar",
+    "markReviewed": "Marcar como revisado",
+    "dismiss": "Descartar",
+    "openTerminal": "Abrir terminal",
+    "openTask": "Abrir tarea",
+    "resolution": {
+      "approved": "✓ Aprobado por ti",
+      "rejected": "Rechazado por ti",
+      "answered": "Respondido: «{{text}}»",
+      "answered_in_terminal": "Respondido en la terminal",
+      "reviewed": "Revisado",
+      "dismissed": "Ya no hace falta"
+    },
+    "toast": {
+      "answered": "Respuesta enviada a {{name}}",
+      "approved": "Aprobado",
+      "rejected": "Rechazado",
+      "done": "Hecho"
+    }
+  },
+  "settings": {
+    "title": "Ajustes",
+    "subtitle": "Cómo te avisa Agentic OS.",
+    "notifications": {
+      "title": "Notificaciones de Windows",
+      "description": "Avisos del sistema cuando un agente necesita algo de ti, aunque la ventana esté en segundo plano.",
+      "approval": "Aprobaciones pendientes",
+      "approvalHelp": "Un agente pide permiso para ejecutar un comando o editar.",
+      "question": "Preguntas de los agentes",
+      "questionHelp": "Preguntas y bloqueos que el agente no puede resolver solo.",
+      "review": "Revisiones entre etapas",
+      "reviewHelp": "Una etapa espera tu aprobación antes de seguir.",
+      "stalled": "Tareas atascadas",
+      "stalledHelp": "Un agente lleva tiempo esperando, o una tarea falló.",
+      "delivery": "Tareas completadas",
+      "deliveryHelp": "Una tarea llega a «Hecho».",
+      "sound": "Sonido",
+      "soundHelp": "Reproduce el sonido del sistema con cada aviso.",
+      "permissionDenied": "El navegador no permite notificaciones. Actívalas en los ajustes del sitio.",
+      "askPermission": "Permitir notificaciones en este navegador",
+      "test": "Probar aviso",
+      "testTitle": "Agentic OS",
+      "testBody": "Así te llegarán los avisos de tus agentes."
+    }
   }
 }

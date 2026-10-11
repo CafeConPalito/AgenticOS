@@ -1,5 +1,7 @@
 import {
   AlertTriangle,
+  Square,
+  SquareCheck,
   Check,
   CheckCheck,
   FolderGit2,
@@ -21,8 +23,10 @@ import {
   useTask,
   useTaskAction,
   useTaskEvents,
+  useSubtasks,
+  useTaskTree,
 } from '@/api/tasks'
-import type { Run, Stage, Task } from '@/api/types'
+import type { Run, Stage, Task, TreeNode } from '@/api/types'
 import { AgentAvatar, ProjectChip } from '@/components/agentic/primitives'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { EmptyState } from '@/components/EmptyState'
@@ -47,7 +51,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
 import { errorMessage } from '@/lib/form-errors'
-import { formatDateTime } from '@/lib/time'
+import { formatDateTime, formatDuration } from '@/lib/time'
 import { cn } from '@/lib/utils'
 import { RunEventsPanel } from '@/pages/runs/RunEventsPanel'
 import { RunStatusBadge } from '@/pages/runs/RunStatusBadge'
@@ -80,7 +84,9 @@ function TaskDetail({ task }: { task: Task }) {
   const openWorktree = useOpenWorktree()
   const pipeline = usePipeline(task.project_id)
   const stages = pipeline.data?.stages ?? []
-  const runId = task.active_run_id ?? task.last_run_id
+  // The terminal shows the task's run, or the subagent picked in the execution tree.
+  const [picked, setPicked] = useState<string | null>(null)
+  const runId = picked ?? task.active_run_id ?? task.last_run_id
   const run = useRun(runId ?? undefined).data
   const [dialog, setDialog] = useState<Dialogs>(null)
 
@@ -95,7 +101,11 @@ function TaskDetail({ task }: { task: Task }) {
 
   const can = {
     enqueue: task.status === 'backlog',
-    retry: task.status === 'waiting_human',
+    // Not while its CLI is alive (a question or a permission waits): that would duplicate it.
+    retry:
+      task.status === 'waiting_human' &&
+      task.waiting_reason !== 'human_request' &&
+      task.waiting_reason !== 'permission',
     complete: task.status === 'running' || task.status === 'waiting_human',
     review: task.status === 'review',
     cancel: !['done', 'cancelled'].includes(task.status),
@@ -196,6 +206,13 @@ function TaskDetail({ task }: { task: Task }) {
           )}
         </div>
         <aside className="flex min-h-0 flex-col overflow-auto border-l p-4">
+          <ExecutionTree
+            task={task}
+            selected={runId}
+            onSelect={(id) =>
+              setPicked(id === (task.active_run_id ?? task.last_run_id) ? null : id)
+            }
+          />
           {runId && <RunEventsPanel runId={runId} />}
         </aside>
       </div>
@@ -255,6 +272,146 @@ function StageStepper({ task, stages }: { task: Task; stages: Stage[] }) {
   )
 }
 
+function Subtasks({ task }: { task: Task }) {
+  const { t } = useTranslation()
+  const subtasks = useSubtasks(task.id).data ?? []
+  return (
+    <section>
+      <h2 className="mb-2 text-[12.5px] text-muted-foreground">
+        {t('tasks.detail.subtasks', { done: task.subtasks_done, total: task.subtasks_total })}
+      </h2>
+      <ul className="flex flex-col gap-1.5">
+        {subtasks.map((sub) => (
+          <li key={sub.id} className="flex items-center gap-2">
+            {sub.status === 'done' ? (
+              <SquareCheck
+                aria-label={t('tasks.status.done')}
+                className="size-4 text-status-done"
+              />
+            ) : (
+              <Square
+                aria-label={t(`tasks.status.${sub.status}`)}
+                className="size-4 text-muted-foreground"
+              />
+            )}
+            <Link
+              to={`/tablero/tareas/${sub.id}`}
+              className={cn(
+                'min-w-0 flex-1 truncate hover:underline',
+                sub.status === 'done' && 'text-muted-foreground line-through',
+              )}
+            >
+              {sub.title}
+            </Link>
+            {sub.agent_name && (
+              <span className="text-xs text-muted-foreground">@{sub.agent_name}</span>
+            )}
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
+function ExecutionTree({
+  task,
+  selected,
+  onSelect,
+}: {
+  task: Task
+  selected: string | null
+  onSelect: (runId: string) => void
+}) {
+  const { t } = useTranslation()
+  const tree = useTaskTree(task.id, isMoving(task)).data ?? []
+  if (tree.length === 0) return null
+  return (
+    <section aria-labelledby="task-tree-title" className="mb-5">
+      <h2 id="task-tree-title" className="mb-2 text-[12.5px] text-muted-foreground">
+        {t('tasks.detail.tree')}
+      </h2>
+      <ul className="flex flex-col gap-1">
+        {tree.map((node) => (
+          <TreeItem key={node.id} node={node} depth={0} selected={selected} onSelect={onSelect} />
+        ))}
+      </ul>
+    </section>
+  )
+}
+
+function TreeItem({
+  node,
+  depth,
+  selected,
+  onSelect,
+}: {
+  node: TreeNode
+  depth: number
+  selected: string | null
+  onSelect: (runId: string) => void
+}) {
+  const { t } = useTranslation()
+  const live =
+    ['starting', 'running', 'intervening'].includes(node.status) || node.status === 'running'
+  const label = (
+    <>
+      <span
+        aria-hidden
+        className={cn(
+          'size-2 shrink-0 rounded-full',
+          live ? 'animate-live-pulse bg-status-running' : 'bg-status-done',
+        )}
+      />
+      <span className="truncate">
+        {node.label}
+        {node.stage_name && <span className="text-muted-foreground"> · {node.stage_name}</span>}
+      </span>
+      <span className="ml-auto font-mono text-[11px] text-muted-foreground">
+        {formatDuration(node.started_at, node.ended_at, new Date())}
+      </span>
+    </>
+  )
+  return (
+    <li>
+      {node.kind === 'run' ? (
+        <button
+          type="button"
+          aria-pressed={selected === node.id}
+          onClick={() => onSelect(node.id)}
+          className={cn(
+            'flex w-full items-center gap-2 rounded-md border border-transparent px-2 py-1 text-left text-[12.5px] hover:bg-accent',
+            selected === node.id && 'border-ring bg-accent font-medium',
+          )}
+          style={{ marginLeft: depth * 14 }}
+        >
+          {label}
+        </button>
+      ) : (
+        <div
+          title={t('tasks.detail.native')}
+          className="flex items-center gap-2 px-2 py-1 text-[12.5px] text-muted-foreground"
+          style={{ marginLeft: depth * 14 }}
+        >
+          {label}
+        </div>
+      )}
+      {node.children.length > 0 && (
+        <ul className="flex flex-col gap-1">
+          {node.children.map((child) => (
+            <TreeItem
+              key={child.id}
+              node={child}
+              depth={depth + 1}
+              selected={selected}
+              onSelect={onSelect}
+            />
+          ))}
+        </ul>
+      )}
+    </li>
+  )
+}
+
 function TaskSidePanel({ task, stages }: { task: Task; stages: Stage[] }) {
   const { t } = useTranslation()
   const events = useTaskEvents(task.id, isMoving(task)).data ?? []
@@ -280,7 +437,18 @@ function TaskSidePanel({ task, stages }: { task: Task; stages: Stage[] }) {
               {task.waiting_detail}
             </p>
           )}
+          <Link to="/inbox" className="mt-2 inline-block text-xs text-ring hover:underline">
+            {t('tasks.detail.openInbox')}
+          </Link>
         </section>
+      )}
+      {task.parent_task_id && (
+        <Link
+          to={`/tablero/tareas/${task.parent_task_id}`}
+          className="text-xs text-ring hover:underline"
+        >
+          {t('tasks.detail.parent', { code: task.parent_code })}
+        </Link>
       )}
       <section>
         <h2 className="mb-1.5 text-[12.5px] text-muted-foreground">
@@ -302,6 +470,7 @@ function TaskSidePanel({ task, stages }: { task: Task; stages: Stage[] }) {
           <StageStepper task={task} stages={stages} />
         </section>
       )}
+      {task.subtasks_total > 0 && <Subtasks task={task} />}
       {(task.branch || task.worktree_path) && (
         <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 text-xs">
           {task.branch && (

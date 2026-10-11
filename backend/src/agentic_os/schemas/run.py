@@ -47,6 +47,7 @@ class RunRead(BaseModel):
     task_id: str | None
     stage_id: str | None
     verdict: Verdict | None
+    parent_run_id: str | None = None
     task_code: str | None = None
     stage_name: str | None = None
     created_at: datetime
@@ -66,6 +67,12 @@ class ControlRequest(BaseModel):
 
     action: ControlAction
     client_id: Annotated[str, StringConstraints(min_length=1, max_length=64)]
+
+
+class PermissionAnswer(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    approve: bool
 
 
 class RunEventRead(BaseModel):

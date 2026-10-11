@@ -80,7 +80,20 @@ def test_claude_is_isolated_with_its_own_files_and_the_prompt_first(tmp_path: Pa
         "headers": {"Authorization": f"Bearer {ctx.token}"},
     }
     hooks = json.loads((ctx.run_dir / "settings.json").read_text("utf-8"))["hooks"]
-    assert set(hooks) == {"SessionStart", "UserPromptSubmit", "Stop", "SessionEnd"}
+    assert set(hooks) == {
+        "SessionStart",
+        "UserPromptSubmit",
+        "Stop",
+        "SessionEnd",
+        "SubagentStart",
+        "SubagentStop",
+        "PreToolUse",
+        "PostToolUse",
+        "PermissionRequest",
+    }
+    # Tool hooks only for the native subagent tool (no curl on every tool call).
+    assert hooks["PreToolUse"][0]["matcher"] == "Agent|Task"
+    assert "matcher" not in hooks["Stop"][0]
     assert hooks["Stop"][0]["hooks"][0]["command"] == f'"{ctx.hook_command}" Stop'
     assert (ctx.run_dir / "instructions.md").read_text("utf-8") == "# Tu rol: Dev\n"
 
@@ -140,7 +153,10 @@ def test_agy_workspace_plugin(tmp_path: Path):
     assert mcp == {"mcpServers": {"agentic-os": {"url": ctx.mcp_url}}}
     assert ctx.token in ctx.mcp_url
     hooks = json.loads((plugin / "hooks.json").read_text("utf-8"))["agentic-os"]
-    assert set(hooks) == {"PreInvocation", "Stop"}
+    assert set(hooks) == {"PreInvocation", "Stop", "PreToolUse", "PostToolUse"}
+    assert hooks["PreToolUse"][0]["matcher"] == "invoke_subagent"
+    assert hooks["PreToolUse"][0]["hooks"][0]["type"] == "command"
+    assert hooks["Stop"][0]["type"] == "command"
     command = hooks["Stop"][0]["command"]
     assert command == f"{ctx.hook_command} Stop" and '"' not in command  # cmd.exe, no quotes
     assert (plugin / "rules" / "AGENTS.md").read_text("utf-8") == "# Tu rol: Dev\n"

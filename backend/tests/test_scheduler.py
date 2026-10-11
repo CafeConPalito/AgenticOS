@@ -4,18 +4,21 @@ run ends, pause, recovery and launch errors."""
 from __future__ import annotations
 
 from collections.abc import Iterator
+from datetime import timedelta
 from pathlib import Path
 
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
 from agentic_os.config import Settings
-from agentic_os.db.base import DEFAULT_WORKSPACE
+from agentic_os.db.base import DEFAULT_WORKSPACE, utcnow
 from agentic_os.db.migrate import upgrade_to_head
 from agentic_os.db.session import create_db_engine, database_url, make_sessionmaker
 from agentic_os.errors import ApiError
 from agentic_os.models import (
     Agent,
+    InboxItem,
+    InboxKind,
     Priority,
     Project,
     Run,
@@ -26,7 +29,7 @@ from agentic_os.models import (
     WorkspaceMode,
 )
 from agentic_os.schemas.pipeline import PipelineWrite, StageWrite
-from agentic_os.services import pipelines
+from agentic_os.services import inbox, pipelines
 from agentic_os.services import tasks as task_ops
 from agentic_os.services.scheduler import Scheduler, blocked_reason
 
@@ -551,3 +554,127 @@ def test_a_manual_summary_only_applies_to_its_own_run(db_factory, scheduler, lau
     scheduler.complete_manually("another-run", "no es para esta")
     end_run(db_factory, scheduler, last_run(launcher), RunStatus.EXITED)
     assert status_of(db_factory, "T-1") == ("waiting_human", WaitingReason.RUN_EXITED)
+
+
+def test_a_run_idle_for_too_long_is_reported_as_stalled(db_factory, scheduler, launcher):
+    with db_factory() as db:
+        dev = make_agent(db)
+        add_task(db, make_project(db, "web"), dev, "sin terminar")
+        db.commit()
+    scheduler.step()
+    run_id = last_run(launcher)
+    with db_factory() as db:
+        db.get(Run, run_id).idle_since = utcnow() - timedelta(minutes=11)
+        db.commit()
+    assert scheduler.check_stalled() == 1
+    assert scheduler.check_stalled() == 0  # one notice per run
+    with db_factory() as db:
+        [item] = db.query(InboxItem).all()
+        assert (item.kind, item.status, item.run_id) == ("stalled", "pending", run_id)
+
+    end_run(db_factory, scheduler, run_id, RunStatus.COMPLETED)  # it ends: no longer stalled
+    with db_factory() as db:
+        assert db.query(InboxItem).filter_by(kind="stalled").one().status == "resolved"
+
+
+# ---------------------------------------------------------------- code review (phase 06)
+def test_live_waits_hold_the_agent_until_their_cli_is_gone(db_factory, scheduler, launcher):
+    with db_factory() as db:
+        dev = make_agent(db)
+        web, blog = make_project(db, "web"), make_project(db, "blog")
+        add_task(db, web, dev, "pregunta")
+        add_task(db, blog, dev, "siguiente")
+        db.commit()
+    scheduler.step()
+    with db_factory() as db:
+        task = db.query(Task).filter(Task.number == 1).one()
+        task_ops.wait_for_human(db, task, WaitingReason.HUMAN_REQUEST, "¿A o B?")
+        db.commit()
+        with pytest.raises(ApiError) as error:  # a second run would duplicate the first
+            task_ops.retry(db, db.get(Task, task.id))
+        assert error.value.code == "task_live"
+    scheduler.step()
+    assert len(launcher.launched) == 1  # the waiting task still holds the agent (concurrency 1)
+
+    end_run(db_factory, scheduler, last_run(launcher), RunStatus.EXITED)
+    assert status_of(db_factory, "T-1") == ("waiting_human", "question_pending")
+    assert [code for code, _ in launcher.launched] == ["T-1", "T-2"]  # the agent is free
+
+
+def test_recovery_turns_live_waits_into_offline_ones(db_factory, scheduler, launcher):
+    with db_factory() as db:
+        dev = make_agent(db, concurrency=2)
+        web = make_project(db, "web", WorkspaceMode.WORKTREE)
+        add_task(db, web, dev, "pregunta")
+        add_task(db, web, dev, "permiso")
+        db.commit()
+    scheduler.step()
+    with db_factory() as db:
+        first, second = db.query(Task).order_by(Task.number).all()
+        task_ops.wait_for_human(db, first, WaitingReason.HUMAN_REQUEST)
+        task_ops.wait_for_human(db, second, WaitingReason.PERMISSION)
+        db.commit()
+    assert scheduler.recover() == 2
+    assert status_of(db_factory, "T-1") == ("waiting_human", "question_pending")
+    assert status_of(db_factory, "T-2") == ("waiting_human", "interrupted")
+
+
+def test_a_subagent_ending_frees_its_permission_wait_and_releases_last(
+    db_factory, scheduler, launcher
+):
+    released: list[str] = []
+    scheduler.release_workspace = lambda db, task, project: released.append(task.code)
+    with db_factory() as db:
+        dev = make_agent(db)
+        add_task(db, make_project(db, "web", WorkspaceMode.WORKTREE), dev, "con hija")
+        db.commit()
+    scheduler.step()
+    parent_id = last_run(launcher)
+    with db_factory() as db:
+        parent = db.get(Run, parent_id)
+        child = Run(
+            workspace_id=DEFAULT_WORKSPACE,
+            agent_name="Dev",
+            agent_color="#fff",
+            project_name="web",
+            cli="claude",
+            prompt="hija",
+            cwd=parent.cwd,
+            status=RunStatus.RUNNING,
+            task_id=parent.task_id,
+            parent_run_id=parent_id,
+        )
+        db.add(child)
+        db.flush()
+        task = db.get(Task, parent.task_id)
+        inbox.create(db, InboxKind.APPROVAL, "¿Puedo?", task=task, run=child, command="rm x")
+        task_ops.wait_for_human(db, task, WaitingReason.PERMISSION, "rm x")
+        db.commit()
+        child_id = child.id
+    end_run(db_factory, scheduler, child_id, RunStatus.STOPPED)
+    with db_factory() as db:
+        assert db.query(InboxItem).one().status == "resolved"
+    assert status_of(db_factory, "T-1") == ("running", None)
+
+    # The parent ends while another subagent is alive: the worktree waits for it.
+    with db_factory() as db:
+        other = Run(
+            workspace_id=DEFAULT_WORKSPACE,
+            agent_name="Dev",
+            agent_color="#fff",
+            project_name="web",
+            cli="claude",
+            prompt="otra",
+            cwd="x",
+            status=RunStatus.RUNNING,
+            task_id=db.get(Run, parent_id).task_id,
+            parent_run_id=parent_id,
+        )
+        db.add(other)
+        db.commit()
+        other_id = other.id
+    end_run(db_factory, scheduler, parent_id, RunStatus.COMPLETED)
+    assert status_of(db_factory, "T-1") == ("done", None)
+    assert released == []
+    end_run(db_factory, scheduler, other_id, RunStatus.STOPPED)
+    assert released == ["T-1"]

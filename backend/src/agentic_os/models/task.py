@@ -40,6 +40,10 @@ class WaitingReason(StrEnum):
     LAUNCH_FAILED = "launch_failed"
     NO_AGENT = "no_agent"  # its stage (or the task) has no agent
     WORKSPACE_FAILED = "workspace_failed"
+    HUMAN_REQUEST = "human_request"  # the agent asked something (request_human)
+    PERMISSION = "permission"  # a permission dialog of the CLI waits
+    # The agent asked (request_human) and its CLI is gone: the answer starts a new run.
+    QUESTION_PENDING = "question_pending"
 
 
 def _in(column: str, enum: type[StrEnum]) -> str:
@@ -82,6 +86,10 @@ class Task(IdMixin, WorkspaceMixin, TimestampMixin, Base):
     queued_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
     started_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
     finished_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    # A subtask (create_subtask): the task whose agent created it.
+    parent_task_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("tasks.id", ondelete="SET NULL"), nullable=True, index=True
+    )
 
     @property
     def code(self) -> str:
@@ -102,6 +110,9 @@ class TaskEventKind(StrEnum):
     CANCELLED = "cancelled"
     DONE = "done"
     WORKSPACE = "workspace"  # worktree created, removed or failing
+    HUMAN_REQUEST = "human_request"  # the agent asked (request_human)
+    HUMAN_ANSWERED = "human_answered"  # the person answered
+    SUBTASK = "subtask"  # the agent created a subtask
 
 
 class TaskEvent(IdMixin, Base):

@@ -4,6 +4,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from agentic_os.db.base import Base
 
 SCHEDULER_PAUSED = "scheduler_paused"
+NOTIFICATIONS = "notifications"  # JSON: which Inbox kinds notify, and the sound
 
 
 class AppState(Base):

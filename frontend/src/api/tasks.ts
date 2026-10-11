@@ -1,12 +1,21 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { agentKeys } from './agents'
-import type { AgentQueue, Priority, SchedulerState, Task, TaskEvent, TaskStatus } from './types'
+import type {
+  AgentQueue,
+  Priority,
+  SchedulerState,
+  Task,
+  TaskEvent,
+  TaskStatus,
+  TreeNode,
+} from './types'
 
 export interface TaskFilters {
   projectId?: string
   agentId?: string
   status?: TaskStatus[]
+  parentTaskId?: string
 }
 
 export const taskKeys = {
@@ -55,6 +64,22 @@ export function useTaskEvents(id: string, poll: boolean) {
     queryKey: taskKeys.events(id),
     queryFn: () => api.get<TaskEvent[]>(`/api/tasks/${id}/events`),
     refetchInterval: poll ? POLL_MS : false,
+  })
+}
+
+export function useTaskTree(id: string, poll: boolean) {
+  return useQuery({
+    queryKey: [...taskKeys.detail(id), 'tree'],
+    queryFn: () => api.get<TreeNode[]>(`/api/tasks/${id}/tree`),
+    refetchInterval: poll ? POLL_MS : false,
+  })
+}
+
+export function useSubtasks(parentId: string) {
+  return useQuery({
+    queryKey: taskKeys.list({ parentTaskId: parentId }),
+    queryFn: () => api.get<Task[]>(`/api/tasks?parent_task_id=${parentId}`),
+    refetchInterval: (q) => (q.state.data?.some(isMoving) ? POLL_MS : false),
   })
 }
 

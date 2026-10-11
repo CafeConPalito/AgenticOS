@@ -13,19 +13,24 @@ import time
 from collections import deque
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 from typing import Protocol
 
 import structlog
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from agentic_os.db.base import utcnow
 from agentic_os.errors import ApiError
 from agentic_os.models import (
+    ACTIVE_STATUSES,
     SCHEDULER_PAUSED,
     Agent,
     AgentStatus,
     AppState,
+    InboxKind,
     Project,
+    Resolution,
     Run,
     RunStatus,
     Task,
@@ -34,9 +39,11 @@ from agentic_os.models import (
     WaitingReason,
     WorkspaceMode,
 )
+from agentic_os.services import inbox
 from agentic_os.services import tasks as task_ops
 
 BACKUP_TICK = 5.0
+STALLED_AFTER = timedelta(minutes=10)
 HOUSEKEEPING = 60.0
 # Launch errors worth retrying on the next tick (the task stays queued).
 TRANSIENT_ERRORS = {"agy_folder_busy"}
@@ -176,9 +183,14 @@ class Scheduler:
         """At startup (after RunManager.recover): tasks whose run died with the previous backend
         wait for the user. Nothing is relaunched by itself."""
         with self._db() as db:
-            running = list(db.scalars(select(Task).where(Task.status == TaskStatus.RUNNING)))
+            running = list(db.scalars(select(Task).where(task_ops.occupies_agent())))
             for task in running:
-                task_ops.wait_for_human(db, task, WaitingReason.INTERRUPTED)
+                if task.waiting_reason == WaitingReason.HUMAN_REQUEST:
+                    # Its question is still in the Inbox: the answer will start a new run.
+                    task_ops.wait_for_human(db, task, WaitingReason.QUESTION_PENDING)
+                else:
+                    task_ops.wait_for_human(db, task, WaitingReason.INTERRUPTED)
+            inbox.resolve_pending(db, Resolution.DISMISSED, kinds=(InboxKind.APPROVAL,))
             db.commit()
             return len(running)
 
@@ -202,7 +214,7 @@ class Scheduler:
         running = db.scalar(
             select(func.count())
             .select_from(Task)
-            .where(Task.agent_id == agent.id, Task.status == TaskStatus.RUNNING)
+            .where(Task.agent_id == agent.id, task_ops.occupies_agent())
         )
         free = agent.max_concurrency - (running or 0)
         for task in task_ops.queue_of(db, agent.id):
@@ -267,12 +279,37 @@ class Scheduler:
             task = db.get(Task, run.task_id)
             if task is None:
                 return
-            if task.status == TaskStatus.CANCELLED:  # cancelled while it ran: now it is closed
-                self.release_finished(db, task)
+            # Nothing the run asked for is still useful once it has ended.
+            inbox.resolve_pending(
+                db,
+                Resolution.DISMISSED,
+                run_id=run.id,
+                kinds=(InboxKind.APPROVAL, InboxKind.STALLED),
+            )
+            if task.status in (TaskStatus.DONE, TaskStatus.CANCELLED):
+                self._release_when_idle(db, task)  # the last of its CLIs has to be closed
                 db.commit()
                 return
-            if task.status != TaskStatus.RUNNING:
+            if run.parent_run_id is not None:
+                # A subagent: its end never moves the task (its parent's does). A permission
+                # dialog it left open no longer holds the task.
+                if task.waiting_reason == WaitingReason.PERMISSION and not inbox.pending(
+                    db, task_id=task.id, kinds=(InboxKind.APPROVAL,)
+                ):
+                    task_ops.resume(db, task)
+                db.commit()
+                return
+            if not task_ops.is_live(task):
                 return  # already handled
+            if (
+                task.status == TaskStatus.WAITING_HUMAN
+                and task.waiting_reason == WaitingReason.HUMAN_REQUEST
+                and run.status != RunStatus.COMPLETED
+            ):
+                # It waits for an answer with no CLI: no longer holds the agent or the folder.
+                task_ops.wait_for_human(db, task, WaitingReason.QUESTION_PENDING, run_id=run.id)
+                db.commit()
+                return
             with self._lock:
                 manual = self._inbox.manual.pop(run.id, None)
             if manual is not None:
@@ -288,16 +325,61 @@ class Scheduler:
                 )
                 task_ops.wait_for_human(db, task, reason, detail, run.id)
             if task.status in (TaskStatus.DONE, TaskStatus.CANCELLED):
-                project = db.get(Project, task.project_id)
-                if project is not None:
-                    self._release(db, task, project)
+                self._release_when_idle(db, task)
             db.commit()
+
+    def _release_when_idle(self, db: Session, task: Task) -> None:
+        """Releases a finished task's workspace once none of its runs (main or subagents) is
+        alive: their CLIs may still have files open in the worktree."""
+        alive = db.scalar(
+            select(func.count())
+            .select_from(Run)
+            .where(Run.task_id == task.id, Run.status.in_([s.value for s in ACTIVE_STATUSES]))
+        )
+        if not alive:
+            self.release_finished(db, task)
 
     def _release(self, db: Session, task: Task, project: Project) -> None:
         try:
             self.release_workspace(db, task, project)
         except Exception:
             log.exception("could not release the workspace", task=task.code)
+
+    def check_stalled(self, now: datetime | None = None) -> int:
+        """«Sin terminar»: a task's run that has waited for input for STALLED_AFTER without
+        complete_task gets an Inbox item (never closed by itself)."""
+        now = now or utcnow()
+        created = 0
+        with self._db() as db:
+            runs = db.scalars(
+                select(Run).where(
+                    Run.status.in_([s.value for s in ACTIVE_STATUSES]),
+                    Run.task_id.is_not(None),
+                    Run.parent_run_id.is_(None),
+                    Run.summary.is_(None),
+                    Run.idle_since.is_not(None),
+                    Run.idle_since < now - STALLED_AFTER,
+                )
+            )
+            for run in runs:
+                if inbox.pending(db, run_id=run.id, kinds=(InboxKind.STALLED,)):
+                    continue
+                task = db.get(Task, run.task_id)
+                if task is None or task.status != TaskStatus.RUNNING:
+                    continue
+                minutes = int(STALLED_AFTER.total_seconds() // 60)
+                inbox.create(
+                    db,
+                    InboxKind.STALLED,
+                    f"{task.code} · {task.title}",
+                    f"{run.agent_name} lleva más de {minutes} minutos esperando sin dar la "
+                    "tarea por terminada.",
+                    task=task,
+                    run=run,
+                )
+                created += 1
+            db.commit()
+        return created
 
     def release_finished(self, db: Session, task: Task) -> None:
         """For tasks finished outside a run end (cancelled, approved in review…)."""
@@ -316,7 +398,7 @@ def blocked_reason(db: Session, task: Task, project: Project) -> str | None:
         .select_from(Task)
         .where(
             Task.project_id == project.id,
-            Task.status == TaskStatus.RUNNING,
+            task_ops.occupies_agent(),
             Task.id != task.id,
         )
     )

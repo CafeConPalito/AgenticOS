@@ -36,6 +36,8 @@ class Settings(BaseSettings):
     # is removed (None: the real ones; tests point them elsewhere).
     claude_config_file: Path | None = None
     agy_settings_file: Path | None = None
+    # Debugging: appends every hook payload received (JSON lines) to this file.
+    hook_log: Path | None = None
 
 
 @lru_cache
