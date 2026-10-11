@@ -180,6 +180,7 @@ export type WaitingReason =
   | 'workspace_failed'
   | 'human_request'
   | 'permission'
+  | 'question_pending'
 
 export interface Task {
   id: string

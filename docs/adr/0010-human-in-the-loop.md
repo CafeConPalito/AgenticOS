@@ -49,7 +49,10 @@ Los agentes tienen que poder pedir cosas a la persona (aprobaciones, preguntas, 
 - La herramienta crea una «Pregunta» (con `options`) o un «Bloqueo» en la Inbox, pone la tarea en «Esperando humano» (`human_request`) y le dice al modelo que termine su turno.
 - Al responder:
   - con el CLI vivo, se escribe «Respuesta de la persona a «…»: …» y la tarea vuelve a «En ejecución»;
-  - si el CLI ya no vive, la pregunta y la respuesta quedan en el historial de la tarea (están en el contexto del siguiente intento) y la tarea vuelve a la cola, al principio.
+  - si el CLI se cierra antes de la respuesta (o la app se reinicia), la tarea pasa a «Tiene una pregunta sin responder» (`question_pending`), que ya no ocupa al agente. Al responder, la pregunta y la respuesta quedan en el historial de la tarea (están en el contexto del siguiente intento) y la tarea vuelve a la cola, al principio;
+  - si la pregunta era de un subagente que ya terminó, la respuesta se escribe en su padre;
+  - descartar la pregunta también se le dice al agente, para que siga sin la respuesta.
+- Mientras el CLI vive, «Reintentar» no está disponible (lanzaría una segunda ejecución).
 - Verificado con Claude Code y agy reales: los dos preguntan, reciben la respuesta y la usan.
 
 ### Esperas «en vivo»

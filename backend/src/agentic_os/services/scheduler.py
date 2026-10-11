@@ -183,9 +183,14 @@ class Scheduler:
         """At startup (after RunManager.recover): tasks whose run died with the previous backend
         wait for the user. Nothing is relaunched by itself."""
         with self._db() as db:
-            running = list(db.scalars(select(Task).where(Task.status == TaskStatus.RUNNING)))
+            running = list(db.scalars(select(Task).where(task_ops.occupies_agent())))
             for task in running:
-                task_ops.wait_for_human(db, task, WaitingReason.INTERRUPTED)
+                if task.waiting_reason == WaitingReason.HUMAN_REQUEST:
+                    # Its question is still in the Inbox: the answer will start a new run.
+                    task_ops.wait_for_human(db, task, WaitingReason.QUESTION_PENDING)
+                else:
+                    task_ops.wait_for_human(db, task, WaitingReason.INTERRUPTED)
+            inbox.resolve_pending(db, Resolution.DISMISSED, kinds=(InboxKind.APPROVAL,))
             db.commit()
             return len(running)
 
@@ -274,14 +279,6 @@ class Scheduler:
             task = db.get(Task, run.task_id)
             if task is None:
                 return
-            if task.status == TaskStatus.CANCELLED:  # cancelled while it ran: now it is closed
-                self.release_finished(db, task)
-                db.commit()
-                return
-            if run.parent_run_id is not None:
-                return  # a subagent: its end never moves the task (its parent's does)
-            if not task_ops.is_live(task):
-                return  # already handled (or waiting for an answer with its CLI gone)
             # Nothing the run asked for is still useful once it has ended.
             inbox.resolve_pending(
                 db,
@@ -289,12 +286,30 @@ class Scheduler:
                 run_id=run.id,
                 kinds=(InboxKind.APPROVAL, InboxKind.STALLED),
             )
+            if task.status in (TaskStatus.DONE, TaskStatus.CANCELLED):
+                self._release_when_idle(db, task)  # the last of its CLIs has to be closed
+                db.commit()
+                return
+            if run.parent_run_id is not None:
+                # A subagent: its end never moves the task (its parent's does). A permission
+                # dialog it left open no longer holds the task.
+                if task.waiting_reason == WaitingReason.PERMISSION and not inbox.pending(
+                    db, task_id=task.id, kinds=(InboxKind.APPROVAL,)
+                ):
+                    task_ops.resume(db, task)
+                db.commit()
+                return
+            if not task_ops.is_live(task):
+                return  # already handled
             if (
                 task.status == TaskStatus.WAITING_HUMAN
-                and task.waiting_reason == (WaitingReason.HUMAN_REQUEST)
+                and task.waiting_reason == WaitingReason.HUMAN_REQUEST
                 and run.status != RunStatus.COMPLETED
             ):
-                return  # it waits for the answer, which will start a new run
+                # It waits for an answer with no CLI: no longer holds the agent or the folder.
+                task_ops.wait_for_human(db, task, WaitingReason.QUESTION_PENDING, run_id=run.id)
+                db.commit()
+                return
             with self._lock:
                 manual = self._inbox.manual.pop(run.id, None)
             if manual is not None:
@@ -310,10 +325,19 @@ class Scheduler:
                 )
                 task_ops.wait_for_human(db, task, reason, detail, run.id)
             if task.status in (TaskStatus.DONE, TaskStatus.CANCELLED):
-                project = db.get(Project, task.project_id)
-                if project is not None:
-                    self._release(db, task, project)
+                self._release_when_idle(db, task)
             db.commit()
+
+    def _release_when_idle(self, db: Session, task: Task) -> None:
+        """Releases a finished task's workspace once none of its runs (main or subagents) is
+        alive: their CLIs may still have files open in the worktree."""
+        alive = db.scalar(
+            select(func.count())
+            .select_from(Run)
+            .where(Run.task_id == task.id, Run.status.in_([s.value for s in ACTIVE_STATUSES]))
+        )
+        if not alive:
+            self.release_finished(db, task)
 
     def _release(self, db: Session, task: Task, project: Project) -> None:
         try:

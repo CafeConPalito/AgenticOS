@@ -49,6 +49,7 @@ DELIVERY_CONFIRM = 20.0  # a typed message must start a turn within this time
 MESSAGE_LIMIT = 1800  # characters typed in one message (the rest: get_context)
 PERMISSION_SHOW = 0.5  # seconds a permission dialog must be on screen to be reported
 PERMISSION_GONE = 1.5  # seconds it must be missing to count as answered
+PERMISSION_QUIET = 1.0  # after answering one, the screen is not read for dialogs
 
 Message = dict
 StateCallback = Callable[[dict], None]
@@ -135,6 +136,7 @@ class RunSession:
         self._permission_candidate: str | None = None
         self._permission_seen_at = 0.0
         self._permission_missing_at = 0.0
+        self._permission_quiet_until = 0.0
         self._finished = threading.Event()
         self._lock = threading.RLock()  # control + scrollback
         self._state_lock = threading.RLock()  # status/activity changes and their persistence
@@ -540,6 +542,8 @@ class RunSession:
     def _permission_step(self, now: float) -> None:
         """Reports permission dialogs as they appear and go. TUIs redraw: a dialog must be
         seen for PERMISSION_SHOW s to count, and missing for PERMISSION_GONE s to be gone."""
+        if now < self._permission_quiet_until:
+            return  # an answered dialog may still be drawn for a moment
         dialog = self._screen.permission_dialog()
         if dialog is not None:
             self._permission_missing_at = 0.0
@@ -613,6 +617,14 @@ class RunSession:
             return False
         with contextlib.suppress(Exception):
             pty.write(ENTER if approve else ESC)
+        # This dialog is answered: report it gone, and count the next one (even if it looks the
+        # same, e.g. two «Do you want to proceed?» in a row) as a new request.
+        if self._permission_sig is not None:
+            self._permission_sig = None
+            self._permission_candidate = None
+            self._permission_missing_at = 0.0
+            self.on_permission_gone()
+        self._permission_quiet_until = time.monotonic() + PERMISSION_QUIET
         return True
 
     def _approve_agentic_os_tool(self, now: float) -> None:

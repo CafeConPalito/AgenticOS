@@ -341,9 +341,12 @@ def retry_task(task_id: str, db: DbSession, scheduler: SchedulerDep) -> TaskRead
 
 
 def _active_run(db: Session, task: Task) -> Run | None:
+    """The task's own live run (never one of its subagents)."""
     return db.scalar(
         select(Run).where(
-            Run.task_id == task.id, Run.status.in_([s.value for s in ACTIVE_STATUSES])
+            Run.task_id == task.id,
+            Run.parent_run_id.is_(None),
+            Run.status.in_([s.value for s in ACTIVE_STATUSES]),
         )
     )
 

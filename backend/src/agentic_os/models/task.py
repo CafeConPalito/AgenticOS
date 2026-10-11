@@ -42,6 +42,8 @@ class WaitingReason(StrEnum):
     WORKSPACE_FAILED = "workspace_failed"
     HUMAN_REQUEST = "human_request"  # the agent asked something (request_human)
     PERMISSION = "permission"  # a permission dialog of the CLI waits
+    # The agent asked (request_human) and its CLI is gone: the answer starts a new run.
+    QUESTION_PENDING = "question_pending"
 
 
 def _in(column: str, enum: type[StrEnum]) -> str:

@@ -71,6 +71,7 @@ WAITING_TEXT = {
     WaitingReason.LAUNCH_FAILED: "No se pudo lanzar el agente",
     WaitingReason.NO_AGENT: "La etapa no tiene agente",
     WaitingReason.WORKSPACE_FAILED: "No se pudo preparar el worktree",
+    WaitingReason.QUESTION_PENDING: "Tiene una pregunta sin responder",
 }
 
 # Statuses from which the user can act on a task, per action.
@@ -285,7 +286,11 @@ def wait_for_human(
     task.waiting_reason = reason
     task.waiting_detail = detail or None
     add_event(db, task, TaskEventKind.WAITING_HUMAN, f"{reason}: {detail}".rstrip(": "), run_id)
-    if reason not in (WaitingReason.HUMAN_REQUEST, WaitingReason.PERMISSION):
+    if reason not in (
+        WaitingReason.HUMAN_REQUEST,
+        WaitingReason.PERMISSION,
+        WaitingReason.QUESTION_PENDING,  # its question is still in the Inbox
+    ):
         # Those two bring their own Inbox item (the question, the approval).
         inbox.resolve_pending(db, Resolution.DISMISSED, task_id=task.id, kinds=ATTENTION_KINDS)
         inbox.create(
@@ -414,8 +419,11 @@ def review(
 
 def retry(db: Session, task: Task) -> None:
     """Back to the queue (front). After too many rejections the retry restarts the loop: the
-    task goes back to the stage that has to fix it, with the counter at zero."""
+    task goes back to the stage that has to fix it, with the counter at zero. Not while its CLI
+    is alive (a question or a permission waits): that would start a second run."""
     check_status(task, CAN_RETRY, "retry")
+    if is_live(task):
+        raise ApiError(409, "task_live", "the task's agent is still running", "status")
     add_event(db, task, TaskEventKind.RETRIED)
     if task.waiting_reason == WaitingReason.MAX_REJECTIONS and task.stage_id:
         stage = db.get(Stage, task.stage_id)

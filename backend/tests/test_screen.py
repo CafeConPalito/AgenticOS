@@ -158,3 +158,12 @@ def test_agy_dialogs_for_our_own_tools_are_not_permission_requests():
         "> 1. Yes, allow tool call\r\n  4. No, deny tool call\r\nesc to cancel\r\n"
     )
     assert other.permission_dialog() == PermissionDialog("tool", "github_github/create_issue")
+
+
+def test_claude_output_that_only_looks_like_a_dialog_is_not_one():
+    screen = ScreenState(Cli.CLAUDE, 100, 30)
+    screen.feed(
+        "He hecho git commit --amend para corregir el mensaje.\r\n"
+        "1. Yes, it works\r\nNo errors found.\r\n> \r\n"
+    )
+    assert screen.permission_dialog() is None

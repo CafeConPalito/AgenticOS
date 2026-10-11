@@ -486,7 +486,8 @@
       "no_agent": "La etapa no tiene agente",
       "workspace_failed": "No se pudo preparar el worktree",
       "human_request": "El agente te ha hecho una pregunta",
-      "permission": "El agente pide permiso para una acción"
+      "permission": "El agente pide permiso para una acción",
+      "question_pending": "Tiene una pregunta sin responder en la Inbox"
     },
     "blocked": {
       "folder_busy": "Carpeta ocupada"

@@ -101,7 +101,11 @@ function TaskDetail({ task }: { task: Task }) {
 
   const can = {
     enqueue: task.status === 'backlog',
-    retry: task.status === 'waiting_human',
+    // Not while its CLI is alive (a question or a permission waits): that would duplicate it.
+    retry:
+      task.status === 'waiting_human' &&
+      task.waiting_reason !== 'human_request' &&
+      task.waiting_reason !== 'permission',
     complete: task.status === 'running' || task.status === 'waiting_human',
     review: task.status === 'review',
     cancel: !['done', 'cancelled'].includes(task.status),

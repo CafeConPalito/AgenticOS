@@ -137,10 +137,15 @@ def review_item(
 
 
 @router.post("/inbox/{item_id}/dismiss")
-def dismiss_item(item_id: str, db: DbSession) -> InboxItemRead:
-    """«Marcar como revisado» on a delivery; «Descartar» on anything else."""
+def dismiss_item(item_id: str, db: DbSession, manager: ManagerDep) -> InboxItemRead:
+    """«Marcar como revisado» on a delivery; «Descartar» on anything else. Dismissing a
+    question tells the agent to go on without the answer."""
     item = _get(db, item_id)
     _pending(item)
+    if item.kind in (InboxKind.QUESTION, InboxKind.BLOCKER):
+        manager.dismiss_human(db, item)
+        db.commit()
+        return read_items(db, [item])[0]
     reviewed = item.kind == InboxKind.DELIVERY
     inbox.resolve(db, item, Resolution.REVIEWED if reviewed else Resolution.DISMISSED)
     db.commit()

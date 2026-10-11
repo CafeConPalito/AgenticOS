@@ -269,6 +269,9 @@ class RunManager:
 
     def _after_run_end(self, run_id: str) -> None:
         """A subagent's result goes to its parent; a parent's end stops its subagents."""
+        self._natives.pop(run_id, None)
+        self._permission_requests.pop(run_id, None)
+        self._mcp_seen.discard(run_id)
         with self._db() as db:
             run = db.get(Run, run_id)
             if run is None:
@@ -506,7 +509,7 @@ class RunManager:
     def permission_requested(self, run_id: str, dialog: PermissionDialog) -> None:
         """A permission dialog of the CLI is waiting (from the session's thread): an
         «Aprobación» in the Inbox, and its task waits for the person."""
-        detail = self._permission_requests.get(run_id) or dialog.subject
+        detail = self._permission_requests.pop(run_id, None) or dialog.subject
         try:
             with self._db() as db:
                 run = db.get(Run, run_id)
@@ -535,7 +538,6 @@ class RunManager:
 
     def permission_gone(self, run_id: str) -> None:
         """The dialog went away: answered from the Inbox, or by the person in the terminal."""
-        self._permission_requests.pop(run_id, None)
         try:
             with self._db() as db:
                 inbox.resolve_pending(
@@ -587,26 +589,69 @@ class RunManager:
         CLI is gone, the answer stays in the task's history and the task is queued again."""
         inbox.resolve(db, item, Resolution.ANSWERED, text)
         task = db.get(Task, item.task_id) if item.task_id else None
-        session = self.get(item.run_id) if item.run_id else None
-        message = f"Respuesta de la persona a «{item.title}»: {text}"
         if task is not None:
             task_ops.add_event(
                 db, task, TaskEventKind.HUMAN_ANSWERED, f"{item.title} → {text}", item.run_id
             )
-        if session is not None and session.alive:
-            session.deliver(message)
-            others = (
-                inbox.pending(db, task_id=task.id, kinds=(InboxKind.QUESTION, InboxKind.BLOCKER))
-                if task is not None
-                else []
-            )
-            if task is not None and not [o for o in others if o.id != item.id]:
-                task_ops.resume(db, task)
-        elif task is not None and task.waiting_reason == WaitingReason.HUMAN_REQUEST:
-            task_ops.requeue(db, task, front=True)  # a new run reads the answer in its context
+        self._reply_to_question(db, item, task, f"Respuesta de la persona a «{item.title}»: {text}")
         if item.run_id:
             self.add_event(item.run_id, EventKind.SYSTEM, "human_answered", text[:200])
         self._notify_change()
+
+    def dismiss_human(self, db: Session, item: InboxItem) -> None:
+        """The person dismissed a question or a blocker: the agent is told to go on without
+        the answer (otherwise its task would wait forever)."""
+        inbox.resolve(db, item, Resolution.DISMISSED)
+        task = db.get(Task, item.task_id) if item.task_id else None
+        self._reply_to_question(
+            db,
+            item,
+            task,
+            f"La persona ha descartado tu petición «{item.title}». Sigue sin esa respuesta o "
+            "termina explicando lo que falta.",
+        )
+        self._notify_change()
+
+    def _reply_to_question(
+        self, db: Session, item: InboxItem, task: Task | None, message: str
+    ) -> None:
+        """Types the reply into the CLI that asked or, if that was a subagent that has ended,
+        into its parent. With no live CLI, the task goes back to its queue: a new run reads the
+        reply in its context."""
+        target = self._live_asker(db, item.run_id)
+        if target is not None:
+            target.deliver(message)
+            if task is not None:
+                others = inbox.pending(
+                    db, task_id=task.id, kinds=(InboxKind.QUESTION, InboxKind.BLOCKER)
+                )
+                if not [o for o in others if o.id != item.id]:
+                    task_ops.resume(db, task)
+            return
+        if task is None:
+            return
+        live_main = db.scalar(
+            select(Run.id).where(
+                Run.task_id == task.id,
+                Run.parent_run_id.is_(None),
+                Run.status.in_([s.value for s in ACTIVE_STATUSES]),
+            )
+        )
+        if live_main is None and task.waiting_reason in (
+            WaitingReason.HUMAN_REQUEST,
+            WaitingReason.QUESTION_PENDING,
+        ):
+            task_ops.requeue(db, task, front=True)
+
+    def _live_asker(self, db: Session, run_id: str | None) -> RunSession | None:
+        if not run_id:
+            return None
+        session = self.get(run_id)
+        if session is not None and session.alive:
+            return session
+        run = db.get(Run, run_id)
+        parent = self.get(run.parent_run_id) if run and run.parent_run_id else None
+        return parent if parent is not None and parent.alive else None
 
     # ------------------------------------------------------------------ subagents, subtasks
     def spawn_subagent(self, run_id: str, prompt: str, agent_name: str = "") -> str:

@@ -49,7 +49,8 @@ DIALOG_LINES = 12  # same for the trust dialog
 CLAUDE_PERMISSION = re.compile(r"\bamend\b")  # «Tab to amend», sometimes «Tab t  amend»
 CLAUDE_YES_OPTION = re.compile(r"\b1\.?\s+Yes\b")
 CLAUDE_QUESTION = re.compile(r"(?:Do )?you want to [^?]*\?")
-CLAUDE_NO_OPTION = re.compile(r"\bNo\b")
+# The «No» option is the third one: «3. No» (sometimes drawn as «No   3.»).
+CLAUDE_NO_OPTION = re.compile(r"\b3\.\s*No\b|\bNo\s+3\.")
 AGY_COMMAND_REQUEST = "Requesting permission for:"
 AGY_DENY_OPTION = re.compile(r"No, (cancel|deny)")
 PERMISSION_LINES = 24  # the dialog must be at the bottom of the screen
@@ -62,7 +63,9 @@ class PermissionDialog:
 
     @property
     def signature(self) -> str:
-        return f"{self.kind}:{self.subject}"
+        # Claude's question is generic and redraws garble it: not part of the identity (two
+        # dialogs in a row are told apart because answering one resets the session's state).
+        return self.kind if self.kind == "claude" else f"{self.kind}:{self.subject}"
 
 
 # Printed once the CLI accepted the exit (it may still take a few seconds to end).
@@ -138,7 +141,8 @@ class ScreenState:
         lines = [line.strip() for line in self.text().splitlines() if line.strip()]
         tail = lines[-PERMISSION_LINES:]
         if self.cli == Cli.CLAUDE:
-            if not any(CLAUDE_PERMISSION.search(line) for line in tail[-6:]):
+            footer = tail[-6:]
+            if not any(CLAUDE_PERMISSION.search(line) and "Tab" in line for line in footer):
                 return None
             if not any(CLAUDE_YES_OPTION.search(line) for line in tail):
                 return None
