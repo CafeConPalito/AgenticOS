@@ -1,6 +1,6 @@
 # Fase 06: Subagentes y human-in-the-loop · Spec
 
-- **Estado**: borrador
+- **Estado**: aprobada
 - **Rama**: `phase/06-subagentes-hitl`
 
 ## Objetivo
