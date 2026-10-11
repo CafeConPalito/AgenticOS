@@ -19,6 +19,8 @@ Tests desktop (cargo test)      OK    3 passed
 Tests spikes (pytest)           OK   15 passed
 ```
 
+**Test intermitente** (2026-10-11): en una pasada de `check` los tests del backend fallaron una vez; dos repeticiones después dieron 128/128. No se ha identificado el test (probablemente uno de los que usan backend real + ConPTY). Se deja para una fase futura, por decisión del usuario.
+
 **CLI falso**: el `fake_cli.py` usa lo mismo que un CLI real:
 - en modo Claude lee `--mcp-config`/`--settings`; en modo agy lee el plugin del workspace;
 - ejecuta los `hook.cmd` reales (con `curl`);
@@ -95,7 +97,7 @@ Otras:
 - Las pendientes de fases anteriores (app instalada: cerrar con una ejecución activa; «Examinar…»; F5 en una subruta; `cleanup.py --claude`).
 
 ## Cierre
-- [ ] OK del usuario
-- [ ] Merge a `main` (`--no-ff`)
-- [ ] Tag `v0.5`
-- [ ] `docs/roadmap.md` actualizado
+- [x] OK del usuario (2026-10-11; las comprobaciones manuales pendientes quedan para más adelante)
+- [x] Merge a `main` (`--no-ff`)
+- [x] Tag `v0.5`
+- [x] `docs/roadmap.md` actualizado
