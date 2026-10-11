@@ -15,11 +15,13 @@ import re
 import secrets
 import threading
 from collections.abc import Callable
-from typing import Any, Protocol
+from typing import Any, Literal, Protocol
 
 import anyio
 from mcp.server.mcpserver import Context, MCPServer
 from starlette.types import ASGIApp, Receive, Scope, Send
+
+from agentic_os.models.run import Verdict
 
 RUN_HEADER = "x-agentic-os-run"
 # /<token>/mcp… once mounted at /r (Starlette strips the mount prefix into root_path).
@@ -58,7 +60,7 @@ class AgentBackend(Protocol):
     def mcp_connected(self, run_id: str) -> None: ...
     def get_context(self, run_id: str) -> str: ...
     def report_status(self, run_id: str, message: str) -> None: ...
-    def complete_task(self, run_id: str, summary: str) -> None: ...
+    def complete_task(self, run_id: str, summary: str, verdict: Verdict) -> str | None: ...
     def write_project_memory(self, run_id: str, note: str) -> None: ...
 
 
@@ -152,10 +154,16 @@ def build_mcp(backend: AgentBackend) -> MCPServer:
         return "Estado registrado."
 
     @server.tool()
-    async def complete_task(summary: str, ctx: Context) -> str:
-        """Marca la tarea como terminada. El resumen debe contar qué has hecho y qué queda
-        pendiente. Después de llamarla no sigas trabajando: Agentic OS cerrará la sesión."""
-        await call(backend.complete_task, _run_id(ctx), _clip(summary))
+    async def complete_task(
+        summary: str, ctx: Context, verdict: Literal["approved", "rejected"] = "approved"
+    ) -> str:
+        """Marca tu trabajo como terminado. El resumen debe contar qué has hecho y qué queda
+        pendiente. `verdict` solo cambia en las etapas que revisan el trabajo de otras:
+        "rejected" devuelve la tarea a la etapa anterior y el resumen debe explicar qué hay que
+        corregir. Después de llamarla no sigas trabajando: Agentic OS cerrará la sesión."""
+        error = await call(backend.complete_task, _run_id(ctx), _clip(summary), Verdict(verdict))
+        if error:
+            return error
         return "Tarea completada. Puedes terminar tu turno."
 
     @server.tool()

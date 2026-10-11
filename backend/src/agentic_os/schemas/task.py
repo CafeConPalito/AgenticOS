@@ -1,0 +1,125 @@
+from datetime import datetime
+from enum import StrEnum
+from typing import Annotated
+
+from pydantic import BaseModel, ConfigDict, StringConstraints, field_validator
+
+from agentic_os.models.task import Priority, TaskEventKind, TaskStatus, WaitingReason
+from agentic_os.schemas.agent import reject_null
+
+Title = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
+Description = Annotated[str, StringConstraints(max_length=20_000)]
+Summary = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=8_000)]
+
+
+class TaskCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    project_id: str
+    title: Title
+    description: Description = ""
+    priority: Priority = Priority.NORMAL
+    # Only for projects without pipeline (with one, the first stage decides).
+    agent_id: str | None = None
+    # False: the task stays in the backlog until it is queued.
+    enqueue: bool = True
+
+
+class TaskUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    title: Title | None = None
+    description: Description | None = None
+    priority: Priority | None = None
+    agent_id: str | None = None
+
+    _no_nulls = field_validator("title", "description", "priority", "agent_id", mode="before")(
+        reject_null
+    )
+
+
+class TaskRead(BaseModel):
+    id: str
+    code: str  # T-142
+    number: int
+    project_id: str
+    project_name: str
+    project_color: str
+    title: str
+    description: str
+    priority: Priority
+    status: TaskStatus
+    stage_id: str | None
+    stage_name: str | None
+    stage_index: int  # 1-based; 0 without pipeline
+    stage_count: int
+    requires_review: bool
+    agent_id: str | None
+    agent_name: str | None
+    agent_color: str | None
+    queue_position: int
+    rejections: int
+    waiting_reason: WaitingReason | None
+    waiting_detail: str | None
+    worktree_path: str | None
+    branch: str | None
+    # A queued task that cannot start now even with a free agent ("folder_busy").
+    blocked: str | None
+    active_run_id: str | None
+    last_run_id: str | None
+    queued_at: datetime | None
+    started_at: datetime | None
+    finished_at: datetime | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class TaskEventRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    at: datetime
+    kind: TaskEventKind
+    stage_name: str | None
+    agent_name: str | None
+    run_id: str | None
+    detail: str
+
+
+class CompleteRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    summary: Summary
+
+
+class ReviewAction(StrEnum):
+    APPROVE = "approve"
+    REJECT = "reject"
+
+
+class ReviewRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    action: ReviewAction
+    reason: Annotated[str, StringConstraints(strip_whitespace=True, max_length=8_000)] = ""
+    target_stage_id: str | None = None
+
+
+class QueueOrder(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    task_ids: list[str]
+
+
+class AgentQueue(BaseModel):
+    agent_id: str
+    running: list[TaskRead]
+    queued: list[TaskRead]
+
+
+class SchedulerState(BaseModel):
+    paused: bool
+    queued: int
+    running: int
+    waiting_human: int
+    review: int

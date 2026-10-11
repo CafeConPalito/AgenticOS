@@ -95,6 +95,9 @@ class AgentRead(BaseModel):
     template: str | None
     created_at: datetime
     updated_at: datetime
+    # Its queue (phase 05): tasks waiting for it and tasks it is working on.
+    queued_count: int = 0
+    running_count: int = 0
 
 
 class AgentTemplate(BaseModel):

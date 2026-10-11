@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from agentic_os.db.base import DEFAULT_WORKSPACE
 from agentic_os.db.session import get_session
 from agentic_os.errors import ApiError, NotFound
-from agentic_os.models import Project, WorkspaceMode
+from agentic_os.models import Project, Task, TaskStatus, WorkspaceMode
 from agentic_os.schemas.project import ProjectCreate, ProjectRead, ProjectUpdate
 from agentic_os.services import git, paths
 
@@ -21,7 +21,7 @@ router = APIRouter(tags=["projects"])
 DbSession = Annotated[Session, Depends(get_session)]
 
 
-def _get(session: Session, project_id: str) -> Project:
+def get_project_or_404(session: Session, project_id: str) -> Project:
     project = session.get(Project, project_id)
     if project is None or project.workspace_id != DEFAULT_WORKSPACE:
         raise NotFound("project")
@@ -103,12 +103,12 @@ def create_project(payload: ProjectCreate, session: DbSession) -> ProjectRead:
 
 @router.get("/projects/{project_id}")
 def get_project(project_id: str, session: DbSession) -> ProjectRead:
-    return _read(_get(session, project_id))
+    return _read(get_project_or_404(session, project_id))
 
 
 @router.patch("/projects/{project_id}")
 def update_project(project_id: str, payload: ProjectUpdate, session: DbSession) -> ProjectRead:
-    project = _get(session, project_id)
+    project = get_project_or_404(session, project_id)
     changes = payload.model_dump(exclude_unset=True)
     if changes.get("path"):
         path, key = paths.normalize(changes.pop("path"))
@@ -125,8 +125,15 @@ def update_project(project_id: str, payload: ProjectUpdate, session: DbSession) 
 
 @router.delete("/projects/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_project(project_id: str, session: DbSession) -> None:
-    """Removes the project from Agentic OS. The folder on disk is never touched."""
-    session.delete(_get(session, project_id))
+    """Removes the project (and its tasks) from Agentic OS. The folder on disk is never
+    touched. Not while one of its tasks is running."""
+    project = get_project_or_404(session, project_id)
+    running = session.scalar(
+        select(Task.id).where(Task.project_id == project.id, Task.status == TaskStatus.RUNNING)
+    )
+    if running:
+        raise ApiError(409, "project_busy", "a task of the project is running", "id")
+    session.delete(project)
     session.commit()
 
 
@@ -141,7 +148,7 @@ def open_in_file_manager(path: str) -> None:
 
 @router.post("/projects/{project_id}/open", status_code=status.HTTP_204_NO_CONTENT)
 def open_project_folder(project_id: str, session: DbSession) -> None:
-    project = _get(session, project_id)
+    project = get_project_or_404(session, project_id)
     if not Path(project.path).is_dir():
         raise ApiError(422, "folder_not_found", "the folder does not exist", "path")
     open_in_file_manager(project.path)

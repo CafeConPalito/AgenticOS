@@ -16,6 +16,7 @@ from agentic_os.logging_setup import configure_logging
 from agentic_os.services.clis import CliCatalog
 from agentic_os.services.mcp_server import mount_app
 from agentic_os.services.runs.manager import RunManager
+from agentic_os.services.scheduler import Scheduler
 
 
 class AgentGateway:
@@ -45,12 +46,21 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         manager.loop = asyncio.get_running_loop()
         manager.recover()
         app.state.run_manager = manager
+        scheduler = Scheduler(app.state.sessionmaker, manager)
+        manager.on_run_ended = scheduler.run_ended
+        scheduler.recover()
+        app.state.scheduler = scheduler
         app.state.mcp_gate, session_manager = mount_app(manager, manager.tokens)
+        scheduler.start()
         try:
             async with session_manager.run():
                 yield
         finally:
             app.state.mcp_gate = None
+            # The scheduler stops first: the runs closed by the shutdown are not "stopped by the
+            # user"; their tasks are found interrupted on the next start.
+            scheduler.stop()
+            manager.on_run_ended = None
             try:
                 await asyncio.to_thread(manager.shutdown)
             finally:

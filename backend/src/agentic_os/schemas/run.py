@@ -5,7 +5,7 @@ from typing import Annotated
 from pydantic import BaseModel, ConfigDict, StringConstraints
 
 from agentic_os.models.agent import Cli
-from agentic_os.models.run import Activity, EventKind, RunStatus
+from agentic_os.models.run import Activity, EventKind, RunStatus, Verdict
 
 Prompt = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=20000)]
 
@@ -43,6 +43,12 @@ class RunRead(BaseModel):
     summary: str | None
     last_status: str | None
     mcp_connected_at: datetime | None
+    # The task (and stage) a scheduled run works on; null for a manual run.
+    task_id: str | None
+    stage_id: str | None
+    verdict: Verdict | None
+    task_code: str | None = None
+    stage_name: str | None = None
     created_at: datetime
     updated_at: datetime
     # Live state, only while the run has a session in this backend.

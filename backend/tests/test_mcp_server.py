@@ -14,7 +14,8 @@ from mcp import ClientSession
 from mcp.client.streamable_http import streamable_http_client
 
 from agentic_os.config import Settings
-from agentic_os.models import Agent, Project, Run, RunEvent
+from agentic_os.models import Agent, MemoryNote, Project, Run, RunEvent
+from agentic_os.services.memory import list_notes
 
 
 @pytest.fixture
@@ -27,9 +28,11 @@ def seed_run(server: LiveServer, tmp_path: Path, memory: str = "") -> tuple[str,
     """A run row with its token (no CLI needed to exercise the tools)."""
     with server.db() as db:
         agent = Agent(name="Dev", role="Desarrollador", instructions="Escribe tests primero.")
-        project = Project(name="Web", path=str(tmp_path), path_key=str(tmp_path), memory=memory)
+        project = Project(name="Web", path=str(tmp_path), path_key=str(tmp_path))
         db.add_all([agent, project])
         db.flush()
+        if memory:
+            db.add(MemoryNote(project_id=project.id, text=memory))
         run = Run(
             agent_id=agent.id,
             project_id=project.id,
@@ -90,9 +93,11 @@ def test_tools_update_the_run_the_project_and_the_events(server: LiveServer, tmp
         assert run.last_status == "Leyendo el código del login"
         assert run.summary == "Login arreglado"
         assert run.mcp_connected_at is not None
-        memory = db.get(Project, run.project_id).memory
-    assert memory.startswith("Usa pnpm.\n\n### ")
-    assert memory.endswith("· Dev\nEl login usa OAuth con PKCE.")
+        notes = list_notes(db, run.project_id)
+        assert [(n.author_kind, n.author_name, n.agent_id, n.text) for n in notes] == [
+            ("user", "", None, "Usa pnpm."),
+            ("agent", "Dev", run.agent_id, "El login usa OAuth con PKCE."),
+        ]
     names = [name for name, _ in events(server, run_id)]
     assert names == [
         "mcp_connected",
@@ -133,3 +138,18 @@ def test_bearer_header_works_like_the_path_token(server: LiveServer, tmp_path: P
     call(f"{server.url}/r/mcp", "report_status", {"message": "por cabecera"}, headers=bearer)
     with server.db() as db:
         assert db.get(Run, run_id).last_status == "por cabecera"
+
+
+def test_only_a_stage_that_can_reject_rejects(server: LiveServer, tmp_path: Path):
+    run_id, token = seed_run(server, tmp_path)  # a manual run: no task, no stage
+    url = mcp_url(server, token)
+    answer = call(url, "complete_task", {"summary": "No me gusta", "verdict": "rejected"})
+    assert "no puede rechazar" in answer
+    with server.db() as db:
+        run = db.get(Run, run_id)
+        assert (run.summary, run.verdict) == (None, None)
+    assert "complete_task" not in [name for name, _ in events(server, run_id)]
+
+    assert "Puedes terminar" in call(url, "complete_task", {"summary": "Hecho"})
+    with server.db() as db:
+        assert db.get(Run, run_id).verdict == "approved"
