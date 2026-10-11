@@ -25,7 +25,9 @@ from agentic_os.models import (
     Agent,
     AgentStatus,
     AppState,
+    InboxKind,
     Project,
+    Resolution,
     Run,
     RunStatus,
     Task,
@@ -34,6 +36,7 @@ from agentic_os.models import (
     WaitingReason,
     WorkspaceMode,
 )
+from agentic_os.services import inbox
 from agentic_os.services import tasks as task_ops
 
 BACKUP_TICK = 5.0
@@ -202,7 +205,7 @@ class Scheduler:
         running = db.scalar(
             select(func.count())
             .select_from(Task)
-            .where(Task.agent_id == agent.id, Task.status == TaskStatus.RUNNING)
+            .where(Task.agent_id == agent.id, task_ops.occupies_agent())
         )
         free = agent.max_concurrency - (running or 0)
         for task in task_ops.queue_of(db, agent.id):
@@ -271,8 +274,23 @@ class Scheduler:
                 self.release_finished(db, task)
                 db.commit()
                 return
-            if task.status != TaskStatus.RUNNING:
-                return  # already handled
+            if run.parent_run_id is not None:
+                return  # a subagent: its end never moves the task (its parent's does)
+            if not task_ops.is_live(task):
+                return  # already handled (or waiting for an answer with its CLI gone)
+            # Nothing the run asked for is still useful once it has ended.
+            inbox.resolve_pending(
+                db,
+                Resolution.DISMISSED,
+                run_id=run.id,
+                kinds=(InboxKind.APPROVAL, InboxKind.STALLED),
+            )
+            if (
+                task.status == TaskStatus.WAITING_HUMAN
+                and task.waiting_reason == (WaitingReason.HUMAN_REQUEST)
+                and run.status != RunStatus.COMPLETED
+            ):
+                return  # it waits for the answer, which will start a new run
             with self._lock:
                 manual = self._inbox.manual.pop(run.id, None)
             if manual is not None:
@@ -316,7 +334,7 @@ def blocked_reason(db: Session, task: Task, project: Project) -> str | None:
         .select_from(Task)
         .where(
             Task.project_id == project.id,
-            Task.status == TaskStatus.RUNNING,
+            task_ops.occupies_agent(),
             Task.id != task.id,
         )
     )

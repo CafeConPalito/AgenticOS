@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from sqlalchemy import case, func, select
+from sqlalchemy import and_, case, func, or_, select
 from sqlalchemy.orm import Session
 
 from agentic_os.db.base import utcnow
@@ -18,9 +18,11 @@ from agentic_os.errors import ApiError
 from agentic_os.models import (
     PRIORITY_RANK,
     Agent,
+    InboxKind,
     Pipeline,
     Priority,
     Project,
+    Resolution,
     Stage,
     Task,
     TaskEvent,
@@ -28,6 +30,48 @@ from agentic_os.models import (
     TaskStatus,
     WaitingReason,
 )
+from agentic_os.services import inbox
+
+# Waiting reasons with the CLI still alive (the agent asked, or its CLI asks permission):
+# the task keeps its agent's slot and its folder, and resumes by itself.
+LIVE_WAIT = (WaitingReason.HUMAN_REQUEST, WaitingReason.PERMISSION)
+
+
+def occupies_agent():
+    """SQL condition: the task holds a live run (running, or waiting with its CLI alive)."""
+    return or_(
+        Task.status == TaskStatus.RUNNING,
+        and_(Task.status == TaskStatus.WAITING_HUMAN, Task.waiting_reason.in_(LIVE_WAIT)),
+    )
+
+
+def is_live(task: Task) -> bool:
+    return task.status == TaskStatus.RUNNING or (
+        task.status == TaskStatus.WAITING_HUMAN and task.waiting_reason in LIVE_WAIT
+    )
+
+
+def resume(db: Session, task: Task) -> None:
+    """A live wait is over (the question was answered, the dialog is gone): running again."""
+    if task.status == TaskStatus.WAITING_HUMAN and task.waiting_reason in LIVE_WAIT:
+        task.status = TaskStatus.RUNNING
+        task.waiting_reason = task.waiting_detail = None
+
+
+# Inbox items that only describe why a task waits: dismissed once it moves again.
+ATTENTION_KINDS = (InboxKind.ATTENTION, InboxKind.STALLED)
+
+# What «Esperando humano» means, for the Inbox (the UI has the same texts in i18n).
+WAITING_TEXT = {
+    WaitingReason.RUN_EXITED: "El agente terminó sin dar la tarea por acabada",
+    WaitingReason.RUN_FAILED: "La ejecución falló",
+    WaitingReason.RUN_STOPPED: "Se paró la ejecución",
+    WaitingReason.INTERRUPTED: "Agentic OS se cerró mientras trabajaba",
+    WaitingReason.MAX_REJECTIONS: "Se superó el máximo de rechazos",
+    WaitingReason.LAUNCH_FAILED: "No se pudo lanzar el agente",
+    WaitingReason.NO_AGENT: "La etapa no tiene agente",
+    WaitingReason.WORKSPACE_FAILED: "No se pudo preparar el worktree",
+}
 
 # Statuses from which the user can act on a task, per action.
 CAN_ENQUEUE = (TaskStatus.BACKLOG,)
@@ -177,6 +221,8 @@ def enqueue(db: Session, task: Task, front: bool = False) -> None:
     task.queued_at = utcnow()
     task.waiting_reason = task.waiting_detail = None
     add_event(db, task, TaskEventKind.QUEUED)
+    # Back in a queue: what it was waiting for (a failure, being idle) no longer applies.
+    inbox.resolve_pending(db, Resolution.DISMISSED, task_id=task.id, kinds=ATTENTION_KINDS)
 
 
 def queue_of(db: Session, agent_id: str) -> list[Task]:
@@ -237,6 +283,16 @@ def wait_for_human(
     task.waiting_reason = reason
     task.waiting_detail = detail or None
     add_event(db, task, TaskEventKind.WAITING_HUMAN, f"{reason}: {detail}".rstrip(": "), run_id)
+    if reason not in (WaitingReason.HUMAN_REQUEST, WaitingReason.PERMISSION):
+        # Those two bring their own Inbox item (the question, the approval).
+        inbox.resolve_pending(db, Resolution.DISMISSED, task_id=task.id, kinds=ATTENTION_KINDS)
+        inbox.create(
+            db,
+            InboxKind.ATTENTION,
+            f"{task.code} · {task.title}",
+            WAITING_TEXT.get(reason, str(reason)) + (f": {detail}" if detail else ""),
+            task=task,
+        )
 
 
 def _move_to_stage(db: Session, task: Task, stage: Stage, front: bool) -> None:
@@ -255,6 +311,23 @@ def finish(
     task.finished_at = utcnow()
     task.waiting_reason = task.waiting_detail = None
     add_event(db, task, kind, detail)
+    # Nothing of a finished task waits for the person any more.
+    inbox.resolve_pending(db, Resolution.DISMISSED, task_id=task.id)
+    if status == TaskStatus.DONE:
+        summary = db.scalar(
+            select(TaskEvent.detail)
+            .where(
+                TaskEvent.task_id == task.id,
+                TaskEvent.kind.in_(
+                    [TaskEventKind.STAGE_COMPLETED.value, TaskEventKind.COMPLETED_MANUALLY.value]
+                ),
+            )
+            .order_by(TaskEvent.seq.desc())
+            .limit(1)
+        )
+        inbox.create(
+            db, InboxKind.DELIVERY, f"{task.code} · {task.title}", summary or "", task=task
+        )
 
 
 def advance(db: Session, task: Task) -> None:
@@ -277,6 +350,7 @@ def stage_completed(
     stage = db.get(Stage, task.stage_id) if task.stage_id else None
     if stage is not None and stage.requires_review:
         task.status = TaskStatus.REVIEW
+        inbox.create(db, InboxKind.REVIEW, f"{task.code} · {task.title}", summary, task=task)
         return
     advance(db, task)
 
@@ -313,6 +387,7 @@ def review(
     check_status(task, CAN_REVIEW, "review")
     if approve:
         add_event(db, task, TaskEventKind.REVIEW_APPROVED, reason)
+        inbox.resolve_pending(db, Resolution.APPROVED, task_id=task.id, kinds=(InboxKind.REVIEW,))
         advance(db, task)
         return
     if not reason.strip():
@@ -326,6 +401,9 @@ def review(
                 422, "invalid_stage", "the stage is not in this pipeline", "target_stage_id"
             )
     add_event(db, task, TaskEventKind.REVIEW_REJECTED, reason.strip())
+    inbox.resolve_pending(
+        db, Resolution.REJECTED, task_id=task.id, kinds=(InboxKind.REVIEW,), response=reason
+    )
     if target is None:  # no pipeline: the same agent does it again
         requeue(db, task, front=True)
         return
@@ -369,6 +447,8 @@ HISTORY_KINDS = (
     TaskEventKind.COMPLETED_MANUALLY,
     TaskEventKind.REJECTED,
     TaskEventKind.REVIEW_REJECTED,
+    TaskEventKind.HUMAN_REQUEST,
+    TaskEventKind.HUMAN_ANSWERED,
 )
 HISTORY_LIMIT = 8_000
 
@@ -390,6 +470,8 @@ def task_context(db: Session, task: Task) -> TaskContext:
         TaskEventKind.COMPLETED_MANUALLY: "terminó (a mano)",
         TaskEventKind.REJECTED: "rechazó",
         TaskEventKind.REVIEW_REJECTED: "rechazada en revisión",
+        TaskEventKind.HUMAN_REQUEST: "preguntó a la persona",
+        TaskEventKind.HUMAN_ANSWERED: "la persona respondió",
     }
     history: list[str] = []
     size = 0

@@ -22,15 +22,23 @@ from agentic_os.models import (
     Agent,
     Cli,
     EventKind,
+    InboxItem,
+    InboxKind,
     PermissionMode,
     Project,
+    Resolution,
     Run,
     RunEvent,
     RunStatus,
     Stage,
     Task,
+    TaskEventKind,
+    TaskStatus,
     Verdict,
+    WaitingReason,
 )
+from agentic_os.services import inbox
+from agentic_os.services import tasks as task_ops
 from agentic_os.services.adapters import CliAdapter, LaunchContext, adapter_for
 from agentic_os.services.context import build_context, build_instructions
 from agentic_os.services.hooks import HOOK_EVENTS, TOOL_EVENTS, interpret, write_hook_script
@@ -40,6 +48,12 @@ from agentic_os.services.runs.launcher import resolve_executable
 from agentic_os.services.runs.screen import PermissionDialog
 from agentic_os.services.runs.session import RunSession
 from agentic_os.services.tasks import task_context
+
+PERMISSION_DETAIL = {
+    "claude": "Claude Code pide permiso para esta acción.",
+    "command": "agy pide permiso para ejecutar este comando.",
+    "tool": "agy pide permiso para usar esta herramienta.",
+}
 
 SHUTDOWN_TIMEOUT = 5.0
 
@@ -62,6 +76,8 @@ class RunManager:
         self.loop: asyncio.AbstractEventLoop | None = None
         # Called (from the run's thread) once a run has ended and its state is persisted.
         self.on_run_ended: Callable[[str], None] | None = None
+        # Called when tasks change outside an API request (a permission dialog, an answer…).
+        self.on_tasks_changed: Callable[[], None] | None = None
 
     @property
     def runs_dir(self) -> Path:
@@ -413,14 +429,116 @@ class RunManager:
 
     # ------------------------------------------------------------------ permission dialogs
     def permission_requested(self, run_id: str, dialog: PermissionDialog) -> None:
-        """A permission dialog of the CLI is waiting (from the session's thread)."""
-        request = self._permission_requests.get(run_id)
-        detail = request or dialog.subject
+        """A permission dialog of the CLI is waiting (from the session's thread): an
+        «Aprobación» in the Inbox, and its task waits for the person."""
+        detail = self._permission_requests.get(run_id) or dialog.subject
+        try:
+            with self._db() as db:
+                run = db.get(Run, run_id)
+                if run is None:
+                    return
+                task = db.get(Task, run.task_id) if run.task_id else None
+                inbox.resolve_pending(  # a previous dialog of this run is gone
+                    db, Resolution.ANSWERED_IN_TERMINAL, run_id=run_id, kinds=(InboxKind.APPROVAL,)
+                )
+                inbox.create(
+                    db,
+                    InboxKind.APPROVAL,
+                    "¿Puedo continuar?",
+                    PERMISSION_DETAIL.get(dialog.kind, ""),
+                    task=task,
+                    run=run,
+                    command=detail or None,
+                )
+                if task is not None and task.status == TaskStatus.RUNNING:
+                    task_ops.wait_for_human(db, task, WaitingReason.PERMISSION, detail, run_id)
+                db.commit()
+        except Exception:
+            log.exception("could not record a permission request", run_id=run_id)
         self.add_event(run_id, EventKind.SYSTEM, "permission_requested", detail)
+        self._notify_change()
 
     def permission_gone(self, run_id: str) -> None:
+        """The dialog went away: answered from the Inbox, or by the person in the terminal."""
         self._permission_requests.pop(run_id, None)
+        try:
+            with self._db() as db:
+                inbox.resolve_pending(
+                    db, Resolution.ANSWERED_IN_TERMINAL, run_id=run_id, kinds=(InboxKind.APPROVAL,)
+                )
+                run = db.get(Run, run_id)
+                task = db.get(Task, run.task_id) if run and run.task_id else None
+                if task is not None and task.waiting_reason == WaitingReason.PERMISSION:
+                    task_ops.resume(db, task)
+                db.commit()
+        except Exception:
+            log.exception("could not record a permission answer", run_id=run_id)
         self.add_event(run_id, EventKind.SYSTEM, "permission_answered")
+        self._notify_change()
+
+    def _notify_change(self) -> None:
+        """Tasks or the Inbox changed outside a request: the scheduler takes another look."""
+        if self.on_tasks_changed is not None:
+            self.on_tasks_changed()
+
+    # ------------------------------------------------------------------ request_human
+    def request_human(
+        self, run_id: str, title: str, detail: str = "", options: list[str] | None = None
+    ) -> str:
+        """The agent asks the person (MCP request_human): an Inbox item, the task waits, and
+        the answer comes back as a message typed into the CLI."""
+        options = [o for o in (options or []) if str(o).strip()]
+        with self._db() as db:
+            run = db.get(Run, run_id)
+            if run is None:
+                return "Error: ejecución desconocida."
+            task = db.get(Task, run.task_id) if run.task_id else None
+            kind = InboxKind.QUESTION if options else InboxKind.BLOCKER
+            inbox.create(db, kind, title, detail, task=task, run=run, options=options)
+            if task is not None:
+                task_ops.add_event(db, task, TaskEventKind.HUMAN_REQUEST, title, run_id)
+                if task.status == TaskStatus.RUNNING:
+                    task_ops.wait_for_human(db, task, WaitingReason.HUMAN_REQUEST, title, run_id)
+            db.commit()
+        self.add_event(run_id, EventKind.MCP, "request_human", title)
+        self._notify_change()
+        return (
+            "Petición enviada a la persona (Inbox). Termina tu turno ahora, sin seguir "
+            "trabajando: su respuesta te llegará como un mensaje nuevo."
+        )
+
+    def answer_human(self, db: Session, item: InboxItem, text: str) -> None:
+        """The person answered a question or a blocker. A live CLI gets it as a message; if the
+        CLI is gone, the answer stays in the task's history and the task is queued again."""
+        inbox.resolve(db, item, Resolution.ANSWERED, text)
+        task = db.get(Task, item.task_id) if item.task_id else None
+        session = self.get(item.run_id) if item.run_id else None
+        message = f"Respuesta de la persona a «{item.title}»: {text}"
+        if task is not None:
+            task_ops.add_event(
+                db, task, TaskEventKind.HUMAN_ANSWERED, f"{item.title} → {text}", item.run_id
+            )
+        if session is not None and session.alive:
+            session.deliver(message)
+            others = (
+                inbox.pending(db, task_id=task.id, kinds=(InboxKind.QUESTION, InboxKind.BLOCKER))
+                if task is not None
+                else []
+            )
+            if task is not None and not [o for o in others if o.id != item.id]:
+                task_ops.resume(db, task)
+        elif task is not None and task.waiting_reason == WaitingReason.HUMAN_REQUEST:
+            task_ops.requeue(db, task, front=True)  # a new run reads the answer in its context
+        if item.run_id:
+            self.add_event(item.run_id, EventKind.SYSTEM, "human_answered", text[:200])
+        self._notify_change()
+
+    def deliver(self, run_id: str, text: str) -> bool:
+        session = self.get(run_id)
+        if session is None or not session.alive:
+            return False
+        session.deliver(text)
+        return True
 
     def answer_permission(self, run_id: str, approve: bool) -> bool:
         session = self.get(run_id)

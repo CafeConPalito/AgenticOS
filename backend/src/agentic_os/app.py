@@ -62,6 +62,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         scheduler.release_workspace = worktrees.release
         scheduler.housekeeping = trust.flush
         manager.on_run_ended = scheduler.run_ended
+        manager.on_tasks_changed = scheduler.poke
         scheduler.recover()
         app.state.scheduler = scheduler
         app.state.mcp_gate, session_manager = mount_app(manager, manager.tokens)

@@ -150,6 +150,10 @@ always_allowed: set[str] = set()
 
 
 def hook(event: str) -> None:
+    hook_payload(event, {})
+
+
+def hook_payload(event: str, extra: dict) -> None:
     command = HOOKS.get(event)
     if not command:
         return
@@ -157,6 +161,7 @@ def hook(event: str) -> None:
         payload = {"hook_event_name": event, "session_id": (OPTIONS.get("--session-id") or [""])[0]}
     else:
         payload = {"conversationId": CONVERSATION_ID, "workspacePaths": [str(Path.cwd())]}
+    payload |= extra
     # While the hook runs the console is not raw: a Ctrl+C becomes a signal instead of a key.
     # The real CLIs just lose that key press (Agentic OS retries the stop); without this the
     # fake died with KeyboardInterrupt (the intermittent test of phase 04).
@@ -243,7 +248,10 @@ def use_tools(text: str) -> int | None:
     Phase 05 directives: `RECHAZA: x` → complete_task rejecting; `RECHAZA1: x` → rejects only
     the first time in this folder (a marker file), approves afterwards; `CONTEXTO: <file>` →
     writes what get_context returns; `GIT: <file>` → writes `git status` of the folder;
-    `SALE: n` → exits with n after the turn. A task's title
+    `SALE: n` → exits with n after the turn. Phase 06: `PREGUNTA: título|opción|…` →
+    request_human (ends the turn; a later «Respuesta de la persona…» message completes the task);
+    `PERMISO: comando` → shows the CLI's permission dialog (Claude's or agy's real texts) and
+    waits for Enter (approve) or Esc (reject). A task's title
     drives all its stages: a rejection the stage does not accept is ignored, and only the first
     accepted complete_task counts.
     """
@@ -263,6 +271,18 @@ def use_tools(text: str) -> int | None:
                 text=True,
             ).stdout
             Path(value).write_text(status, "utf-8")
+            continue
+        if keyword == "PREGUNTA" and MCP_URL is not None:
+            title, *options = [x.strip() for x in value.split("|")]
+            args_q: dict = {"title": title, "detail": "Necesito tu decisión."}
+            if options:
+                args_q["options"] = options
+            if AGY_MODE and not agy_permission("agentic-os_agentic-os/request_human"):
+                continue
+            out(f"● MCP request_human: {mcp('request_human', args_q)}")
+            continue
+        if keyword == "PERMISO":
+            out(f"● permission {'granted' if permission_dialog(value) else 'denied'}: {value}")
             continue
         if keyword == "CONTEXTO" and MCP_URL is not None:
             Path(value).write_text(mcp("get_context", {}), "utf-8")
@@ -292,6 +312,41 @@ def use_tools(text: str) -> int | None:
             if rejecting and keyword == "RECHAZA1":
                 marker.write_text("1")  # only a rejection the stage accepted counts
     return exit_code
+
+
+def permission_dialog(command: str) -> bool:
+    """The CLI's own permission dialog (texts captured from Claude Code 2.1.296 / agy 1.3.3):
+    Enter on the preselected «Yes» approves, Esc rejects."""
+    if CLAUDE_MODE:
+        hook_payload("PermissionRequest", {"tool_name": "Bash", "tool_input": {"command": command}})
+        out(f"● Bash({command})")
+        out("Bash command")
+        out(f"  {command}")
+        out("Do you want to proceed?")
+        out("❯ 1. Yes")
+        out("  2. Yes, and don’t ask again for this command")  # noqa: RUF001 (real text)
+        out("  3. No")
+        out("Esc to cancel · Tab to amend")
+    else:
+        out("Command")
+        out("Requesting permission for:")
+        out(command)
+        out("Run this command?")
+        out("> 1. Yes, run command")
+        out(f"  2. Yes, and always allow in this conversation for commands like '{command}'")
+        out("  4. No, cancel")
+        out("↑/↓ Navigate · tab Amend · ctrl+g edit/expand command")
+        out("esc to cancel")
+    while True:
+        key = read_key()
+        if key in ("\r", "\n"):
+            sys.stdout.write("\x1b[2J\x1b[H")  # the dialog goes away
+            out(f"● Ran {command}")
+            return True
+        if key == "\x1b":
+            sys.stdout.write("\x1b[2J\x1b[H")
+            out("User rejected the command. What should Claude do instead?")
+            return False
 
 
 # ---------------------------------------------------------------- TUI
@@ -324,6 +379,13 @@ def answer(text: str) -> None:
     global deaf_until
     hook("PreInvocation" if AGY_MODE else "UserPromptSubmit")
     out(f"> {text}")
+    if text.startswith("Respuesta de la persona") and MCP_URL is not None:
+        # An answer to request_human: like a model, use it and finish.
+        if AGY_MODE:
+            agy_permission("agentic-os_agentic-os/complete_task")
+        out(
+            f"● MCP complete_task: {mcp('complete_task', {'summary': 'Con la respuesta: ' + text})}"
+        )
     exit_code = use_tools(text)
     out(f"● RESPUESTA: {text}")
     out("? for shortcuts")

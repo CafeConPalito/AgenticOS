@@ -62,6 +62,7 @@ class AgentBackend(Protocol):
     def report_status(self, run_id: str, message: str) -> None: ...
     def complete_task(self, run_id: str, summary: str, verdict: Verdict) -> str | None: ...
     def write_project_memory(self, run_id: str, note: str) -> None: ...
+    def request_human(self, run_id: str, title: str, detail: str, options: list[str]) -> str: ...
 
 
 class TokenGate:
@@ -165,6 +166,22 @@ def build_mcp(backend: AgentBackend) -> MCPServer:
         if error:
             return error
         return "Tarea completada. Puedes terminar tu turno."
+
+    @server.tool()
+    async def request_human(
+        title: str, ctx: Context, detail: str = "", options: list[str] | None = None
+    ) -> str:
+        """Pide algo a la persona: una decisión, un dato o algo que solo ella puede hacer.
+        `title` es la pregunta, corta; `detail`, el contexto que necesita para responder; con
+        `options` (de 2 a 5 respuestas cortas) es una pregunta de opciones. Llega a su Inbox y como
+        notificación. Después, termina tu turno: la respuesta te llegará como un mensaje."""
+        return await call(
+            backend.request_human,
+            _run_id(ctx),
+            _clip(title)[:300],
+            _clip(detail),
+            [_clip(o)[:80] for o in (options or [])][:5],
+        )
 
     @server.tool()
     async def write_project_memory(note: str, ctx: Context) -> str:

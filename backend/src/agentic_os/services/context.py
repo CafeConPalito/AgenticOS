@@ -20,6 +20,10 @@ Trabajas dentro de Agentic OS, que coordina a varios agentes. Tienes el servidor
 - `complete_task`: cuando hayas terminado, llámala con un resumen de lo hecho y de lo que \
 queda pendiente. Después no sigas trabajando: Agentic OS cerrará la sesión.
 - `get_context`: vuelve a leer estas instrucciones, la tarea y la memoria del proyecto.
+- `request_human`: si necesitas una decisión o un dato de la persona, o algo que solo ella \
+puede hacer (una clave, un acceso), pídeselo con una pregunta corta y el contexto necesario. \
+Después termina tu turno: su respuesta te llegará como un mensaje nuevo. No lo uses para lo \
+que puedas decidir tú.
 """
 
 VERDICT_RULES = """\
