@@ -45,7 +45,12 @@ def task_section(task: TaskContext) -> str:
     if task.stage_name:
         lines.append(f"Etapa {task.stage_index} de {task.stage_count}: {task.stage_name}")
     if task.branch:
-        lines.append(f"Rama de trabajo: {task.branch} (haz commits en ella)")
+        # Not "commit in it": an agent without git permission would block on the CLI's prompt.
+        # Whatever is left uncommitted is committed to the branch when the task ends.
+        lines.append(
+            f"Rama de trabajo: {task.branch} (al terminar, Agentic OS guarda en ella lo que "
+            "quede sin commitear)"
+        )
     if task.description.strip():
         lines += ["", task.description.strip()]
     if task.rejection:
