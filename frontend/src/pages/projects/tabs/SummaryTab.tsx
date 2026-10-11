@@ -1,12 +1,14 @@
 import { useTranslation } from 'react-i18next'
-import type { Project } from '@/api/types'
+import { useTasks } from '@/api/tasks'
+import { OPEN_TASK_STATUSES, type Project, type TaskStatus } from '@/api/types'
+import { TaskCard } from '@/pages/tasks/TaskBits'
 
-function Kpi({ label }: { label: string }) {
+function Kpi({ label, value }: { label: string; value?: number }) {
   const { t } = useTranslation()
   return (
     <div className="rounded-lg border bg-card px-4 py-3">
       <div className="text-xs text-muted-foreground">{label}</div>
-      <div className="mt-1 font-mono text-[22px] font-medium">{t('common.none')}</div>
+      <div className="mt-1 font-mono text-[22px] font-medium">{value ?? t('common.none')}</div>
     </div>
   )
 }
@@ -23,14 +25,32 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
 export function SummaryTab({ project }: { project: Project }) {
   const { t } = useTranslation()
   const git = project.git
+  const tasks = useTasks({ projectId: project.id }).data
+  const count = (statuses: TaskStatus[]) =>
+    tasks ? tasks.filter((task) => statuses.includes(task.status)).length : undefined
+  const now = (tasks ?? []).filter((task) =>
+    ['running', 'waiting_human', 'review'].includes(task.status),
+  )
   return (
     <div className="flex flex-col gap-4 px-6 pt-5 pb-8">
       <div className="grid grid-cols-4 gap-3">
-        <Kpi label={t('projects.summary.openTasks')} />
-        <Kpi label={t('projects.summary.running')} />
-        <Kpi label={t('projects.summary.waiting')} />
+        <Kpi label={t('projects.summary.openTasks')} value={count(OPEN_TASK_STATUSES)} />
+        <Kpi label={t('projects.summary.running')} value={count(['running'])} />
+        <Kpi label={t('projects.summary.waiting')} value={count(['waiting_human', 'review'])} />
         <Kpi label={t('projects.summary.cost')} />
       </div>
+      <section className="rounded-lg border bg-card px-4 py-3.5">
+        <h2 className="mb-2 text-[14px] font-medium">{t('projects.summary.now')}</h2>
+        {now.length === 0 ? (
+          <p className="text-muted-foreground">{t('projects.summary.nobody')}</p>
+        ) : (
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-2">
+            {now.map((task) => (
+              <TaskCard key={task.id} task={task} showStatus />
+            ))}
+          </div>
+        )}
+      </section>
       <div className="grid grid-cols-2 gap-4">
         <section className="rounded-lg border bg-card px-4 py-3.5">
           <h2 className="mb-2 text-[14px] font-medium">{t('projects.summary.folder')}</h2>

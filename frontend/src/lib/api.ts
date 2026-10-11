@@ -95,5 +95,6 @@ export const api = {
   get: <T>(path: string) => apiFetch<T>(path),
   post: <T>(path: string, body?: unknown) => apiFetch<T>(path, jsonInit('POST', body)),
   patch: <T>(path: string, body: unknown) => apiFetch<T>(path, jsonInit('PATCH', body)),
+  put: <T>(path: string, body: unknown) => apiFetch<T>(path, jsonInit('PUT', body)),
   delete: (path: string) => apiFetch<void>(path, jsonInit('DELETE')),
 }

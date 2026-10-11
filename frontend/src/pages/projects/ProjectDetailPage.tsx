@@ -1,4 +1,4 @@
-import { BookOpen, FolderGit2, FolderOpen, ListChecks, Workflow } from 'lucide-react'
+import { BookOpen, FolderGit2, FolderOpen } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Navigate, useParams } from 'react-router'
 import { toast } from 'sonner'
@@ -12,8 +12,10 @@ import { errorMessage } from '@/lib/form-errors'
 import { LaunchRunButton } from '@/pages/runs/LaunchRunDialog'
 import { GitLabel } from './ProjectsPage'
 import { MemoryTab } from './tabs/MemoryTab'
+import { PipelineTab } from './tabs/PipelineTab'
 import { SettingsTab } from './tabs/SettingsTab'
 import { SummaryTab } from './tabs/SummaryTab'
+import { TasksTab } from './tabs/TasksTab'
 
 const TABS = ['summary', 'tasks', 'pipeline', 'memory', 'knowledge', 'settings'] as const
 type Tab = (typeof TABS)[number]
@@ -80,8 +82,8 @@ function ProjectDetail({ project, tab }: { project: Project; tab: Tab }) {
       </header>
       <RouteTabs base={`/proyectos/${project.id}`} tabs={tabs} label={t('projects.title')} />
       {tab === 'summary' && <SummaryTab project={project} />}
-      {tab === 'tasks' && <ComingSoonTab icon={ListChecks} />}
-      {tab === 'pipeline' && <ComingSoonTab icon={Workflow} />}
+      {tab === 'tasks' && <TasksTab project={project} />}
+      {tab === 'pipeline' && <PipelineTab project={project} />}
       {tab === 'memory' && <MemoryTab project={project} />}
       {tab === 'knowledge' && <ComingSoonTab icon={BookOpen} />}
       {tab === 'settings' && <SettingsTab project={project} />}

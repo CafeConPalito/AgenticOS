@@ -109,7 +109,11 @@ function AgentsTable({ agents }: { agents: Agent[] }) {
                     size="sm"
                   />
                 </TableCell>
-                <TableCell className="text-right font-mono">{t('common.none')}</TableCell>
+                <TableCell className="text-right font-mono">
+                  {agent.queued_count + agent.running_count > 0
+                    ? `${agent.running_count} · ${agent.queued_count}`
+                    : t('common.none')}
+                </TableCell>
                 <TableCell className="text-right font-mono">{t('common.none')}</TableCell>
                 <TableCell>
                   <ChevronRight className="size-4 text-muted-foreground" />

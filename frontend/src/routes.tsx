@@ -5,6 +5,7 @@ import {
   type CrumbHandle,
   ProjectCrumb,
   RunCrumb,
+  TaskCrumb,
   TextCrumb,
 } from '@/components/layout/crumbs'
 import AgentEditorPage from '@/pages/agents/AgentEditorPage'
@@ -19,6 +20,7 @@ import ProjectsPage from '@/pages/projects/ProjectsPage'
 import RunPage from '@/pages/runs/RunPage'
 import RunsPage from '@/pages/runs/RunsPage'
 import SettingsPage from '@/pages/SettingsPage'
+import TaskPage from '@/pages/tasks/TaskPage'
 import UsagePage from '@/pages/UsagePage'
 
 const crumb = (fn: CrumbHandle['crumb']): CrumbHandle => ({ crumb: fn })
@@ -77,7 +79,18 @@ export const routes: RouteObject[] = [
           },
         ],
       },
-      { path: 'tablero', element: <BoardPage /> },
+      {
+        path: 'tablero',
+        handle: crumb(() => <TextCrumb i18nKey="nav.board" />),
+        children: [
+          { index: true, element: <BoardPage /> },
+          {
+            path: 'tareas/:taskId',
+            element: <TaskPage />,
+            handle: crumb((params) => <TaskCrumb id={params.taskId} />),
+          },
+        ],
+      },
       { path: 'inbox', element: <InboxPage /> },
       { path: 'consumo', element: <UsagePage /> },
       { path: 'ajustes', element: <SettingsPage /> },

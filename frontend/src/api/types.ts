@@ -29,6 +29,8 @@ export interface AgentFields {
 export interface Agent extends AgentFields {
   id: string
   template: string | null
+  queued_count: number
+  running_count: number
   created_at: string
   updated_at: string
 }
@@ -96,6 +98,12 @@ export interface Run {
   summary: string | null
   last_status: string | null
   mcp_connected_at: string | null
+  /** The task (and stage) a scheduled run works on; null for a manual run. */
+  task_id: string | null
+  stage_id: string | null
+  verdict: 'approved' | 'rejected' | null
+  task_code: string | null
+  stage_name: string | null
   created_at: string
   updated_at: string
   controller: string | null
@@ -145,4 +153,137 @@ export interface ProjectMemory {
   /** Characters of the memory as the agents get it; above `limit` the oldest notes are left out. */
   size: number
   limit: number
+}
+
+export type TaskStatus =
+  'backlog' | 'queued' | 'running' | 'waiting_human' | 'review' | 'done' | 'cancelled'
+
+export const OPEN_TASK_STATUSES: TaskStatus[] = [
+  'backlog',
+  'queued',
+  'running',
+  'waiting_human',
+  'review',
+]
+
+export type Priority = 'high' | 'normal' | 'low'
+
+export type WaitingReason =
+  | 'run_exited'
+  | 'run_failed'
+  | 'run_stopped'
+  | 'interrupted'
+  | 'max_rejections'
+  | 'launch_failed'
+  | 'no_agent'
+  | 'workspace_failed'
+
+export interface Task {
+  id: string
+  code: string
+  number: number
+  project_id: string
+  project_name: string
+  project_color: string
+  title: string
+  description: string
+  priority: Priority
+  status: TaskStatus
+  stage_id: string | null
+  stage_name: string | null
+  stage_index: number
+  stage_count: number
+  requires_review: boolean
+  agent_id: string | null
+  agent_name: string | null
+  agent_color: string | null
+  queue_position: number
+  rejections: number
+  waiting_reason: WaitingReason | null
+  waiting_detail: string | null
+  worktree_path: string | null
+  branch: string | null
+  /** A queued task that cannot start now even with a free agent. */
+  blocked: 'folder_busy' | null
+  active_run_id: string | null
+  last_run_id: string | null
+  queued_at: string | null
+  started_at: string | null
+  finished_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type TaskEventKind =
+  | 'created'
+  | 'queued'
+  | 'stage_started'
+  | 'stage_completed'
+  | 'rejected'
+  | 'review_approved'
+  | 'review_rejected'
+  | 'waiting_human'
+  | 'retried'
+  | 'completed_manually'
+  | 'cancelled'
+  | 'done'
+  | 'workspace'
+
+export interface TaskEvent {
+  id: string
+  at: string
+  kind: TaskEventKind
+  stage_name: string | null
+  agent_name: string | null
+  run_id: string | null
+  detail: string
+}
+
+export interface AgentQueue {
+  agent_id: string
+  running: Task[]
+  queued: Task[]
+}
+
+export interface SchedulerState {
+  paused: boolean
+  queued: number
+  running: number
+  waiting_human: number
+  review: number
+}
+
+export interface Stage {
+  id: string
+  position: number
+  name: string
+  agent_id: string | null
+  agent_name: string | null
+  agent_color: string | null
+  requires_review: boolean
+  reject_to_stage_id: string | null
+  active_tasks: number
+}
+
+export interface Pipeline {
+  id: string
+  project_id: string
+  name: string
+  max_rejections: number
+  stages: Stage[]
+}
+
+export interface StageWrite {
+  id?: string | null
+  name: string
+  agent_id: string | null
+  requires_review: boolean
+  /** Index, in the same list, of an earlier stage the task goes back to on rejection. */
+  reject_to: number | null
+}
+
+export interface PipelineWrite {
+  name: string
+  max_rejections: number
+  stages: StageWrite[]
 }
