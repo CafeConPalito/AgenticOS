@@ -74,7 +74,7 @@ Ejecución interrumpida ──► «Reanudar sesión» ──► ejecución nuev
    - **logs de sesión** más antiguos que la retención (ver Limpieza).
 
 ### Reanudar sesión
-- **Modelo** (migración `0007`): `runs.resumed_from_id` (FK a `runs`, nula) y `runs.usage_baseline` (JSON: el consumo del transcript en el momento de reanudar, para no contarlo dos veces). `WaitingReason` no cambia (`interrupted`).
+- **Modelo** (migración `0007`): `runs.resumed_from_id` (FK a `runs`, nula) y `runs.usage_baseline` (JSON `{offset, cost_state}`: el tamaño del transcript y su última `cost-state` en el momento de reanudar, para no contar dos veces lo anterior; ver R1). `WaitingReason` no cambia (`interrupted`).
 - **Adapters**: `LaunchContext` gana `resume_session: str | None`.
   - Claude: `--resume <id>` en lugar de `--session-id <nuevo>`; el resto de flags igual (`--mcp-config`, `--settings` con los hooks y la *status line* nuevos, permisos). El `LaunchSpec.session_id` es el mismo ID.
   - agy: `--conversation <id>`; el plugin de workspace se vuelve a escribir con el token nuevo (el plugin viejo ya lo borró `recover`).
@@ -83,8 +83,11 @@ Ejecución interrumpida ──► «Reanudar sesión» ──► ejecución nuev
   - solo para ejecuciones `interrupted` (o `failed`/`stopped` con `cli_session_id`) sin otra ejecución viva en su tarea; si no, 409;
   - crea la ejecución nueva con el mismo agente, proyecto, tarea, etapa, carpeta de trabajo y padre; `resumed_from_id` = la interrumpida;
   - si la tarea esperaba al humano por `interrupted`, vuelve a «En ejecución» con la ejecución nueva (`task_ops`), y se resuelve su elemento «Atención» de la Inbox;
-  - **sesión que no se puede retomar**: antes de lanzar se comprueba que el transcript existe (`transcript_path` o la ruta calculada, `usage/paths.py`); si no, 409 `session_unavailable` con «Reintentar» en la UI. Si el CLI arranca pero no encuentra la sesión (Claude: «No conversation found»; agy: el texto que se capture en la tarea R1), `screen.py` lo detecta, la ejecución termina `failed` con ese error y la tarea vuelve a «Esperando humano» (`interrupted`).
-- **Consumo**: el `UsageReader` resta `usage_baseline` al leer una ejecución reanudada (Claude reescribe la `cost-state` acumulada de la sesión; agy añade pasos al mismo `transcript_full.jsonl`). En la tarea, el total suma las dos ejecuciones sin duplicar.
+  - **sesión que no se puede retomar**: antes de lanzar se comprueba que el transcript existe (`transcript_path` o la ruta calculada, `usage/paths.py`); si no, 409 `session_unavailable` con «Reintentar» en la UI. Si el CLI arranca pero no encuentra la sesión: Claude escribe `No conversation found with session ID` y termina (`screen.py` lo reconoce para dar el error); agy **no falla** y abre una conversación nueva, así que se detecta porque el primer `conversationId` de los hooks no es el pedido, y entonces se para la ejecución. En los dos casos termina `failed` con «La sesión ya no existe» y la tarea vuelve a «Esperando humano» (`interrupted`).
+- **Consumo** ([R1](evidencias/r1-reanudar.md)): los dos CLIs siguen escribiendo en el mismo transcript. La `cost-state` de Claude es acumulada tras un cierre limpio y empieza de cero tras un corte brusco (que no deja ninguna). Por eso el `UsageReader`, en una ejecución reanudada:
+  - lee las filas `assistant` de Claude y los pasos de agy **solo desde `usage_baseline.offset`**;
+  - toma la última `cost-state` posterior al `offset` y le resta `usage_baseline.cost_state` (nada si no la había); igual con el coste de la *status line*.
+  En la tarea, el total suma las dos ejecuciones sin duplicar.
 - **API**: `POST /runs/{id}/resume` → `RunRead` de la nueva. `RunRead` gana `resumed_from_id`, `resumed_by_id` y `resumable: bool`.
 - **UI**: botón «Reanudar sesión» en la página de la ejecución (junto a «Reintentar»), en el detalle de tarea (estado «Esperando humano · interrumpida») y en el elemento «Atención» de la Inbox. En el historial de la tarea, la nueva aparece como «Reanudación de #n».
 
@@ -129,7 +132,7 @@ Ejecución interrumpida ──► «Reanudar sesión» ──► ejecución nuev
 | `docs/adr/0012-packaging-and-resume.md` | nuevo |
 
 ## Tareas (en orden)
-1. [ ] **R1 · Captura de la reanudación**: con Claude y agy reales, interrumpir una sesión (matar el backend) y relanzarla a mano con `--resume` / `--conversation` y la configuración nueva. Confirmar: que recuerda la conversación, que usa el MCP y los hooks nuevos (no los guardados), cómo crecen el transcript y la `cost-state`, y el texto que muestra cada CLI con un ID inexistente. Evidencias en `evidencias/r1-reanudar.md`.
+1. [x] **R1 · Captura de la reanudación**: con Claude y agy reales, interrumpir una sesión (matar el backend) y relanzarla a mano con `--resume` / `--conversation` y la configuración nueva. Confirmar: que recuerda la conversación, que usa el MCP y los hooks nuevos (no los guardados), cómo crecen el transcript y la `cost-state`, y el texto que muestra cada CLI con un ID inexistente. Evidencias en `evidencias/r1-reanudar.md`.
 2. [ ] Versión `1.0.0` en todos los paquetes + test de coherencia.
 3. [ ] `services/proc.py` (subprocesos sin ventana) y su uso en `git`, CLIs y `os.startfile`.
 4. [ ] Copia de la BD antes de migrar (`db/backup.py`) + tests.
