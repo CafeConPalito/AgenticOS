@@ -92,40 +92,72 @@ class UsageService:
         self.on_updated: Callable[[str], None] | None = None
         self._claude_config_dir = claude_config_dir
         self._home = home
-        self._queue: queue.Queue[tuple[str, bool, bool] | None] = queue.Queue()
+        # (run id, final, retry if Claude's cost-state is missing, backfill)
+        self._queue: queue.Queue[tuple[str, bool, bool, bool] | None] = queue.Queue()
         self._readers: dict[str, _Readers] = {}
         self._lock = threading.Lock()
         self._thread: threading.Thread | None = None
+        self._stopping = threading.Event()
+        # Retries waiting for Claude to finish writing its cost-state (never block the worker).
+        self._retries: dict[str, threading.Timer] = {}
 
     # ------------------------------------------------------------------ worker
     def start(self) -> None:
         self._thread = threading.Thread(target=self._loop, name="usage", daemon=True)
         self._thread.start()
 
-    def stop(self, timeout: float = 5.0) -> None:
+    def stop(self, timeout: float = 15.0) -> None:
+        """Finishes the final reads of the runs that just closed; the pending backfill is
+        left for the next start (those runs stay «pending»)."""
         if self._thread is None:
             return
+        self._stopping.set()
+        with self._lock:
+            retries = list(self._retries.items())
+            self._retries.clear()
+        for run_id, timer in retries:
+            timer.cancel()
+            self._queue.put((run_id, True, False, False))  # its last try, now
         self._queue.put(None)
         self._thread.join(timeout)
+        if self._thread.is_alive():
+            log.warning("the usage worker did not finish in time")
         self._thread = None
 
-    def request(self, run_id: str, final: bool = False, retry: bool = True) -> None:
+    def request(
+        self, run_id: str, final: bool = False, retry: bool = True, backfill: bool = False
+    ) -> None:
         """Asks for a read; any thread. Without a worker (tests), reads right away.
-        `retry`: a final Claude read without `cost-state` is tried once more."""
+        `retry`: a final Claude read without `cost-state` is tried once more, 2 s later."""
         if self._thread is None:
             if self.refresh(run_id, final, last_try=not retry):
                 self.refresh(run_id, final, last_try=True)
         else:
-            self._queue.put((run_id, final, retry))
+            self._queue.put((run_id, final, retry, backfill))
 
     def wait_idle(self, timeout: float = 10.0) -> bool:
-        """Tests: until the queued reads are done."""
+        """Tests: until the queued reads (and their retries) are done."""
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
-            if self._queue.unfinished_tasks == 0:
+            with self._lock:
+                waiting = bool(self._retries)
+            if self._queue.unfinished_tasks == 0 and not waiting:
                 return True
             time.sleep(0.02)
         return False
+
+    def _retry_later(self, run_id: str) -> None:
+        def fire() -> None:
+            with self._lock:
+                if self._retries.pop(run_id, None) is None:
+                    return  # cancelled by stop(), which queued it already
+            self._queue.put((run_id, True, False, False))
+
+        timer = threading.Timer(FINAL_RETRY_DELAY, fire)
+        timer.daemon = True
+        with self._lock:
+            self._retries[run_id] = timer
+        timer.start()
 
     def _loop(self) -> None:
         while True:
@@ -133,11 +165,12 @@ class UsageService:
             try:
                 if item is None:
                     return
-                run_id, final, retry = item
+                run_id, final, retry, backfill = item
+                if backfill and self._stopping.is_set():
+                    continue
                 try:
                     if self.refresh(run_id, final, last_try=not retry):
-                        time.sleep(FINAL_RETRY_DELAY)  # Claude may still be closing
-                        self.refresh(run_id, final, last_try=True)
+                        self._retry_later(run_id)  # Claude may still be closing
                 except Exception:
                     log.exception("could not read the run's usage", run_id=run_id)
             finally:
@@ -260,5 +293,5 @@ class UsageService:
                 )
             )
         for run_id in ids:
-            self.request(run_id, final=True, retry=False)
+            self.request(run_id, final=True, retry=False, backfill=True)
         return len(ids)

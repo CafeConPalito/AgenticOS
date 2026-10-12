@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import shutil
+import time
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -183,3 +184,49 @@ def test_the_worker_thread(db_factory, service):
     finally:
         service.stop()
     assert get(db_factory, run_id).input_tokens == 90094
+
+
+def test_the_retry_waits_without_blocking_the_worker(db_factory, service, tmp_path: Path):
+    """A final Claude read without cost-state is retried 2 s later by a timer: meanwhile the
+    worker reads other runs."""
+    source = (FIXTURES / "claude-2.1.296-two-turns.jsonl").read_text("utf-8").splitlines()
+    transcript = without_cost_state(
+        FIXTURES / "claude-2.1.296-two-turns.jsonl", tmp_path / "s.jsonl"
+    )
+    claude = make_run(db_factory, transcript_path=str(transcript))
+    agy = make_run(
+        db_factory, cli="agy", transcript_path=str(FIXTURES / "agy-1.3.3-subagent-main.jsonl")
+    )
+    service.start()
+    try:
+        service.request(claude, final=True)
+        service.request(agy, final=True)
+        deadline = time.monotonic() + 1.5
+        while get(db_factory, agy).usage_status != UsageStatus.FINAL:
+            assert time.monotonic() < deadline, "the worker was blocked by the retry"
+            time.sleep(0.05)
+        assert get(db_factory, claude).usage_status == UsageStatus.PARTIAL
+        with transcript.open("a", encoding="utf-8") as file:  # Claude finishes closing
+            file.write(next(r for r in source if '"cost-state"' in r) + "\n")
+        assert service.wait_idle()
+    finally:
+        service.stop()
+    run = get(db_factory, claude)
+    assert (run.usage_status, run.usage_source) == (UsageStatus.FINAL, "cost-state")
+
+
+def test_stopping_leaves_the_backfill_for_the_next_start(db_factory, service):
+    ids = []
+    for _ in range(3):
+        run_id = make_run(
+            db_factory, cli="agy", transcript_path=str(FIXTURES / "agy-1.3.3-subagent-main.jsonl")
+        )
+        with db_factory() as db:
+            db.get(Run, run_id).status = RunStatus.COMPLETED
+            db.commit()
+        ids.append(run_id)
+    service._stopping.set()  # as if stop() had begun before the worker got to them
+    service.start()
+    service.backfill()
+    service.stop()
+    assert {get(db_factory, i).usage_status for i in ids} == {UsageStatus.PENDING}

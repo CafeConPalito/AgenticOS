@@ -56,14 +56,18 @@ AGY_DENY_OPTION = re.compile(r"No, (cancel|deny)")
 PERMISSION_LINES = 24  # the dialog must be at the bottom of the screen
 
 # Out of quota (phase 07). No real screen has been seen yet: the texts come from the CLIs'
-# binaries (Claude Code 2.1.296, agy 1.3.3; evidence C0). Not quota: Claude's «Context limit
-# reached» and its fast-mode limits («You've hit your fast limit», «Fast limit reached»).
+# binaries (Claude Code 2.1.296, agy 1.3.3; evidence C0). Only the CLIs' own wording counts, so
+# an agent's output about *its* app («rate limit», «RESOURCE_EXHAUSTED» in a gRPC log) is not a
+# quota: no generic error codes, and Claude's «You've hit your … limit» only for its own plans.
+# Not quota either: «Context limit reached» and the fast-mode limits.
 QUOTA_PATTERNS = {
     Cli.CLAUDE: re.compile(
-        r"Usage limit reached|You've hit your (?!fast)[\w -]*limit|usage limit (?:will )?reset",
+        r"Usage limit reached"
+        r"|You've hit your (?:(?:session|weekly|monthly|5-hour|usage|spend)[\w -]*)?limit"
+        r"|your usage limit (?:will )?reset",
         re.IGNORECASE,
     ),
-    Cli.AGY: re.compile(r"Quota exhausted|Out of credits|RESOURCE_EXHAUSTED", re.IGNORECASE),
+    Cli.AGY: re.compile(r"^(?:[│|>❯✗✘⚠!*-]\s*)?(?:Quota exhausted|AI: Out of credits)\b"),
 }
 # When the quota comes back, if the CLI says it.
 QUOTA_RESET = {

@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { isActive } from '@/api/runs'
 import type { Run, UsageTotals } from '@/api/types'
 import { useNow } from '@/hooks/use-now'
-import { formatTokens, formatUsd } from '@/lib/format'
+import { formatTokens, formatUsd, totalTokens } from '@/lib/format'
 import { formatDuration } from '@/lib/time'
 
 /**
@@ -53,13 +53,7 @@ export function SessionUsage({ run, taskTotal }: { run: Run; taskTotal?: UsageTo
         <p className="mt-1 text-[11.5px] text-muted-foreground">
           {t('usage.session.taskTotal')}{' '}
           <span className="font-mono text-foreground">
-            {formatTokens(
-              taskTotal.input_tokens +
-                taskTotal.output_tokens +
-                taskTotal.cache_read_tokens +
-                taskTotal.cache_creation_tokens,
-            )}{' '}
-            · {formatUsd(taskTotal.cost_usd)}
+            {formatTokens(totalTokens(taskTotal, run.cli))} · {formatUsd(taskTotal.cost_usd)}
           </span>
         </p>
       )}

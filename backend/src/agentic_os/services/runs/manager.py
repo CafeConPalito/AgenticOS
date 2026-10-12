@@ -602,18 +602,27 @@ class RunManager:
         self.add_event(run_id, EventKind.SYSTEM, "quota_exhausted", notice)
         self._notify_change()
 
-    def resume_after_quota(self, db: Session, item: InboxItem) -> None:
-        """«Reanudar»: the task runs again, the agent is told to go on (if its CLI is still
-        alive) and the scheduler may start tasks of this CLI again. The caller commits."""
-        inbox.resolve(db, item, Resolution.APPROVED)
+    def resume_after_quota(
+        self,
+        db: Session,
+        item: InboxItem,
+        resolution: Resolution = Resolution.APPROVED,
+        nudge: bool = True,
+    ) -> None:
+        """«Reanudar» (or «Descartar», without the nudge): the task runs again, the agent is
+        told to go on if its CLI is still alive, and the scheduler may start tasks of this CLI
+        again. The caller commits."""
+        inbox.resolve(db, item, resolution)
         task = db.get(Task, item.task_id) if item.task_id else None
         if task is not None and task.waiting_reason == WaitingReason.QUOTA:
             task_ops.resume(db, task)
         if item.run_id:
             session = self.get(item.run_id)
             if session is not None and session.alive:
-                session.deliver("continúa")
-                self.add_event(item.run_id, EventKind.SYSTEM, "quota_resumed")
+                session.quota_resumed()  # a new notice is reported again
+                if nudge:
+                    session.deliver("continúa")
+                    self.add_event(item.run_id, EventKind.SYSTEM, "quota_resumed")
 
     def _notify_change(self) -> None:
         """Tasks or the Inbox changed outside a request: the scheduler takes another look."""

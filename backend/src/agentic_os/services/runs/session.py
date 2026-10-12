@@ -50,6 +50,7 @@ MESSAGE_LIMIT = 1800  # characters typed in one message (the rest: get_context)
 PERMISSION_SHOW = 0.5  # seconds a permission dialog must be on screen to be reported
 PERMISSION_GONE = 1.5  # seconds it must be missing to count as answered
 QUOTA_GONE = 30.0  # seconds the quota notice must be gone before a new one is reported
+QUOTA_QUIET = 10.0  # after «Reanudar»: the old notice may still be on screen meanwhile
 PERMISSION_QUIET = 1.0  # after answering one, the screen is not read for dialogs
 
 Message = dict
@@ -142,6 +143,7 @@ class RunSession:
         self._permission_missing_at = 0.0
         self._permission_quiet_until = 0.0
         self._quota_reported: str | None = None
+        self._quota_quiet_until = 0.0
         self._quota_missing_at = 0.0
         self._finished = threading.Event()
         self._lock = threading.RLock()  # control + scrollback
@@ -578,6 +580,8 @@ class RunSession:
     def _quota_step(self, now: float) -> None:
         """Reports the CLI's out-of-quota notice once. After it has been gone for a while, a
         new notice is reported again."""
+        if now < self._quota_quiet_until:
+            return
         notice = self._screen.quota_notice()
         if notice is not None:
             self._quota_missing_at = 0.0
@@ -591,6 +595,12 @@ class RunSession:
             self._quota_missing_at = now
         elif now - self._quota_missing_at >= QUOTA_GONE:
             self._quota_reported, self._quota_missing_at = None, 0.0
+
+    def quota_resumed(self) -> None:
+        """The person resumed after «Cuota agotada»: a notice seen after a short quiet time
+        (the old one may still be drawn) is reported again."""
+        self._quota_reported, self._quota_missing_at = None, 0.0
+        self._quota_quiet_until = time.monotonic() + QUOTA_QUIET
 
     def deliver(self, text: str) -> None:
         """Queues a message for the agent; it is typed as soon as the CLI waits for input."""

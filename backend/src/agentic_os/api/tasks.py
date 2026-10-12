@@ -14,7 +14,6 @@ from agentic_os.errors import ApiError, NotFound
 from agentic_os.models import (
     ACTIVE_STATUSES,
     Agent,
-    Cli,
     Project,
     Run,
     RunEvent,
@@ -116,7 +115,7 @@ def read_tasks(db: Session, tasks: list[Task]) -> list[TaskRead]:
     # Queued tasks of a CLI over its daily limit or out of quota wait (phase 07).
     gates: dict[str, str | None] = {}
     if any(t.status == TaskStatus.QUEUED for t in tasks):
-        gates = {cli.value: usage_limits.blocked(db, cli) for cli in Cli}
+        gates = {cli.value: gate for cli, gate in usage_limits.blocked_all(db).items()}
     result = []
     for task in tasks:
         project = projects[task.project_id]

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from collections.abc import Iterator
 from datetime import UTC, date, datetime, timedelta, timezone
 from pathlib import Path
@@ -21,6 +22,7 @@ from agentic_os.models import (
     InboxKind,
     InboxStatus,
     Project,
+    Resolution,
     Run,
     RunStatus,
     Task,
@@ -28,6 +30,7 @@ from agentic_os.models import (
     WaitingReason,
 )
 from agentic_os.schemas.usage import UsageLimits
+from agentic_os.services import inbox
 from agentic_os.services import tasks as task_ops
 from agentic_os.services.runs.manager import RunManager
 from agentic_os.services.runs.screen import ScreenState
@@ -231,6 +234,11 @@ def test_quota_notice_on_screen():
     # Not quota: Claude's context and fast-mode limits, or a mention far above the bottom.
     assert screen(Cli.CLAUDE, "Context limit reached · /compact").quota_notice() is None
     assert screen(Cli.CLAUDE, "You've hit your fast limit").quota_notice() is None
+    assert screen(Cli.CLAUDE, "You've hit your limit · resets 5pm").quota_notice() is not None
+    # The agent's own output about the app it works on is not the CLI's quota.
+    assert screen(Cli.CLAUDE, "● You've hit your rate limit on the API").quota_notice() is None
+    assert screen(Cli.AGY, "grpc error: RESOURCE_EXHAUSTED (quota)").quota_notice() is None
+    assert screen(Cli.AGY, "El log dice: Quota exhausted en el servidor").quota_notice() is None
     old = "Quota exhausted\n" + "\n".join(f"línea {i}" for i in range(15))
     assert screen(Cli.AGY, old).quota_notice() is None
 
@@ -263,3 +271,64 @@ def test_quota_blocks_the_cli_until_resumed(db_factory, tmp_path: Path):
         assert items[0].status == InboxStatus.RESOLVED
         assert limits.blocked(db, Cli.AGY) is None
     assert status_of(db_factory, "T-1") == (TaskStatus.RUNNING, None)
+
+
+# ---------------------------------------------------------------------- code review
+def test_a_seen_limit_item_is_not_created_again_the_same_day(db_factory, seeded):
+    with db_factory() as db:
+        limits.save_limits(db, UsageLimits(claude_usd=2.0))
+        limits.sync_limit_items(db, DAY, TZ)
+        item = db.query(InboxItem).filter(InboxItem.kind == InboxKind.LIMIT).one()
+        # «Descartar» in the Inbox marks it as seen (api/inbox.py).
+        inbox.resolve(db, item, Resolution.REVIEWED)
+        db.commit()
+        limits.sync_limit_items(db, DAY, TZ)
+        assert db.query(InboxItem).filter(InboxItem.kind == InboxKind.LIMIT).count() == 1
+        # Moving the limit up and down again the same day: the seen item still holds.
+        limits.save_limits(db, UsageLimits(claude_usd=10.0))
+        limits.sync_limit_items(db, DAY, TZ)
+        limits.save_limits(db, UsageLimits(claude_usd=1.0))
+        limits.sync_limit_items(db, DAY, TZ)
+        assert db.query(InboxItem).filter(InboxItem.kind == InboxKind.LIMIT).count() == 1
+
+
+def test_blocked_all_reads_today_once(db_factory, seeded, monkeypatch):
+    calls = []
+    real = stats.runs_between
+
+    def counting(*args, **kwargs):
+        calls.append(1)
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(limits, "runs_between", counting)
+    with db_factory() as db:
+        assert limits.blocked_all(db, DAY, TZ) == {Cli.CLAUDE: None, Cli.AGY: None}
+        assert calls == []  # no limit set: no need to read today's runs
+        limits.save_limits(db, UsageLimits(claude_usd=2.0, agy_tokens=5000))
+        assert limits.blocked_all(db, DAY, TZ) == {Cli.CLAUDE: "limit", Cli.AGY: None}
+        assert len(calls) == 1
+
+
+def test_a_throttled_limit_check_runs_once_more_later(db_factory, monkeypatch):
+    import agentic_os.services.scheduler as scheduler_module
+
+    monkeypatch.setattr(scheduler_module, "LIMIT_CHECK_EVERY", 0.3)
+    scheduler = Scheduler(db_factory, FakeLauncher())
+    scheduler.check_limits(force=True)
+    with db_factory() as db:
+        dev, web = make_agent(db, "Dev"), make_project(db, "Web")
+        add_run(db, dev, web, utcnow(), cost=3.0)
+        limits.save_limits(db, UsageLimits(claude_usd=1.0))
+        db.commit()
+    scheduler.check_limits()  # throttled: the trailing check creates the item
+    with db_factory() as db:
+        assert db.query(InboxItem).filter(InboxItem.kind == InboxKind.LIMIT).count() == 0
+    deadline = time.monotonic() + 5
+    while time.monotonic() < deadline:
+        with db_factory() as db:
+            if db.query(InboxItem).filter(InboxItem.kind == InboxKind.LIMIT).count() == 1:
+                break
+        time.sleep(0.05)
+    with db_factory() as db:
+        assert db.query(InboxItem).filter(InboxItem.kind == InboxKind.LIMIT).count() == 1
+    scheduler.stop()

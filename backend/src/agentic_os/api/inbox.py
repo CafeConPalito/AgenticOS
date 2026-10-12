@@ -150,7 +150,9 @@ def review_item(
 
 
 @router.post("/inbox/{item_id}/dismiss")
-def dismiss_item(item_id: str, db: DbSession, manager: ManagerDep) -> InboxItemRead:
+def dismiss_item(
+    item_id: str, db: DbSession, manager: ManagerDep, scheduler: SchedulerDep
+) -> InboxItemRead:
     """«Marcar como revisado» on a delivery; «Descartar» on anything else. Dismissing a
     question tells the agent to go on without the answer."""
     item = _get(db, item_id)
@@ -159,7 +161,14 @@ def dismiss_item(item_id: str, db: DbSession, manager: ManagerDep) -> InboxItemR
         manager.dismiss_human(db, item)
         db.commit()
         return read_items(db, [item])[0]
-    reviewed = item.kind == InboxKind.DELIVERY
+    if item.kind == InboxKind.QUOTA:
+        # Without «Reanudar» the task must not stay waiting: it goes on, the CLI is free.
+        manager.resume_after_quota(db, item, resolution=Resolution.DISMISSED, nudge=False)
+        db.commit()
+        scheduler.poke()
+        return read_items(db, [item])[0]
+    # A seen «Límite diario» is «reviewed»: it is not created again today (limits.py).
+    reviewed = item.kind in (InboxKind.DELIVERY, InboxKind.LIMIT)
     inbox.resolve(db, item, Resolution.REVIEWED if reviewed else Resolution.DISMISSED)
     db.commit()
     return read_items(db, [item])[0]

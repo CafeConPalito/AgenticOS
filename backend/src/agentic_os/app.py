@@ -86,7 +86,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             manager.on_run_ended = None
             try:
                 await asyncio.to_thread(manager.shutdown)
-                # After the runs: their final usage reads are queued while they close.
+                # After the runs: their final usage reads are queued while they close, and
+                # the worker must be done before the engine goes away.
                 await asyncio.to_thread(manager.usage.stop)
             finally:
                 engine.dispose()

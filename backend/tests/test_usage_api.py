@@ -125,3 +125,26 @@ def test_resume_a_quota_item(client: TestClient):
 def test_dates_are_local(client: TestClient):
     today = client.get("/api/usage/today").json()
     assert today["day"] == datetime.now().astimezone().date().isoformat()
+
+
+def test_dismissing_a_quota_item_lets_the_task_go_on(client: TestClient):
+    from agentic_os.models import Task, TaskStatus, WaitingReason
+    from agentic_os.services import tasks as task_ops
+
+    ids = seed(client)
+    with client.app.state.sessionmaker() as db:
+        project = db.get(Project, ids["project"])
+        task = task_ops.create_task(db, project, "Algo", agent_id=ids["agent"])
+        task_ops.mark_running(db, task, "run-x")
+        task_ops.wait_for_human(db, task, WaitingReason.QUOTA, "Quota exhausted")
+        item = inbox.create(db, InboxKind.QUOTA, "sin cuota", "x", task=task)
+        item.command = "agy"
+        db.commit()
+        item_id, task_id = item.id, task.id
+    dismissed = client.post(f"/api/inbox/{item_id}/dismiss").json()
+    assert dismissed["resolution"] == "dismissed"
+    with client.app.state.sessionmaker() as db:
+        task = db.get(Task, task_id)
+        assert (task.status, task.waiting_reason) == (TaskStatus.RUNNING, None)
+    limits_today = client.get("/api/usage/today").json()["limits"]
+    assert not any(s["quota_exhausted"] for s in limits_today)

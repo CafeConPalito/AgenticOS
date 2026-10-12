@@ -29,7 +29,7 @@ from agentic_os.models import (
 )
 from agentic_os.schemas.usage import LimitState, UsageLimits
 from agentic_os.services import inbox
-from agentic_os.services.usage.stats import limit_tokens, local_day, runs_between
+from agentic_os.services.usage.stats import day_bounds, limit_tokens, local_day, runs_between
 
 NEAR = 0.8
 LIMIT = "limit"
@@ -59,36 +59,47 @@ def limit_of(limits: UsageLimits, cli: Cli) -> float | None:
     return limits.claude_usd if cli == Cli.CLAUDE else limits.agy_tokens
 
 
+def used_by_cli(db: Session, today: date, tz: tzinfo | None = None) -> dict[Cli, float]:
+    """What counts for each CLI's limit today, from a single read of today's runs: USD for
+    Claude Code, tokens without cache for agy."""
+    used = {cli: 0.0 for cli in Cli}
+    for run in runs_between(db, today, today, tz=tz):
+        cli = Cli(run.cli)
+        used[cli] += (run.cost_usd or 0.0) if cli == Cli.CLAUDE else limit_tokens(run)
+    return used
+
+
 def used_today(db: Session, cli: Cli, today: date, tz: tzinfo | None = None) -> float:
-    runs = runs_between(db, today, today, cli=cli, tz=tz)
-    if cli == Cli.CLAUDE:
-        return sum(r.cost_usd or 0.0 for r in runs)
-    return float(sum(limit_tokens(r) for r in runs))
+    return used_by_cli(db, today, tz)[cli]
 
 
-def quota_pending(db: Session, cli: Cli) -> bool:
-    """A «Cuota agotada» of this CLI waits for the person (its item names the CLI)."""
-    return (
-        db.scalar(
-            select(InboxItem.id)
-            .where(
-                InboxItem.kind == InboxKind.QUOTA,
-                InboxItem.status == InboxStatus.PENDING,
-                InboxItem.command == cli.value,
+def quota_pending_clis(db: Session) -> set[str]:
+    """The CLIs with a «Cuota agotada» waiting for the person (its item names the CLI)."""
+    return set(
+        db.scalars(
+            select(InboxItem.command).where(
+                InboxItem.kind == InboxKind.QUOTA, InboxItem.status == InboxStatus.PENDING
             )
-            .limit(1)
         )
-        is not None
     )
 
 
+def quota_pending(db: Session, cli: Cli) -> bool:
+    return cli.value in quota_pending_clis(db)
+
+
+def _today(today: date | None, tz: tzinfo | None) -> date:
+    return today or local_day(datetime.now().astimezone(), tz)
+
+
 def states(db: Session, today: date | None = None, tz: tzinfo | None = None) -> list[LimitState]:
-    day = today or local_day(datetime.now().astimezone(), tz)
     limits = get_limits(db)
+    used_now = used_by_cli(db, _today(today, tz), tz)
+    quota = quota_pending_clis(db)
     result = []
     for cli in (Cli.CLAUDE, Cli.AGY):
         limit = limit_of(limits, cli)
-        used = used_today(db, cli, day, tz)
+        used = used_now[cli]
         ratio = used / limit if limit else None
         result.append(
             LimitState(
@@ -99,23 +110,34 @@ def states(db: Session, today: date | None = None, tz: tzinfo | None = None) -> 
                 ratio=ratio,
                 reached=ratio is not None and ratio >= 1,
                 near=ratio is not None and ratio >= NEAR,
-                quota_exhausted=quota_pending(db, cli),
+                quota_exhausted=cli.value in quota,
             )
         )
+    return result
+
+
+def blocked_all(
+    db: Session, today: date | None = None, tz: tzinfo | None = None
+) -> dict[Cli, str | None]:
+    """Why the scheduler must not start tasks of each CLI now: "quota", "limit" or None.
+    One query for the quotas and, only if a limit is set, one for today's runs."""
+    quota = quota_pending_clis(db)
+    limits = get_limits(db)
+    result: dict[Cli, str | None] = {cli: QUOTA if cli.value in quota else None for cli in Cli}
+    pending = [cli for cli in Cli if result[cli] is None and limit_of(limits, cli) is not None]
+    if pending:
+        used = used_by_cli(db, _today(today, tz), tz)
+        for cli in pending:
+            limit = limit_of(limits, cli)
+            if limit is not None and used[cli] >= limit:
+                result[cli] = LIMIT
     return result
 
 
 def blocked(
     db: Session, cli: Cli, today: date | None = None, tz: tzinfo | None = None
 ) -> str | None:
-    """Why the scheduler must not start tasks of this CLI now: "quota", "limit" or None."""
-    if quota_pending(db, cli):
-        return QUOTA
-    limit = limit_of(get_limits(db), cli)
-    if limit is None:
-        return None
-    day = today or local_day(datetime.now().astimezone(), tz)
-    return LIMIT if used_today(db, cli, day, tz) >= limit else None
+    return blocked_all(db, today, tz)[cli]
 
 
 def _format(cli: Cli, value: float) -> str:
@@ -126,21 +148,25 @@ def _format(cli: Cli, value: float) -> str:
 
 def sync_limit_items(db: Session, today: date | None = None, tz: tzinfo | None = None) -> bool:
     """Creates today's «Límite diario alcanzado» items and resolves the ones that no longer
-    apply (another day, or the limit went up). True if a CLI got unblocked."""
-    day = today or local_day(datetime.now().astimezone(), tz)
+    apply (another day, or the limit went up). True if a CLI got unblocked.
+
+    One item per CLI and day: an item of today the person already dismissed is not created
+    again (the limit still holds; the Dashboard keeps showing it)."""
+    day = _today(today, tz)
     limits = get_limits(db)
+    used_now = used_by_cli(db, day, tz)
     unblocked = False
     pending = {(item.command or ""): item for item in inbox.pending(db, kinds=(InboxKind.LIMIT,))}
     for cli in (Cli.CLAUDE, Cli.AGY):
         limit = limit_of(limits, cli)
-        used = used_today(db, cli, day, tz)
+        used = used_now[cli]
         reached = limit is not None and used >= limit
         item = pending.get(cli.value)
         if item is not None and (not reached or local_day(item.created_at, tz) != day):
             inbox.resolve(db, item, Resolution.DISMISSED)
             unblocked = unblocked or not reached
             item = None
-        if reached and item is None and limit is not None:
+        if reached and item is None and limit is not None and not _created_today(db, cli, day, tz):
             inbox.create(
                 db,
                 InboxKind.LIMIT,
@@ -151,3 +177,19 @@ def sync_limit_items(db: Session, today: date | None = None, tz: tzinfo | None =
                 command=cli.value,
             )
     return unblocked
+
+
+def _created_today(db: Session, cli: Cli, day: date, tz: tzinfo | None) -> bool:
+    """A limit item of this CLI was already created today and still applies: pending, or seen
+    by the person («reviewed»). Items resolved because the limit went up are «dismissed»."""
+    start, end = day_bounds(day, day, tz)
+    items = db.scalars(
+        select(InboxItem).where(
+            InboxItem.kind == InboxKind.LIMIT,
+            InboxItem.command == cli.value,
+            InboxItem.created_at >= start,
+            InboxItem.created_at < end,
+            InboxItem.resolution != Resolution.DISMISSED,
+        )
+    )
+    return next(iter(items), None) is not None
