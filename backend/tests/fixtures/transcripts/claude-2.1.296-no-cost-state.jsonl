@@ -1,0 +1,37 @@
+{"sessionId": "b6e19164-7b8c-47c2-8d5c-97a67cf598de", "type": "mode"}
+{"sessionId": "b6e19164-7b8c-47c2-8d5c-97a67cf598de", "type": "permission-mode"}
+{"type": "file-history-snapshot"}
+{"type": "file-history-snapshot"}
+{"sessionId": "b6e19164-7b8c-47c2-8d5c-97a67cf598de", "type": "user", "isSidechain": false, "timestamp": "2026-10-11T14:05:27.698Z", "message": {"role": "user"}}
+{"sessionId": "b6e19164-7b8c-47c2-8d5c-97a67cf598de", "type": "attachment", "isSidechain": false, "timestamp": "2026-10-11T14:05:27.694Z"}
+{"sessionId": "b6e19164-7b8c-47c2-8d5c-97a67cf598de", "type": "attachment", "isSidechain": false, "timestamp": "2026-10-11T14:05:27.694Z"}
+{"sessionId": "b6e19164-7b8c-47c2-8d5c-97a67cf598de", "type": "attachment", "isSidechain": false, "timestamp": "2026-10-11T14:05:27.694Z"}
+{"sessionId": "b6e19164-7b8c-47c2-8d5c-97a67cf598de", "type": "attachment", "isSidechain": false, "timestamp": "2026-10-11T14:05:27.694Z"}
+{"sessionId": "b6e19164-7b8c-47c2-8d5c-97a67cf598de", "type": "attachment", "isSidechain": false, "timestamp": "2026-10-11T14:05:27.695Z"}
+{"sessionId": "b6e19164-7b8c-47c2-8d5c-97a67cf598de", "type": "attachment", "isSidechain": false, "timestamp": "2026-10-11T14:05:27.695Z"}
+{"sessionId": "b6e19164-7b8c-47c2-8d5c-97a67cf598de", "type": "atis-latch"}
+{"sessionId": "b6e19164-7b8c-47c2-8d5c-97a67cf598de", "type": "attachment", "isSidechain": false, "timestamp": "2026-10-11T14:05:28.273Z"}
+{"sessionId": "b6e19164-7b8c-47c2-8d5c-97a67cf598de", "type": "attachment", "isSidechain": false, "timestamp": "2026-10-11T14:05:28.274Z"}
+{"sessionId": "b6e19164-7b8c-47c2-8d5c-97a67cf598de", "type": "attachment", "isSidechain": false, "timestamp": "2026-10-11T14:05:28.282Z"}
+{"sessionId": "b6e19164-7b8c-47c2-8d5c-97a67cf598de", "type": "attachment", "isSidechain": false, "timestamp": "2026-10-11T14:05:28.288Z"}
+{"sessionId": "b6e19164-7b8c-47c2-8d5c-97a67cf598de", "type": "attachment", "isSidechain": false, "timestamp": "2026-10-11T14:05:28.293Z"}
+{"sessionId": "b6e19164-7b8c-47c2-8d5c-97a67cf598de", "type": "last-prompt"}
+{"sessionId": "b6e19164-7b8c-47c2-8d5c-97a67cf598de", "type": "mode"}
+{"sessionId": "b6e19164-7b8c-47c2-8d5c-97a67cf598de", "type": "permission-mode"}
+{"sessionId": "b6e19164-7b8c-47c2-8d5c-97a67cf598de", "type": "atis-latch"}
+{"sessionId": "b6e19164-7b8c-47c2-8d5c-97a67cf598de", "type": "ai-title"}
+{"sessionId": "b6e19164-7b8c-47c2-8d5c-97a67cf598de", "type": "assistant", "isSidechain": false, "timestamp": "2026-10-11T14:05:29.478Z", "requestId": "req_011CfvaSgGmc5fT1R7hC7efK", "message": {"id": "msg_011CfvaSgX9BhrEGXizbZ3KN", "model": "claude-haiku-5-5", "role": "assistant", "usage": {"input_tokens": 2, "cache_creation_input_tokens": 9826, "cache_read_input_tokens": 28858, "output_tokens": 77, "output_tokens_details": {"thinking_tokens": 0}, "server_tool_use": {"web_search_requests": 0, "web_fetch_requests": 0}, "service_tier": "standard", "cache_creation": {"ephemeral_1h_input_tokens": 9826, "ephemeral_5m_input_tokens": 0}, "inference_geo": "global", "iterations": [{"input_tokens": 2, "output_tokens": 77, "cache_read_input_tokens": 28858, "cache_creation_input_tokens": 9826, "cache_creation": {"ephemeral_5m_input_tokens": 0, "ephemeral_1h_input_tokens": 9826}, "type": "message"}], "speed": "standard", "fallback_credit": null}}}
+{"sessionId": "b6e19164-7b8c-47c2-8d5c-97a67cf598de", "type": "user", "isSidechain": false, "timestamp": "2026-10-11T14:05:31.325Z", "message": {"role": "user"}}
+{"sessionId": "b6e19164-7b8c-47c2-8d5c-97a67cf598de", "type": "attachment", "isSidechain": false, "timestamp": "2026-10-11T14:05:31.332Z"}
+{"sessionId": "b6e19164-7b8c-47c2-8d5c-97a67cf598de", "type": "attachment", "isSidechain": false, "timestamp": "2026-10-11T14:05:31.341Z"}
+{"sessionId": "b6e19164-7b8c-47c2-8d5c-97a67cf598de", "type": "attachment", "isSidechain": false, "timestamp": "2026-10-11T14:05:31.342Z"}
+{"sessionId": "b6e19164-7b8c-47c2-8d5c-97a67cf598de", "type": "last-prompt"}
+{"sessionId": "b6e19164-7b8c-47c2-8d5c-97a67cf598de", "type": "ai-title"}
+{"sessionId": "b6e19164-7b8c-47c2-8d5c-97a67cf598de", "type": "mode"}
+{"sessionId": "b6e19164-7b8c-47c2-8d5c-97a67cf598de", "type": "permission-mode"}
+{"sessionId": "b6e19164-7b8c-47c2-8d5c-97a67cf598de", "type": "atis-latch"}
+{"sessionId": "b6e19164-7b8c-47c2-8d5c-97a67cf598de", "type": "attachment", "isSidechain": false, "timestamp": "2026-10-11T14:05:31.344Z"}
+{"sessionId": "b6e19164-7b8c-47c2-8d5c-97a67cf598de", "type": "assistant", "isSidechain": false, "timestamp": "2026-10-11T14:05:33.128Z", "requestId": "req_011CfvaStvmCpyRYAZ3D5tfH", "message": {"id": "msg_011CfvaSuDsv4cEZiUzyUwGF", "model": "claude-haiku-5-5", "role": "assistant", "usage": {"input_tokens": 2, "cache_creation_input_tokens": 1237, "cache_read_input_tokens": 38684, "output_tokens": 251, "output_tokens_details": {"thinking_tokens": 227}, "server_tool_use": {"web_search_requests": 0, "web_fetch_requests": 0}, "service_tier": "standard", "cache_creation": {"ephemeral_1h_input_tokens": 1237, "ephemeral_5m_input_tokens": 0}, "inference_geo": "global", "iterations": [{"input_tokens": 2, "output_tokens": 251, "cache_read_input_tokens": 38684, "cache_creation_input_tokens": 1237, "cache_creation": {"ephemeral_5m_input_tokens": 0, "ephemeral_1h_input_tokens": 1237}, "type": "message"}], "speed": "standard", "fallback_credit": null}}}
+{"sessionId": "b6e19164-7b8c-47c2-8d5c-97a67cf598de", "type": "assistant", "isSidechain": false, "timestamp": "2026-10-11T14:05:33.249Z", "requestId": "req_011CfvaStvmCpyRYAZ3D5tfH", "message": {"id": "msg_011CfvaSuDsv4cEZiUzyUwGF", "model": "claude-haiku-5-5", "role": "assistant", "usage": {"input_tokens": 2, "cache_creation_input_tokens": 1237, "cache_read_input_tokens": 38684, "output_tokens": 251, "output_tokens_details": {"thinking_tokens": 227}, "server_tool_use": {"web_search_requests": 0, "web_fetch_requests": 0}, "service_tier": "standard", "cache_creation": {"ephemeral_1h_input_tokens": 1237, "ephemeral_5m_input_tokens": 0}, "inference_geo": "global", "iterations": [{"input_tokens": 2, "output_tokens": 251, "cache_read_input_tokens": 38684, "cache_creation_input_tokens": 1237, "cache_creation": {"ephemeral_5m_input_tokens": 0, "ephemeral_1h_input_tokens": 1237}, "type": "message"}], "speed": "standard", "fallback_credit": null}}}
+{"sessionId": "b6e19164-7b8c-47c2-8d5c-97a67cf598de", "type": "system", "isSidechain": false, "timestamp": "2026-10-11T14:05:33.487Z", "subtype": "stop_hook_summary"}
+{"sessionId": "b6e19164-7b8c-47c2-8d5c-97a67cf598de", "type": "system", "isSidechain": false, "timestamp": "2026-10-11T14:05:33.497Z", "subtype": "turn_duration"}
