@@ -9,6 +9,7 @@ from agentic_os.api import (
     pipelines,
     projects,
     runs,
+    settings,
     tasks,
     usage,
 )
@@ -24,3 +25,4 @@ api_router.include_router(runs.router)
 api_router.include_router(tasks.router)
 api_router.include_router(inbox.router)
 api_router.include_router(usage.router)
+api_router.include_router(settings.router)

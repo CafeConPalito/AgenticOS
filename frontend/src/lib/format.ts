@@ -13,6 +13,22 @@ export function formatTokens(value: number): string {
   return number(value, 0)
 }
 
+/** «1,8 GB», «230 MB», «12 kB», «0 B»: sizes on disk. */
+export function formatBytes(value: number): string {
+  const units = ['B', 'kB', 'MB', 'GB', 'TB']
+  let size = value
+  let unit = 0
+  while (size >= 1000 && unit < units.length - 1) {
+    size /= 1000
+    unit += 1
+  }
+  const digits = unit === 0 || size >= 100 ? 0 : 1
+  const number = new Intl.NumberFormat(i18n.language, { maximumFractionDigits: digits }).format(
+    size,
+  )
+  return `${number} ${units[unit]}`
+}
+
 /** «2,84 $»; «—» without a cost (agy only records tokens). Tiny amounts keep 4 decimals. */
 export function formatUsd(value: number | null | undefined): string {
   if (value === null || value === undefined) return '—'

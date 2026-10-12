@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { PageContainer, PageHeader } from '@/components/page'
 import { CliSection } from './CliSection'
+import { GeneralSection } from './GeneralSection'
 import { LimitsSection } from './LimitsSection'
 import { NotificationsSection } from './NotificationsSection'
 
@@ -11,7 +12,10 @@ export default function SettingsPage() {
     <PageContainer narrow>
       <PageHeader title={t('settings.title')} subtitle={t('settings.subtitle')} />
       <CliSection />
-      <NotificationsSection />
+      <div className="grid items-start gap-[22px] lg:grid-cols-2">
+        <GeneralSection />
+        <NotificationsSection />
+      </div>
       <LimitsSection />
     </PageContainer>
   )

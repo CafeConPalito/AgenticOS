@@ -387,7 +387,23 @@ export function createFakeBackend(
 ) {
   const usage: FakeUsage = { ...emptyUsage(), ...(seed.usage ?? {}) }
 
+  const dataDir = {
+    path: 'C:\\Users\\marta\\AppData\\Roaming\\AgenticOS',
+    is_default: true,
+    database_bytes: 1_200_000,
+    sessions_bytes: 600_000_000,
+    logs_bytes: 4_000_000,
+    total_bytes: 1_800_000_000,
+    last_error: null as string | null,
+  }
+
   function handleUsage(method: string, path: string, body: Record<string, unknown>) {
+    if (path === '/api/settings/data-dir') return json(200, dataDir)
+    if (path === '/api/settings/data-dir/open') return json(204, null)
+    if (path === '/api/settings/data-dir/move') {
+      if (!String(body.to ?? '').trim()) return apiError(422, 'path_not_absolute', 'to')
+      return json(202, { to: body.to, restarting: true })
+    }
     if (path === '/api/settings/usage-limits') {
       if (method === 'PUT') usage.limits = body as unknown as UsageLimits
       return json(200, usage.limits)

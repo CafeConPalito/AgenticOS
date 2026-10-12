@@ -144,7 +144,13 @@
     "task_has_pipeline": "En un proyecto con pipeline, el agente lo decide la etapa.",
     "reason_required": "Escribe el motivo del rechazo.",
     "not_resumable": "Esta ejecución ya no se puede reanudar.",
-    "session_unavailable": "El CLI ya no tiene esta conversación (se ha borrado su historial). Reintenta la tarea desde el principio."
+    "session_unavailable": "El CLI ya no tiene esta conversación (se ha borrado su historial). Reintenta la tarea desde el principio.",
+    "runs_active": "Hay agentes trabajando. Páralos o espera a que terminen antes de mover los datos.",
+    "data_dir_fixed": "La carpeta de datos está fijada con la variable AGENTIC_OS_DATA_DIR.",
+    "same_data_dir": "Los datos ya están en esa carpeta.",
+    "data_dir_nested": "La carpeta nueva no puede estar dentro de la actual (ni al revés).",
+    "folder_not_empty": "Elige una carpeta vacía.",
+    "not_enough_space": "No hay espacio libre suficiente en esa unidad."
   },
   "cli": {
     "claude": "Claude Code",
@@ -710,7 +716,7 @@
   },
   "settings": {
     "title": "Ajustes",
-    "subtitle": "Cómo te avisa Agentic OS y cuánto pueden gastar tus agentes.",
+    "subtitle": "CLIs, datos, notificaciones, límites y apariencia.",
     "notifications": {
       "title": "Notificaciones de Windows",
       "description": "Avisos del sistema cuando un agente necesita algo de ti, aunque la ventana esté en segundo plano.",
@@ -766,6 +772,30 @@
       "login": {
         "claude": "Abre «claude» en una terminal e inicia sesión con /login.",
         "agy": "Abre «agy» en una terminal para iniciar sesión."
+      }
+    },
+    "general": {
+      "title": "General",
+      "dataDir": "Carpeta de datos",
+      "dataDirHelp": "Base de datos, logs de sesión y logs de la app · {{size}}",
+      "open": "Abrir carpeta",
+      "change": "Cambiar…",
+      "moveTitle": "Mover la carpeta de datos",
+      "moveDescription": "Agentic OS se reiniciará y moverá la base de datos y los logs a la carpeta nueva. No puede haber agentes trabajando. La carpeta debe estar vacía.",
+      "moveTarget": "Carpeta nueva",
+      "moveConfirm": "Mover y reiniciar",
+      "moving": "Moviendo los datos: la app se reconectará en unos segundos.",
+      "moveManual": "Cambio guardado. Reinicia el backend para mover los datos.",
+      "moveFailed": "No se pudieron mover los datos (siguen en la carpeta de antes): {{error}}",
+      "language": "Idioma",
+      "languageHelp": "De momento la app solo está en español.",
+      "languages": {
+        "es": "Español"
+      },
+      "theme": "Tema",
+      "themes": {
+        "dark": "Oscuro",
+        "light": "Claro"
       }
     }
   },
