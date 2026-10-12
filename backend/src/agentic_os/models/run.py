@@ -1,7 +1,7 @@
 from datetime import datetime
 from enum import StrEnum
 
-from sqlalchemy import JSON, CheckConstraint, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, Boolean, CheckConstraint, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from agentic_os.db.base import Base, IdMixin, TimestampMixin, UTCDateTime, WorkspaceMixin, utcnow
@@ -113,6 +113,16 @@ class Run(IdMixin, WorkspaceMixin, TimestampMixin, Base):
         String(12), nullable=False, default=UsageStatus.PENDING, index=True
     )
     usage_read_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+
+    # «Reanudar sesión» (phase 08, ADR 0012): the interrupted run this one resumes, and where
+    # the shared transcript stood then ({"offset": bytes, "cost_state": {...} | null}), so the
+    # usage of the earlier run is not counted twice.
+    resumed_from_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("runs.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    usage_baseline: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    # Its terminal log was deleted by the log retention: the run and its usage stay.
+    log_purged: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
 
 class Verdict(StrEnum):
