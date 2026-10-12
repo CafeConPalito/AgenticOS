@@ -130,27 +130,27 @@ Pantalla del CLI ──► ScreenState.quota_notice() ──► Inbox «Cuota ag
 **C1 · Lectura del consumo**
 
 3. [x] `parsers.py` y `paths.py` con lectura incremental; tests con las *fixtures*.
-4. [ ] Migración `0006` y modelos; `cli_version` y rutas de transcript desde los hooks.
-5. [ ] `UsageReader` (*worker*, `Stop`, cierre, reintento), mensaje `usage` por WebSocket, subagentes nativos de agy, `RunRead`/`TaskRead`; backfill al arrancar; e2e con `CONSUMO:` del CLI falso.
+4. [x] Migración `0006` y modelos; `cli_version` y rutas de transcript desde los hooks.
+5. [x] `UsageReader` (*worker*, `Stop`, cierre, reintento), mensaje `usage` por WebSocket, subagentes nativos de agy, `RunRead`/`TaskRead`; backfill al arrancar; e2e con `CONSUMO:` del CLI falso.
 
 **C2 · Agregados y API**
 
-6. [ ] `stats.py` (días locales, periodo anterior, horas, % de caché y de éxito) y `api/usage.py` con el CSV; tests.
+6. [x] `stats.py` (días locales, periodo anterior, horas, % de caché y de éxito) y `api/usage.py` con el CSV; tests.
 
 **C3 · Límites y cuota**
 
-7. [ ] Ajustes de límites, `CliGate` en el scheduler, elementos `limit` (creación y resolución por día y por cambio de límite), aviso en el lanzamiento manual; tests.
-8. [ ] `quota_notice`, `on_quota`, elemento `quota`, motivo `quota`, `resume`; directiva `CUOTA:`; e2e.
+7. [x] Ajustes de límites, `CliGate` en el scheduler, elementos `limit` (creación y resolución por día y por cambio de límite), aviso en el lanzamiento manual; tests.
+8. [x] `quota_notice`, `on_quota`, elemento `quota`, motivo `quota`, `resume`; directiva `CUOTA:`; e2e.
 
 **C4 · UI**
 
-9. [ ] `api/usage.ts`, formateadores y página Consumo (KPIs, gráfica, reparto, sesiones, CSV).
-10. [ ] Consumo de hoy en el Dashboard, consumo de la sesión en tarea y ejecución, columnas en Agentes, Proyectos, Tareas y Ejecuciones.
-11. [ ] Ajustes (límites y notificación) e Inbox (`limit` y `quota`).
+9. [x] `api/usage.ts`, formateadores y página Consumo (KPIs, gráfica, reparto, sesiones, CSV).
+10. [x] Consumo de hoy en el Dashboard, consumo de la sesión en tarea y ejecución, columnas en Agentes, Proyectos, Tareas y Ejecuciones.
+11. [x] Ajustes (límites y notificación) e Inbox (`limit` y `quota`).
 
 **C5 · Cierre**
 
-12. [ ] Pruebas manuales con los CLIs reales (CA1, CA2, CA4) con evidencias; ADR 0011, README, roadmap, `validacion.md`.
+12. [x] Pruebas manuales con los CLIs reales (CA1, CA2, CA4) con evidencias; ADR 0011, README, roadmap, `validacion.md`.
 
 ## Tests previstos
 | Test | Cubre |
