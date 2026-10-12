@@ -191,6 +191,13 @@ describe('Run page', () => {
     expect(await screen.findByText(es.runs.errorText.session_missing)).toBeVisible()
   })
 
+  it('says when the terminal log was deleted by the retention', async () => {
+    const run = makeRun({ status: 'completed', log_purged: true })
+    createFakeBackend({ runs: [run] })
+    renderApp(`/ejecuciones/${run.id}`)
+    expect(await screen.findByText(es.runs.logPurged)).toBeVisible()
+  })
+
   it('unknown run shows not found', async () => {
     createFakeBackend()
     renderApp('/ejecuciones/nope')

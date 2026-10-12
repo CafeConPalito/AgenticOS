@@ -150,7 +150,10 @@
     "same_data_dir": "Los datos ya están en esa carpeta.",
     "data_dir_nested": "La carpeta nueva no puede estar dentro de la actual (ni al revés).",
     "folder_not_empty": "Elige una carpeta vacía.",
-    "not_enough_space": "No hay espacio libre suficiente en esa unidad."
+    "not_enough_space": "No hay espacio libre suficiente en esa unidad.",
+    "branch_not_found": "Esa rama ya no existe.",
+    "branch_in_use": "La rama está en uso: su tarea sigue abierta o tiene un worktree.",
+    "branch_not_merged": "La rama tiene trabajo sin fusionar."
   },
   "cli": {
     "claude": "Claude Code",
@@ -470,7 +473,8 @@
     },
     "errorText": {
       "session_missing": "El CLI ya no tiene esta conversación, así que no se puede reanudar. Reintenta la tarea desde el principio."
-    }
+    },
+    "logPurged": "El log de esta ejecución se borró por la retención de logs (Ajustes › Limpieza)."
   },
   "dock": {
     "label": "Terminal",
@@ -797,6 +801,30 @@
         "dark": "Oscuro",
         "light": "Claro"
       }
+    },
+    "cleanup": {
+      "title": "Limpieza",
+      "logs": "Logs de sesión",
+      "logsHelp": "Se borran al arrancar los de las ejecuciones que terminaron hace más tiempo. La ejecución y su consumo se conservan; solo se pierde la reproducción de la terminal.",
+      "retention": "Conservar",
+      "retentionDays": "{{count}} días",
+      "never": "Siempre",
+      "cleanNow": "Limpiar ahora",
+      "cleaned": "{{count}} logs borrados · {{size}} liberados",
+      "nothingToClean": "No hay logs más antiguos que la retención.",
+      "branches": "Ramas de tareas",
+      "branchesHelp": "Las ramas agentic/T-n que dejan las tareas en modo worktree. Solo se pueden borrar las de tareas cerradas.",
+      "noBranches": "No hay ramas de tareas en tus proyectos.",
+      "merged": "Fusionada",
+      "unmerged": "Sin fusionar",
+      "inUse": "En uso",
+      "noTask": "Sin tarea",
+      "delete": "Borrar",
+      "deleteMerged": "Borrar las fusionadas",
+      "deleted": "{{count}} ramas borradas",
+      "forceTitle": "¿Borrar «{{name}}»?",
+      "forceDescription": "La rama tiene trabajo que no está en la rama base. Si la borras, ese trabajo se pierde.",
+      "forceConfirm": "Borrar igualmente"
     }
   },
   "usage": {

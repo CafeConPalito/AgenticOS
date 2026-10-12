@@ -117,6 +117,11 @@ export function TerminalPanel({
           </div>
         </header>
       )}
+      {run.log_purged && (
+        <p className="border-b border-terminal-border px-3.5 py-2 font-mono text-[12px] text-[#7F8DAA]">
+          {t('runs.logPurged')}
+        </p>
+      )}
       <div
         ref={containerRef}
         data-testid="xterm"

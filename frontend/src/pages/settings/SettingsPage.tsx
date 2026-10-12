@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { PageContainer, PageHeader } from '@/components/page'
+import { CleanupSection } from './CleanupSection'
 import { CliSection } from './CliSection'
 import { GeneralSection } from './GeneralSection'
 import { LimitsSection } from './LimitsSection'
@@ -17,6 +18,7 @@ export default function SettingsPage() {
         <NotificationsSection />
       </div>
       <LimitsSection />
+      <CleanupSection />
     </PageContainer>
   )
 }

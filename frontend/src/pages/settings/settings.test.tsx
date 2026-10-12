@@ -76,3 +76,81 @@ describe('Settings · General', () => {
     expect(document.documentElement).toHaveClass('dark')
   })
 })
+
+describe('Settings · Limpieza', () => {
+  const branch = (name: string, merged: boolean, in_use = false) => ({
+    name,
+    task_id: null,
+    task_code: name.replace('agentic/', ''),
+    task_status: 'done',
+    merged,
+    last_commit: '2026-10-10T12:00:00+02:00',
+    in_use,
+  })
+
+  it('changes the log retention and cleans the old logs', async () => {
+    const backend = createFakeBackend()
+    const user = userEvent.setup()
+    renderApp('/ajustes')
+
+    await user.click(await screen.findByRole('button', { name: es.settings.cleanup.cleanNow }))
+    expect(await screen.findByText('3 logs borrados · 12,5 MB liberados')).toBeVisible()
+
+    await user.click(screen.getByRole('combobox', { name: es.settings.cleanup.logs }))
+    await user.click(await screen.findByRole('option', { name: es.settings.cleanup.never }))
+    await waitFor(() =>
+      expect(backend.callsTo('PUT', '/api/settings/maintenance')[0]?.body).toEqual({
+        log_retention_days: null,
+      }),
+    )
+    expect(screen.getByRole('button', { name: es.settings.cleanup.cleanNow })).toBeDisabled()
+  })
+
+  it('deletes merged branches, and an unmerged one only after confirming', async () => {
+    const backend = createFakeBackend({
+      branches: [
+        {
+          project_id: 'project-1',
+          project_name: 'Tienda',
+          error: null,
+          branches: [
+            branch('agentic/T-1', true),
+            branch('agentic/T-2', false),
+            branch('agentic/T-3', true, true),
+          ],
+        },
+      ],
+    })
+    const user = userEvent.setup()
+    renderApp('/ajustes')
+
+    const list = await screen.findByRole('list', { name: 'Tienda' })
+    expect(
+      within(list).getByRole('button', { name: `${es.settings.cleanup.delete} agentic/T-3` }),
+    ).toBeDisabled()
+
+    await user.click(screen.getByRole('button', { name: es.settings.cleanup.deleteMerged }))
+    await waitFor(() =>
+      expect(backend.callsTo('POST', '/api/maintenance/branches/delete')[0]?.body).toEqual({
+        project_id: 'project-1',
+        branches: ['agentic/T-1'],
+        force: false,
+      }),
+    )
+
+    await user.click(
+      await screen.findByRole('button', { name: `${es.settings.cleanup.delete} agentic/T-2` }),
+    )
+    const confirm = await screen.findByRole('alertdialog')
+    await user.click(
+      within(confirm).getByRole('button', { name: es.settings.cleanup.forceConfirm }),
+    )
+    await waitFor(() =>
+      expect(backend.callsTo('POST', '/api/maintenance/branches/delete')[1]?.body).toEqual({
+        project_id: 'project-1',
+        branches: ['agentic/T-2'],
+        force: true,
+      }),
+    )
+  })
+})

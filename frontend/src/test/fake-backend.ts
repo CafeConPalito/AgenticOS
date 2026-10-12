@@ -1,3 +1,4 @@
+import type { ProjectBranches } from '@/api/maintenance'
 import type {
   Agent,
   AgentTemplate,
@@ -383,6 +384,7 @@ export function createFakeBackend(
     trees?: Record<string, TreeNode[]>
     notificationSettings?: NotificationSettings
     usage?: Partial<FakeUsage>
+    branches?: ProjectBranches[]
   } = {},
 ) {
   const usage: FakeUsage = { ...emptyUsage(), ...(seed.usage ?? {}) }
@@ -397,7 +399,30 @@ export function createFakeBackend(
     last_error: null as string | null,
   }
 
+  let retention: number | null = 90
+  const branches: ProjectBranches[] = structuredClone(seed.branches ?? [])
+
   function handleUsage(method: string, path: string, body: Record<string, unknown>) {
+    if (path === '/api/settings/maintenance') {
+      if (method === 'PUT') retention = body.log_retention_days as number | null
+      return json(200, { log_retention_days: retention })
+    }
+    if (path === '/api/maintenance/logs/cleanup')
+      return json(200, { runs: 3, freed_bytes: 12_500_000 })
+    if (path === '/api/maintenance/branches') return json(200, branches)
+    if (path === '/api/maintenance/branches/delete') {
+      const project = branches.find((p) => p.project_id === body.project_id)
+      const names = body.branches as string[]
+      if (!project) return apiError(404, 'project_not_found')
+      for (const name of names) {
+        const branch = project.branches.find((b) => b.name === name)
+        if (!branch) return apiError(404, 'branch_not_found')
+        if (branch.in_use) return apiError(409, 'branch_in_use')
+        if (!branch.merged && !body.force) return apiError(409, 'branch_not_merged')
+      }
+      project.branches = project.branches.filter((b) => !names.includes(b.name))
+      return json(200, { deleted: names })
+    }
     if (path === '/api/settings/data-dir') return json(200, dataDir)
     if (path === '/api/settings/data-dir/open') return json(204, null)
     if (path === '/api/settings/data-dir/move') {
