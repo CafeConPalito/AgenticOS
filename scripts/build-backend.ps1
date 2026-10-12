@@ -40,4 +40,6 @@ if (Get-Command rustc -ErrorAction SilentlyContinue) {
 New-Item -ItemType Directory -Force $binaries | Out-Null
 $target = Join-Path $binaries "agentic-os-backend-$triple.exe"
 Copy-Item (Join-Path $backend 'build\dist\agentic-os-backend.exe') $target -Force
+# Code signing when a certificate is configured (a no-op otherwise, ADR 0012).
+& (Join-Path $PSScriptRoot 'sign.ps1') $target
 Write-Host "Sidecar listo: $target"

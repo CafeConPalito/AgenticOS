@@ -69,7 +69,7 @@ export function CliSection() {
               <li key={cli.id} className="flex flex-wrap items-center gap-4 px-4 py-3">
                 <span
                   aria-hidden
-                  className="flex size-[34px] shrink-0 items-center justify-center rounded-md border font-mono text-[11px] font-semibold"
+                  className="flex size-[34px] shrink-0 items-center justify-center rounded-md border bg-primary font-mono text-[11px] font-bold text-white"
                 >
                   {INITIALS[cli.id] ?? cli.id.slice(0, 2).toUpperCase()}
                 </span>
