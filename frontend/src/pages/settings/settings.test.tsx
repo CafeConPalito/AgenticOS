@@ -154,3 +154,14 @@ describe('Settings · Limpieza', () => {
     )
   })
 })
+
+describe('Settings · Acerca de', () => {
+  it('shows the version and where the data is', async () => {
+    createFakeBackend()
+    renderApp('/ajustes')
+    const about = await screen.findByRole('region', { name: es.settings.about.title })
+    await waitFor(() => expect(about).toHaveTextContent('0.1.0'))
+    expect(about).toHaveTextContent('AgenticOS')
+    expect(about).toHaveTextContent(es.settings.about.logsHint)
+  })
+})

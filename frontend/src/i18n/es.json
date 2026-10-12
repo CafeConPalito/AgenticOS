@@ -833,6 +833,13 @@
       "forceTitle": "¿Borrar «{{name}}»?",
       "forceDescription": "La rama tiene trabajo que no está en la rama base. Si la borras, ese trabajo se pierde.",
       "forceConfirm": "Borrar igualmente"
+    },
+    "about": {
+      "title": "Acerca de",
+      "version": "Versión",
+      "dataDir": "Carpeta de datos",
+      "backend": "Backend",
+      "logsHint": "Los logs del backend están en la carpeta «logs» de la carpeta de datos."
     }
   },
   "usage": {
