@@ -15,6 +15,8 @@ class InboxKind(StrEnum):
     STALLED = "stalled"  # idle for a while without complete_task
     DELIVERY = "delivery"  # a task is done
     ATTENTION = "attention"  # a task waits for the person because something failed
+    LIMIT = "limit"  # a CLI reached its daily limit (phase 07)
+    QUOTA = "quota"  # the CLI ran out of its account quota (phase 07)
 
 
 class InboxStatus(StrEnum):

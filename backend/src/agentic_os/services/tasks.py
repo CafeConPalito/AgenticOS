@@ -34,7 +34,7 @@ from agentic_os.services import inbox
 
 # Waiting reasons with the CLI still alive (the agent asked, or its CLI asks permission):
 # the task keeps its agent's slot and its folder, and resumes by itself.
-LIVE_WAIT = (WaitingReason.HUMAN_REQUEST, WaitingReason.PERMISSION)
+LIVE_WAIT = (WaitingReason.HUMAN_REQUEST, WaitingReason.PERMISSION, WaitingReason.QUOTA)
 
 
 def occupies_agent():
@@ -72,6 +72,7 @@ WAITING_TEXT = {
     WaitingReason.NO_AGENT: "La etapa no tiene agente",
     WaitingReason.WORKSPACE_FAILED: "No se pudo preparar el worktree",
     WaitingReason.QUESTION_PENDING: "Tiene una pregunta sin responder",
+    WaitingReason.QUOTA: "El CLI se quedó sin cuota",
 }
 
 # Statuses from which the user can act on a task, per action.
@@ -290,8 +291,9 @@ def wait_for_human(
         WaitingReason.HUMAN_REQUEST,
         WaitingReason.PERMISSION,
         WaitingReason.QUESTION_PENDING,  # its question is still in the Inbox
+        WaitingReason.QUOTA,
     ):
-        # Those two bring their own Inbox item (the question, the approval).
+        # Those bring their own Inbox item (the question, the approval, «Cuota agotada»).
         inbox.resolve_pending(db, Resolution.DISMISSED, task_id=task.id, kinds=ATTENTION_KINDS)
         inbox.create(
             db,

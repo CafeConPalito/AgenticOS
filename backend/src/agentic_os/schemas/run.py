@@ -2,10 +2,11 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, StringConstraints
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
 from agentic_os.models.agent import Cli
 from agentic_os.models.run import Activity, EventKind, RunStatus, Verdict
+from agentic_os.schemas.usage import RunUsage
 
 Prompt = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=20000)]
 
@@ -55,6 +56,9 @@ class RunRead(BaseModel):
     # Live state, only while the run has a session in this backend.
     controller: str | None = None
     viewers: int = 0
+    usage: RunUsage = Field(default_factory=RunUsage)
+    # Set when a run is launched by hand over its CLI's daily limit ("limit_reached").
+    warning: str | None = None
 
 
 class ControlAction(StrEnum):

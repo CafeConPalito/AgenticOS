@@ -1,0 +1,167 @@
+"""Usage of the agents (phase 07): KPIs, daily series, breakdown, sessions, CSV, today and the
+daily limits. Periods are local dates (`YYYY-MM-DD`), last 30 days by default."""
+
+from datetime import date, datetime, timedelta
+from typing import Annotated, Literal
+
+from fastapi import APIRouter, Depends, Query, Request, Response
+from sqlalchemy.orm import Session
+
+from agentic_os.db.session import get_session
+from agentic_os.errors import ApiError
+from agentic_os.schemas.usage import (
+    Breakdown,
+    DailySeries,
+    SessionRow,
+    TodayAgent,
+    UsageLimits,
+    UsageSummary,
+    UsageToday,
+)
+from agentic_os.services.usage import limits as usage_limits
+from agentic_os.services.usage import stats
+
+router = APIRouter(tags=["usage"])
+DbSession = Annotated[Session, Depends(get_session)]
+MAX_DAYS = 366
+
+
+def today() -> date:
+    return datetime.now().astimezone().date()
+
+
+class Period:
+    def __init__(
+        self,
+        date_from: Annotated[date | None, Query(alias="from")] = None,
+        date_to: Annotated[date | None, Query(alias="to")] = None,
+        agent_id: str | None = None,
+        project_id: str | None = None,
+    ) -> None:
+        last = date_to or today()
+        first = date_from or last - timedelta(days=29)
+        if first > last:
+            raise ApiError(422, "invalid_period", "'from' is after 'to'", "from")
+        if (last - first).days >= MAX_DAYS:
+            raise ApiError(422, "period_too_long", f"at most {MAX_DAYS} days", "from")
+        self.first, self.last = first, last
+        self.agent_id, self.project_id = agent_id, project_id
+
+
+PeriodDep = Annotated[Period, Depends()]
+
+
+@router.get("/usage/summary")
+def get_summary(db: DbSession, period: PeriodDep) -> UsageSummary:
+    return stats.summary(
+        db, period.first, period.last, agent_id=period.agent_id, project_id=period.project_id
+    )
+
+
+@router.get("/usage/daily")
+def get_daily(
+    db: DbSession, period: PeriodDep, group: Literal["agent", "project"] = "agent"
+) -> DailySeries:
+    return stats.daily(
+        db,
+        period.first,
+        period.last,
+        group,
+        agent_id=period.agent_id,
+        project_id=period.project_id,
+    )
+
+
+@router.get("/usage/breakdown")
+def get_breakdown(
+    db: DbSession, period: PeriodDep, group: Literal["agent", "project", "task"] = "agent"
+) -> Breakdown:
+    return stats.breakdown(
+        db,
+        period.first,
+        period.last,
+        group,
+        agent_id=period.agent_id,
+        project_id=period.project_id,
+    )
+
+
+SortKey = Literal["started_at", "agent", "project", "task", "model", "tokens", "cost", "duration"]
+
+
+@router.get("/usage/sessions")
+def get_sessions(
+    db: DbSession,
+    period: PeriodDep,
+    sort: SortKey = "started_at",
+    direction: Annotated[Literal["asc", "desc"], Query(alias="dir")] = "desc",
+    limit: Annotated[int, Query(ge=1, le=5000)] = 500,
+) -> list[SessionRow]:
+    return stats.sessions(
+        db,
+        period.first,
+        period.last,
+        agent_id=period.agent_id,
+        project_id=period.project_id,
+        sort=sort,
+        descending=direction == "desc",
+        limit=limit,
+    )
+
+
+@router.get("/usage/sessions.csv")
+def get_sessions_csv(
+    db: DbSession,
+    period: PeriodDep,
+    sort: SortKey = "started_at",
+    direction: Annotated[Literal["asc", "desc"], Query(alias="dir")] = "desc",
+) -> Response:
+    rows = stats.sessions(
+        db,
+        period.first,
+        period.last,
+        agent_id=period.agent_id,
+        project_id=period.project_id,
+        sort=sort,
+        descending=direction == "desc",
+        limit=None,
+    )
+    name = f"consumo_{period.first.isoformat()}_{period.last.isoformat()}.csv"
+    return Response(
+        stats.sessions_csv(db, rows),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{name}"'},
+    )
+
+
+@router.get("/usage/today")
+def get_today(db: DbSession) -> UsageToday:
+    day = today()
+    runs = stats.runs_between(db, day, day)
+    total = stats.totals(runs)
+    agents = stats.breakdown(db, day, day, "agent").rows
+    return UsageToday(
+        day=day,
+        tokens=sum(stats.run_tokens(r) for r in runs),
+        cache_read_tokens=total.cache_read_tokens,
+        cost_usd=round(total.cost_usd or 0.0, 6),
+        agents=[
+            TodayAgent(id=a.id, name=a.name, color=a.color, cost_usd=a.cost_usd, tokens=a.tokens)
+            for a in agents
+        ],
+        limits=usage_limits.states(db, day),
+    )
+
+
+@router.get("/settings/usage-limits")
+def get_usage_limits(db: DbSession) -> UsageLimits:
+    return usage_limits.get_limits(db)
+
+
+@router.put("/settings/usage-limits")
+def put_usage_limits(payload: UsageLimits, db: DbSession, request: Request) -> UsageLimits:
+    saved = usage_limits.save_limits(db, payload)
+    usage_limits.sync_limit_items(db, today())
+    db.commit()
+    request.app.state.scheduler.poke()  # a raised limit lets queued tasks start
+    return saved

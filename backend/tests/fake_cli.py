@@ -33,6 +33,7 @@ import json
 import signal
 import subprocess
 import sys
+import tempfile
 import time
 import uuid
 from pathlib import Path
@@ -126,12 +127,15 @@ def out(text: str = "") -> None:
 
 # ---------------------------------------------------------------- Agentic OS integration
 def load_config() -> tuple[str | None, dict[str, str], dict[str, str]]:
-    """(MCP url, MCP headers, hook commands by event) from the run files or the plugin."""
+    """(MCP url, MCP headers, hook commands by event) from the run files or the plugin.
+    Claude's status line command goes in as the "StatusLine" event."""
     if CLAUDE_MODE:
         mcp = json.loads(Path(OPTIONS["--mcp-config"][0]).read_text("utf-8"))
         server = mcp["mcpServers"]["agentic-os"]
         settings = json.loads(Path(OPTIONS["--settings"][0]).read_text("utf-8"))
         hooks = {e: h[0]["hooks"][0]["command"] for e, h in settings.get("hooks", {}).items()}
+        if settings.get("statusLine", {}).get("command"):
+            hooks["StatusLine"] = settings["statusLine"]["command"]
         return server["url"], server.get("headers", {}), hooks
     if AGY_MODE:
         mcp = json.loads((PLUGIN / "mcp_config.json").read_text("utf-8"))
@@ -147,6 +151,11 @@ def load_config() -> tuple[str | None, dict[str, str], dict[str, str]]:
 
 MCP_URL, MCP_HEADERS, HOOKS = load_config()
 always_allowed: set[str] = set()
+# Phase 07: the transcript the CLI writes (reported in every hook, like the real ones), the
+# usage so far and the price of a token (only for the status line's cost).
+TRANSCRIPT = Path(tempfile.gettempdir()) / f"fake-cli-{CONVERSATION_ID}.jsonl"
+PRICE = 0.000002
+usage_so_far = {"input": 0, "output": 0}
 
 
 def hook(event: str) -> None:
@@ -158,9 +167,17 @@ def hook_payload(event: str, extra: dict) -> None:
     if not command:
         return
     if CLAUDE_MODE:
-        payload = {"hook_event_name": event, "session_id": (OPTIONS.get("--session-id") or [""])[0]}
+        payload = {
+            "hook_event_name": event,
+            "session_id": (OPTIONS.get("--session-id") or [""])[0],
+            "transcript_path": str(TRANSCRIPT),
+        }
     else:
-        payload = {"conversationId": CONVERSATION_ID, "workspacePaths": [str(Path.cwd())]}
+        payload = {
+            "conversationId": CONVERSATION_ID,
+            "workspacePaths": [str(Path.cwd())],
+            "transcriptPath": TRANSCRIPT.as_posix(),
+        }
     payload |= extra
     # While the hook runs the console is not raw: a Ctrl+C becomes a signal instead of a key.
     # The real CLIs just lose that key press (Agentic OS retries the stop); without this the
@@ -253,7 +270,10 @@ def use_tools(text: str) -> int | None:
     `PERMISO: comando` → shows the CLI's permission dialog (Claude's or agy's real texts) and
     waits for Enter (approve) or Esc (reject); `SUBAGENTE: [agente|]prompt` → spawn_subagent;
     `SUBTAREA: título` → create_subtask; `NATIVO: descripción` → the hooks of a native subagent
-    (Claude's Agent tool / agy's invoke_subagent, real payload shapes). A task's title
+    (Claude's Agent tool / agy's invoke_subagent, real payload shapes). Phase 07: `CONSUMO: n`
+    → a model call of n tokens written to the transcript (Claude also refreshes its status line
+    and writes its cost-state on close); `CUOTA: [texto]` → the CLI's out-of-quota notice. A
+    task's title
     drives all its stages: a rejection the stage does not accept is ignored, and only the first
     accepted complete_task counts.
     """
@@ -298,6 +318,13 @@ def use_tools(text: str) -> int | None:
         if keyword == "NATIVO":
             native_subagent(value)
             continue
+        if keyword == "CONSUMO":
+            spend(int(value))
+            continue
+        if keyword == "CUOTA":
+            # The CLI's own notice (texts from the binaries, evidence C0 of phase 07).
+            out(value or ("Quota exhausted" if AGY_MODE else "Usage limit reached · resets 3pm"))
+            continue
         if keyword == "PERMISO":
             out(f"● permission {'granted' if permission_dialog(value) else 'denied'}: {value}")
             continue
@@ -329,6 +356,68 @@ def use_tools(text: str) -> int | None:
             if rejecting and keyword == "RECHAZA1":
                 marker.write_text("1")  # only a rejection the stage accepted counts
     return exit_code
+
+
+def write_row(row: dict) -> None:
+    with TRANSCRIPT.open("a", encoding="utf-8") as file:
+        file.write(json.dumps(row) + "\n")
+
+
+def spend(tokens: int) -> None:
+    """A model call of `tokens` input tokens (and a tenth of output), in the CLI's format."""
+    usage_so_far["input"] += tokens
+    usage_so_far["output"] += tokens // 10
+    if AGY_MODE:
+        write_row(
+            {
+                "step_index": usage_so_far["input"],
+                "type": "PLANNER_RESPONSE",
+                "input_tokens": tokens,
+                "output_tokens": tokens // 10,
+                "cache_read_tokens": 0,
+            }
+        )
+        return
+    write_row(
+        {
+            "type": "assistant",
+            "message": {
+                "id": f"msg_{uuid.uuid4().hex}",
+                "model": "claude-fake",
+                "usage": {"input_tokens": tokens, "output_tokens": tokens // 10},
+            },
+        }
+    )
+
+
+def cost_so_far() -> float:
+    return round((usage_so_far["input"] + usage_so_far["output"]) * PRICE, 6)
+
+
+def status_line() -> None:
+    """Claude refreshes its status line after a turn: its JSON carries the cost so far."""
+    if CLAUDE_MODE and usage_so_far["input"]:
+        hook_payload("StatusLine", {"cost": {"total_cost_usd": cost_so_far()}, "version": "9.9"})
+
+
+def cost_state() -> None:
+    """On close Claude writes the session's exact totals (here, plus an internal call)."""
+    if not CLAUDE_MODE or not usage_so_far["input"]:
+        return
+    internal = 100
+    write_row(
+        {
+            "type": "cost-state",
+            "totalCostUSD": round(cost_so_far() + internal * PRICE, 6),
+            "modelUsage": {
+                "claude-fake": {
+                    "inputTokens": usage_so_far["input"] + internal,
+                    "outputTokens": usage_so_far["output"],
+                    "costUSD": round(cost_so_far() + internal * PRICE, 6),
+                }
+            },
+        }
+    )
 
 
 def native_subagent(description: str) -> None:
@@ -435,6 +524,7 @@ def answer(text: str) -> None:
     out(f"● RESPUESTA: {text}")
     out("? for shortcuts")
     hook("Stop")
+    status_line()
     if exit_code is not None:
         sys.exit(exit_code)
     if DEAF:
@@ -479,6 +569,7 @@ def main() -> None:
             if IGNORE_EXIT:
                 continue
             if exit_armed:
+                cost_state()
                 out("Resume with -c (or command below):")
                 sys.exit(130)
             # Keys typed while agy arms the exit are lost, like in the real TUI.
@@ -498,6 +589,7 @@ def main() -> None:
                 if IGNORE_EXIT:
                     out("(ignoring /exit)")
                     continue
+                cost_state()
                 hook("SessionEnd")
                 out("Resume this session with:")
                 sys.exit(0)

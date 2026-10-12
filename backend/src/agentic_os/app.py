@@ -47,7 +47,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         app.state.cli_catalog = CliCatalog()
         manager = RunManager(app.state.sessionmaker, settings)
         manager.loop = asyncio.get_running_loop()
+        manager.cli_version = app.state.cli_catalog.cached_version
         manager.recover()
+        manager.usage.start()
+        manager.usage.backfill()  # runs from before phase 07, or that ended while we were down
         app.state.run_manager = manager
         scheduler = Scheduler(app.state.sessionmaker, manager)
         trust = TrustCleaner(
@@ -60,7 +63,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         worktrees = Worktrees(trust)
         scheduler.prepare_workspace = worktrees.prepare
         scheduler.release_workspace = worktrees.release
-        scheduler.housekeeping = lambda: (trust.flush(), scheduler.check_stalled())
+        scheduler.housekeeping = lambda: (
+            trust.flush(),
+            scheduler.check_stalled(),
+            scheduler.check_limits(force=True),
+        )
+        manager.usage.on_updated = lambda run_id: scheduler.check_limits()
         manager.on_run_ended = scheduler.run_ended
         manager.on_tasks_changed = scheduler.poke
         scheduler.recover()
@@ -78,6 +86,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             manager.on_run_ended = None
             try:
                 await asyncio.to_thread(manager.shutdown)
+                # After the runs: their final usage reads are queued while they close.
+                await asyncio.to_thread(manager.usage.stop)
             finally:
                 engine.dispose()
 

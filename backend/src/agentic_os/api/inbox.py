@@ -95,6 +95,19 @@ def answer_item(
     return read_items(db, [item])[0]
 
 
+@router.post("/inbox/{item_id}/resume")
+def resume_item(
+    item_id: str, db: DbSession, manager: ManagerDep, scheduler: SchedulerDep
+) -> InboxItemRead:
+    """«Cuota agotada» → Reanudar: the task runs again and the CLI is no longer held."""
+    item = _get(db, item_id)
+    _pending(item, InboxKind.QUOTA)
+    manager.resume_after_quota(db, item)
+    db.commit()
+    scheduler.poke()
+    return read_items(db, [item])[0]
+
+
 def _answer_permission(db: Session, manager, item: InboxItem, approve: bool) -> InboxItemRead:
     _pending(item, InboxKind.APPROVAL)
     if item.run_id is None or not manager.answer_permission(item.run_id, approve):

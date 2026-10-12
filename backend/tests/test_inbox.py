@@ -125,6 +125,7 @@ def test_notifications_bookkeeping_and_settings(api: TestClient, tmp_path: Path)
         "review": True,
         "stalled": True,
         "delivery": False,
+        "limits": True,
         "sound": True,
     }
     changed = api.put(

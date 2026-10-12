@@ -28,6 +28,7 @@ from agentic_os.models import (
     Agent,
     AgentStatus,
     AppState,
+    Cli,
     InboxKind,
     Project,
     Resolution,
@@ -41,10 +42,13 @@ from agentic_os.models import (
 )
 from agentic_os.services import inbox
 from agentic_os.services import tasks as task_ops
+from agentic_os.services.usage import limits as usage_limits
 
 BACKUP_TICK = 5.0
 STALLED_AFTER = timedelta(minutes=10)
 HOUSEKEEPING = 60.0
+# A run's usage changes after every turn: the daily limits are checked at most this often.
+LIMIT_CHECK_EVERY = 5.0
 # Launch errors worth retrying on the next tick (the task stays queued).
 TRANSIENT_ERRORS = {"agy_folder_busy"}
 
@@ -100,6 +104,7 @@ class Scheduler:
         # Slow periodic chores (e.g. pending folder-trust cleanups), every HOUSEKEEPING seconds.
         self.housekeeping: Callable[[], None] | None = None
         self._last_housekeeping = 0.0
+        self._last_limit_check = 0.0
 
     # ------------------------------------------------------------------ thread
     def start(self) -> None:
@@ -207,8 +212,25 @@ class Scheduler:
                     )
                 )
             )
+            # A CLI over its daily limit, or out of quota, starts nothing (phase 07).
+            gates = {cli: usage_limits.blocked(db, cli) for cli in {Cli(a.cli) for a in agents}}
             for agent in agents:
-                self._fill(db, agent)
+                if gates[Cli(agent.cli)] is None:
+                    self._fill(db, agent)
+
+    # ------------------------------------------------------------------ daily limits
+    def check_limits(self, force: bool = False) -> None:
+        """Creates or resolves the «Límite diario alcanzado» items (phase 07). Called when a
+        run's usage changes (throttled) and by the housekeeping (a new day)."""
+        now = time.monotonic()
+        if not force and now - self._last_limit_check < LIMIT_CHECK_EVERY:
+            return
+        self._last_limit_check = now
+        with self._db() as db:
+            unblocked = usage_limits.sync_limit_items(db)
+            db.commit()
+        if unblocked:
+            self.poke()
 
     def _fill(self, db: Session, agent: Agent) -> None:
         running = db.scalar(

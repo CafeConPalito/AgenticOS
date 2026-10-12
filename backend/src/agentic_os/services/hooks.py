@@ -38,6 +38,9 @@ AGY_TOOL_MATCHER = "invoke_subagent"
 TOOL_EVENTS = {"PreToolUse", "PostToolUse"}
 TURN_START = {"UserPromptSubmit", "PreInvocation"}
 TURN_END = {"Stop"}
+# Claude's status line runs the same script with this "event": its JSON carries the session's
+# cost so far (evidence C0 of phase 07). The script prints nothing, so the TUI shows no line.
+STATUS_LINE = "StatusLine"
 
 
 def short_path(path: Path) -> str:
@@ -79,6 +82,11 @@ class HookEffect:
     session_id: str | None = None
     # Claude PermissionRequest: «Bash: git push», «Write: nota.txt»…
     permission_request: str | None = None
+    # Where the CLI writes this conversation's transcript (every hook of both CLIs has it).
+    transcript_path: str | None = None
+    # Claude's status line: the session's API-equivalent cost so far, and the CLI version.
+    cost_usd: float | None = None
+    cli_version: str | None = None
 
 
 def describe_tool(tool: object, tool_input: object) -> str:
@@ -91,15 +99,35 @@ def describe_tool(tool: object, tool_input: object) -> str:
     return name
 
 
+def _text(value: object) -> str | None:
+    return value if isinstance(value, str) and value else None
+
+
 def interpret(cli: Cli, event: str, payload: object) -> HookEffect:
     data = payload if isinstance(payload, dict) else {}
     session_id = data.get("conversationId") if cli == Cli.AGY else None
+    transcript = _text(data.get("transcriptPath" if cli == Cli.AGY else "transcript_path"))
+    if event == STATUS_LINE:
+        cost = data.get("cost") if isinstance(data.get("cost"), dict) else {}
+        value = cost.get("total_cost_usd")
+        return HookEffect(
+            transcript_path=transcript,
+            cost_usd=float(value)
+            if isinstance(value, int | float) and not isinstance(value, bool)
+            else None,
+            cli_version=_text(data.get("version")),
+        )
     if event == "PermissionRequest":
         return HookEffect(
-            permission_request=describe_tool(data.get("tool_name"), data.get("tool_input"))
+            permission_request=describe_tool(data.get("tool_name"), data.get("tool_input")),
+            transcript_path=transcript,
         )
     if event in TURN_START:
-        return HookEffect(Activity.BUSY, turn_started=True, session_id=session_id)
+        return HookEffect(
+            Activity.BUSY, turn_started=True, session_id=session_id, transcript_path=transcript
+        )
     if event in TURN_END:
-        return HookEffect(Activity.IDLE, turn_ended=True, session_id=session_id)
-    return HookEffect(session_id=session_id)
+        return HookEffect(
+            Activity.IDLE, turn_ended=True, session_id=session_id, transcript_path=transcript
+        )
+    return HookEffect(session_id=session_id, transcript_path=transcript)

@@ -13,7 +13,7 @@ from agentic_os.api.projects import get_project_or_404 as get_project_row
 from agentic_os.db.base import DEFAULT_WORKSPACE
 from agentic_os.db.session import get_session
 from agentic_os.errors import ApiError, NotFound
-from agentic_os.models import ACTIVE_STATUSES, Run, RunEvent, Stage, Task
+from agentic_os.models import ACTIVE_STATUSES, Cli, Run, RunEvent, Stage, Task
 from agentic_os.schemas.run import (
     ControlAction,
     ControlRequest,
@@ -22,8 +22,11 @@ from agentic_os.schemas.run import (
     RunEventRead,
     RunRead,
 )
+from agentic_os.schemas.usage import RunUsage
 from agentic_os.services.runs.manager import RunManager
 from agentic_os.services.runs.session import SCROLLBACK_LIMIT, ControlConflict, RunSession
+from agentic_os.services.usage import limits as usage_limits
+from agentic_os.services.usage.reader import usage_payload
 
 router = APIRouter(tags=["runs"])
 DbSession = Annotated[Session, Depends(get_session)]
@@ -45,6 +48,7 @@ def _get(db: Session, run_id: str) -> Run:
 
 def _read(run: Run, manager: RunManager) -> RunRead:
     result = RunRead.model_validate(run)
+    result.usage = RunUsage(**usage_payload(run))
     db = object_session(run)
     if run.task_id and db is not None:
         task = db.get(Task, run.task_id)
@@ -69,8 +73,12 @@ def _live(manager: RunManager, run_id: str) -> RunSession:
 def launch_run(payload: RunCreate, db: DbSession, manager: Manager) -> RunRead:
     agent = get_agent_row(db, payload.agent_id)
     project = get_project_row(db, payload.project_id)
+    # Over its CLI's daily limit (or out of quota) a manual run is still allowed: the UI warns.
+    gate = usage_limits.blocked(db, Cli(agent.cli))
     run = manager.launch(db, agent, project, payload.prompt)
-    return _read(run, manager)
+    result = _read(run, manager)
+    result.warning = f"{gate}_reached" if gate else None
+    return result
 
 
 @router.get("/runs")

@@ -115,6 +115,13 @@ class CliCatalog:
             info.models_error = str(error) or type(error).__name__
         return info
 
+    def cached_version(self, cli: str) -> str | None:
+        """The version of a CLI if it was already probed (never probes: that takes seconds)."""
+        for info in self._cache or []:
+            if info.id == cli:
+                return info.version
+        return None
+
     def list(self, refresh: bool = False) -> list[CliInfo]:
         # The lock makes concurrent callers share one probe instead of starting their own;
         # inside it, the CLIs are probed in parallel (each can take tens of seconds).

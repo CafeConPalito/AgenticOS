@@ -1,7 +1,7 @@
 from datetime import datetime
 from enum import StrEnum
 
-from sqlalchemy import CheckConstraint, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, CheckConstraint, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from agentic_os.db.base import Base, IdMixin, TimestampMixin, UTCDateTime, WorkspaceMixin, utcnow
@@ -21,6 +21,15 @@ class RunStatus(StrEnum):
 ACTIVE_STATUSES = (RunStatus.STARTING, RunStatus.RUNNING, RunStatus.INTERVENING)
 
 
+class UsageStatus(StrEnum):
+    """How far the run's usage has been read (phase 07)."""
+
+    PENDING = "pending"  # nothing read yet (new run, or a run from before phase 07)
+    PARTIAL = "partial"  # live figures while the run goes on
+    FINAL = "final"  # read after the run ended
+    UNAVAILABLE = "unavailable"  # the run ended and its transcript gave nothing
+
+
 class Activity(StrEnum):
     BUSY = "busy"
     IDLE = "idle"
@@ -37,6 +46,9 @@ class Run(IdMixin, WorkspaceMixin, TimestampMixin, Base):
             name="status",
         ),
         CheckConstraint("activity IN ('busy', 'idle')", name="activity"),
+        CheckConstraint(
+            "usage_status IN ('pending', 'partial', 'final', 'unavailable')", name="usage_status"
+        ),
     )
 
     agent_id: Mapped[str | None] = mapped_column(
@@ -82,6 +94,25 @@ class Run(IdMixin, WorkspaceMixin, TimestampMixin, Base):
     )
     # Since when the agent waits for input (no turn running): «Sin terminar» after a while.
     idle_since: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+
+    # Usage, read from the CLI's transcript and (Claude) its status line (phase 07, ADR 0011).
+    transcript_path: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # agy native subagents run in their own conversations: their transcripts add up here.
+    extra_transcripts: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    cli_version: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    input_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    output_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    thinking_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    cache_read_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    cache_creation_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # Claude only: API-equivalent cost in USD. Null when the CLI records no cost (agy).
+    cost_usd: Mapped[float | None] = mapped_column(Float, nullable=True)
+    usage_models: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    usage_source: Mapped[str | None] = mapped_column(String(24), nullable=True)
+    usage_status: Mapped[str] = mapped_column(
+        String(12), nullable=False, default=UsageStatus.PENDING, index=True
+    )
+    usage_read_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
 
 
 class Verdict(StrEnum):
