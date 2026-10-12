@@ -86,7 +86,7 @@ Tests nuevos:
 - Si algún CLI se queda sin cuota, comprobar que llega la «Cuota agotada». Si no llega, guardar el texto de la pantalla para ajustar los patrones.
 
 ## Cierre
-- [ ] OK del usuario
-- [ ] Merge a `main` (`--no-ff`)
-- [ ] Tag `v0.8`
-- [ ] `docs/roadmap.md` actualizado
+- [x] OK del usuario (2026-10-12)
+- [x] Merge a `main` (`--no-ff`)
+- [x] Tag `v0.8`
+- [x] `docs/roadmap.md` actualizado
