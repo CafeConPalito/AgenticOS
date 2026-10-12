@@ -48,8 +48,14 @@ export function AppShell() {
         />
         <SidebarInset className="flex min-w-0 flex-col bg-background">
           <AppHeader section={section} />
-          {health.state === 'disconnected' && (
-            <OfflineBanner onRetry={() => void health.refetch()} url={apiUrl} />
+          {(health.state === 'disconnected' ||
+            health.state === 'reconnecting' ||
+            health.state === 'failed') && (
+            <OfflineBanner
+              state={health.state}
+              onRetry={() => void health.refetch()}
+              url={apiUrl}
+            />
           )}
           <div
             className={cn(

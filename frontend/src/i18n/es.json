@@ -38,7 +38,15 @@
     "disconnected": "Desconectado · reintentando…",
     "offlineTitle": "Backend desconectado.",
     "offlineDescription": "No se pueden lanzar ni observar ejecuciones. Los agentes en curso siguen trabajando en sus terminales.",
-    "retry": "Reintentar ahora"
+    "retry": "Reintentar ahora",
+    "reconnecting": "Reconectando…",
+    "failed": "Backend detenido",
+    "reconnectingTitle": "Reiniciando el backend…",
+    "reconnectingDescription": "Se ha cerrado y Agentic OS lo está volviendo a abrir. Las ejecuciones que estaban en marcha aparecerán como «Interrumpidas».",
+    "failedTitle": "El backend no arranca.",
+    "failedDescription": "Lo hemos intentado varias veces. Revisa los logs o vuelve a intentarlo.",
+    "restart": "Reintentar",
+    "openLogs": "Abrir logs"
   },
   "pages": {
     "dashboard": {

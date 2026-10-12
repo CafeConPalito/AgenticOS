@@ -5,7 +5,9 @@ import { cn } from '@/lib/utils'
 const DOT_CLASS: Record<BackendState, string> = {
   connected: 'bg-status-done',
   connecting: 'bg-status-waiting',
+  reconnecting: 'bg-status-waiting',
   disconnected: 'bg-status-failed',
+  failed: 'bg-status-failed',
 }
 
 export function BackendStatus({
@@ -21,9 +23,7 @@ export function BackendStatus({
   const label =
     state === 'connected'
       ? t('backend.connected', { version: version ?? '' })
-      : state === 'connecting'
-        ? t('backend.connecting')
-        : t('backend.disconnected')
+      : t(`backend.${state}`)
 
   return (
     <div
