@@ -7,7 +7,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from agentic_os.api.agents import _get as get_agent_row
-from agentic_os.api.projects import get_project_or_404, open_in_file_manager
+from agentic_os.api.projects import get_project_or_404
 from agentic_os.db.base import DEFAULT_WORKSPACE
 from agentic_os.db.session import get_session
 from agentic_os.errors import ApiError, NotFound
@@ -38,6 +38,7 @@ from agentic_os.schemas.task import (
 )
 from agentic_os.schemas.usage import UsageTotals
 from agentic_os.services import tasks as task_ops
+from agentic_os.services.proc import open_in_file_manager
 from agentic_os.services.runs.manager import RunManager
 from agentic_os.services.scheduler import Scheduler, blocked_reason
 from agentic_os.services.usage import limits as usage_limits

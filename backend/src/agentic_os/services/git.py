@@ -5,6 +5,8 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
+from agentic_os.services import proc
+
 TIMEOUT = 5
 
 
@@ -24,14 +26,7 @@ def _git(path: str, *args: str) -> subprocess.CompletedProcess[str] | None:
     if git is None:
         return None
     try:
-        return subprocess.run(
-            [git, "-C", path, *args],
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            timeout=TIMEOUT,
-        )
+        return proc.run([git, "-C", path, *args], TIMEOUT)
     except (OSError, subprocess.TimeoutExpired):
         return None
 
@@ -67,14 +62,7 @@ def run(path: str, *args: str, timeout: float = 60, config: tuple[str, ...] = ()
         raise GitError("git is not installed")
     command = [git, *(arg for pair in config for arg in ("-c", pair)), "-C", path, *args]
     try:
-        result = subprocess.run(
-            command,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            timeout=timeout,
-        )
+        result = proc.run(command, timeout)
     except (OSError, subprocess.TimeoutExpired) as error:
         raise GitError(f"git {args[0]}: {error}") from error
     if result.returncode != 0:

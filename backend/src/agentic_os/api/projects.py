@@ -1,6 +1,3 @@
-import os
-import subprocess
-import sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Annotated
@@ -16,6 +13,7 @@ from agentic_os.errors import ApiError, NotFound
 from agentic_os.models import Project, Task, TaskStatus, WorkspaceMode
 from agentic_os.schemas.project import ProjectCreate, ProjectRead, ProjectUpdate
 from agentic_os.services import git, paths
+from agentic_os.services.proc import open_in_file_manager
 
 router = APIRouter(tags=["projects"])
 DbSession = Annotated[Session, Depends(get_session)]
@@ -147,15 +145,6 @@ def delete_project(project_id: str, session: DbSession, request: Request) -> Non
         scheduler.release_finished(session, task)
     session.delete(project)
     session.commit()
-
-
-def open_in_file_manager(path: str) -> None:
-    if sys.platform == "win32":
-        os.startfile(path)
-    elif sys.platform == "darwin":
-        subprocess.Popen(["open", path])
-    else:
-        subprocess.Popen(["xdg-open", path])
 
 
 @router.post("/projects/{project_id}/open", status_code=status.HTTP_204_NO_CONTENT)

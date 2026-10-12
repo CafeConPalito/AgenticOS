@@ -17,6 +17,7 @@ from dataclasses import dataclass, field
 from pydantic import BaseModel
 
 from agentic_os.models.agent import Cli
+from agentic_os.services import proc
 
 CACHE_TTL = 600.0
 VERSION_TIMEOUT = 15
@@ -43,15 +44,7 @@ Runner = Callable[[list[str], int], subprocess.CompletedProcess[str]]
 
 
 def run_command(argv: list[str], timeout: int) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        argv,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        timeout=timeout,
-        stdin=subprocess.DEVNULL,
-    )
+    return proc.run(argv, timeout)
 
 
 def _claude_models(_path: str, _run: Runner) -> list[ModelOption]:
