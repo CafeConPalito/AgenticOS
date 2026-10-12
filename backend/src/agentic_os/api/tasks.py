@@ -36,9 +36,12 @@ from agentic_os.schemas.task import (
     TaskUpdate,
     TreeNode,
 )
+from agentic_os.schemas.usage import UsageTotals
 from agentic_os.services import tasks as task_ops
 from agentic_os.services.runs.manager import RunManager
 from agentic_os.services.scheduler import Scheduler, blocked_reason
+from agentic_os.services.usage import limits as usage_limits
+from agentic_os.services.usage.stats import task_usage
 
 router = APIRouter(tags=["tasks"])
 DbSession = Annotated[Session, Depends(get_session)]
@@ -108,13 +111,21 @@ def read_tasks(db: Session, tasks: list[Task]) -> list[TaskRead]:
         if sub_status == TaskStatus.DONE:
             done_total[0] += count
 
+    usage = task_usage(db, ids)
+    # Queued tasks of a CLI over its daily limit or out of quota wait (phase 07).
+    gates: dict[str, str | None] = {}
+    if any(t.status == TaskStatus.QUEUED for t in tasks):
+        gates = {cli.value: gate for cli, gate in usage_limits.blocked_all(db).items()}
     result = []
     for task in tasks:
         project = projects[task.project_id]
         project_stages = stages.get(task.project_id, [])
         stage = next((s for s in project_stages if s.id == task.stage_id), None)
         agent = agents.get(task.agent_id) if task.agent_id else None
-        blocked = blocked_reason(db, task, project) if task.status == TaskStatus.QUEUED else None
+        blocked = None
+        if task.status == TaskStatus.QUEUED:
+            gate = gates.get(agent.cli) if agent else None
+            blocked = blocked_reason(db, task, project) or (f"{gate}_{agent.cli}" if gate else None)
         result.append(
             TaskRead(
                 id=task.id,
@@ -153,6 +164,7 @@ def read_tasks(db: Session, tasks: list[Task]) -> list[TaskRead]:
                 parent_code=parents.get(task.parent_task_id) if task.parent_task_id else None,
                 subtasks_done=subtasks.get(task.id, [0, 0])[0],
                 subtasks_total=subtasks.get(task.id, [0, 0])[1],
+                usage=usage.get(task.id, UsageTotals()),
             )
         )
     return result

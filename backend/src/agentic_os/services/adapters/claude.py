@@ -11,7 +11,7 @@ from agentic_os.services.adapters.base import (
     claude_permissions,
     write_json,
 )
-from agentic_os.services.hooks import CLAUDE_TOOL_MATCHER, HOOK_EVENTS, TOOL_EVENTS
+from agentic_os.services.hooks import CLAUDE_TOOL_MATCHER, HOOK_EVENTS, STATUS_LINE, TOOL_EVENTS
 from agentic_os.services.runs.launcher import (
     LaunchSpec,
     clean_env,
@@ -38,7 +38,12 @@ class ClaudeAdapter(CliAdapter):
             ]
             for event in HOOK_EVENTS[self.cli]
         }
-        settings = write_json(run_dir / "settings.json", {"hooks": hooks})
+        # The status line reports the session's cost after every turn (phase 07): Claude only
+        # writes its exact totals to the transcript when the session closes.
+        status_line = {"type": "command", "command": f'"{ctx.hook_command}" {STATUS_LINE}'}
+        settings = write_json(
+            run_dir / "settings.json", {"hooks": hooks, "statusLine": status_line}
+        )
         mcp = write_json(
             run_dir / "mcp.json",
             {

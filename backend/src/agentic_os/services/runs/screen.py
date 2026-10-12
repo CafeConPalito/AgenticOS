@@ -55,6 +55,27 @@ AGY_COMMAND_REQUEST = "Requesting permission for:"
 AGY_DENY_OPTION = re.compile(r"No, (cancel|deny)")
 PERMISSION_LINES = 24  # the dialog must be at the bottom of the screen
 
+# Out of quota (phase 07). No real screen has been seen yet: the texts come from the CLIs'
+# binaries (Claude Code 2.1.296, agy 1.3.3; evidence C0). Only the CLIs' own wording counts, so
+# an agent's output about *its* app («rate limit», «RESOURCE_EXHAUSTED» in a gRPC log) is not a
+# quota: no generic error codes, and Claude's «You've hit your … limit» only for its own plans.
+# Not quota either: «Context limit reached» and the fast-mode limits.
+QUOTA_PATTERNS = {
+    Cli.CLAUDE: re.compile(
+        r"Usage limit reached"
+        r"|You've hit your (?:(?:session|weekly|monthly|5-hour|usage|spend)[\w -]*)?limit"
+        r"|your usage limit (?:will )?reset",
+        re.IGNORECASE,
+    ),
+    Cli.AGY: re.compile(r"^(?:[│|>❯✗✘⚠!*-]\s*)?(?:Quota exhausted|AI: Out of credits)\b"),
+}
+# When the quota comes back, if the CLI says it.
+QUOTA_RESET = {
+    Cli.CLAUDE: re.compile(r"\bresets?\b[^|·\n]{1,60}", re.IGNORECASE),
+    Cli.AGY: re.compile(r"Refreshes in [^|·\n]{1,40}", re.IGNORECASE),
+}
+QUOTA_LINES = 10  # only the bottom of the screen: the agent's own text may mention a quota
+
 
 @dataclass(frozen=True)
 class PermissionDialog:
@@ -165,6 +186,25 @@ class ScreenState:
                 return None
             return PermissionDialog("tool", tool)
         return None
+
+    def quota_notice(self) -> str | None:
+        """The CLI's «out of quota / usage limit» notice at the bottom of the screen: its
+        line, plus the reset time when the CLI gives it."""
+        lines = [line.strip() for line in self.text().splitlines() if line.strip()]
+        tail = lines[-QUOTA_LINES:]
+        pattern = QUOTA_PATTERNS.get(self.cli)
+        if pattern is None:
+            return None
+        hit = next((line for line in reversed(tail) if pattern.search(line)), None)
+        if hit is None:
+            return None
+        notice = hit.strip("│|╭╮╰╯─ ").strip()
+        reset_pattern = QUOTA_RESET.get(self.cli)
+        if reset_pattern is not None and not reset_pattern.search(notice):
+            reset = next((m.group(0) for line in tail if (m := reset_pattern.search(line))), None)
+            if reset:
+                notice = f"{notice} · {reset.strip()}"
+        return notice[:300]
 
     def exit_armed(self) -> bool:
         return bool(EXIT_ARMED.search(self.text()))

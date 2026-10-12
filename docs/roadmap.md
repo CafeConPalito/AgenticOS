@@ -13,7 +13,7 @@ Flujo de cada fase: ver `CLAUDE.md` (Spec → Plan → Desarrollo → Validació
 | 04 | Adapters y MCP | cerrada (`v0.5`) | Adapters de los CLIs según ADR 0004 (Claude por flags aislados; `agy` por plugin de workspace), context builder, servidor MCP `agentic-os` con token por ejecución, hooks `Stop`, `fake_agent`; evaluar el SDK de Antigravity | Cada CLI recibe su contexto y su MCP; `complete_task`/`update_status` llegan a la BD | [spec](phases/04-adapters-mcp/spec.md) · [plan](phases/04-adapters-mcp/plan.md) · [validación](phases/04-adapters-mcp/validacion.md) |
 | 05 | Scheduler y pipelines | cerrada (`v0.6`) | Modelos de Pipeline/Stage/Task, editor visual de pipeline, colas estrictas, concurrencia, Req→Dev→QA, workspaces (con carpeta directa, `agy` limitado a 1 ejecución por carpeta), memoria de proyecto, Kanban | Un agente encadena tareas de 2 proyectos sin compartir contexto; e2e del pipeline | [spec](phases/05-scheduler-pipelines/spec.md) · [plan](phases/05-scheduler-pipelines/plan.md) · [validación](phases/05-scheduler-pipelines/validacion.md) |
 | 06 | Subagentes y human-in-the-loop | cerrada (`v0.7`) | `spawn_subagent`, `create_subtask`, árbol de ejecuciones, Inbox, `request_human`, notificaciones de Windows | La aprobación llega a la Inbox y a la notificación, y la respuesta desbloquea al agente | [spec](phases/06-subagentes-hitl/spec.md) · [plan](phases/06-subagentes-hitl/plan.md) · [validación](phases/06-subagentes-hitl/validacion.md) |
-| 07 | Consumo | pendiente | Parsers de transcripts por CLI (ADR 0005; prototipo en `spikes/usage_probe.py`), coste equivalente API en Claude y solo tokens en `agy`, límite diario, panel por agente, proyecto y sesión | Las cifras coinciden con las del propio CLI | |
+| 07 | Consumo | cerrada (`v0.8`) | Parsers de transcripts por CLI (ADR 0005; prototipo en `spikes/usage_probe.py`), coste equivalente API en Claude y solo tokens en `agy`, límite diario, panel por agente, proyecto y sesión | Las cifras coinciden con las del propio CLI | [spec](phases/07-consumo/spec.md) · [plan](phases/07-consumo/plan.md) · [validación](phases/07-consumo/validacion.md) |
 | 08 | Empaquetado v1.0 (MVP) | pendiente | Instalador, ajustes, robustez (reinicios, ejecuciones huérfanas) | El instalador funciona en una máquina limpia; los e2e completos pasan | |
 | 09 | Mejora de UX/UI | pendiente | Revisar la navegación y simplificar la interfaz tras la v1.0: menú y flujos principales, menos elementos por pantalla, jerarquía visual más clara y coherente | Las tareas habituales se hacen en menos pasos y cada pantalla se entiende de un vistazo (revisión con el usuario) | |
 | 10 | Conocimiento | pendiente | Subida en 3 niveles, conversión, URLs, imágenes, RAG local, MCP `search_knowledge` | Un agente usa un PDF del proyecto para responder | |
@@ -40,3 +40,8 @@ Flujo de cada fase: ver `CLAUDE.md` (Spec → Plan → Desarrollo → Validació
 | 2026-10-11 | Fase 06 en validación: ADR 0010 (human-in-the-loop y subagentes). |
 | 2026-10-11 | Fase 06 cerrada (`v0.7`). La fase 07 queda pendiente hasta que el usuario decida empezarla. |
 | 2026-10-12 | Nueva fase 09 (Mejora de UX/UI) tras la v1.0; las fases 09–13 pasan a ser 10–14. |
+| 2026-10-12 | Fase 07 en spec. |
+| 2026-10-12 | Spec de la fase 07 aprobada. Fase 07 en plan. |
+| 2026-10-12 | Plan de la fase 07 aprobado. Fase 07 en dev. |
+| 2026-10-12 | Fase 07 en validación: ADR 0011 (consumo y límites). |
+| 2026-10-12 | Fase 07 cerrada (`v0.8`). La fase 08 queda pendiente hasta que el usuario decida empezarla. |

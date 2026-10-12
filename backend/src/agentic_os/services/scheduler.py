@@ -28,6 +28,7 @@ from agentic_os.models import (
     Agent,
     AgentStatus,
     AppState,
+    Cli,
     InboxKind,
     Project,
     Resolution,
@@ -41,10 +42,13 @@ from agentic_os.models import (
 )
 from agentic_os.services import inbox
 from agentic_os.services import tasks as task_ops
+from agentic_os.services.usage import limits as usage_limits
 
 BACKUP_TICK = 5.0
 STALLED_AFTER = timedelta(minutes=10)
 HOUSEKEEPING = 60.0
+# A run's usage changes after every turn: the daily limits are checked at most this often.
+LIMIT_CHECK_EVERY = 5.0
 # Launch errors worth retrying on the next tick (the task stays queued).
 TRANSIENT_ERRORS = {"agy_folder_busy"}
 
@@ -100,6 +104,10 @@ class Scheduler:
         # Slow periodic chores (e.g. pending folder-trust cleanups), every HOUSEKEEPING seconds.
         self.housekeeping: Callable[[], None] | None = None
         self._last_housekeeping = 0.0
+        self._last_limit_check = 0.0
+        # Usage worker, housekeeping and the API check the limits: one at a time.
+        self._limit_lock = threading.Lock()
+        self._limit_timer: threading.Timer | None = None
 
     # ------------------------------------------------------------------ thread
     def start(self) -> None:
@@ -109,6 +117,10 @@ class Scheduler:
 
     def stop(self, timeout: float = 5.0) -> None:
         self._stopping.set()
+        with self._limit_lock:
+            if self._limit_timer is not None:
+                self._limit_timer.cancel()
+                self._limit_timer = None
         self._wake.set()
         if self._thread is not None:
             self._thread.join(timeout)
@@ -207,8 +219,40 @@ class Scheduler:
                     )
                 )
             )
+            # A CLI over its daily limit, or out of quota, starts nothing (phase 07).
+            gates = usage_limits.blocked_all(db) if agents else {}
             for agent in agents:
-                self._fill(db, agent)
+                if gates[Cli(agent.cli)] is None:
+                    self._fill(db, agent)
+
+    # ------------------------------------------------------------------ daily limits
+    def check_limits(self, force: bool = False) -> None:
+        """Creates or resolves the «Límite diario alcanzado» items (phase 07). Called when a
+        run's usage changes (throttled) and by the housekeeping (a new day)."""
+        with self._limit_lock:
+            now = time.monotonic()
+            wait = LIMIT_CHECK_EVERY - (now - self._last_limit_check)
+            if not force and wait > 0:
+                # Throttled: one trailing check, so the change that crosses the limit counts.
+                if self._limit_timer is None and not self._stopping.is_set():
+                    self._limit_timer = threading.Timer(wait, self._trailing_limit_check)
+                    self._limit_timer.daemon = True
+                    self._limit_timer.start()
+                return
+            self._last_limit_check = now
+            with self._db() as db:
+                unblocked = usage_limits.sync_limit_items(db)
+                db.commit()
+        if unblocked:
+            self.poke()
+
+    def _trailing_limit_check(self) -> None:
+        with self._limit_lock:
+            self._limit_timer = None
+        try:
+            self.check_limits(force=True)
+        except Exception:
+            log.exception("could not check the daily limits")
 
     def _fill(self, db: Session, agent: Agent) -> None:
         running = db.scalar(

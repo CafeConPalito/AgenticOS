@@ -64,4 +64,5 @@ class NotificationSettings(BaseModel):
     review: bool = True
     stalled: bool = True
     delivery: bool = False
+    limits: bool = True
     sound: bool = True

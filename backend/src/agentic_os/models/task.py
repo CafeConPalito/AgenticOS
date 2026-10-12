@@ -44,6 +44,7 @@ class WaitingReason(StrEnum):
     PERMISSION = "permission"  # a permission dialog of the CLI waits
     # The agent asked (request_human) and its CLI is gone: the answer starts a new run.
     QUESTION_PENDING = "question_pending"
+    QUOTA = "quota"  # the CLI ran out of its account quota (phase 07)
 
 
 def _in(column: str, enum: type[StrEnum]) -> str:

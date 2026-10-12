@@ -44,13 +44,21 @@ from agentic_os.services import inbox
 from agentic_os.services import tasks as task_ops
 from agentic_os.services.adapters import CliAdapter, LaunchContext, adapter_for
 from agentic_os.services.context import build_context, build_instructions
-from agentic_os.services.hooks import HOOK_EVENTS, TOOL_EVENTS, interpret, write_hook_script
+from agentic_os.services.hooks import (
+    HOOK_EVENTS,
+    STATUS_LINE,
+    TOOL_EVENTS,
+    interpret,
+    write_hook_script,
+)
 from agentic_os.services.mcp_server import RunTokens
 from agentic_os.services.memory import add_agent_note, list_notes, render_memory
 from agentic_os.services.runs.launcher import resolve_executable
 from agentic_os.services.runs.screen import PermissionDialog
 from agentic_os.services.runs.session import RunSession
 from agentic_os.services.tasks import task_context
+from agentic_os.services.usage.limits import CLI_NAMES
+from agentic_os.services.usage.reader import UsageService
 
 PERMISSION_DETAIL = {
     "claude": "Claude Code pide permiso para esta acción.",
@@ -92,6 +100,10 @@ class RunManager:
         self.on_run_ended: Callable[[str], None] | None = None
         # Called when tasks change outside an API request (a permission dialog, an answer…).
         self.on_tasks_changed: Callable[[], None] | None = None
+        # Usage of the runs (phase 07). Without `start()` it reads synchronously (tests).
+        self.usage = UsageService(sessions, publish=self._publish)
+        # The installed version of a CLI, if already known (never probes: that is slow).
+        self.cli_version: Callable[[Cli], str | None] = lambda cli: None
 
     @property
     def runs_dir(self) -> Path:
@@ -194,6 +206,7 @@ class RunManager:
         db.add(run)
         db.flush()
         run.log_path = str(self.runs_dir / f"{run.id}.log")
+        run.cli_version = self.cli_version(cli)
         run_dir = self.runs_dir / run.id
         token = self.tokens.issue(run.id)
         ctx = LaunchContext(
@@ -237,6 +250,7 @@ class RunManager:
             ),
             on_permission=lambda dialog, run_id=run.id: self.permission_requested(run_id, dialog),
             on_permission_gone=lambda run_id=run.id: self.permission_gone(run_id),
+            on_quota=lambda notice, run_id=run.id: self.quota_detected(run_id, notice),
         )
         try:
             session.start()
@@ -260,6 +274,7 @@ class RunManager:
             adapter.cleanup(ctx)
         finally:
             self._release_agy_folder(folder)
+            self.usage.request(run_id, final=True)
             try:
                 self._after_run_end(run_id)
             except Exception:
@@ -382,6 +397,11 @@ class RunManager:
             log.exception("could not persist run state", run_id=run_id, changes=changes)
 
     # ------------------------------------------------------------------ events
+    def _publish(self, run_id: str, message: dict) -> None:
+        session = self.get(run_id)
+        if session is not None:
+            session.emit(message)
+
     def add_event(self, run_id: str, kind: EventKind, name: str, detail: str = "") -> None:
         """Stores an event and pushes it to the run's viewers («Eventos MCP» panel). Called from
         the session threads too: an error is logged, never raised into them."""
@@ -552,6 +572,57 @@ class RunManager:
             log.exception("could not record a permission answer", run_id=run_id)
         self.add_event(run_id, EventKind.SYSTEM, "permission_answered")
         self._notify_change()
+
+    def quota_detected(self, run_id: str, notice: str) -> None:
+        """The CLI says it ran out of quota (from the session's thread): a «Cuota agotada» in
+        the Inbox, its task waits, and the scheduler starts nothing of this CLI until the
+        person resumes (phase 07)."""
+        try:
+            with self._db() as db:
+                run = db.get(Run, run_id)
+                if run is None:
+                    return
+                cli = Cli(run.cli)
+                task = db.get(Task, run.task_id) if run.task_id else None
+                if not inbox.pending(db, run_id=run_id, kinds=(InboxKind.QUOTA,)):
+                    item = inbox.create(
+                        db,
+                        InboxKind.QUOTA,
+                        f"{CLI_NAMES[cli]} se ha quedado sin cuota",
+                        notice,
+                        task=task,
+                        run=run,
+                    )
+                    item.command = cli.value  # which CLI is blocked (limits.quota_pending)
+                if task is not None and task.status == TaskStatus.RUNNING:
+                    task_ops.wait_for_human(db, task, WaitingReason.QUOTA, notice, run_id)
+                db.commit()
+        except Exception:
+            log.exception("could not record a quota notice", run_id=run_id)
+        self.add_event(run_id, EventKind.SYSTEM, "quota_exhausted", notice)
+        self._notify_change()
+
+    def resume_after_quota(
+        self,
+        db: Session,
+        item: InboxItem,
+        resolution: Resolution = Resolution.APPROVED,
+        nudge: bool = True,
+    ) -> None:
+        """«Reanudar» (or «Descartar», without the nudge): the task runs again, the agent is
+        told to go on if its CLI is still alive, and the scheduler may start tasks of this CLI
+        again. The caller commits."""
+        inbox.resolve(db, item, resolution)
+        task = db.get(Task, item.task_id) if item.task_id else None
+        if task is not None and task.waiting_reason == WaitingReason.QUOTA:
+            task_ops.resume(db, task)
+        if item.run_id:
+            session = self.get(item.run_id)
+            if session is not None and session.alive:
+                session.quota_resumed()  # a new notice is reported again
+                if nudge:
+                    session.deliver("continúa")
+                    self.add_event(item.run_id, EventKind.SYSTEM, "quota_resumed")
 
     def _notify_change(self) -> None:
         """Tasks or the Inbox changed outside a request: the scheduler takes another look."""
@@ -826,6 +897,12 @@ class RunManager:
                 return
             cli = Cli(run.cli)
             effect = interpret(cli, event, payload)
+            if event == STATUS_LINE:  # Claude's status line: only the cost so far
+                db.close()
+                if effect.transcript_path:
+                    self.usage.note_transcript(run_id, effect.transcript_path, own=True)
+                self.usage.status_line(run_id, effect.cost_usd, effect.cli_version)
+                return
             if effect.permission_request:
                 self._permission_requests[run_id] = effect.permission_request
             # agy: the first conversation is the run's. A native subagent has its own
@@ -840,6 +917,11 @@ class RunManager:
             if effect.session_id and run.cli_session_id is None:
                 run.cli_session_id = effect.session_id
                 db.commit()
+        if effect.transcript_path:
+            try:
+                self.usage.note_transcript(run_id, effect.transcript_path, own=not foreign)
+            except Exception:
+                log.exception("could not note the transcript", run_id=run_id)
         try:
             self._native_subagent(run_id, cli, event, payload, foreign)
         except Exception:
@@ -850,5 +932,7 @@ class RunManager:
         # agy fires PreInvocation on every model step: only turn boundaries are events.
         if event in HOOK_EVENTS[cli] and (boundary or event not in ("PreInvocation", *TOOL_EVENTS)):
             self.add_event(run_id, EventKind.HOOK, event)
+        if effect.turn_ended:
+            self.usage.request(run_id)  # live usage at the end of every turn
         if effect.turn_ended and session is not None:
             session.after_turn_end()

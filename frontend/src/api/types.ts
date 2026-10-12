@@ -74,6 +74,26 @@ export type RunStatus =
 export type RunActivity = 'busy' | 'idle'
 export const ACTIVE_RUN_STATUSES: RunStatus[] = ['starting', 'running', 'intervening']
 
+export type UsageStatus = 'pending' | 'partial' | 'final' | 'unavailable'
+
+export interface UsageTotals {
+  input_tokens: number
+  output_tokens: number
+  thinking_tokens: number
+  cache_read_tokens: number
+  cache_creation_tokens: number
+  /** API-equivalent USD (Claude). Null when the CLI records no cost (agy). */
+  cost_usd: number | null
+}
+
+export interface RunUsage extends UsageTotals {
+  source: string | null
+  status: UsageStatus
+  cli_version: string | null
+  models: Record<string, Record<string, number>>
+  read_at: string | null
+}
+
 export interface Run {
   id: string
   agent_id: string | null
@@ -109,6 +129,9 @@ export interface Run {
   updated_at: string
   controller: string | null
   viewers: number
+  usage: RunUsage
+  /** A manual run launched over its CLI's daily limit or out of quota. */
+  warning?: 'limit_reached' | 'quota_reached' | null
 }
 
 export interface ModelOption {
@@ -181,6 +204,7 @@ export type WaitingReason =
   | 'human_request'
   | 'permission'
   | 'question_pending'
+  | 'quota'
 
 export interface Task {
   id: string
@@ -208,7 +232,7 @@ export interface Task {
   worktree_path: string | null
   branch: string | null
   /** A queued task that cannot start now even with a free agent. */
-  blocked: 'folder_busy' | null
+  blocked: 'folder_busy' | 'limit_claude' | 'limit_agy' | 'quota_claude' | 'quota_agy' | null
   active_run_id: string | null
   last_run_id: string | null
   queued_at: string | null
@@ -220,6 +244,8 @@ export interface Task {
   parent_code: string | null
   subtasks_done: number
   subtasks_total: number
+  /** Every run of the task, its subagents included. */
+  usage: UsageTotals
 }
 
 export type TaskEventKind =
@@ -300,7 +326,15 @@ export interface PipelineWrite {
 }
 
 export type InboxKind =
-  'approval' | 'question' | 'blocker' | 'review' | 'stalled' | 'delivery' | 'attention'
+  | 'approval'
+  | 'question'
+  | 'blocker'
+  | 'review'
+  | 'stalled'
+  | 'delivery'
+  | 'attention'
+  | 'limit'
+  | 'quota'
 
 export type InboxResolution =
   'approved' | 'rejected' | 'answered' | 'answered_in_terminal' | 'reviewed' | 'dismissed'
@@ -342,6 +376,7 @@ export interface NotificationSettings {
   review: boolean
   stalled: boolean
   delivery: boolean
+  limits: boolean
   sound: boolean
 }
 
@@ -355,4 +390,108 @@ export interface TreeNode {
   started_at: string | null
   ended_at: string | null
   children: TreeNode[]
+}
+
+// ------------------------------------------------------------------ usage (phase 07)
+export interface UsageLimits {
+  claude_usd: number | null
+  agy_tokens: number | null
+}
+
+export interface LimitState {
+  cli: CliId
+  unit: 'usd' | 'tokens'
+  limit: number | null
+  used: number
+  ratio: number | null
+  reached: boolean
+  near: boolean
+  quota_exhausted: boolean
+}
+
+export interface UsageKpis {
+  cost_usd: number
+  cost_change: number | null
+  tokens: number
+  cache_ratio: number | null
+  agent_hours: number
+  sessions: number
+  success_ratio: number | null
+}
+
+export interface UsageSummary {
+  date_from: string
+  date_to: string
+  kpis: UsageKpis
+}
+
+export interface UsageGroup {
+  id: string
+  name: string
+  color: string
+}
+
+export interface DailyPoint {
+  day: string
+  cost: Record<string, number>
+  tokens: Record<string, number>
+}
+
+export interface DailySeries {
+  group: 'agent' | 'project'
+  groups: UsageGroup[]
+  days: DailyPoint[]
+}
+
+export interface BreakdownRow {
+  id: string | null
+  name: string
+  color: string
+  cost_usd: number
+  tokens: number
+  sessions: number
+  share: number | null
+}
+
+export interface Breakdown {
+  group: 'agent' | 'project' | 'task'
+  rows: BreakdownRow[]
+}
+
+export interface SessionRow {
+  run_id: string
+  started_at: string | null
+  ended_at: string | null
+  duration_seconds: number | null
+  agent_id: string | null
+  agent_name: string
+  agent_color: string
+  project_id: string | null
+  project_name: string
+  task_id: string | null
+  task_code: string | null
+  task_title: string | null
+  cli: CliId
+  model: string
+  status: RunStatus
+  tokens: number
+  cost_usd: number | null
+  usage_status: UsageStatus
+}
+
+export interface TodayAgent {
+  id: string | null
+  name: string
+  color: string
+  cost_usd: number
+  tokens: number
+}
+
+export interface UsageToday {
+  day: string
+  tokens: number
+  cache_read_tokens: number
+  cost_usd: number
+  agents: TodayAgent[]
+  limits: LimitState[]
 }

@@ -1,7 +1,9 @@
-import { Plus, Search, SquareTerminal } from 'lucide-react'
+import { Download, Plus, Search, SquareTerminal } from 'lucide-react'
 import { Fragment, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link, useMatches, useNavigate } from 'react-router'
+import { Link, useMatches, useNavigate, useSearchParams } from 'react-router'
+import { toast } from 'sonner'
+import { downloadSessionsCsv, periodFromParam } from '@/api/usage'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -40,14 +42,25 @@ export function AppHeader({ section }: { section: NavItem }) {
   const [creatingTask, setCreatingTask] = useState(false)
   const dockOpen = useDock((s) => s.open)
   const toggleDock = useDock((s) => s.toggle)
+  const [params] = useSearchParams()
   const primaryAvailable =
-    Boolean(primaryRoute) || section.primary === 'launchRun' || section.primary === 'newTask'
+    Boolean(primaryRoute) ||
+    section.primary === 'launchRun' ||
+    section.primary === 'newTask' ||
+    section.primary === 'exportCsv'
 
   function onPrimary() {
     if (section.primary === 'launchRun') setLaunching(true)
     else if (section.primary === 'newTask') setCreatingTask(true)
+    else if (section.primary === 'exportCsv')
+      // The period the Consumo page shows (kept in its URL).
+      downloadSessionsCsv({ days: periodFromParam(params.get('periodo')) }).then(
+        () => toast.success(t('usage.exported')),
+        (error: unknown) => toast.error(String(error)),
+      )
     else if (primaryRoute) navigate(primaryRoute)
   }
+  const PrimaryIcon = section.primary === 'exportCsv' ? Download : Plus
 
   return (
     <header className="flex h-[52px] shrink-0 items-center gap-3 border-b bg-background px-[18px]">
@@ -113,7 +126,7 @@ export function AppHeader({ section }: { section: NavItem }) {
           onClick={onPrimary}
           className="h-8 gap-1.5 bg-primary-action font-medium text-white hover:bg-primary-action-hover"
         >
-          <Plus className="size-[15px]" />
+          <PrimaryIcon className="size-[15px]" />
           {t(`header.primary.${section.primary}`)}
         </Button>
       )}

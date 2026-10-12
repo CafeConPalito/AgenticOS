@@ -52,6 +52,11 @@ class Api:
         assert response.status_code < 300, response.text
         return response.json()
 
+    def client_put(self, path: str, body: dict):
+        response = httpx.put(self.url + path, json=body, timeout=30)
+        assert response.status_code < 300, response.text
+        return response.json()
+
     def task(self, task_id: str) -> dict:
         return self.get(f"/api/tasks/{task_id}")
 

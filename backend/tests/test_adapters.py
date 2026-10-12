@@ -95,6 +95,12 @@ def test_claude_is_isolated_with_its_own_files_and_the_prompt_first(tmp_path: Pa
     assert hooks["PreToolUse"][0]["matcher"] == "Agent|Task"
     assert "matcher" not in hooks["Stop"][0]
     assert hooks["Stop"][0]["hooks"][0]["command"] == f'"{ctx.hook_command}" Stop'
+    # Phase 07: the status line reports the session's cost through the same script.
+    settings = json.loads((ctx.run_dir / "settings.json").read_text("utf-8"))
+    assert settings["statusLine"] == {
+        "type": "command",
+        "command": f'"{ctx.hook_command}" StatusLine',
+    }
     assert (ctx.run_dir / "instructions.md").read_text("utf-8") == "# Tu rol: Dev\n"
 
 

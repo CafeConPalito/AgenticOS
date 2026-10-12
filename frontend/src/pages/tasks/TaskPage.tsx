@@ -53,6 +53,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { errorMessage } from '@/lib/form-errors'
 import { formatDateTime, formatDuration } from '@/lib/time'
 import { cn } from '@/lib/utils'
+import { SessionUsage } from '@/components/usage/SessionUsage'
 import { RunEventsPanel } from '@/pages/runs/RunEventsPanel'
 import { RunStatusBadge } from '@/pages/runs/RunStatusBadge'
 import { PriorityLabel, TaskStatusBadge } from './TaskBits'
@@ -214,6 +215,7 @@ function TaskDetail({ task }: { task: Task }) {
             }
           />
           {runId && <RunEventsPanel runId={runId} />}
+          {run && <SessionUsage run={run} taskTotal={task.usage} />}
         </aside>
       </div>
 

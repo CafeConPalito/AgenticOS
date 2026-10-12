@@ -1,0 +1,335 @@
+{
+ "date": "2026-10-12",
+ "clis": {
+  "claude": "2.1.296 (haiku)",
+  "agy": "1.3.3"
+ },
+ "runs": {
+  "usage-claude": {
+   "task_status": "done",
+   "task_usage": {
+    "input_tokens": 1754,
+    "output_tokens": 1819,
+    "thinking_tokens": 774,
+    "cache_read_tokens": 264785,
+    "cache_creation_tokens": 43264,
+    "cost_usd": 0.010201325
+   },
+   "run_id": "7e4907c2-0ec3-454f-94f2-b1c887df3eee",
+   "cli_session_id": "d348c324-6d3b-4899-8559-0ea6c991f284",
+   "usage": {
+    "input_tokens": 1754,
+    "output_tokens": 1819,
+    "thinking_tokens": 774,
+    "cache_read_tokens": 264785,
+    "cache_creation_tokens": 43264,
+    "cost_usd": 0.010201325,
+    "source": "cost-state",
+    "status": "final",
+    "cli_version": "2.1.296",
+    "models": {
+     "claude-haiku-5-5": {
+      "input_tokens": 1754,
+      "output_tokens": 1819,
+      "thinking_tokens": 774,
+      "cache_read_tokens": 264785,
+      "cache_creation_tokens": 43264,
+      "cost_usd": 0.010201325
+     }
+    },
+    "read_at": "2026-10-12T09:14:57.176400Z"
+   },
+   "timeline": [
+    [
+     "11:14:35",
+     {
+      "status": "pending",
+      "source": null,
+      "cost_usd": null,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "cache_read_tokens": 0
+     }
+    ],
+    [
+     "11:14:40",
+     {
+      "status": "partial",
+      "source": null,
+      "cost_usd": 0.0,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "cache_read_tokens": 0
+     }
+    ],
+    [
+     "11:14:44",
+     {
+      "status": "partial",
+      "source": null,
+      "cost_usd": 0.00309318,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "cache_read_tokens": 0
+     }
+    ],
+    [
+     "11:14:45",
+     {
+      "status": "partial",
+      "source": null,
+      "cost_usd": 0.006629005,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "cache_read_tokens": 0
+     }
+    ],
+    [
+     "11:14:46",
+     {
+      "status": "partial",
+      "source": "assistant-rows",
+      "cost_usd": 0.007509895000000001,
+      "input_tokens": 10,
+      "output_tokens": 991,
+      "cache_read_tokens": 137950
+     }
+    ],
+    [
+     "11:14:47",
+     {
+      "status": "partial",
+      "source": "assistant-rows",
+      "cost_usd": 0.008570275,
+      "input_tokens": 10,
+      "output_tokens": 991,
+      "cache_read_tokens": 137950
+     }
+    ],
+    [
+     "11:14:48",
+     {
+      "status": "partial",
+      "source": "assistant-rows",
+      "cost_usd": 0.009689755000000001,
+      "input_tokens": 10,
+      "output_tokens": 991,
+      "cache_read_tokens": 137950
+     }
+    ],
+    [
+     "11:14:49",
+     {
+      "status": "partial",
+      "source": "assistant-rows",
+      "cost_usd": 0.010201325,
+      "input_tokens": 16,
+      "output_tokens": 1362,
+      "cache_read_tokens": 222736
+     }
+    ],
+    [
+     "11:14:57",
+     {
+      "status": "final",
+      "source": "cost-state",
+      "cost_usd": 0.010201325,
+      "input_tokens": 1754,
+      "output_tokens": 1819,
+      "cache_read_tokens": 264785
+     }
+    ]
+   ],
+   "events": [
+    "mcp_connected",
+    "SessionStart",
+    "UserPromptSubmit",
+    "subagent_start",
+    "SubagentStart",
+    "report_status",
+    "Stop",
+    "subagent_stop",
+    "SubagentStop",
+    "UserPromptSubmit",
+    "SubagentStop",
+    "complete_task",
+    "Stop",
+    "closing",
+    "SessionEnd"
+   ]
+  },
+  "usage-agy": {
+   "task_status": "done",
+   "task_usage": {
+    "input_tokens": 101935,
+    "output_tokens": 3233,
+    "thinking_tokens": 0,
+    "cache_read_tokens": 14374,
+    "cache_creation_tokens": 0,
+    "cost_usd": null
+   },
+   "run_id": "c6bd0143-2223-4ab2-8840-2c28d0dcb41a",
+   "cli_session_id": "be70969c-c3f7-4ca3-b486-38f09ecb68b4",
+   "usage": {
+    "input_tokens": 101935,
+    "output_tokens": 3233,
+    "thinking_tokens": 0,
+    "cache_read_tokens": 14374,
+    "cache_creation_tokens": 0,
+    "cost_usd": null,
+    "source": "transcript_full",
+    "status": "final",
+    "cli_version": null,
+    "models": {},
+    "read_at": "2026-10-12T09:16:14.465133Z"
+   },
+   "timeline": [
+    [
+     "11:14:58",
+     {
+      "status": "pending",
+      "source": null,
+      "cost_usd": null,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "cache_read_tokens": 0
+     }
+    ],
+    [
+     "11:16:03",
+     {
+      "status": "partial",
+      "source": "transcript_full",
+      "cost_usd": null,
+      "input_tokens": 101935,
+      "output_tokens": 3233,
+      "cache_read_tokens": 14374
+     }
+    ],
+    [
+     "11:16:15",
+     {
+      "status": "final",
+      "source": "transcript_full",
+      "cost_usd": null,
+      "input_tokens": 101935,
+      "output_tokens": 3233,
+      "cache_read_tokens": 14374
+     }
+    ]
+   ],
+   "events": [
+    "mcp_probe",
+    "mcp_connected",
+    "prompt_sent",
+    "PreInvocation",
+    "report_status",
+    "subagent_start",
+    "complete_task",
+    "Stop",
+    "closing"
+   ]
+  }
+ },
+ "independent_reading": {
+  "claude": {
+   "run_id": "7e4907c2-0ec3-454f-94f2-b1c887df3eee",
+   "transcript": "C:\\Users\\usuario\\.claude\\projects\\C--Users-usuario-AppData-Local-Temp-claude-D--agentic-os-2440a562-0146-4c64-8cea-5d88ed509c2e-scratchpad-real7-projects-usage-claude\\d348c324-6d3b-4899-8559-0ea6c991f284.jsonl",
+   "extra_transcripts": [],
+   "independent": {
+    "cost_usd": 0.010201325,
+    "input": 1754,
+    "output": 1819,
+    "cache_read": 264785,
+    "cache_write": 43264,
+    "models": [
+     "claude-haiku-5-5"
+    ]
+   }
+  },
+  "agy": {
+   "run_id": "c6bd0143-2223-4ab2-8840-2c28d0dcb41a",
+   "transcript": "C:/Users/<user>/.gemini/antigravity-cli/brain/be70969c-c3f7-4ca3-b486-38f09ecb68b4/.system_generated/logs/transcript_full.jsonl",
+   "extra_transcripts": [
+    "C:/Users/<user>/.gemini/antigravity-cli/brain/e4a37f59-3223-49da-939e-4a11400604dc/.system_generated/logs/transcript_full.jsonl"
+   ],
+   "independent": {
+    "total": {
+     "input": 101935,
+     "output": 3233,
+     "cache_read": 14374
+    },
+    "per_conversation": {
+     "be70969c-c3f7-4ca3-b486-38f09ecb68b4": {
+      "input": 78074,
+      "output": 2289,
+      "cache_read": 14374
+     },
+     "e4a37f59-3223-49da-939e-4a11400604dc": {
+      "input": 23861,
+      "output": 944,
+      "cache_read": 0
+     }
+    }
+   }
+  }
+ },
+ "today": {
+  "day": "2026-10-12",
+  "tokens": 431164,
+  "cache_read_tokens": 279159,
+  "cost_usd": 0.010201,
+  "agents": [
+   {
+    "id": "e1e489fc-a13c-40b6-95d8-5d3e37e544a3",
+    "name": "Dev",
+    "color": "#8FB4FF",
+    "cost_usd": 0.010201,
+    "tokens": 311622
+   },
+   {
+    "id": "c73f857f-cf2a-4081-8ded-2ca16446bae5",
+    "name": "Gema",
+    "color": "#8FB4FF",
+    "cost_usd": 0.0,
+    "tokens": 119542
+   }
+  ],
+  "limits": [
+   {
+    "cli": "claude",
+    "unit": "usd",
+    "limit": null,
+    "used": 0.010201,
+    "ratio": null,
+    "reached": false,
+    "near": false,
+    "quota_exhausted": false
+   },
+   {
+    "cli": "agy",
+    "unit": "tokens",
+    "limit": null,
+    "used": 105168.0,
+    "ratio": null,
+    "reached": false,
+    "near": false,
+    "quota_exhausted": false
+   }
+  ]
+ },
+ "summary": {
+  "date_from": "2026-09-13",
+  "date_to": "2026-10-12",
+  "kpis": {
+   "cost_usd": 0.010201,
+   "cost_change": null,
+   "tokens": 431164,
+   "cache_ratio": 0.6551305759987984,
+   "agent_hours": 0.027582817222222222,
+   "sessions": 2,
+   "success_ratio": 1.0
+  }
+ },
+ "note": "independent_reading = what the CLI wrote (Claude cost-state; agy transcript_full of the run and of its native subagent), read without Agentic OS parsers"
+}

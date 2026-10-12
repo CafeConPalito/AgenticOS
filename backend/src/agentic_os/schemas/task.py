@@ -2,10 +2,11 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, StringConstraints, field_validator
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_validator
 
 from agentic_os.models.task import Priority, TaskEventKind, TaskStatus, WaitingReason
 from agentic_os.schemas.agent import reject_null
+from agentic_os.schemas.usage import UsageTotals
 
 Title = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
 Description = Annotated[str, StringConstraints(max_length=20_000)]
@@ -76,6 +77,8 @@ class TaskRead(BaseModel):
     parent_code: str | None = None
     subtasks_done: int = 0
     subtasks_total: int = 0
+    # Every run of the task, its subagents included (phase 07).
+    usage: UsageTotals = Field(default_factory=UsageTotals)
 
 
 class TaskEventRead(BaseModel):

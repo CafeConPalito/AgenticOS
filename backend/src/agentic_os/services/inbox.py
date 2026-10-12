@@ -30,6 +30,7 @@ DEFAULT_NOTIFICATIONS = {
     "review": True,  # reviews and rejections between stages
     "stalled": True,
     "delivery": False,
+    "limits": True,  # daily limits and «Cuota agotada» (phase 07)
     "sound": True,
 }
 # The setting that covers each kind.
@@ -41,6 +42,8 @@ SETTING_FOR = {
     InboxKind.STALLED: "stalled",
     InboxKind.DELIVERY: "delivery",
     InboxKind.ATTENTION: "stalled",
+    InboxKind.LIMIT: "limits",
+    InboxKind.QUOTA: "limits",
 }
 
 

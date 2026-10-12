@@ -38,12 +38,20 @@ export function useRuns(filters: RunFilters = {}) {
   })
 }
 
+/** A run that just ended: its final usage is read right after (Claude writes it on close). */
+function awaitsFinalUsage(run: Run): boolean {
+  if (!run.ended_at || run.usage.status === 'final' || run.usage.status === 'unavailable')
+    return false
+  return Date.now() - new Date(run.ended_at).getTime() < 60_000
+}
+
 export function useRun(id: string | undefined) {
   return useQuery({
     queryKey: runKeys.detail(id ?? ''),
     queryFn: () => api.get<Run>(`/api/runs/${id}`),
     enabled: Boolean(id),
-    refetchInterval: (q) => (q.state.data && isActive(q.state.data) ? 3000 : false),
+    refetchInterval: (q) =>
+      q.state.data && (isActive(q.state.data) || awaitsFinalUsage(q.state.data)) ? 3000 : false,
   })
 }
 

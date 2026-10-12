@@ -43,8 +43,8 @@
   "pages": {
     "dashboard": {
       "title": "Dashboard",
-      "emptyTitle": "Aún no tienes agentes",
-      "emptyDescription": "Aquí verás qué hace cada agente, las aprobaciones pendientes y el consumo de hoy."
+      "emptyTitle": "Tus agentes, de un vistazo",
+      "emptyDescription": "Aquí verás qué hace cada agente, las aprobaciones pendientes y la actividad reciente."
     },
     "agents": {
       "title": "Agentes",
@@ -69,7 +69,7 @@
     "usage": {
       "title": "Consumo",
       "emptyTitle": "Sin datos de consumo",
-      "emptyDescription": "Tokens, coste y horas de agente por agente, proyecto y sesión."
+      "emptyDescription": "Cuando tus agentes trabajen, aquí verás sus tokens, su coste y sus horas."
     },
     "settings": {
       "title": "Ajustes",
@@ -487,10 +487,15 @@
       "workspace_failed": "No se pudo preparar el worktree",
       "human_request": "El agente te ha hecho una pregunta",
       "permission": "El agente pide permiso para una acción",
-      "question_pending": "Tiene una pregunta sin responder en la Inbox"
+      "question_pending": "Tiene una pregunta sin responder en la Inbox",
+      "quota": "El CLI se quedó sin cuota"
     },
     "blocked": {
-      "folder_busy": "Carpeta ocupada"
+      "folder_busy": "Carpeta ocupada",
+      "limit_claude": "Límite diario de Claude Code alcanzado",
+      "limit_agy": "Límite diario de Antigravity alcanzado",
+      "quota_claude": "Claude Code sin cuota",
+      "quota_agy": "Antigravity sin cuota"
     },
     "noAgent": "Sin agente",
     "noStage": "Sin pipeline",
@@ -651,7 +656,9 @@
       "review": "Revisión",
       "stalled": "Sin terminar",
       "delivery": "Tarea completada",
-      "attention": "Necesita atención"
+      "attention": "Necesita atención",
+      "limit": "Límite diario",
+      "quota": "Cuota agotada"
     },
     "approvalTitle": "¿Puedo continuar?",
     "answerPlaceholder": "Responder con texto…",
@@ -679,12 +686,16 @@
       "answered": "Respuesta enviada a {{name}}",
       "approved": "Aprobado",
       "rejected": "Rechazado",
-      "done": "Hecho"
-    }
+      "done": "Hecho",
+      "resumed": "El agente continúa"
+    },
+    "resume": "Reanudar",
+    "limitHint": "Se resuelve solo mañana o al subir el límite en Ajustes.",
+    "openSettings": "Abrir Ajustes"
   },
   "settings": {
     "title": "Ajustes",
-    "subtitle": "Cómo te avisa Agentic OS.",
+    "subtitle": "Cómo te avisa Agentic OS y cuánto pueden gastar tus agentes.",
     "notifications": {
       "title": "Notificaciones de Windows",
       "description": "Avisos del sistema cuando un agente necesita algo de ti, aunque la ventana esté en segundo plano.",
@@ -698,6 +709,8 @@
       "stalledHelp": "Un agente lleva tiempo esperando, o una tarea falló.",
       "delivery": "Tareas completadas",
       "deliveryHelp": "Una tarea llega a «Hecho».",
+      "limits": "Límites y cuota",
+      "limitsHelp": "Se alcanza un límite diario o un CLI se queda sin cuota.",
       "sound": "Sonido",
       "soundHelp": "Reproduce el sonido del sistema con cada aviso.",
       "permissionDenied": "El navegador no permite notificaciones. Actívalas en los ajustes del sitio.",
@@ -705,6 +718,111 @@
       "test": "Probar aviso",
       "testTitle": "Agentic OS",
       "testBody": "Así te llegarán los avisos de tus agentes."
+    },
+    "limits": {
+      "title": "Límites diarios",
+      "description": "Al superar el límite de un CLI, el scheduler deja de lanzar tareas nuevas de ese CLI hasta mañana. Las ejecuciones en marcha siguen y puedes lanzar a mano.",
+      "claude": "Claude Code · coste del día",
+      "claudeHelp": "Coste equivalente API en USD, tal como lo calcula Claude Code.",
+      "agy": "Antigravity · tokens del día",
+      "agyHelp": "Entrada, salida y razonamiento; la caché no cuenta. agy no informa del coste.",
+      "none": "Sin límite",
+      "save": "Guardar límites",
+      "saved": "Límites guardados",
+      "invalid": "Escribe un número mayor que 0, o déjalo vacío."
+    }
+  },
+  "usage": {
+    "subtitle": "Tokens, coste y tiempo de tus agentes según lo reporta cada CLI.",
+    "period": {
+      "7": "7 días",
+      "30": "30 días",
+      "90": "90 días"
+    },
+    "kpis": {
+      "cost": "Coste",
+      "costChange": "{{value}} vs. periodo anterior",
+      "costNoPrevious": "Sin periodo anterior con coste",
+      "costNote": "Equivalente API · Claude Code",
+      "tokens": "Tokens",
+      "cacheShare": "{{value}} servidos desde caché",
+      "hours": "Horas de agente",
+      "workdays": "equivale a {{count}} jornadas",
+      "sessions": "Sesiones de CLI",
+      "success": "{{value}} terminadas sin error"
+    },
+    "chart": {
+      "titleAgent": "Coste diario por agente",
+      "titleProject": "Coste diario por proyecto",
+      "tokensTitleAgent": "Tokens diarios por agente",
+      "tokensTitleProject": "Tokens diarios por proyecto",
+      "byAgent": "Por agente",
+      "byProject": "Por proyecto",
+      "cost": "Coste",
+      "tokens": "Tokens",
+      "empty": "Sin consumo en este periodo."
+    },
+    "breakdown": {
+      "title": "Reparto del periodo",
+      "empty": "Nada que repartir todavía."
+    },
+    "sessions": {
+      "title": "Sesiones de CLI",
+      "empty": "No hay sesiones en este periodo.",
+      "columns": {
+        "started_at": "Inicio",
+        "agent": "Agente",
+        "project": "Proyecto",
+        "task": "Tarea",
+        "model": "Modelo",
+        "tokens": "Tokens",
+        "cost": "Coste",
+        "duration": "Duración"
+      },
+      "manual": "Ejecución manual",
+      "partial": "parcial",
+      "open": "Abrir la ejecución de {{name}}"
+    },
+    "export": "Exportar CSV",
+    "exported": "CSV exportado",
+    "noCost": "—",
+    "unavailable": "Consumo no disponible",
+    "partialHint": "Cifra en vivo: la definitiva llega al cerrar la sesión.",
+    "today": {
+      "title": "Consumo de hoy",
+      "tokens": "Tokens",
+      "cached": "{{value}} en caché",
+      "cost": "Coste",
+      "costNote": "Equivalente API",
+      "noLimit": "Sin límite diario",
+      "limitOf": "Límite diario {{value}}",
+      "byAgent": "Por agente",
+      "limitBar": "{{cli}} · {{percent}} del límite diario",
+      "near": "Cerca del límite diario de {{cli}}",
+      "reached": "Límite diario de {{cli}} alcanzado: no se lanzan tareas nuevas",
+      "quota": "{{cli}} sin cuota: no se lanzan tareas nuevas",
+      "detail": "Ver detalle →",
+      "empty": "Tus agentes no han consumido nada hoy."
+    },
+    "session": {
+      "title": "Consumo de la sesión",
+      "input": "Tokens entrada",
+      "output": "Tokens salida",
+      "cacheRead": "Caché (lectura)",
+      "cacheWrite": "Caché (escritura)",
+      "cost": "Coste",
+      "duration": "Duración",
+      "sessionId": "ID de sesión",
+      "taskTotal": "Total de la tarea",
+      "pending": "Se leerá al terminar el turno."
+    },
+    "columns": {
+      "tokens": "Tokens",
+      "cost": "Coste"
+    },
+    "warning": {
+      "limit_reached": "Has superado el límite diario de este CLI. La ejecución se lanza igualmente.",
+      "quota_reached": "Este CLI se quedó sin cuota. La ejecución se lanza igualmente."
     }
   }
 }

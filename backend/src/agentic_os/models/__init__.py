@@ -1,5 +1,5 @@
 from agentic_os.models.agent import Agent, AgentStatus, Cli, PermissionMode, Tool
-from agentic_os.models.app_state import NOTIFICATIONS, SCHEDULER_PAUSED, AppState
+from agentic_os.models.app_state import NOTIFICATIONS, SCHEDULER_PAUSED, USAGE_LIMITS, AppState
 from agentic_os.models.inbox import InboxItem, InboxKind, InboxStatus, Resolution
 from agentic_os.models.memory import AuthorKind, MemoryNote
 from agentic_os.models.pipeline import DEFAULT_MAX_REJECTIONS, Pipeline, Stage
@@ -11,6 +11,7 @@ from agentic_os.models.run import (
     Run,
     RunEvent,
     RunStatus,
+    UsageStatus,
     Verdict,
 )
 from agentic_os.models.task import (
@@ -31,6 +32,7 @@ __all__ = [
     "NOTIFICATIONS",
     "PRIORITY_RANK",
     "SCHEDULER_PAUSED",
+    "USAGE_LIMITS",
     "Activity",
     "Agent",
     "AgentStatus",
@@ -56,6 +58,7 @@ __all__ = [
     "TaskEventKind",
     "TaskStatus",
     "Tool",
+    "UsageStatus",
     "Verdict",
     "WaitingReason",
     "WorkspaceMode",

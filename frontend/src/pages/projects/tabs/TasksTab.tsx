@@ -1,6 +1,7 @@
 import { ListChecks, Plus } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { formatTokens, formatUsd, totalTokens } from '@/lib/format'
 import { useNavigate } from 'react-router'
 import { useTasks } from '@/api/tasks'
 import type { Project } from '@/api/types'
@@ -83,7 +84,13 @@ export function TasksTab({ project }: { project: Project }) {
                     <TableCell>
                       <PriorityLabel priority={task.priority} />
                     </TableCell>
-                    <TableCell className="text-right font-mono">{t('common.none')}</TableCell>
+                    <TableCell className="text-right font-mono">
+                      {task.usage.cost_usd !== null
+                        ? formatUsd(task.usage.cost_usd)
+                        : totalTokens(task.usage) > 0
+                          ? formatTokens(totalTokens(task.usage))
+                          : t('common.none')}
+                    </TableCell>
                   </TableRow>
                 )
               })}

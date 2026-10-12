@@ -7,7 +7,14 @@ import type {
   Project,
   Run,
   RunEvent,
+  RunUsage,
   InboxItem,
+  Breakdown,
+  DailySeries,
+  SessionRow,
+  UsageLimits,
+  UsageSummary,
+  UsageToday,
   NotificationSettings,
   Task,
   TaskEvent,
@@ -18,6 +25,23 @@ import type {
 
 let seq = 0
 const now = () => new Date().toISOString()
+
+export function makeUsage(overrides: Partial<RunUsage> = {}): RunUsage {
+  return {
+    input_tokens: 0,
+    output_tokens: 0,
+    thinking_tokens: 0,
+    cache_read_tokens: 0,
+    cache_creation_tokens: 0,
+    cost_usd: null,
+    source: null,
+    status: 'pending',
+    cli_version: null,
+    models: {},
+    read_at: null,
+    ...overrides,
+  }
+}
 
 export const TEMPLATES: AgentTemplate[] = [
   {
@@ -153,6 +177,7 @@ export function makeRun(overrides: Partial<Run> = {}): Run {
     updated_at: now(),
     controller: null,
     viewers: 0,
+    usage: makeUsage(),
     ...overrides,
   }
 }
@@ -210,6 +235,14 @@ export function makeTask(overrides: Partial<Task> = {}): Task {
     parent_code: null,
     subtasks_done: 0,
     subtasks_total: 0,
+    usage: {
+      input_tokens: 0,
+      output_tokens: 0,
+      thinking_tokens: 0,
+      cache_read_tokens: 0,
+      cache_creation_tokens: 0,
+      cost_usd: null,
+    },
     ...overrides,
   }
 }
@@ -266,6 +299,66 @@ function apiError(status: number, code: string, field?: string): Response {
   return json(status, { detail: { code, message: code, field } })
 }
 
+export interface FakeUsage {
+  summary: UsageSummary
+  daily: DailySeries
+  breakdown: Breakdown
+  sessions: SessionRow[]
+  today: UsageToday
+  limits: UsageLimits
+}
+
+export function emptyUsage(): FakeUsage {
+  return {
+    summary: {
+      date_from: '2026-09-13',
+      date_to: '2026-10-12',
+      kpis: {
+        cost_usd: 0,
+        cost_change: null,
+        tokens: 0,
+        cache_ratio: null,
+        agent_hours: 0,
+        sessions: 0,
+        success_ratio: null,
+      },
+    },
+    daily: { group: 'agent', groups: [], days: [] },
+    breakdown: { group: 'agent', rows: [] },
+    sessions: [],
+    today: {
+      day: '2026-10-12',
+      tokens: 0,
+      cache_read_tokens: 0,
+      cost_usd: 0,
+      agents: [],
+      limits: [
+        {
+          cli: 'claude',
+          unit: 'usd',
+          limit: null,
+          used: 0,
+          ratio: null,
+          reached: false,
+          near: false,
+          quota_exhausted: false,
+        },
+        {
+          cli: 'agy',
+          unit: 'tokens',
+          limit: null,
+          used: 0,
+          ratio: null,
+          reached: false,
+          near: false,
+          quota_exhausted: false,
+        },
+      ],
+    },
+    limits: { claude_usd: null, agy_tokens: null },
+  }
+}
+
 export function createFakeBackend(
   seed: {
     agents?: Agent[]
@@ -281,8 +374,32 @@ export function createFakeBackend(
     inbox?: InboxItem[]
     trees?: Record<string, TreeNode[]>
     notificationSettings?: NotificationSettings
+    usage?: Partial<FakeUsage>
   } = {},
 ) {
+  const usage: FakeUsage = { ...emptyUsage(), ...(seed.usage ?? {}) }
+
+  function handleUsage(method: string, path: string, body: Record<string, unknown>) {
+    if (path === '/api/settings/usage-limits') {
+      if (method === 'PUT') usage.limits = body as unknown as UsageLimits
+      return json(200, usage.limits)
+    }
+    if (path === '/api/usage/summary') return json(200, usage.summary)
+    if (path === '/api/usage/daily') return json(200, usage.daily)
+    if (path === '/api/usage/breakdown') return json(200, usage.breakdown)
+    if (path === '/api/usage/sessions') return json(200, usage.sessions)
+    if (path === '/api/usage/today') return json(200, usage.today)
+    if (path === '/api/usage/sessions.csv')
+      return new Response('inicio,fin', {
+        status: 200,
+        headers: {
+          'Content-Type': 'text/csv',
+          'Content-Disposition': 'attachment; filename="consumo_x.csv"',
+        },
+      })
+    return null
+  }
+
   const inbox = [...(seed.inbox ?? [])]
   const trees = { ...(seed.trees ?? {}) }
   let notificationSettings: NotificationSettings = seed.notificationSettings ?? {
@@ -291,6 +408,7 @@ export function createFakeBackend(
     review: true,
     stalled: true,
     delivery: false,
+    limits: true,
     sound: true,
   }
 
@@ -329,6 +447,7 @@ export function createFakeBackend(
     if (match[2] === 'reject') resolve('rejected')
     if (match[2] === 'review')
       resolve(body.approve ? 'approved' : 'rejected', String(body.reason ?? ''))
+    if (match[2] === 'resume') resolve('approved')
     if (match[2] === 'dismiss') resolve(item.kind === 'delivery' ? 'reviewed' : 'dismissed')
     return json(200, item)
   }
@@ -648,6 +767,7 @@ export function createFakeBackend(
       handleMemory(method, url.pathname, body) ??
       handleTasks(method, url.pathname, url.searchParams, body) ??
       handleInbox(method, url.pathname, url.searchParams, body) ??
+      handleUsage(method, url.pathname, body) ??
       handle(method, path.split('?')[0] === '/api/clis' ? '/api/clis' : url.pathname, body)
     )
   })
@@ -662,6 +782,7 @@ export function createFakeBackend(
     inbox,
     pipelines,
     scheduler,
+    usage,
     calls,
     callsTo: (method: string, path: string) =>
       calls.filter((c) => c.method === method && c.path === path),

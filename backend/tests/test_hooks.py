@@ -102,3 +102,17 @@ def test_interpretation_per_cli():
     assert (pre.activity, pre.turn_started, pre.session_id) == (Activity.BUSY, True, "c1")
     other = interpret(Cli.CLAUDE, "SessionStart", None)
     assert other.activity is None and not other.turn_started and not other.turn_ended
+
+
+def test_transcript_paths_and_the_status_line():
+    """Phase 07: every hook carries its transcript; Claude's status line carries the cost."""
+    claude = interpret(Cli.CLAUDE, "Stop", {"transcript_path": r"C:\t\s.jsonl"})
+    assert claude.transcript_path == r"C:\t\s.jsonl"
+    agy = interpret(Cli.AGY, "PreInvocation", {"conversationId": "c", "transcriptPath": "C:/a"})
+    assert agy.transcript_path == "C:/a"
+    assert interpret(Cli.AGY, "Stop", {"transcript_path": "x"}).transcript_path is None
+    fixture = Path(__file__).parent / "fixtures" / "transcripts" / "claude-2.1.296-statusline.json"
+    line = interpret(Cli.CLAUDE, "StatusLine", json.loads(fixture.read_text("utf-8")))
+    assert line.cost_usd == 0.0042495 and line.cli_version == "2.1.296"
+    assert line.activity is None and not line.turn_ended
+    assert interpret(Cli.CLAUDE, "StatusLine", {"cost": {"total_cost_usd": True}}).cost_usd is None

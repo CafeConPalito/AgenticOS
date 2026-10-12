@@ -49,6 +49,8 @@ DELIVERY_CONFIRM = 20.0  # a typed message must start a turn within this time
 MESSAGE_LIMIT = 1800  # characters typed in one message (the rest: get_context)
 PERMISSION_SHOW = 0.5  # seconds a permission dialog must be on screen to be reported
 PERMISSION_GONE = 1.5  # seconds it must be missing to count as answered
+QUOTA_GONE = 30.0  # seconds the quota notice must be gone before a new one is reported
+QUOTA_QUIET = 10.0  # after «Reanudar»: the old notice may still be on screen meanwhile
 PERMISSION_QUIET = 1.0  # after answering one, the screen is not read for dialogs
 
 Message = dict
@@ -82,6 +84,7 @@ class RunSession:
         on_system_event: Callable[..., None] | None = None,
         on_permission: Callable[[PermissionDialog], None] | None = None,
         on_permission_gone: Callable[[], None] | None = None,
+        on_quota: Callable[[str], None] | None = None,
     ) -> None:
         self.run_id = run_id
         self.cli = cli
@@ -98,6 +101,8 @@ class RunSession:
         # A permission dialog of the CLI appeared / went away (Inbox «Aprobación», phase 06).
         self.on_permission = on_permission or (lambda dialog: None)
         self.on_permission_gone = on_permission_gone or (lambda: None)
+        # The CLI says it ran out of quota / hit its usage limit (Inbox «Cuota agotada»).
+        self.on_quota = on_quota or (lambda notice: None)
 
         self.status = RunStatus.STARTING
         self.activity = Activity.IDLE
@@ -137,6 +142,9 @@ class RunSession:
         self._permission_seen_at = 0.0
         self._permission_missing_at = 0.0
         self._permission_quiet_until = 0.0
+        self._quota_reported: str | None = None
+        self._quota_quiet_until = 0.0
+        self._quota_missing_at = 0.0
         self._finished = threading.Event()
         self._lock = threading.RLock()  # control + scrollback
         self._state_lock = threading.RLock()  # status/activity changes and their persistence
@@ -521,6 +529,7 @@ class RunSession:
             if self.cli == Cli.AGY and self.controller is None:
                 self._approve_agentic_os_tool(now)
             self._permission_step(now)
+            self._quota_step(now)
             self._delivery_step(now)
             human = self._screen.waiting_for_human()
             if human is not None and human not in self._human_notified:
@@ -567,6 +576,31 @@ class RunSession:
             self._permission_sig = None
             self._permission_missing_at = 0.0
             self.on_permission_gone()
+
+    def _quota_step(self, now: float) -> None:
+        """Reports the CLI's out-of-quota notice once. After it has been gone for a while, a
+        new notice is reported again."""
+        if now < self._quota_quiet_until:
+            return
+        notice = self._screen.quota_notice()
+        if notice is not None:
+            self._quota_missing_at = 0.0
+            if self._quota_reported is None:
+                self._quota_reported = notice
+                self.on_quota(notice)
+            return
+        if self._quota_reported is None:
+            return
+        if self._quota_missing_at == 0.0:
+            self._quota_missing_at = now
+        elif now - self._quota_missing_at >= QUOTA_GONE:
+            self._quota_reported, self._quota_missing_at = None, 0.0
+
+    def quota_resumed(self) -> None:
+        """The person resumed after «Cuota agotada»: a notice seen after a short quiet time
+        (the old one may still be drawn) is reported again."""
+        self._quota_reported, self._quota_missing_at = None, 0.0
+        self._quota_quiet_until = time.monotonic() + QUOTA_QUIET
 
     def deliver(self, text: str) -> None:
         """Queues a message for the agent; it is typed as soon as the CLI waits for input."""

@@ -60,6 +60,10 @@ export const useReviewItem = () =>
 export const useDismissItem = () =>
   useInboxMutation((id: string) => api.post<InboxItem>(`/api/inbox/${id}/dismiss`))
 
+/** «Cuota agotada» → Reanudar: the task runs again and its CLI is no longer held. */
+export const useResumeItem = () =>
+  useInboxMutation((id: string) => api.post<InboxItem>(`/api/inbox/${id}/resume`))
+
 export function markNotified(id: string) {
   return api.post<InboxItem>(`/api/inbox/${id}/notified`)
 }

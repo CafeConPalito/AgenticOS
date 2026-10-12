@@ -1,0 +1,29 @@
+{
+  "session_id": "7b279709-9d8d-4cef-9bdc-707afd78ab72",
+  "transcript_path": "C:\\Users\\user\\.claude\\projects\\sandbox\\7b279709-9d8d-4cef-9bdc-707afd78ab72.jsonl",
+  "model": {
+    "id": "claude-haiku-5-5",
+    "display_name": "Haiku 5.5"
+  },
+  "version": "2.1.296",
+  "cost": {
+    "total_cost_usd": 0.0042495,
+    "total_duration_ms": 29829,
+    "total_api_duration_ms": 4830,
+    "total_lines_added": 0,
+    "total_lines_removed": 0
+  },
+  "context_window": {
+    "total_input_tokens": 40849,
+    "total_output_tokens": 4,
+    "context_window_size": 1000000,
+    "current_usage": {
+      "input_tokens": 2,
+      "output_tokens": 4,
+      "cache_creation_input_tokens": 7395,
+      "cache_read_input_tokens": 33452
+    },
+    "used_percentage": 4,
+    "remaining_percentage": 96
+  }
+}
