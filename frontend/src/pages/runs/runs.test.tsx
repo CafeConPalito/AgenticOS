@@ -163,6 +163,34 @@ describe('Run page', () => {
     expect(screen.queryByRole('button', { name: es.runs.stop.button })).not.toBeInTheDocument()
   })
 
+  it('resumes an interrupted session and opens the new run', async () => {
+    const run = makeRun({
+      status: 'interrupted',
+      ended_at: new Date().toISOString(),
+      resumable: true,
+    })
+    const backend = createFakeBackend({ runs: [run] })
+    const user = userEvent.setup()
+    const { router } = renderApp(`/ejecuciones/${run.id}`)
+
+    await user.click(await screen.findByRole('button', { name: es.runs.resume.button }))
+
+    await waitFor(() =>
+      expect(backend.callsTo('POST', `/api/runs/${run.id}/resume`)).toHaveLength(1),
+    )
+    const resumed = backend.runs[0]
+    await waitFor(() => expect(router.state.location.pathname).toBe(`/ejecuciones/${resumed.id}`))
+    expect(await screen.findByText(es.runs.details.resumedFrom)).toBeVisible()
+    expect(screen.queryByRole('button', { name: es.runs.resume.button })).not.toBeInTheDocument()
+  })
+
+  it('explains a resumed run whose CLI lost the conversation', async () => {
+    const run = makeRun({ status: 'failed', error: 'session_missing', resumed_from_id: 'run-x' })
+    createFakeBackend({ runs: [run] })
+    renderApp(`/ejecuciones/${run.id}`)
+    expect(await screen.findByText(es.runs.errorText.session_missing)).toBeVisible()
+  })
+
   it('unknown run shows not found', async () => {
     createFakeBackend()
     renderApp('/ejecuciones/nope')

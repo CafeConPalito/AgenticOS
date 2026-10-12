@@ -123,6 +123,13 @@ export interface Run {
   stage_id: string | null
   verdict: 'approved' | 'rejected' | null
   parent_run_id: string | null
+  /** «Reanudar sesión» (phase 08): the run this one continues, and the one that continued it. */
+  resumed_from_id: string | null
+  resumed_by_id: string | null
+  /** Its CLI conversation can be continued now. */
+  resumable: boolean
+  /** Its terminal log was deleted by the log retention. */
+  log_purged: boolean
   task_code: string | null
   stage_name: string | null
   created_at: string

@@ -54,6 +54,7 @@ import { errorMessage } from '@/lib/form-errors'
 import { formatDateTime, formatDuration } from '@/lib/time'
 import { cn } from '@/lib/utils'
 import { SessionUsage } from '@/components/usage/SessionUsage'
+import { ResumeTaskSession } from '@/pages/runs/ResumeSession'
 import { RunEventsPanel } from '@/pages/runs/RunEventsPanel'
 import { RunStatusBadge } from '@/pages/runs/RunStatusBadge'
 import { PriorityLabel, TaskStatusBadge } from './TaskBits'
@@ -150,6 +151,7 @@ function TaskDetail({ task }: { task: Task }) {
               {t('tasks.actions.enqueue')}
             </Button>
           )}
+          {can.retry && <ResumeTaskSession taskId={task.id} primary />}
           {can.retry && (
             <Button variant="outline" size="sm" onClick={() => void perform({ action: 'retry' })}>
               <RotateCcw />

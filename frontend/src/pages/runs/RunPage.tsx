@@ -18,6 +18,7 @@ import { errorMessage } from '@/lib/form-errors'
 import { formatDateTime, formatDuration } from '@/lib/time'
 import { SessionUsage } from '@/components/usage/SessionUsage'
 import { RunEventsPanel } from './RunEventsPanel'
+import { ResumeSessionButton } from './ResumeSession'
 import { RunStatusBadge } from './RunStatusBadge'
 import { useProjectColor } from './RunsTable'
 
@@ -95,6 +96,7 @@ function RunDetail({ run }: { run: Run }) {
             <FolderOpen />
             {t('runs.openFolder')}
           </Button>
+          {run.resumable && <ResumeSessionButton run={run} open primary />}
           {active && (
             <Button
               variant="outline"
@@ -179,6 +181,16 @@ function RunSidePanel({ run }: { run: Run }) {
   ]
   if (run.exit_code !== null)
     rows.push([t('runs.details.exitCode'), <span className="font-mono">{run.exit_code}</span>])
+  if (run.resumed_from_id)
+    rows.push([
+      t('runs.details.resumedFrom'),
+      <Link to={`/ejecuciones/${run.resumed_from_id}`}>{t('runs.details.openRun')}</Link>,
+    ])
+  if (run.resumed_by_id)
+    rows.push([
+      t('runs.details.resumedBy'),
+      <Link to={`/ejecuciones/${run.resumed_by_id}`}>{t('runs.details.openRun')}</Link>,
+    ])
   if (isActive(run)) rows.push([t('runs.details.viewers'), run.viewers])
 
   return (
@@ -204,9 +216,15 @@ function RunSidePanel({ run }: { run: Run }) {
       {run.error && (
         <section>
           <h2 className="mb-1.5 text-[12.5px] text-muted-foreground">{t('runs.details.error')}</h2>
-          <p role="alert" className="font-mono text-xs break-words text-status-failed">
-            {run.error}
-          </p>
+          {run.error === 'session_missing' ? (
+            <p role="alert" className="text-[13px] text-status-failed">
+              {t('runs.errorText.session_missing')}
+            </p>
+          ) : (
+            <p role="alert" className="font-mono text-xs break-words text-status-failed">
+              {run.error}
+            </p>
+          )}
         </section>
       )}
       <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2 text-[13px] [&_a]:underline-offset-2 [&_a:hover]:underline">

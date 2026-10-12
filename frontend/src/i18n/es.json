@@ -142,7 +142,9 @@
     "no_worktree": "La tarea no tiene worktree.",
     "task_without_agent": "La tarea no tiene agente.",
     "task_has_pipeline": "En un proyecto con pipeline, el agente lo decide la etapa.",
-    "reason_required": "Escribe el motivo del rechazo."
+    "reason_required": "Escribe el motivo del rechazo.",
+    "not_resumable": "Esta ejecución ya no se puede reanudar.",
+    "session_unavailable": "El CLI ya no tiene esta conversación (se ha borrado su historial). Reintenta la tarea desde el principio."
   },
   "cli": {
     "claude": "Claude Code",
@@ -416,7 +418,10 @@
       "exitCode": "Código de salida",
       "error": "Error",
       "viewers": "Vistas conectadas",
-      "lastStatus": "Estado actual"
+      "lastStatus": "Estado actual",
+      "resumedFrom": "Reanuda",
+      "resumedBy": "Reanudada en",
+      "openRun": "Ver ejecución"
     },
     "stop": {
       "button": "Parar",
@@ -442,13 +447,23 @@
         "SessionStart": "Sesión iniciada",
         "SessionEnd": "Sesión cerrada",
         "waiting_for_human": "Espera tu respuesta en la terminal",
-        "mcp_probe": "Conectando el MCP (/mcp)"
+        "mcp_probe": "Conectando el MCP (/mcp)",
+        "resumed": "Reanudada en otra ejecución",
+        "session_missing": "El CLI ya no tenía la conversación"
       },
       "human": {
         "bypass_permissions_consent": "Claude pide aceptar el modo «Autónomo» (sin permisos). Toma el control para responder.",
         "prompt_not_sent": "agy no muestra su entrada: el prompt no se ha enviado. Toma el control para revisar la terminal.",
         "prompt_not_started": "El agente no ha empezado con el prompt. Toma el control para revisar la terminal."
       }
+    },
+    "resume": {
+      "button": "Reanudar sesión",
+      "done": "Sesión de {{name}} reanudada",
+      "hint": "Vuelve a abrir el CLI con la misma conversación para que el agente siga donde lo dejó."
+    },
+    "errorText": {
+      "session_missing": "El CLI ya no tiene esta conversación, así que no se puede reanudar. Reintenta la tarea desde el principio."
     }
   },
   "dock": {

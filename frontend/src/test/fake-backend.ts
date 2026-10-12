@@ -171,6 +171,10 @@ export function makeRun(overrides: Partial<Run> = {}): Run {
     stage_id: null,
     verdict: null,
     parent_run_id: null,
+    resumed_from_id: null,
+    resumed_by_id: null,
+    resumable: false,
+    log_purged: false,
     task_code: null,
     stage_name: null,
     created_at: now(),
@@ -667,10 +671,36 @@ export function createFakeBackend(
         200,
         events.filter((e) => e.run_id === eventsMatch[1]),
       )
-    const match = path.match(/^\/api\/runs\/([^/]+)(?:\/(control|stop))?$/)
+    const match = path.match(/^\/api\/runs\/([^/]+)(?:\/(control|stop|resume))?$/)
     if (!match) return null
     const run = runs.find((r) => r.id === match[1])
     if (!run) return apiError(404, 'run_not_found')
+    if (match[2] === 'resume') {
+      if (!run.resumable) return apiError(409, 'not_resumable')
+      const resumed = makeRun({
+        ...run,
+        id: undefined,
+        status: 'starting',
+        ended_at: null,
+        error: null,
+        prompt: 'La sesión anterior se interrumpió.',
+        resumed_from_id: run.id,
+        resumed_by_id: null,
+        resumable: false,
+      })
+      resumed.id = `run-resumed-${runs.length}`
+      Object.assign(run, { resumable: false, resumed_by_id: resumed.id })
+      const task = tasks.find((t) => t.id === run.task_id)
+      if (task)
+        Object.assign(task, {
+          status: 'running',
+          waiting_reason: null,
+          active_run_id: resumed.id,
+          last_run_id: resumed.id,
+        })
+      runs.unshift(resumed)
+      return json(201, resumed)
+    }
     if (match[2] === 'stop') {
       Object.assign(run, { status: 'stopped', ended_at: now(), controller: null })
       return json(202, run)

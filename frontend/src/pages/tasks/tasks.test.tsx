@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import es from '@/i18n/es.json'
-import { createFakeBackend, makeAgent, makeProject, makeTask } from '@/test/fake-backend'
+import { createFakeBackend, makeAgent, makeProject, makeRun, makeTask } from '@/test/fake-backend'
 import { renderApp } from '@/test/render'
 
 function seed() {
@@ -158,6 +158,33 @@ describe('Task page', () => {
     await waitFor(() =>
       expect(backend.callsTo('POST', `/api/tasks/${task.id}/retry`)).toHaveLength(1),
     )
+  })
+
+  it('resumes the session of an interrupted task', async () => {
+    const { dev, tienda } = seed()
+    const task = makeTask({
+      status: 'waiting_human',
+      waiting_reason: 'interrupted',
+      agent_id: dev.id,
+      project_id: tienda.id,
+    })
+    const run = makeRun({ task_id: task.id, status: 'interrupted', resumable: true })
+    task.last_run_id = run.id
+    const backend = createFakeBackend({
+      agents: [dev],
+      projects: [tienda],
+      tasks: [task],
+      runs: [run],
+    })
+    const user = userEvent.setup()
+    renderApp(`/tablero/tareas/${task.id}`)
+
+    await user.click(await screen.findByRole('button', { name: es.runs.resume.button }))
+
+    await waitFor(() =>
+      expect(backend.callsTo('POST', `/api/runs/${run.id}/resume`)).toHaveLength(1),
+    )
+    expect(await screen.findByText(es.tasks.status.running)).toBeVisible()
   })
 
   it('rejects a task in review back to an earlier stage', async () => {

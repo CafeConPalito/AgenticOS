@@ -41,6 +41,7 @@ import { Input } from '@/components/ui/input'
 import { api } from '@/lib/api'
 import { errorMessage } from '@/lib/form-errors'
 import { relativeTime } from '@/lib/time'
+import { ResumeTaskSession } from '@/pages/runs/ResumeSession'
 import { cn } from '@/lib/utils'
 
 const PROMPT = '❯ '
@@ -376,6 +377,7 @@ function InboxActions({ item }: { item: InboxItem }) {
           </Button>
         </>
       )}
+      {item.kind === 'attention' && item.task_id && <ResumeTaskSession taskId={item.task_id} />}
       {item.kind === 'attention' && item.task_id && (
         <Button size="sm" variant="outline" disabled={busy} onClick={() => void retryTask()}>
           <RotateCcw />
