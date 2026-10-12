@@ -43,8 +43,8 @@
   "pages": {
     "dashboard": {
       "title": "Dashboard",
-      "emptyTitle": "Aún no tienes agentes",
-      "emptyDescription": "Aquí verás qué hace cada agente, las aprobaciones pendientes y el consumo de hoy."
+      "emptyTitle": "Tus agentes, de un vistazo",
+      "emptyDescription": "Aquí verás qué hace cada agente, las aprobaciones pendientes y la actividad reciente."
     },
     "agents": {
       "title": "Agentes",

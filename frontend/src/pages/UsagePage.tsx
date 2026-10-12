@@ -21,6 +21,9 @@ import { SessionsTable } from './usage/SessionsTable'
 
 type Group = 'agent' | 'project'
 
+/** agy records no cost: its rows show tokens instead of «0,00 $». */
+const noCost = (row: { cost_usd: number; tokens: number }) => row.cost_usd === 0 && row.tokens > 0
+
 export default function UsagePage() {
   const { t, i18n } = useTranslation()
   const [params, setParams] = useSearchParams()
@@ -96,7 +99,7 @@ export default function UsagePage() {
             />
             <KpiCard
               label={t('usage.kpis.hours')}
-              value={`${number(kpis.agent_hours)} h`}
+              value={`${number(kpis.agent_hours, kpis.agent_hours < 1 ? 2 : 1)} h`}
               hint={t('usage.kpis.workdays', { count: Math.round(kpis.agent_hours / 8) })}
             />
             <KpiCard
@@ -149,10 +152,14 @@ export default function UsagePage() {
                   />
                   <span className="flex-1 truncate font-medium">{row.name}</span>
                   <span className="font-mono">
-                    {metric === 'cost' ? formatUsd(row.cost_usd) : formatTokens(row.tokens)}
+                    {metric === 'cost' && !noCost(row)
+                      ? formatUsd(row.cost_usd)
+                      : formatTokens(row.tokens)}
                   </span>
                   <span className="w-10 text-right font-mono text-[12px] text-muted-foreground">
-                    {row.share === null ? '—' : formatPercent(row.share)}
+                    {row.share === null || (metric === 'cost' && noCost(row))
+                      ? '—'
+                      : formatPercent(row.share)}
                   </span>
                 </div>
                 <ShareBar ratio={row.share ?? 0} color={row.color} label={row.name} />

@@ -74,7 +74,10 @@ export function TodayUsageCard() {
                       />
                     </div>
                     <span className="w-16 text-right font-mono text-[12.5px]">
-                      {byCost ? formatUsd(agent.cost_usd) : formatTokens(agent.tokens)}
+                      {/* agy records no cost: its tokens instead of «0,00 $» */}
+                      {byCost && agent.cost_usd > 0
+                        ? formatUsd(agent.cost_usd)
+                        : formatTokens(agent.tokens)}
                     </span>
                   </li>
                 )

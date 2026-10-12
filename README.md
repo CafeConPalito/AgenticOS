@@ -123,6 +123,14 @@ En la app empaquetada, el backend usa un puerto libre asignado al arrancar (ver 
 - **Subtareas**: con «Puede crear tareas», `create_subtask` deja trabajo en cola, ligado a la tarea.
 - Depuración: `AGENTIC_OS_HOOK_LOG=<archivo>` guarda en JSONL las cargas de los hooks de los CLIs.
 
+## Consumo y límites
+- **Consumo de cada ejecución** ([ADR 0011](docs/adr/0011-usage-and-limits.md)), leído de lo que escribe el propio CLI:
+  - **Claude Code**: coste en vivo por su *status line* y cifras exactas (`cost-state`) al cerrar la sesión; el coste es el **equivalente API** en USD;
+  - **agy**: solo tokens, de `transcript_full.jsonl`, incluidos los de sus subagentes nativos.
+- Se ve en **Consumo** (KPIs, coste o tokens diarios por agente o proyecto, reparto y sesiones, con exportación a CSV), en el **Dashboard** («Consumo de hoy»), en el detalle de la tarea y de la ejecución, y en las listas de agentes, proyectos y ejecuciones.
+- **Límites diarios** (Ajustes): USD para Claude Code y tokens para agy. Al superar el de un CLI, el scheduler deja de lanzar tareas de ese CLI hasta el día siguiente; lo que está en marcha sigue.
+- **Cuota agotada**: si un CLI avisa de que se ha quedado sin cuota, aparece en la Inbox, la tarea espera y el scheduler frena ese CLI hasta que pulses «Reanudar».
+
 ## API (backend)
 | Ruta | Para qué |
 |---|---|
@@ -136,7 +144,9 @@ En la app empaquetada, el backend usa un puerto libre asignado al arrancar (ver 
 | `GET/PUT /api/agents/{id}/queue` | Cola de un agente / reordenarla |
 | `GET /api/scheduler`, `POST /api/scheduler/pause · resume` | Estado y pausa global del scheduler |
 | `GET /api/inbox?status=`, `GET /api/inbox/summary` | Inbox y contador (con los elementos aún sin notificar) |
-| `POST /api/inbox/{id}/answer · approve · reject · review · dismiss · notified` | Acciones de la Inbox |
+| `POST /api/inbox/{id}/answer · approve · reject · review · dismiss · notified · resume` | Acciones de la Inbox (`resume`: tras «Cuota agotada») |
+| `GET /api/usage/summary · daily · breakdown · sessions · sessions.csv ?from&to&agent_id&project_id` | Consumo del periodo (días locales; 30 días por defecto) |
+| `GET /api/usage/today`, `GET/PUT /api/settings/usage-limits` | Consumo de hoy con el estado de los límites, y límites diarios |
 | `GET/PUT /api/settings/notifications` | Ajustes de notificaciones |
 | `GET /api/tasks/{id}/tree`, `GET /api/tasks?parent_task_id=` | Árbol de ejecución y subtareas |
 | `POST /api/runs/{id}/permission {approve}` | Responder al diálogo de permiso abierto del CLI |
@@ -144,7 +154,7 @@ En la app empaquetada, el backend usa un puerto libre asignado al arrancar (ver 
 | `POST /api/runs`, `GET /api/runs?agent_id&project_id&task_id&active`, `GET /api/runs/{id}` | Ejecuciones: lanzar un agente sobre un proyecto con un prompt, listar y consultar |
 | `POST /api/runs/{id}/control` (`take`/`release`), `POST /api/runs/{id}/stop` | Tomar o devolver el control de la terminal; parar (salida ordenada y, si no, forzada) |
 | `GET /api/runs/{id}/events` | Eventos de la ejecución (herramientas MCP, hooks y acciones de Agentic OS) |
-| `WS /api/runs/{id}/terminal?client_id=` | Terminal en vivo: `snapshot`, `output`, `state`, `event`, `exit`; el cliente envía `input` y `resize` |
+| `WS /api/runs/{id}/terminal?client_id=` | Terminal en vivo: `snapshot`, `output`, `state`, `event`, `usage`, `exit`; el cliente envía `input` y `resize` |
 | `/r/<token>/mcp`, `POST /r/<token>/hook/<evento>` | Para los CLIs de los agentes: servidor MCP `agentic-os` y hooks (token por ejecución) |
 
 Los errores tienen la forma `{"detail": {"code", "message", "field"}}`; la interfaz traduce por `code`.
