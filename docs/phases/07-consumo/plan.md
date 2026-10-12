@@ -1,7 +1,7 @@
 # Fase 07: Consumo · Plan técnico
 
 - **Spec**: [spec.md](spec.md)
-- **Estado**: borrador
+- **Estado**: aprobado
 
 ## Diseño
 
