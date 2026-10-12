@@ -10,6 +10,7 @@ from agentic_os import APP_NAME, __version__
 from agentic_os.api import api_router
 from agentic_os.api.hooks import router as hooks_router
 from agentic_os.config import Settings, get_settings
+from agentic_os.db.backup import backup_before_migrating
 from agentic_os.db.migrate import upgrade_to_head
 from agentic_os.db.session import create_db_engine, database_url, make_sessionmaker
 from agentic_os.errors import register_error_handlers
@@ -40,6 +41,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         engine = create_db_engine(database_url(settings))
+        backup_before_migrating(engine, Path(settings.data_dir))
         upgrade_to_head(engine)
         app.state.engine = engine
         app.state.sessionmaker = make_sessionmaker(engine)
