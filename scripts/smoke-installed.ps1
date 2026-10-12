@@ -1,4 +1,4 @@
-# Smoke test of the installed app (phase 08): it starts, its backend answers, the data folder
+﻿# Smoke test of the installed app (phase 08): it starts, its backend answers, the data folder
 # and the database are where they should be, and closing the window leaves no backend process,
 # no CLI it launched and no PyInstaller _MEI folder behind. Prints the startup time.
 #

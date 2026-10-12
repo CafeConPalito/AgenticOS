@@ -146,11 +146,11 @@ Ejecución interrumpida ──► «Reanudar sesión» ──► ejecución nuev
 12. [x] Rust: instancia única y supervisor del sidecar con reinicios, `restart_backend`, `open_logs` + `cargo test`.
 13. [x] UI: «Reconectando…», URL nueva tras reinicio, «Abrir logs» + tests.
 14. [x] Sección «Acerca de» y reorganización de `SettingsPage` según el diseño.
-15. [ ] Instalador: iconos, NSIS por usuario, español, hook de desinstalación, paso de firma opcional.
-16. [ ] e2e contra el sidecar empaquetado (`live_server` en modo binario, `test:packaged`) y guion de humo.
-17. [ ] Build de release, medida del arranque y, si supera 5 s, cambio a `--onedir`.
-18. [ ] Pruebas manuales con la app instalada: máquina limpia (Windows Sandbox o VM), actualizar encima de `0.8` con datos, desinstalar, instancia única, matar el sidecar, cerrar con ejecuciones activas, reanudar con Claude y agy reales, y las pendientes de fases anteriores (F5, «Examinar…», notificación, CSV, consolas).
-19. [ ] ADR 0012, README, `/code-review` y validación.
+15. [x] Instalador: iconos, NSIS por usuario, español, hook de desinstalación, paso de firma opcional.
+16. [x] e2e contra el sidecar empaquetado (`live_server` en modo binario, `test:packaged`) y guion de humo.
+17. [x] Build de release, medida del arranque y, si supera 5 s, cambio a `--onedir`.
+18. [x] Pruebas manuales con la app instalada: máquina limpia (Windows Sandbox o VM), actualizar encima de `0.8` con datos, desinstalar, instancia única, matar el sidecar, cerrar con ejecuciones activas, reanudar con Claude y agy reales, y las pendientes de fases anteriores (F5, «Examinar…», notificación, CSV, consolas).
+19. [x] ADR 0012, README, `/code-review` y validación.
 
 ## Tests previstos
 | Test | Cubre |

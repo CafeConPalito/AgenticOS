@@ -1,4 +1,4 @@
-# Signs a binary with the code-signing certificate named by AGENTIC_OS_SIGN_CERT (the SHA-1
+﻿# Signs a binary with the code-signing certificate named by AGENTIC_OS_SIGN_CERT (the SHA-1
 # thumbprint of a certificate in the user's store). Without it nothing is signed: v1.0 ships
 # unsigned (ADR 0012) and this step is ready for when there is a certificate.
 #

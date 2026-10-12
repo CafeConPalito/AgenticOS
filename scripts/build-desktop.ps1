@@ -1,4 +1,4 @@
-# Builds the release app and its NSIS installer (the sidecar must be built first:
+﻿# Builds the release app and its NSIS installer (the sidecar must be built first:
 # npm run build:desktop does both). With AGENTIC_OS_SIGN_CERT set, the app and the installer
 # are signed too (tauri.sign.conf.json → sign.ps1); without it nothing is signed, because
 # Tauri's bundler requires signtool as soon as a sign command is configured.

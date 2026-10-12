@@ -1,4 +1,4 @@
-# Opens a Windows Sandbox (a clean Windows with no development tools) with the release
+﻿# Opens a Windows Sandbox (a clean Windows with no development tools) with the release
 # installer mapped read-only, to check CA1 of phase 08: the app installs without admin rights,
 # starts, creates its data folder and guides to install the CLIs.
 #
