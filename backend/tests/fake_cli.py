@@ -14,7 +14,8 @@ Behaviour (keys are read raw, like the real TUIs):
 - Resuming (phase 08, evidence R1): `--resume <id>` (Claude) and `--conversation <id>` (agy)
   continue the session's transcript. Claude carries over the totals of the last cost-state,
   and with an unknown id says "No conversation found with session ID" and exits(1); agy
-  warns on stderr and opens a new conversation.
+  warns on stderr and opens a new conversation. A resumed session answers Agentic OS's resume
+  prompt by finishing its work: `CONSUMO: 300; TERMINA: retomada`.
 
 Agentic OS integration, like the real CLIs (phase 04):
 - **Claude mode** (`--mcp-config` in the argv): MCP server and hooks from the run files;
@@ -100,6 +101,8 @@ else:
         print(f'warning: conversation "{RESUME}" not found', file=sys.stderr)
     CONVERSATION_ID = (OPTIONS.get("--session-id") or [str(uuid.uuid4())])[0]
 SESSION_MISSING = bool(RESUME and CLAUDE_MODE and CONVERSATION_ID != RESUME)
+RESUME_PROMPT = "La sesión anterior se interrumpió"  # services/runs/resume.py
+RESUMED_WORK = "CONSUMO: 300; TERMINA: retomada"
 
 if sys.platform == "win32":
     import msvcrt
@@ -552,6 +555,8 @@ def answer(text: str) -> None:
         out(
             f"● MCP complete_task: {mcp('complete_task', {'summary': 'Con la respuesta: ' + text})}"
         )
+    if RESUME == CONVERSATION_ID and text.startswith(RESUME_PROMPT) and MCP_URL:
+        text = RESUMED_WORK  # like a model that remembers what was left to do
     exit_code = use_tools(text)
     out(f"● RESPUESTA: {text}")
     out("? for shortcuts")

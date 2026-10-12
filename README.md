@@ -7,6 +7,17 @@ App de escritorio para orquestar un equipo de agentes de IA (Claude Code, Antigr
 - Diseño de la interfaz: [`docs/design/`](docs/design/)
 - Flujo de trabajo (Spec → Plan → Desarrollo → Validación): [`CLAUDE.md`](CLAUDE.md)
 
+## Instalar (v1.0)
+1. Ejecuta `Agentic OS_1.0.0_x64-setup.exe`. Se instala **para tu usuario**, sin permisos de administrador, en `%LOCALAPPDATA%\Agentic OS`. Si falta WebView2, el instalador lo descarga.
+2. **SmartScreen**: el instalador no está firmado, así que Windows puede mostrar «Windows protegió su PC». Pulsa «Más información» → «Ejecutar de todas formas». Si el antivirus bloquea `agentic-os-backend.exe`, añádelo como excepción: es el backend de la app, empaquetado con PyInstaller.
+3. Instala y abre los CLIs que quieras usar: Claude Code (`irm https://claude.ai/install.ps1 | iex` en PowerShell, luego `claude` y `/login`) y Antigravity CLI (`agy`). En **Ajustes › CLIs detectados** verás si los encuentra y si tienen sesión iniciada.
+
+- **Actualizar**: instala la versión nueva encima. Se conservan la base de datos, los logs y los ajustes; antes de migrar la base de datos se guarda una copia en `<carpeta de datos>\backups\` (las 3 últimas).
+- **Desinstalar**: desde «Aplicaciones instaladas» de Windows. La casilla «Borrar los datos de la aplicación» (desmarcada por defecto) borra también `%APPDATA%\AgenticOS`. Si moviste la carpeta de datos a otro sitio, esa carpeta hay que borrarla a mano.
+- **Una sola instancia**: abrir la app otra vez trae al frente la ventana que ya está abierta.
+- **Si el backend se cae**, la app lo vuelve a abrir sola («Reconectando…»). Si falla tres veces seguidas, muestra «Reintentar» y «Abrir logs».
+- **Ejecuciones cortadas** (cierre de la app, caída, reinicio del equipo): quedan «Interrumpidas» y su tarea en «Esperando humano». Con **«Reanudar sesión»** el CLI retoma la misma conversación (`claude --resume` / `agy --conversation`) con un contexto nuevo ([ADR 0012](docs/adr/0012-packaging-and-resume.md)).
+
 ## Arquitectura
 ```
 desktop/   Tauri 2 (Rust): ventana nativa; en release lanza el backend como sidecar
@@ -42,6 +53,10 @@ uv sync --project backend       # dependencias del backend
 | `npm run check` | lint y todos los tests (puerta mínima antes de integrar). `scripts/check.ps1` muestra un resumen |
 | `npm run build:backend` | Empaqueta el backend con PyInstaller como sidecar (`desktop/src-tauri/binaries/`) |
 | `npm run build:desktop` | Sidecar + frontend + instalador NSIS (`desktop/src-tauri/target/release/bundle/nsis/`) |
+| `npm run test:packaged` | Construye el sidecar y pasa los e2e (scheduler, HITL, consumo, reanudación) contra él |
+| `npm run smoke:installed` | Prueba de humo de la app instalada: arranca, el backend responde, los datos están en su sitio y al cerrar no queda ningún proceso |
+
+**Firma de código**: `scripts/sign.ps1` firma el sidecar, la app y el instalador si existe `AGENTIC_OS_SIGN_CERT` (huella SHA-1 de un certificado del almacén del usuario; `signtool` del Windows SDK). Sin esa variable no firma nada.
 
 El hook pre-commit (husky + lint-staged) pasa el lint y el formato a los archivos en stage.
 
@@ -52,7 +67,7 @@ Variables de entorno con prefijo `AGENTIC_OS_` (o un archivo `backend/.env`):
 |---|---|
 | `AGENTIC_OS_HOST` | `127.0.0.1` |
 | `AGENTIC_OS_PORT` | `8765` |
-| `AGENTIC_OS_DATA_DIR` | `%APPDATA%\AgenticOS` |
+| `AGENTIC_OS_DATA_DIR` | La carpeta de `%APPDATA%\AgenticOS\location.json` (si la moviste desde Ajustes) o `%APPDATA%\AgenticOS`. Con esta variable no se puede mover |
 | `AGENTIC_OS_LOG_LEVEL` | `INFO` |
 | `AGENTIC_OS_LOG_JSON` | `false` |
 | `AGENTIC_OS_LOG_FILE` | (en la app empaquetada: `<data_dir>\logs\backend.log`) |
@@ -63,7 +78,8 @@ Variables de entorno con prefijo `AGENTIC_OS_` (o un archivo `backend/.env`):
 En la app empaquetada, el backend usa un puerto libre asignado al arrancar (ver [ADR 0002](docs/adr/0002-sidecar-protocol.md)).
 
 ## Datos y migraciones
-- La base de datos es SQLite en la carpeta de datos y se migra sola al arrancar el backend ([ADR 0006](docs/adr/0006-persistence.md)).
+- La base de datos es SQLite en la carpeta de datos y se migra sola al arrancar el backend ([ADR 0006](docs/adr/0006-persistence.md)). Antes de aplicar migraciones nuevas se copia en `<carpeta de datos>\backups\`.
+- **Ajustes › General** muestra la carpeta de datos y cuánto ocupa, y permite moverla: el backend se reinicia y mueve los datos antes de abrirlos. **Ajustes › Limpieza** borra las ramas `agentic/T-n` ya fusionadas y los logs de terminal más antiguos que la retención (90 días por defecto).
 - Para probar sin tocar tus datos reales: `AGENTIC_OS_DATA_DIR=<carpeta temporal>` (vale también para la app empaquetada, que lo pasa al sidecar).
 - Nueva migración tras cambiar modelos (revísala antes de hacer commit):
   ```powershell
@@ -150,7 +166,11 @@ En la app empaquetada, el backend usa un puerto libre asignado al arrancar (ver 
 | `GET/PUT /api/settings/notifications` | Ajustes de notificaciones |
 | `GET /api/tasks/{id}/tree`, `GET /api/tasks?parent_task_id=` | Árbol de ejecución y subtareas |
 | `POST /api/runs/{id}/permission {approve}` | Responder al diálogo de permiso abierto del CLI |
-| `GET /api/clis?refresh=true` | CLIs detectados: versión y modelos |
+| `GET /api/clis?refresh=true` | CLIs detectados: versión, modelos, sesión iniciada y cuándo se comprobaron |
+| `POST /api/runs/{id}/resume` | «Reanudar sesión»: una ejecución nueva que retoma la conversación del CLI |
+| `GET /api/settings/data-dir`, `POST /api/settings/data-dir/open · move` | Carpeta de datos: ruta y tamaño, abrirla y moverla (reinicia el backend) |
+| `GET /api/maintenance/branches`, `POST /api/maintenance/branches/delete` | Ramas `agentic/T-n` por proyecto y borrarlas (las no fusionadas, con `force`) |
+| `GET/PUT /api/settings/maintenance`, `POST /api/maintenance/logs/cleanup` | Retención de los logs de terminal y limpieza inmediata |
 | `POST /api/runs`, `GET /api/runs?agent_id&project_id&task_id&active`, `GET /api/runs/{id}` | Ejecuciones: lanzar un agente sobre un proyecto con un prompt, listar y consultar |
 | `POST /api/runs/{id}/control` (`take`/`release`), `POST /api/runs/{id}/stop` | Tomar o devolver el control de la terminal; parar (salida ordenada y, si no, forzada) |
 | `GET /api/runs/{id}/events` | Eventos de la ejecución (herramientas MCP, hooks y acciones de Agentic OS) |

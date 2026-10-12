@@ -7,7 +7,7 @@ from pathlib import Path
 
 import httpx
 import pytest
-from live_server import live_server
+from live_server import in_process_only, live_server
 from test_hitl_e2e import setup
 from test_scheduler_e2e import Api, settings_for, wait_until
 
@@ -38,10 +38,6 @@ def attention_items(api: Api, task_id: str) -> list[dict]:
     ]
 
 
-def hook_names(api: Api, run_id: str) -> list[str]:
-    return [e["name"] for e in api.get(f"/api/runs/{run_id}/events") if e["kind"] == "hook"]
-
-
 def transcript_of(server, run_id: str) -> Path:
     with server.db() as db:
         return Path(db.get(Run, run_id).transcript_path)
@@ -63,15 +59,11 @@ def test_an_interrupted_task_resumes_its_session(tmp_path: Path, cli: str):
         assert run["resumed_from_id"] == old_id
         assert run["cli_session_id"] == old["cli_session_id"]
         assert run["task_id"] == task_id
-        assert api.task(task_id)["status"] == "running"
+        assert api.task(task_id)["status"] in ("running", "done")  # it may finish at once
         assert not attention_items(api, task_id)
         old = api.get(f"/api/runs/{old_id}")
         assert (old["resumed_by_id"], old["resumable"]) == (run["id"], False)
-        # Its hooks speak for the resumed conversation (agy: confirmed, not a foreign one), and
-        # it answers the resume prompt before the next message is typed.
-        assert wait_until(lambda: "Stop" in hook_names(api, run["id"]), 30)
-
-        server.manager.deliver(run["id"], "CONSUMO: 300; TERMINA: listo")
+        # The fake CLI remembers what was left (fake_cli.RESUMED_WORK) and finishes it.
         api.wait_status(task_id, "done")
         assert wait_until(lambda: api.get(f"/api/runs/{run['id']}")["usage"]["status"] == "final")
         usage = api.get(f"/api/runs/{run['id']}")["usage"]
@@ -86,6 +78,7 @@ def test_an_interrupted_task_resumes_its_session(tmp_path: Path, cli: str):
         )
 
 
+@in_process_only
 def test_a_lost_transcript_cannot_be_resumed(tmp_path: Path):
     task_id, old_id = interrupted_task(tmp_path, "claude")
     with live_server(settings_for(tmp_path)) as server:
@@ -97,6 +90,7 @@ def test_a_lost_transcript_cannot_be_resumed(tmp_path: Path):
         assert api.task(task_id)["waiting_reason"] == "interrupted"
 
 
+@in_process_only
 @pytest.mark.parametrize("cli", ["claude", "agy"])
 def test_a_cli_without_the_conversation_fails_the_resumed_run(
     tmp_path: Path, cli: str, monkeypatch: pytest.MonkeyPatch

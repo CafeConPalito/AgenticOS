@@ -23,6 +23,8 @@
     "build:backend": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-backend.ps1",
     "build:frontend": "npm -w frontend run build",
     "build:desktop": "npm run build:backend && npm -w desktop run tauri build -- --config src-tauri/tauri.release.conf.json",
+    "test:packaged": "npm run build:backend && powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-packaged.ps1",
+    "smoke:installed": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/smoke-installed.ps1",
     "test:desktop": "cargo test --manifest-path desktop/src-tauri/Cargo.toml",
     "lint:desktop": "cargo fmt --manifest-path desktop/src-tauri/Cargo.toml --check",
     "lint:spikes": "uv run --project spikes ruff check spikes && uv run --project spikes ruff format --check spikes",

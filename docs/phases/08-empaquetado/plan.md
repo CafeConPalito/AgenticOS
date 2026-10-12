@@ -133,19 +133,19 @@ Ejecución interrumpida ──► «Reanudar sesión» ──► ejecución nuev
 
 ## Tareas (en orden)
 1. [x] **R1 · Captura de la reanudación**: con Claude y agy reales, interrumpir una sesión (matar el backend) y relanzarla a mano con `--resume` / `--conversation` y la configuración nueva. Confirmar: que recuerda la conversación, que usa el MCP y los hooks nuevos (no los guardados), cómo crecen el transcript y la `cost-state`, y el texto que muestra cada CLI con un ID inexistente. Evidencias en `evidencias/r1-reanudar.md`.
-2. [ ] Versión `1.0.0` en todos los paquetes + test de coherencia.
-3. [ ] `services/proc.py` (subprocesos sin ventana) y su uso en `git`, CLIs y `os.startfile`.
-4. [ ] Copia de la BD antes de migrar (`db/backup.py`) + tests.
-5. [ ] Migración `0007` y modelos.
-6. [ ] Reanudar sesión en backend: adapters, `RunManager.resume`, tarea e Inbox, detección de sesión inexistente, `usage_baseline`; `fake_cli.py` con `--resume`/`--conversation` + tests y e2e.
-7. [ ] Reanudar sesión en la UI (ejecución, tarea, Inbox, historial) + tests.
-8. [ ] `CliInfo` con sesión, fecha e instrucciones + sección «CLIs detectados» + tests.
-9. [ ] Carpeta de datos: puntero, tamaño, abrir, mover (backend con salida `75`) + tests; sección «General» con tema e idioma.
-10. [ ] Limpieza: ramas y retención de logs (API, arranque, UI) + tests.
-11. [ ] `housekeeping.py`: restos de agy, worktrees huérfanos y confianza al arrancar + tests.
-12. [ ] Rust: instancia única y supervisor del sidecar con reinicios, `restart_backend`, `open_logs` + `cargo test`.
-13. [ ] UI: «Reconectando…», URL nueva tras reinicio, «Abrir logs» + tests.
-14. [ ] Sección «Acerca de» y reorganización de `SettingsPage` según el diseño.
+2. [x] Versión `1.0.0` en todos los paquetes + test de coherencia.
+3. [x] `services/proc.py` (subprocesos sin ventana) y su uso en `git`, CLIs y `os.startfile`.
+4. [x] Copia de la BD antes de migrar (`db/backup.py`) + tests.
+5. [x] Migración `0007` y modelos.
+6. [x] Reanudar sesión en backend: adapters, `RunManager.resume`, tarea e Inbox, detección de sesión inexistente, `usage_baseline`; `fake_cli.py` con `--resume`/`--conversation` + tests y e2e.
+7. [x] Reanudar sesión en la UI (ejecución, tarea, Inbox, historial) + tests.
+8. [x] `CliInfo` con sesión, fecha e instrucciones + sección «CLIs detectados» + tests.
+9. [x] Carpeta de datos: puntero, tamaño, abrir, mover (backend con salida `75`) + tests; sección «General» con tema e idioma.
+10. [x] Limpieza: ramas y retención de logs (API, arranque, UI) + tests.
+11. [x] `housekeeping.py`: restos de agy, worktrees huérfanos y confianza al arrancar + tests.
+12. [x] Rust: instancia única y supervisor del sidecar con reinicios, `restart_backend`, `open_logs` + `cargo test`.
+13. [x] UI: «Reconectando…», URL nueva tras reinicio, «Abrir logs» + tests.
+14. [x] Sección «Acerca de» y reorganización de `SettingsPage` según el diseño.
 15. [ ] Instalador: iconos, NSIS por usuario, español, hook de desinstalación, paso de firma opcional.
 16. [ ] e2e contra el sidecar empaquetado (`live_server` en modo binario, `test:packaged`) y guion de humo.
 17. [ ] Build de release, medida del arranque y, si supera 5 s, cambio a `--onedir`.
