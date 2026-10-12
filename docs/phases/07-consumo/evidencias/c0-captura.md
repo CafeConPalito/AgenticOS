@@ -8,13 +8,13 @@ Fecha: 2026-10-12 · Claude Code 2.1.296 · agy 1.3.3
 - Consecuencia: durante la ejecución, el transcript no tiene coste.
 
 ## 2. Filas `assistant` frente a `cost-state`
-Hay una fila por bloque de contenido; las del mismo `message.id` repiten el mismo `usage`, así que se toma una por id.
+Hay una fila por bloque de contenido con el mismo `message.id`; la **última** trae la salida final (las anteriores pueden traer una cifra parcial), así que se toma la última de cada id.
 
 | Transcript | `cost-state` (entrada · salida · caché lectura · caché escritura) | Suma de filas `assistant` (+ subagentes) |
 |---|---|---|
 | dos turnos (`two-turns`) | 1678 · 28 · 101 275 · 19 371 · **0,00507 $** | 4 · 8 · 62 310 · 17 486 |
-| con subagente (`subagent`) | 1754 · 1564 · 261 471 · 42 426 · **0,00987 $** | 16 · 891 · 220 326 · 42 383 |
-| tarea sencilla (fase 06) | 1245 · 786 · 149 189 · 12 223 | 8 · 623 · 149 189 · 12 223 |
+| con subagente (`subagent`) | 1754 · 1564 · 261 471 · 42 426 · **0,00987 $** | 16 · 1491 · 220 326 · 42 383 |
+| tarea sencilla (fase 06, primera fila por id) | 1245 · 786 · 149 189 · 12 223 | 8 · 623 · 149 189 · 12 223 |
 
 - La suma de las filas **se queda corta**: Claude hace llamadas internas (título de la sesión, sugerencias, compactación…) que no escribe en el transcript pero sí cuenta en `cost-state`.
 - Sirve como **aproximación de tokens en vivo**, no como cifra final.

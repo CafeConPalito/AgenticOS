@@ -43,7 +43,10 @@ Pantalla del CLI ──► ScreenState.quota_notice() ──► Inbox «Cuota ag
   2. lee, suma y guarda en `runs`; `usage_status` pasa a `partial` o `final` (o `unavailable` si `final` y no hay nada);
   3. publica el consumo por el WebSocket de la ejecución (mensaje `usage`) para la vista en vivo.
 - Se llama desde un hilo propio (cola + *worker*), para no bloquear el hook ni el cierre: en `on_hook` con `Stop`, y en `_on_end` con `final=True`.
-- **Momento de la `cost-state`**: si en la tarea 1 se ve que Claude la escribe después del `Stop`, el *worker* repite la lectura a los 2 s cuando no ha cambiado nada.
+- **Momento de la `cost-state`**: la tarea 1 confirmó que Claude solo la escribe **al cerrar la sesión** ([evidencia](evidencias/c0-captura.md)). Por eso, en Claude:
+  - **coste en vivo** por la *status line*: el adapter añade a `--settings` un `statusLine` que ejecuta el mismo script de los hooks (`hook.cmd statusline`), que no imprime nada. El backend recibe el JSON en `/r/<token>/hook/statusline` y guarda `cost.total_cost_usd` en la ejecución (`cost_usd`, fuente `statusline`);
+  - **tokens en vivo** por las filas `assistant` (aproximados: no incluyen las llamadas internas de Claude);
+  - **cifras exactas** de `cost-state` al cerrar; si no la hay (cierre brusco), se quedan el último coste de la *status line* y los tokens aproximados, con estado `final` y fuente `partial`.
 - **Ruta del transcript**: `interpret()` (`hooks.py`) extrae `transcript_path` (Claude) y `transcriptPath` (agy). La primera del run se guarda en `transcript_path`; en agy, las de conversaciones ajenas (subagentes nativos, que ya se detectan como `foreign`) van a `extra_transcripts`.
 - **Versión del CLI**: la del `CliCatalog` en el momento del lanzamiento, en `runs.cli_version`.
 - **Backfill**: al arrancar, un hilo recorre las ejecuciones terminadas con `usage_status = pending` y llama a `refresh(final=True)`, de una en una.
@@ -121,12 +124,12 @@ Pantalla del CLI ──► ScreenState.quota_notice() ──► Inbox «Cuota ag
 
 ## Tareas (en orden)
 **C0 · Captura con los CLIs reales**
-1. [ ] Transcripts reales de Claude (con subagente) y de agy (con subagente) como *fixtures*; comprobar cuándo escribe Claude la `cost-state` respecto al hook `Stop`; confirmar `transcript_path` / `transcriptPath` en los hooks de la versión actual.
-2. [ ] Buscar los textos de cuota agotada de agy y de límite de uso de Claude: en pantalla, en el transcript y en la salida del modo headless (si se puede provocar, p. ej. con un modelo de cuota baja). Si no se consiguen reales, documentar los patrones esperados en el ADR y dejarlos centralizados en `screen.py`.
+1. [x] Transcripts reales de Claude (con subagente) y de agy (con subagente) como *fixtures*; comprobar cuándo escribe Claude la `cost-state` respecto al hook `Stop`; confirmar `transcript_path` / `transcriptPath` en los hooks de la versión actual.
+2. [x] Buscar los textos de cuota agotada de agy y de límite de uso de Claude: en pantalla, en el transcript y en la salida del modo headless (si se puede provocar, p. ej. con un modelo de cuota baja). Si no se consiguen reales, documentar los patrones esperados en el ADR y dejarlos centralizados en `screen.py`.
 
 **C1 · Lectura del consumo**
 
-3. [ ] `parsers.py` y `paths.py` con lectura incremental; tests con las *fixtures*.
+3. [x] `parsers.py` y `paths.py` con lectura incremental; tests con las *fixtures*.
 4. [ ] Migración `0006` y modelos; `cli_version` y rutas de transcript desde los hooks.
 5. [ ] `UsageReader` (*worker*, `Stop`, cierre, reintento), mensaje `usage` por WebSocket, subagentes nativos de agy, `RunRead`/`TaskRead`; backfill al arrancar; e2e con `CONSUMO:` del CLI falso.
 
