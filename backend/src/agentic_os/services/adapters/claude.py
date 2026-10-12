@@ -56,13 +56,16 @@ class ClaudeAdapter(CliAdapter):
                 }
             },
         )
-        session_id = str(uuid.uuid4())
+        # A resumed session keeps its id and transcript; the configuration below is the new
+        # run's (evidence R1: hooks and MCP are not stored in the session).
+        session_id = ctx.resume_session or str(uuid.uuid4())
+        session_flag = "--resume" if ctx.resume_session else "--session-id"
         # The prompt goes first: variadic options (--allowedTools, --mcp-config) would swallow
         # a trailing positional prompt.
         argv = [
             *prefix,
             safe_prompt(ctx.prompt),
-            "--session-id",
+            session_flag,
             session_id,
             "--setting-sources",
             "project,local",

@@ -11,6 +11,10 @@ Behaviour (keys are read raw, like the real TUIs):
 - --deaf: keys typed during the 1.5 s after an answer are lost (Claude Code does this while
   it finishes background work after a turn).
 - On a clean exit it prints the CLI's resume hint ("Resume this session with:").
+- Resuming (phase 08, evidence R1): `--resume <id>` (Claude) and `--conversation <id>` (agy)
+  continue the session's transcript. Claude carries over the totals of the last cost-state,
+  and with an unknown id says "No conversation found with session ID" and exits(1); agy
+  warns on stderr and opens a new conversation.
 
 Agentic OS integration, like the real CLIs (phase 04):
 - **Claude mode** (`--mcp-config` in the argv): MCP server and hooks from the run files;
@@ -48,6 +52,8 @@ deaf_until = 0.0
 # Options of the real CLIs that take a value: their values are not the prompt.
 VALUE_OPTIONS = {
     "--session-id",
+    "--resume",
+    "--conversation",
     "--setting-sources",
     "--settings",
     "--mcp-config",
@@ -85,7 +91,15 @@ PROMPT, OPTIONS = parse_argv(sys.argv[1:])
 CLAUDE_MODE = "--mcp-config" in OPTIONS
 PLUGIN = Path.cwd() / ".agents" / "plugins" / "agentic-os"
 AGY_MODE = not CLAUDE_MODE and not PROMPT and PLUGIN.is_dir()
-CONVERSATION_ID = str(uuid.uuid4())
+TRANSCRIPTS = Path(tempfile.gettempdir())
+RESUME = (OPTIONS.get("--resume") or OPTIONS.get("--conversation") or [None])[0]
+if RESUME and (TRANSCRIPTS / f"fake-cli-{RESUME}.jsonl").is_file():
+    CONVERSATION_ID = RESUME
+else:
+    if RESUME and not CLAUDE_MODE:
+        print(f'warning: conversation "{RESUME}" not found', file=sys.stderr)
+    CONVERSATION_ID = (OPTIONS.get("--session-id") or [str(uuid.uuid4())])[0]
+SESSION_MISSING = bool(RESUME and CLAUDE_MODE and CONVERSATION_ID != RESUME)
 
 if sys.platform == "win32":
     import msvcrt
@@ -153,9 +167,24 @@ MCP_URL, MCP_HEADERS, HOOKS = load_config()
 always_allowed: set[str] = set()
 # Phase 07: the transcript the CLI writes (reported in every hook, like the real ones), the
 # usage so far and the price of a token (only for the status line's cost).
-TRANSCRIPT = Path(tempfile.gettempdir()) / f"fake-cli-{CONVERSATION_ID}.jsonl"
+TRANSCRIPT = TRANSCRIPTS / f"fake-cli-{CONVERSATION_ID}.jsonl"
 PRICE = 0.000002
 usage_so_far = {"input": 0, "output": 0}
+
+
+def carried_usage() -> None:
+    """A resumed Claude session starts from the totals of its last cost-state, if any."""
+    if not (CLAUDE_MODE and RESUME == CONVERSATION_ID):
+        return
+    last = None
+    for line in TRANSCRIPT.read_text("utf-8").splitlines():
+        row = json.loads(line)
+        if row.get("type") == "cost-state":
+            last = row
+    if last is not None:
+        model = last["modelUsage"]["claude-fake"]
+        usage_so_far["input"] = model["inputTokens"] - INTERNAL_TOKENS
+        usage_so_far["output"] = model["outputTokens"]
 
 
 def hook(event: str) -> None:
@@ -169,7 +198,7 @@ def hook_payload(event: str, extra: dict) -> None:
     if CLAUDE_MODE:
         payload = {
             "hook_event_name": event,
-            "session_id": (OPTIONS.get("--session-id") or [""])[0],
+            "session_id": CONVERSATION_ID,
             "transcript_path": str(TRANSCRIPT),
         }
     else:
@@ -404,7 +433,7 @@ def cost_state() -> None:
     """On close Claude writes the session's exact totals (here, plus an internal call)."""
     if not CLAUDE_MODE or not usage_so_far["input"]:
         return
-    internal = 100
+    internal = INTERNAL_TOKENS
     write_row(
         {
             "type": "cost-state",
@@ -418,6 +447,9 @@ def cost_state() -> None:
             },
         }
     )
+
+
+INTERNAL_TOKENS = 100
 
 
 def native_subagent(description: str) -> None:
@@ -552,6 +584,10 @@ CTRL_C_NOTICE_DELAY = 0.8
 def main() -> None:
     if not NO_TRUST:
         trust_dialog()
+    if SESSION_MISSING:
+        out(f"No conversation found with session ID: {RESUME}")
+        sys.exit(1)
+    carried_usage()
     if CLAUDE_MODE:
         hook("SessionStart")
     if AGY_MODE:
