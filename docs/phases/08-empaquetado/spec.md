@@ -1,6 +1,6 @@
 # Fase 08: Empaquetado v1.0 (MVP) · Spec
 
-- **Estado**: borrador
+- **Estado**: aprobada
 - **Rama**: `phase/08-empaquetado`
 
 ## Objetivo
