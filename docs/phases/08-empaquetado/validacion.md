@@ -111,7 +111,7 @@ Además, durante la validación:
   - **futuras**: actualizaciones automáticas (requieren publicar las versiones), firma con certificado, `--onedir` para las carpetas `_MEI`, idiomas además del español, y borrar una carpeta de datos movida al desinstalar.
 
 ## Cierre
-- [ ] OK del usuario
-- [ ] Merge a `main` (`--no-ff`)
-- [ ] Tag `v1.0`
-- [ ] `docs/roadmap.md` actualizado
+- [x] OK del usuario (2026-10-12; CA1, CA10 y la casilla de CA3 quedan a cargo del usuario)
+- [x] Merge a `main` (`--no-ff`)
+- [x] Tag `v1.0`
+- [x] `docs/roadmap.md` actualizado
