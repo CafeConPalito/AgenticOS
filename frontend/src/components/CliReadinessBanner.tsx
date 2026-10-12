@@ -11,7 +11,8 @@ import { Button } from '@/components/ui/button'
 export function CliReadinessBanner() {
   const { t } = useTranslation()
   const { data: clis } = useClis()
-  if (!clis || clis.some((cli) => cli.installed && cli.logged_in !== false)) return null
+  if (!Array.isArray(clis) || clis.some((cli) => cli.installed && cli.logged_in !== false))
+    return null
   const installed = clis.some((cli) => cli.installed)
   return (
     <div
