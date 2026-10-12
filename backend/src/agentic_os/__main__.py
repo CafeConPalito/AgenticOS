@@ -21,6 +21,7 @@ import uvicorn
 from agentic_os.app import create_app
 from agentic_os.config import Settings, get_settings
 from agentic_os.logging_setup import configure_logging
+from agentic_os.services import datadir
 from agentic_os.services.pty.job import kill_children_on_exit
 
 READY_PREFIX = "AGENTIC_OS_READY"
@@ -138,6 +139,10 @@ def resolve_log_file(settings: Settings) -> Path | None:
 
 
 def main(argv: list[str] | None = None) -> None:
+    # A move of the data folder asked for before the restart (phase 08): before the settings
+    # resolve the folder, and before the logs or the database open anything in it.
+    if not os.environ.get("AGENTIC_OS_DATA_DIR"):
+        datadir.apply_pending_move()
     args = parse_args(argv)
     settings = get_settings()
     # Agent CLIs started by this backend must never outlive it (ADR 0007).
@@ -163,7 +168,16 @@ def main(argv: list[str] | None = None) -> None:
     sock.bind((args.host, args.port))
     # The agents reach the backend (MCP, hooks) on the port actually bound (free port with 0).
     settings = settings.model_copy(update={"port": sock.getsockname()[1]})
-    server = ReadyServer(uvicorn.Config(create_app(settings), log_config=None))
+    app = create_app(settings)
+    server = ReadyServer(uvicorn.Config(app, log_config=None))
+    restart = threading.Event()
+
+    def request_restart() -> None:
+        """The backend exits with RESTART_EXIT_CODE and the desktop shell starts it again."""
+        restart.set()
+        server.should_exit = True
+
+    app.state.request_restart = request_restart
 
     if args.parent_pid is not None:
 
@@ -173,6 +187,8 @@ def main(argv: list[str] | None = None) -> None:
         watch_parent(args.parent_pid, request_exit, args.watchdog_interval)
 
     server.run(sockets=[sock])
+    if restart.is_set():
+        sys.exit(datadir.RESTART_EXIT_CODE)
 
 
 if __name__ == "__main__":

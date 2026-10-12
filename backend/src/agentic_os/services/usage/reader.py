@@ -28,6 +28,7 @@ from agentic_os.services.usage.parsers import (
     AgyReader,
     ClaudeReader,
     Usage,
+    cost_state_usage,
 )
 from agentic_os.services.usage.paths import agy_transcript, claude_transcript
 
@@ -36,6 +37,12 @@ log = structlog.get_logger()
 STATUS_LINE = "statusline"
 # Claude writes `cost-state` while it closes: a final read that misses it is retried once.
 FINAL_RETRY_DELAY = 2.0
+
+
+def carried_cost(baseline: dict | None) -> float:
+    """The cost a resumed Claude session carries over from the runs before it (phase 08)."""
+    state = cost_state_usage((baseline or {}).get("cost_state"))
+    return (state.cost_usd or 0.0) if state else 0.0
 
 
 def usage_payload(run: Run) -> dict:
@@ -60,6 +67,8 @@ def usage_payload(run: Run) -> dict:
 @dataclass
 class _Readers:
     cli: Cli
+    # A resumed run: where the shared transcript stood when it started (phase 08).
+    baseline: dict | None = None
     main_path: Path | None = None
     main: ClaudeReader | AgyReader | None = None
     extras: dict[str, AgyReader] = field(default_factory=dict)
@@ -67,7 +76,8 @@ class _Readers:
     def read(self, path: Path | None, extra_paths: list[str]) -> Usage | None:
         if path is not None and path != self.main_path:
             self.main_path = path
-            self.main = ClaudeReader(path) if self.cli == Cli.CLAUDE else AgyReader(path)
+            reader = ClaudeReader if self.cli == Cli.CLAUDE else AgyReader
+            self.main = reader(path, self.baseline)
         total = self.main.read() if self.main is not None else None
         for extra in extra_paths:  # agy native subagents
             reader = self.extras.setdefault(extra, AgyReader(Path(extra)))
@@ -166,8 +176,8 @@ class UsageService:
                 if item is None:
                     return
                 run_id, final, retry, backfill = item
-                if backfill and self._stopping.is_set():
-                    continue
+                if backfill and (self._stopping.is_set() or self._is_final(run_id)):
+                    continue  # settled meanwhile (e.g. before «Reanudar sesión», phase 08)
                 try:
                     if self.refresh(run_id, final, last_try=not retry):
                         self._retry_later(run_id)  # Claude may still be closing
@@ -175,6 +185,11 @@ class UsageService:
                     log.exception("could not read the run's usage", run_id=run_id)
             finally:
                 self._queue.task_done()
+
+    def _is_final(self, run_id: str) -> bool:
+        with self._db() as db:
+            run = db.get(Run, run_id)
+            return run is None or run.usage_status in (UsageStatus.FINAL, UsageStatus.UNAVAILABLE)
 
     # ------------------------------------------------------------------ hooks
     def note_transcript(self, run_id: str, path: str, own: bool) -> None:
@@ -200,6 +215,8 @@ class UsageService:
             changed = False
             if version and run.cli_version != version:
                 run.cli_version, changed = version, True
+            if cost_usd is not None:
+                cost_usd = max(0.0, cost_usd - carried_cost(run.usage_baseline))
             if cost_usd is not None and run.cost_usd != cost_usd:
                 run.cost_usd, changed = cost_usd, True
                 if run.usage_status == UsageStatus.PENDING:
@@ -214,7 +231,7 @@ class UsageService:
             self.on_updated(run_id)
 
     # ------------------------------------------------------------------ reading
-    def _transcript(self, run: Run) -> Path | None:
+    def transcript(self, run: Run) -> Path | None:
         if run.transcript_path:
             return Path(run.transcript_path)
         if not run.cli_session_id:
@@ -232,8 +249,8 @@ class UsageService:
                 return False
             cli = Cli(run.cli)
             with self._lock:
-                readers = self._readers.setdefault(run_id, _Readers(cli))
-            usage = readers.read(self._transcript(run), list(run.extra_transcripts or []))
+                readers = self._readers.setdefault(run_id, _Readers(cli, run.usage_baseline))
+            usage = readers.read(self.transcript(run), list(run.extra_transcripts or []))
             before = usage_payload(run)
             if usage is not None:
                 self._apply(run, usage)

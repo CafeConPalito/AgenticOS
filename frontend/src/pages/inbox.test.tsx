@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import es from '@/i18n/es.json'
-import { createFakeBackend, makeInboxItem, makeTask } from '@/test/fake-backend'
+import { createFakeBackend, makeInboxItem, makeRun, makeTask } from '@/test/fake-backend'
 import { renderApp } from '@/test/render'
 
 const notify = vi.hoisted(() => vi.fn(async () => true))
@@ -75,6 +75,21 @@ describe('Inbox', () => {
     )
     await waitFor(() =>
       expect(backend.calls.filter((c) => c.path.endsWith('/notified'))).toHaveLength(2),
+    )
+  })
+
+  it('offers to resume an interrupted task from its «Atención» item', async () => {
+    const task = makeTask({ status: 'waiting_human', waiting_reason: 'interrupted' })
+    const run = makeRun({ task_id: task.id, status: 'interrupted', resumable: true })
+    task.last_run_id = run.id
+    const item = makeInboxItem({ kind: 'attention', task_id: task.id, title: 'T-1 · Login' })
+    const backend = createFakeBackend({ tasks: [task], runs: [run], inbox: [item] })
+    const user = userEvent.setup()
+    renderApp('/inbox')
+
+    await user.click(await screen.findByRole('button', { name: es.runs.resume.button }))
+    await waitFor(() =>
+      expect(backend.callsTo('POST', `/api/runs/${run.id}/resume`)).toHaveLength(1),
     )
   })
 

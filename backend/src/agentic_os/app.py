@@ -1,4 +1,5 @@
 import asyncio
+import threading
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -10,10 +11,12 @@ from agentic_os import APP_NAME, __version__
 from agentic_os.api import api_router
 from agentic_os.api.hooks import router as hooks_router
 from agentic_os.config import Settings, get_settings
+from agentic_os.db.backup import backup_before_migrating
 from agentic_os.db.migrate import upgrade_to_head
 from agentic_os.db.session import create_db_engine, database_url, make_sessionmaker
 from agentic_os.errors import register_error_handlers
 from agentic_os.logging_setup import configure_logging
+from agentic_os.services import housekeeping
 from agentic_os.services.clis import CliCatalog
 from agentic_os.services.mcp_server import mount_app
 from agentic_os.services.runs.manager import RunManager
@@ -40,6 +43,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         engine = create_db_engine(database_url(settings))
+        backup_before_migrating(engine, Path(settings.data_dir))
         upgrade_to_head(engine)
         app.state.engine = engine
         app.state.sessionmaker = make_sessionmaker(engine)
@@ -72,6 +76,20 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         manager.on_run_ended = scheduler.run_ended
         manager.on_tasks_changed = scheduler.poke
         scheduler.recover()
+        # Leftovers of earlier crashes (phase 08): agy plugins before the scheduler can write
+        # new ones; the slow rest (git, old logs) in the background.
+        housekeeping.stale_agy_plugins(app.state.sessionmaker)
+        threading.Thread(
+            target=housekeeping.run_at_startup,
+            args=(
+                app.state.sessionmaker,
+                Path(settings.data_dir) / "runs",
+                worktrees.release,
+                trust.flush,
+            ),
+            name="startup-cleanup",
+            daemon=True,
+        ).start()
         app.state.scheduler = scheduler
         app.state.mcp_gate, session_manager = mount_app(manager, manager.tokens)
         scheduler.start()

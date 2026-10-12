@@ -1,6 +1,8 @@
 import { type QueryClient, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
+import { inboxKeys } from './inbox'
 import { memoryKeys } from './memory'
+import { taskKeys } from './tasks'
 import { ACTIVE_RUN_STATUSES, type Run, type RunEvent } from './types'
 
 export interface RunFilters {
@@ -69,6 +71,20 @@ export function useLaunchRun() {
     mutationFn: (body: { agent_id: string; project_id: string; prompt: string }) =>
       api.post<Run>('/api/runs', body),
     onSuccess: (run) => invalidate(run),
+  })
+}
+
+/** «Reanudar sesión»: a new run continues this one's CLI conversation (and its task). */
+export function useResumeRun() {
+  const queryClient = useQueryClient()
+  const invalidate = useInvalidateRuns()
+  return useMutation({
+    mutationFn: (id: string) => api.post<Run>(`/api/runs/${id}/resume`),
+    onSuccess: async (run) => {
+      await invalidate(run)
+      await queryClient.invalidateQueries({ queryKey: taskKeys.all })
+      await queryClient.invalidateQueries({ queryKey: inboxKeys.all })
+    },
   })
 }
 

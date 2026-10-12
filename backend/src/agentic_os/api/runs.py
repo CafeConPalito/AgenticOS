@@ -13,7 +13,7 @@ from agentic_os.api.projects import get_project_or_404 as get_project_row
 from agentic_os.db.base import DEFAULT_WORKSPACE
 from agentic_os.db.session import get_session
 from agentic_os.errors import ApiError, NotFound
-from agentic_os.models import ACTIVE_STATUSES, Cli, Run, RunEvent, Stage, Task
+from agentic_os.models import ACTIVE_STATUSES, Cli, Run, RunEvent, RunStatus, Stage, Task
 from agentic_os.schemas.run import (
     ControlAction,
     ControlRequest,
@@ -23,6 +23,7 @@ from agentic_os.schemas.run import (
     RunRead,
 )
 from agentic_os.schemas.usage import RunUsage
+from agentic_os.services.runs import resume as resume_ops
 from agentic_os.services.runs.manager import RunManager
 from agentic_os.services.runs.session import SCROLLBACK_LIMIT, ControlConflict, RunSession
 from agentic_os.services.usage import limits as usage_limits
@@ -46,7 +47,8 @@ def _get(db: Session, run_id: str) -> Run:
     return run
 
 
-def _read(run: Run, manager: RunManager) -> RunRead:
+def _read(run: Run, manager: RunManager, detail: bool = False) -> RunRead:
+    """`detail`: also whether it can be resumed (a few queries: not for every row of a list)."""
     result = RunRead.model_validate(run)
     result.usage = RunUsage(**usage_payload(run))
     db = object_session(run)
@@ -55,6 +57,9 @@ def _read(run: Run, manager: RunManager) -> RunRead:
         stage = db.get(Stage, run.stage_id) if run.stage_id else None
         result.task_code = task.code if task else None
         result.stage_name = stage.name if stage else None
+    if detail and db is not None and RunStatus(run.status) in resume_ops.RESUMABLE:
+        result.resumed_by_id = resume_ops.resumed_by(db, run.id)
+        result.resumable = resume_ops.resumable(db, run)
     session = manager.get(run.id)
     if session is not None and session.alive:
         result.controller = session.controller
@@ -109,7 +114,7 @@ def list_runs(
 
 @router.get("/runs/{run_id}")
 def get_run(run_id: str, db: DbSession, manager: Manager) -> RunRead:
-    return _read(_get(db, run_id), manager)
+    return _read(_get(db, run_id), manager, detail=True)
 
 
 @router.get("/runs/{run_id}/events")
@@ -146,6 +151,13 @@ def answer_permission(
     if not manager.answer_permission(run.id, payload.approve):
         raise ApiError(409, "no_permission_dialog", "no permission dialog is waiting")
     return _read(run, manager)
+
+
+@router.post("/runs/{run_id}/resume", status_code=status.HTTP_201_CREATED)
+def resume_run(run_id: str, db: DbSession, manager: Manager) -> RunRead:
+    """«Reanudar sesión»: a new run continues this one's CLI conversation."""
+    run = manager.resume(db, _get(db, run_id))
+    return _read(run, manager, detail=True)
 
 
 @router.post("/runs/{run_id}/stop", status_code=status.HTTP_202_ACCEPTED)

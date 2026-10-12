@@ -177,6 +177,11 @@ class RunSession:
     def wait(self, timeout: float | None = None) -> bool:
         return self._finished.wait(timeout)
 
+    def session_missing(self) -> bool:
+        """The CLI said it does not have the conversation it was asked to resume, and exited
+        with an error (Claude: exit code 1 right after the message)."""
+        return bool(self.exit_code) and self._screen.session_missing()
+
     def stop(self, timeout: float | None = None, user: bool = True) -> None:
         """Graceful exit (/exit or double Ctrl+C), killing the process if it does not comply.
         `user=False`: Agentic OS closes a completed run (it then ends as completed)."""

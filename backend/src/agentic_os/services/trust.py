@@ -18,6 +18,8 @@ from pathlib import Path
 
 import structlog
 
+from agentic_os.services import proc
+
 log = structlog.get_logger()
 
 IMAGES = {"claude": "claude.exe", "agy": "agy.exe"}
@@ -34,13 +36,7 @@ def agy_settings() -> Path:
 
 def process_running(image: str) -> bool:
     try:
-        out = subprocess.run(
-            ["tasklist", "/FI", f"IMAGENAME eq {image}", "/NH"],
-            capture_output=True,
-            text=True,
-            errors="replace",
-            timeout=10,
-        ).stdout
+        out = proc.run(["tasklist", "/FI", f"IMAGENAME eq {image}", "/NH"], 10).stdout
     except (OSError, subprocess.TimeoutExpired):
         return True  # unknown: do not touch the file
     return image.lower() in out.lower()

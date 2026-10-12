@@ -1,3 +1,4 @@
+import json
 import os
 from functools import lru_cache
 from pathlib import Path
@@ -5,12 +6,32 @@ from pathlib import Path
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+POINTER_FILE = "location.json"
 
-def default_data_dir() -> Path:
+
+def home_dir() -> Path:
+    """Fixed folder of the app: the data by default, and always the pointer to the data."""
     base = os.environ.get("APPDATA")
     if base:
         return Path(base) / "AgenticOS"
     return Path.home() / ".agentic-os"
+
+
+def read_pointer(home: Path | None = None) -> dict:
+    """`location.json` (phase 08): {"data_dir", "pending_move": {"from", "to"}, "last_error"}.
+    Missing or broken: the data is in the home folder."""
+    try:
+        data = json.loads(((home or home_dir()) / POINTER_FILE).read_text("utf-8"))
+    except (OSError, ValueError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def default_data_dir() -> Path:
+    """Where the data is: the pointer's folder (the user moved it) or the home folder.
+    AGENTIC_OS_DATA_DIR overrides both (tests, development)."""
+    moved = read_pointer().get("data_dir")
+    return Path(moved) if isinstance(moved, str) and moved else home_dir()
 
 
 class Settings(BaseSettings):

@@ -132,10 +132,12 @@ class AgyAdapter(CliAdapter):
         rules.write_text(plugin_rules(ctx.instructions, ctx.prompt), "utf-8")
         exclude_from_git(ctx.cwd)
         argv = [*prefix]
+        if ctx.resume_session:  # the workspace plugin above is the new run's (evidence R1)
+            argv += ["--conversation", ctx.resume_session]
         if ctx.model:
             argv += ["--model", ctx.model]
         argv += agy_permissions(ctx.permission_mode)
-        return LaunchSpec(argv, clean_env(), None)
+        return LaunchSpec(argv, clean_env(), ctx.resume_session)
 
     def deferred_prompt(self, ctx: LaunchContext) -> str | None:
         return typed_prompt(ctx.prompt)

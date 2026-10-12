@@ -9,6 +9,11 @@
 The formats are internal and undocumented: unknown rows and fields are ignored, broken lines
 are skipped, and a transcript with nothing useful yields `None` («consumo no disponible»).
 Transcripts only grow, so each one is read incrementally from where the last read stopped.
+
+A resumed session (phase 08, evidence R1) keeps writing to the same transcript. Its run reads
+it from where it stood at the resume (the `baseline`) and subtracts the `cost-state` that was
+there then: Claude carries a cleanly closed session's totals over, but starts from zero after
+a crash, which leaves no `cost-state`.
 """
 
 from __future__ import annotations
@@ -34,6 +39,30 @@ class Usage:
     # Per model: the same counters (and `cost_usd` when known).
     models: dict[str, dict[str, Any]] = field(default_factory=dict)
     source: str = ""
+
+    def subtract(self, other: Usage) -> Usage:
+        """What was used since `other`, an earlier reading of the same session (never < 0)."""
+        cost = None
+        if self.cost_usd is not None:
+            cost = max(0.0, self.cost_usd - (other.cost_usd or 0.0))
+        result = Usage(
+            max(0, self.input_tokens - other.input_tokens),
+            max(0, self.output_tokens - other.output_tokens),
+            max(0, self.thinking_tokens - other.thinking_tokens),
+            max(0, self.cache_read_tokens - other.cache_read_tokens),
+            max(0, self.cache_creation_tokens - other.cache_creation_tokens),
+            cost,
+            {},
+            self.source,
+        )
+        for name, values in self.models.items():
+            before = other.models.get(name, {})
+            result.models[name] = {
+                key: max(0, value - before.get(key, 0))
+                for key, value in values.items()
+                if isinstance(value, int | float)
+            }
+        return result
 
     def add(self, other: Usage) -> Usage:
         """Sum of two readings (e.g. a run and its agy native subagents)."""
@@ -74,13 +103,41 @@ def _f(data: object, key: str) -> float | None:
     return None
 
 
+def cost_state_usage(state: dict[str, Any] | None) -> Usage | None:
+    """The totals of a Claude `cost-state` row."""
+    if state is None:
+        return None
+    usage = Usage(cost_usd=_f(state, "totalCostUSD"), source=COST_STATE)
+    models = state.get("modelUsage")
+    for name, values in (models if isinstance(models, dict) else {}).items():
+        if not isinstance(values, dict):
+            continue
+        entry = {
+            "input_tokens": _n(values, "inputTokens"),
+            "output_tokens": _n(values, "outputTokens"),
+            "thinking_tokens": _n(values, "thinkingTokens"),
+            "cache_read_tokens": _n(values, "cacheReadInputTokens"),
+            "cache_creation_tokens": _n(values, "cacheCreationInputTokens"),
+        }
+        if (cost := _f(values, "costUSD")) is not None:
+            entry["cost_usd"] = cost
+        usage.models[str(name)] = entry
+        usage.input_tokens += entry["input_tokens"]
+        usage.output_tokens += entry["output_tokens"]
+        usage.thinking_tokens += entry["thinking_tokens"]
+        usage.cache_read_tokens += entry["cache_read_tokens"]
+        usage.cache_creation_tokens += entry["cache_creation_tokens"]
+    return usage
+
+
 class TranscriptCursor:
     """Reads a JSONL file from where the previous read stopped. If the file shrinks (it was
     rewritten), it starts again from the beginning."""
 
-    def __init__(self, path: Path) -> None:
+    def __init__(self, path: Path, start: int = 0) -> None:
         self.path = path
-        self._offset = 0
+        self._start = start  # a resumed session: the rows before it are another run's
+        self._offset = start
         self._rest = b""
         self.rows_seen = 0
 
@@ -91,7 +148,8 @@ class TranscriptCursor:
         except OSError:
             return False
         if size < self._offset:
-            self._offset, self._rest = 0, b""
+            self._offset = self._start if size >= self._start else 0
+            self._rest = b""
             self.reset()
         if size == self._offset:
             return True
@@ -126,8 +184,8 @@ class ClaudeCursor(TranscriptCursor):
         self.cost_state: dict[str, Any] | None = None
         self.messages: dict[str, tuple[str, dict[str, Any]]] = {}
 
-    def __init__(self, path: Path) -> None:
-        super().__init__(path)
+    def __init__(self, path: Path, start: int = 0) -> None:
+        super().__init__(path, start)
         self.reset()
 
     def on_row(self, row: dict[str, Any]) -> None:
@@ -146,30 +204,7 @@ class ClaudeCursor(TranscriptCursor):
         self.messages[str(key)] = (str(message.get("model") or "?"), usage)
 
     def from_cost_state(self) -> Usage | None:
-        state = self.cost_state
-        if state is None:
-            return None
-        usage = Usage(cost_usd=_f(state, "totalCostUSD"), source=COST_STATE)
-        models = state.get("modelUsage")
-        for name, values in (models if isinstance(models, dict) else {}).items():
-            if not isinstance(values, dict):
-                continue
-            entry = {
-                "input_tokens": _n(values, "inputTokens"),
-                "output_tokens": _n(values, "outputTokens"),
-                "thinking_tokens": _n(values, "thinkingTokens"),
-                "cache_read_tokens": _n(values, "cacheReadInputTokens"),
-                "cache_creation_tokens": _n(values, "cacheCreationInputTokens"),
-            }
-            if (cost := _f(values, "costUSD")) is not None:
-                entry["cost_usd"] = cost
-            usage.models[str(name)] = entry
-            usage.input_tokens += entry["input_tokens"]
-            usage.output_tokens += entry["output_tokens"]
-            usage.thinking_tokens += entry["thinking_tokens"]
-            usage.cache_read_tokens += entry["cache_read_tokens"]
-            usage.cache_creation_tokens += entry["cache_creation_tokens"]
-        return usage
+        return cost_state_usage(self.cost_state)
 
     def from_rows(self) -> Usage | None:
         if not self.messages:
@@ -194,8 +229,8 @@ class AgyCursor(TranscriptCursor):
         super().reset()
         self.steps: dict[str, dict[str, int]] = {}
 
-    def __init__(self, path: Path) -> None:
-        super().__init__(path)
+    def __init__(self, path: Path, start: int = 0) -> None:
+        super().__init__(path, start)
         self.reset()
 
     def on_row(self, row: dict[str, Any]) -> None:
@@ -231,21 +266,50 @@ def claude_subagent_files(transcript: Path) -> list[Path]:
         return []
 
 
-class ClaudeReader:
-    """The usage of one Claude session: its transcript and its native subagents' files."""
+def _size(path: Path) -> int:
+    try:
+        return path.stat().st_size
+    except OSError:
+        return 0
 
-    def __init__(self, transcript: Path) -> None:
-        self.main = ClaudeCursor(transcript)
+
+def claude_baseline(transcript: Path) -> dict[str, Any]:
+    """Where a Claude session stands before it is resumed: the transcript's size, its native
+    subagents' files and the latest `cost-state` (None if it never closed cleanly)."""
+    cursor = ClaudeCursor(transcript)
+    cursor.read()
+    return {
+        "offset": _size(transcript),
+        "subagents": {p.name: _size(p) for p in claude_subagent_files(transcript)},
+        "cost_state": cursor.cost_state,
+    }
+
+
+def agy_baseline(transcript: Path) -> dict[str, Any]:
+    return {"offset": _size(transcript)}
+
+
+class ClaudeReader:
+    """The usage of one Claude session: its transcript and its native subagents' files.
+    `baseline`: a resumed session, read from where it stood then (see `claude_baseline`)."""
+
+    def __init__(self, transcript: Path, baseline: dict[str, Any] | None = None) -> None:
+        baseline = baseline or {}
+        self.main = ClaudeCursor(transcript, int(baseline.get("offset") or 0))
         self.subagents: dict[Path, ClaudeCursor] = {}
+        self._subagent_starts: dict[str, int] = dict(baseline.get("subagents") or {})
+        self._carried = cost_state_usage(baseline.get("cost_state"))
 
     def read(self) -> Usage | None:
         if not self.main.read():
             return None
         exact = self.main.from_cost_state()
         if exact is not None:
-            return exact  # it already includes the native subagents
+            # It already includes the native subagents, and the earlier runs if carried over.
+            return exact.subtract(self._carried) if self._carried else exact
         for path in claude_subagent_files(self.main.path):
-            self.subagents.setdefault(path, ClaudeCursor(path)).read()
+            start = self._subagent_starts.get(path.name, 0)
+            self.subagents.setdefault(path, ClaudeCursor(path, start)).read()
         total: Usage | None = None
         for cursor in (self.main, *self.subagents.values()):
             part = cursor.from_rows()
@@ -259,8 +323,8 @@ class ClaudeReader:
 class AgyReader:
     """The usage of one agy conversation."""
 
-    def __init__(self, transcript: Path) -> None:
-        self.cursor = AgyCursor(transcript)
+    def __init__(self, transcript: Path, baseline: dict[str, Any] | None = None) -> None:
+        self.cursor = AgyCursor(transcript, int((baseline or {}).get("offset") or 0))
 
     def read(self) -> Usage | None:
         if not self.cursor.read():

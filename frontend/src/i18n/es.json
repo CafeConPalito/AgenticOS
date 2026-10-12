@@ -38,7 +38,15 @@
     "disconnected": "Desconectado · reintentando…",
     "offlineTitle": "Backend desconectado.",
     "offlineDescription": "No se pueden lanzar ni observar ejecuciones. Los agentes en curso siguen trabajando en sus terminales.",
-    "retry": "Reintentar ahora"
+    "retry": "Reintentar ahora",
+    "reconnecting": "Reconectando…",
+    "failed": "Backend detenido",
+    "reconnectingTitle": "Reiniciando el backend…",
+    "reconnectingDescription": "Se ha cerrado y Agentic OS lo está volviendo a abrir. Las ejecuciones que estaban en marcha aparecerán como «Interrumpidas».",
+    "failedTitle": "El backend no arranca.",
+    "failedDescription": "Lo hemos intentado varias veces. Revisa los logs o vuelve a intentarlo.",
+    "restart": "Reintentar",
+    "openLogs": "Abrir logs"
   },
   "pages": {
     "dashboard": {
@@ -142,7 +150,19 @@
     "no_worktree": "La tarea no tiene worktree.",
     "task_without_agent": "La tarea no tiene agente.",
     "task_has_pipeline": "En un proyecto con pipeline, el agente lo decide la etapa.",
-    "reason_required": "Escribe el motivo del rechazo."
+    "reason_required": "Escribe el motivo del rechazo.",
+    "not_resumable": "Esta ejecución ya no se puede reanudar.",
+    "session_unavailable": "El CLI ya no tiene esta conversación (se ha borrado su historial). Reintenta la tarea desde el principio.",
+    "runs_active": "Hay agentes trabajando. Páralos o espera a que terminen antes de mover los datos.",
+    "data_dir_fixed": "La carpeta de datos está fijada con la variable AGENTIC_OS_DATA_DIR.",
+    "same_data_dir": "Los datos ya están en esa carpeta.",
+    "data_dir_nested": "La carpeta nueva no puede estar dentro de la actual (ni al revés).",
+    "folder_not_empty": "Elige una carpeta vacía.",
+    "not_enough_space": "No hay espacio libre suficiente en esa unidad.",
+    "branch_not_found": "Esa rama ya no existe.",
+    "branch_in_use": "La rama está en uso: su tarea sigue abierta o tiene un worktree.",
+    "branch_not_merged": "La rama tiene trabajo sin fusionar.",
+    "git_failed": "git ha fallado en ese proyecto."
   },
   "cli": {
     "claude": "Claude Code",
@@ -416,7 +436,10 @@
       "exitCode": "Código de salida",
       "error": "Error",
       "viewers": "Vistas conectadas",
-      "lastStatus": "Estado actual"
+      "lastStatus": "Estado actual",
+      "resumedFrom": "Reanuda",
+      "resumedBy": "Reanudada en",
+      "openRun": "Ver ejecución"
     },
     "stop": {
       "button": "Parar",
@@ -442,14 +465,25 @@
         "SessionStart": "Sesión iniciada",
         "SessionEnd": "Sesión cerrada",
         "waiting_for_human": "Espera tu respuesta en la terminal",
-        "mcp_probe": "Conectando el MCP (/mcp)"
+        "mcp_probe": "Conectando el MCP (/mcp)",
+        "resumed": "Reanudada en otra ejecución",
+        "session_missing": "El CLI ya no tenía la conversación"
       },
       "human": {
         "bypass_permissions_consent": "Claude pide aceptar el modo «Autónomo» (sin permisos). Toma el control para responder.",
         "prompt_not_sent": "agy no muestra su entrada: el prompt no se ha enviado. Toma el control para revisar la terminal.",
         "prompt_not_started": "El agente no ha empezado con el prompt. Toma el control para revisar la terminal."
       }
-    }
+    },
+    "resume": {
+      "button": "Reanudar sesión",
+      "done": "Sesión de {{name}} reanudada",
+      "hint": "Vuelve a abrir el CLI con la misma conversación para que el agente siga donde lo dejó."
+    },
+    "errorText": {
+      "session_missing": "El CLI ya no tiene esta conversación, así que no se puede reanudar. Reintenta la tarea desde el principio."
+    },
+    "logPurged": "El log de esta ejecución se borró por la retención de logs (Ajustes › Limpieza)."
   },
   "dock": {
     "label": "Terminal",
@@ -695,7 +729,7 @@
   },
   "settings": {
     "title": "Ajustes",
-    "subtitle": "Cómo te avisa Agentic OS y cuánto pueden gastar tus agentes.",
+    "subtitle": "CLIs, datos, notificaciones, límites y apariencia.",
     "notifications": {
       "title": "Notificaciones de Windows",
       "description": "Avisos del sistema cuando un agente necesita algo de ti, aunque la ventana esté en segundo plano.",
@@ -730,6 +764,84 @@
       "save": "Guardar límites",
       "saved": "Límites guardados",
       "invalid": "Escribe un número mayor que 0, o déjalo vacío."
+    },
+    "clis": {
+      "title": "CLIs detectados",
+      "check": "Comprobar",
+      "checked": "CLIs comprobados",
+      "checkedAgo": "Comprobado {{time}}",
+      "notFound": "No encontrado en el PATH",
+      "noVersion": "v—",
+      "status": {
+        "loggedIn": "Sesión iniciada",
+        "loggedOut": "Sin sesión",
+        "notDetected": "No detectado",
+        "unknown": "Sesión desconocida"
+      },
+      "install": {
+        "claude": "Instálalo desde PowerShell con «irm https://claude.ai/install.ps1 | iex» y abre «claude» para iniciar sesión.",
+        "agy": "Instala Antigravity CLI con su instalador oficial y abre «agy» para iniciar sesión."
+      },
+      "login": {
+        "claude": "Abre «claude» en una terminal e inicia sesión con /login.",
+        "agy": "Abre «agy» en una terminal para iniciar sesión."
+      }
+    },
+    "general": {
+      "title": "General",
+      "dataDir": "Carpeta de datos",
+      "dataDirHelp": "Base de datos, logs de sesión y logs de la app · {{size}}",
+      "open": "Abrir carpeta",
+      "change": "Cambiar…",
+      "moveTitle": "Mover la carpeta de datos",
+      "moveDescription": "Agentic OS se reiniciará y moverá la base de datos y los logs a la carpeta nueva. No puede haber agentes trabajando. La carpeta debe estar vacía.",
+      "moveTarget": "Carpeta nueva",
+      "moveConfirm": "Mover y reiniciar",
+      "moving": "Moviendo los datos: la app se reconectará en unos segundos.",
+      "moveManual": "Cambio guardado. Reinicia el backend para mover los datos.",
+      "moveFailed": "No se pudieron mover los datos (siguen en la carpeta de antes): {{error}}",
+      "language": "Idioma",
+      "languageHelp": "De momento la app solo está en español.",
+      "languages": {
+        "es": "Español"
+      },
+      "theme": "Tema",
+      "themes": {
+        "dark": "Oscuro",
+        "light": "Claro"
+      }
+    },
+    "cleanup": {
+      "title": "Limpieza",
+      "logs": "Logs de sesión",
+      "logsHelp": "Se borran al arrancar los de las ejecuciones que terminaron hace más tiempo. La ejecución y su consumo se conservan; solo se pierde la reproducción de la terminal.",
+      "retention": "Conservar",
+      "retentionDays": "{{count}} días",
+      "never": "Siempre",
+      "cleanNow": "Limpiar ahora",
+      "cleaned": "{{count}} logs borrados · {{size}} liberados",
+      "nothingToClean": "No hay logs más antiguos que la retención.",
+      "branches": "Ramas de tareas",
+      "branchesHelp": "Las ramas agentic/T-n que dejan las tareas en modo worktree. Solo se pueden borrar las de tareas cerradas.",
+      "noBranches": "No hay ramas de tareas en tus proyectos.",
+      "merged": "Fusionada",
+      "unmerged": "Sin fusionar",
+      "inUse": "En uso",
+      "noTask": "Sin tarea",
+      "delete": "Borrar",
+      "deleteMerged": "Borrar las fusionadas",
+      "deleted": "{{count}} ramas borradas",
+      "forceTitle": "¿Borrar «{{name}}»?",
+      "forceDescription": "La rama tiene trabajo que no está en la rama base. Si la borras, ese trabajo se pierde.",
+      "forceConfirm": "Borrar igualmente",
+      "deleteFailed": "No se pudo borrar «{{name}}»: {{error}}"
+    },
+    "about": {
+      "title": "Acerca de",
+      "version": "Versión",
+      "dataDir": "Carpeta de datos",
+      "backend": "Backend",
+      "logsHint": "Los logs del backend están en la carpeta «logs» de la carpeta de datos."
     }
   },
   "usage": {
@@ -824,5 +936,12 @@
       "limit_reached": "Has superado el límite diario de este CLI. La ejecución se lanza igualmente.",
       "quota_reached": "Este CLI se quedó sin cuota. La ejecución se lanza igualmente."
     }
+  },
+  "cliReadiness": {
+    "missingTitle": "No hay ningún CLI de agentes instalado.",
+    "missing": "Agentic OS trabaja con Claude Code y Antigravity CLI: instala al menos uno e inicia sesión para que tus agentes puedan trabajar.",
+    "loggedOutTitle": "Ningún CLI tiene sesión iniciada.",
+    "loggedOut": "Abre el CLI en una terminal e inicia sesión para que tus agentes puedan trabajar.",
+    "open": "Ver CLIs detectados"
   }
 }

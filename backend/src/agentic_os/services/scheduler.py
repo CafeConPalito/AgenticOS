@@ -111,6 +111,7 @@ class Scheduler:
 
     # ------------------------------------------------------------------ thread
     def start(self) -> None:
+        self._stopping.clear()  # it may start again after a stop (a refused data move)
         self._thread = threading.Thread(target=self._loop, name="scheduler", daemon=True)
         self._thread.start()
         self.poke()

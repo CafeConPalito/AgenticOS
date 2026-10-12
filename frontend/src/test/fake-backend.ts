@@ -1,3 +1,4 @@
+import type { ProjectBranches } from '@/api/maintenance'
 import type {
   Agent,
   AgentTemplate,
@@ -86,6 +87,8 @@ export const CLIS: CliInfo[] = [
       { id: 'opus', label: 'Opus (último)' },
     ],
     models_error: null,
+    logged_in: true,
+    checked_at: '2026-10-12T10:00:00Z',
   },
   {
     id: 'agy',
@@ -95,6 +98,8 @@ export const CLIS: CliInfo[] = [
     version: null,
     models: [],
     models_error: null,
+    logged_in: null,
+    checked_at: '2026-10-12T10:00:00Z',
   },
 ]
 
@@ -171,6 +176,10 @@ export function makeRun(overrides: Partial<Run> = {}): Run {
     stage_id: null,
     verdict: null,
     parent_run_id: null,
+    resumed_from_id: null,
+    resumed_by_id: null,
+    resumable: false,
+    log_purged: false,
     task_code: null,
     stage_name: null,
     created_at: now(),
@@ -375,11 +384,52 @@ export function createFakeBackend(
     trees?: Record<string, TreeNode[]>
     notificationSettings?: NotificationSettings
     usage?: Partial<FakeUsage>
+    branches?: ProjectBranches[]
+    clis?: CliInfo[]
   } = {},
 ) {
   const usage: FakeUsage = { ...emptyUsage(), ...(seed.usage ?? {}) }
 
+  const dataDir = {
+    path: 'C:\\Users\\marta\\AppData\\Roaming\\AgenticOS',
+    is_default: true,
+    database_bytes: 1_200_000,
+    sessions_bytes: 600_000_000,
+    logs_bytes: 4_000_000,
+    total_bytes: 1_800_000_000,
+    last_error: null as string | null,
+  }
+
+  let retention: number | null = 90
+  const branches: ProjectBranches[] = structuredClone(seed.branches ?? [])
+
   function handleUsage(method: string, path: string, body: Record<string, unknown>) {
+    if (path === '/api/settings/maintenance') {
+      if (method === 'PUT') retention = body.log_retention_days as number | null
+      return json(200, { log_retention_days: retention })
+    }
+    if (path === '/api/maintenance/logs/cleanup')
+      return json(200, { runs: 3, freed_bytes: 12_500_000 })
+    if (path === '/api/maintenance/branches') return json(200, branches)
+    if (path === '/api/maintenance/branches/delete') {
+      const project = branches.find((p) => p.project_id === body.project_id)
+      const names = body.branches as string[]
+      if (!project) return apiError(404, 'project_not_found')
+      for (const name of names) {
+        const branch = project.branches.find((b) => b.name === name)
+        if (!branch) return apiError(404, 'branch_not_found')
+        if (branch.in_use) return apiError(409, 'branch_in_use')
+        if (!branch.merged && !body.force) return apiError(409, 'branch_not_merged')
+      }
+      project.branches = project.branches.filter((b) => !names.includes(b.name))
+      return json(200, { deleted: names, failed: {} })
+    }
+    if (path === '/api/settings/data-dir') return json(200, dataDir)
+    if (path === '/api/settings/data-dir/open') return json(204, null)
+    if (path === '/api/settings/data-dir/move') {
+      if (!String(body.to ?? '').trim()) return apiError(422, 'path_not_absolute', 'to')
+      return json(202, { to: body.to, restarting: true })
+    }
     if (path === '/api/settings/usage-limits') {
       if (method === 'PUT') usage.limits = body as unknown as UsageLimits
       return json(200, usage.limits)
@@ -667,10 +717,36 @@ export function createFakeBackend(
         200,
         events.filter((e) => e.run_id === eventsMatch[1]),
       )
-    const match = path.match(/^\/api\/runs\/([^/]+)(?:\/(control|stop))?$/)
+    const match = path.match(/^\/api\/runs\/([^/]+)(?:\/(control|stop|resume))?$/)
     if (!match) return null
     const run = runs.find((r) => r.id === match[1])
     if (!run) return apiError(404, 'run_not_found')
+    if (match[2] === 'resume') {
+      if (!run.resumable) return apiError(409, 'not_resumable')
+      const resumed = makeRun({
+        ...run,
+        id: undefined,
+        status: 'starting',
+        ended_at: null,
+        error: null,
+        prompt: 'La sesión anterior se interrumpió.',
+        resumed_from_id: run.id,
+        resumed_by_id: null,
+        resumable: false,
+      })
+      resumed.id = `run-resumed-${runs.length}`
+      Object.assign(run, { resumable: false, resumed_by_id: resumed.id })
+      const task = tasks.find((t) => t.id === run.task_id)
+      if (task)
+        Object.assign(task, {
+          status: 'running',
+          waiting_reason: null,
+          active_run_id: resumed.id,
+          last_run_id: resumed.id,
+        })
+      runs.unshift(resumed)
+      return json(201, resumed)
+    }
     if (match[2] === 'stop') {
       Object.assign(run, { status: 'stopped', ended_at: now(), controller: null })
       return json(202, run)
@@ -692,7 +768,7 @@ export function createFakeBackend(
     if (path === '/api/health')
       return json(200, { status: 'ok', name: 'Agentic OS', version: '0.1.0' })
     if (path === '/api/agent-templates') return json(200, TEMPLATES)
-    if (path.startsWith('/api/clis')) return json(200, CLIS)
+    if (path.startsWith('/api/clis')) return json(200, seed.clis ?? CLIS)
 
     if (path === '/api/agents') {
       if (method === 'GET') return json(200, agents)

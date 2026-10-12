@@ -6,6 +6,7 @@ from agentic_os.db.base import Base
 SCHEDULER_PAUSED = "scheduler_paused"
 NOTIFICATIONS = "notifications"  # JSON: which Inbox kinds notify, and the sound
 USAGE_LIMITS = "usage_limits"  # JSON: {"claude_usd": float | null, "agy_tokens": int | null}
+LOG_RETENTION = "log_retention"  # JSON: {"days": int | null} (null: never delete)
 
 
 class AppState(Base):

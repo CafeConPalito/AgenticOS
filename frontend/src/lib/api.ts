@@ -43,6 +43,52 @@ export function resetApiBaseUrl(): void {
   baseUrlPromise = null
 }
 
+/** The desktop shell is launching the backend again (it exited and is being restarted). */
+export class BackendRestarting extends Error {
+  constructor() {
+    super('the backend is restarting')
+    this.name = 'BackendRestarting'
+  }
+}
+
+/** The desktop shell gave up on the backend: only «Reintentar» starts it again. */
+export class BackendFailed extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'BackendFailed'
+  }
+}
+
+/**
+ * The URL to probe the backend at, without waiting: in the desktop app the shell is asked
+ * every time, because a restarted backend listens on another port (phase 08).
+ */
+export async function currentBackendUrl(): Promise<string> {
+  if (!isTauri()) return getApiBaseUrl()
+  let url: string
+  try {
+    url = await invoke<string>('backend_url')
+  } catch (error) {
+    resetApiBaseUrl()
+    if (error === BACKEND_STARTING) throw new BackendRestarting()
+    throw new BackendFailed(String(error))
+  }
+  const cached = baseUrlPromise ? await baseUrlPromise.catch(() => null) : null
+  if (cached !== url) baseUrlPromise = Promise.resolve(url)
+  return url
+}
+
+/** «Reintentar» after the shell gave up on the backend. */
+export async function restartBackend(): Promise<void> {
+  resetApiBaseUrl()
+  await invoke('restart_backend')
+}
+
+/** «Abrir logs»: the backend's logs folder (works with the backend down). */
+export async function openBackendLogs(): Promise<void> {
+  await invoke('open_logs')
+}
+
 /** Error returned by the backend: `{"detail": {"code", "message", "field?"}}`. */
 export class ApiError extends Error {
   readonly status: number

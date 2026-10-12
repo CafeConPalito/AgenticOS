@@ -28,6 +28,8 @@ class LaunchContext:
     instructions: str
     hook_command: str  # e.g. C:\Users\…\HOOK~1.CMD (no spaces, no quotes)
     overrides: Mapping[str, list[str]] = field(default_factory=dict)
+    # «Reanudar sesión» (phase 08): the CLI session to continue instead of starting a new one.
+    resume_session: str | None = None
 
     @property
     def mcp_url(self) -> str:

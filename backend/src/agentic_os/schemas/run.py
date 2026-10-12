@@ -49,6 +49,12 @@ class RunRead(BaseModel):
     stage_id: str | None
     verdict: Verdict | None
     parent_run_id: str | None = None
+    # «Reanudar sesión» (phase 08): the run this one continues, the one that continued it,
+    # and whether it can be resumed now.
+    resumed_from_id: str | None = None
+    resumed_by_id: str | None = None
+    resumable: bool = False
+    log_purged: bool = False
     task_code: str | None = None
     stage_name: str | None = None
     created_at: datetime

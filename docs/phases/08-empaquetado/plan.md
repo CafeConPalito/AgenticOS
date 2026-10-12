@@ -74,7 +74,7 @@ Ejecución interrumpida ──► «Reanudar sesión» ──► ejecución nuev
    - **logs de sesión** más antiguos que la retención (ver Limpieza).
 
 ### Reanudar sesión
-- **Modelo** (migración `0007`): `runs.resumed_from_id` (FK a `runs`, nula) y `runs.usage_baseline` (JSON: el consumo del transcript en el momento de reanudar, para no contarlo dos veces). `WaitingReason` no cambia (`interrupted`).
+- **Modelo** (migración `0007`): `runs.resumed_from_id` (FK a `runs`, nula) y `runs.usage_baseline` (JSON `{offset, cost_state}`: el tamaño del transcript y su última `cost-state` en el momento de reanudar, para no contar dos veces lo anterior; ver R1). `WaitingReason` no cambia (`interrupted`).
 - **Adapters**: `LaunchContext` gana `resume_session: str | None`.
   - Claude: `--resume <id>` en lugar de `--session-id <nuevo>`; el resto de flags igual (`--mcp-config`, `--settings` con los hooks y la *status line* nuevos, permisos). El `LaunchSpec.session_id` es el mismo ID.
   - agy: `--conversation <id>`; el plugin de workspace se vuelve a escribir con el token nuevo (el plugin viejo ya lo borró `recover`).
@@ -83,8 +83,11 @@ Ejecución interrumpida ──► «Reanudar sesión» ──► ejecución nuev
   - solo para ejecuciones `interrupted` (o `failed`/`stopped` con `cli_session_id`) sin otra ejecución viva en su tarea; si no, 409;
   - crea la ejecución nueva con el mismo agente, proyecto, tarea, etapa, carpeta de trabajo y padre; `resumed_from_id` = la interrumpida;
   - si la tarea esperaba al humano por `interrupted`, vuelve a «En ejecución» con la ejecución nueva (`task_ops`), y se resuelve su elemento «Atención» de la Inbox;
-  - **sesión que no se puede retomar**: antes de lanzar se comprueba que el transcript existe (`transcript_path` o la ruta calculada, `usage/paths.py`); si no, 409 `session_unavailable` con «Reintentar» en la UI. Si el CLI arranca pero no encuentra la sesión (Claude: «No conversation found»; agy: el texto que se capture en la tarea R1), `screen.py` lo detecta, la ejecución termina `failed` con ese error y la tarea vuelve a «Esperando humano» (`interrupted`).
-- **Consumo**: el `UsageReader` resta `usage_baseline` al leer una ejecución reanudada (Claude reescribe la `cost-state` acumulada de la sesión; agy añade pasos al mismo `transcript_full.jsonl`). En la tarea, el total suma las dos ejecuciones sin duplicar.
+  - **sesión que no se puede retomar**: antes de lanzar se comprueba que el transcript existe (`transcript_path` o la ruta calculada, `usage/paths.py`); si no, 409 `session_unavailable` con «Reintentar» en la UI. Si el CLI arranca pero no encuentra la sesión: Claude escribe `No conversation found with session ID` y termina (`screen.py` lo reconoce para dar el error); agy **no falla** y abre una conversación nueva, así que se detecta porque el primer `conversationId` de los hooks no es el pedido, y entonces se para la ejecución. En los dos casos termina `failed` con «La sesión ya no existe» y la tarea vuelve a «Esperando humano» (`interrupted`).
+- **Consumo** ([R1](evidencias/r1-reanudar.md)): los dos CLIs siguen escribiendo en el mismo transcript. La `cost-state` de Claude es acumulada tras un cierre limpio y empieza de cero tras un corte brusco (que no deja ninguna). Por eso el `UsageReader`, en una ejecución reanudada:
+  - lee las filas `assistant` de Claude y los pasos de agy **solo desde `usage_baseline.offset`**;
+  - toma la última `cost-state` posterior al `offset` y le resta `usage_baseline.cost_state` (nada si no la había); igual con el coste de la *status line*.
+  En la tarea, el total suma las dos ejecuciones sin duplicar.
 - **API**: `POST /runs/{id}/resume` → `RunRead` de la nueva. `RunRead` gana `resumed_from_id`, `resumed_by_id` y `resumable: bool`.
 - **UI**: botón «Reanudar sesión» en la página de la ejecución (junto a «Reintentar»), en el detalle de tarea (estado «Esperando humano · interrumpida») y en el elemento «Atención» de la Inbox. En el historial de la tarea, la nueva aparece como «Reanudación de #n».
 
@@ -129,25 +132,25 @@ Ejecución interrumpida ──► «Reanudar sesión» ──► ejecución nuev
 | `docs/adr/0012-packaging-and-resume.md` | nuevo |
 
 ## Tareas (en orden)
-1. [ ] **R1 · Captura de la reanudación**: con Claude y agy reales, interrumpir una sesión (matar el backend) y relanzarla a mano con `--resume` / `--conversation` y la configuración nueva. Confirmar: que recuerda la conversación, que usa el MCP y los hooks nuevos (no los guardados), cómo crecen el transcript y la `cost-state`, y el texto que muestra cada CLI con un ID inexistente. Evidencias en `evidencias/r1-reanudar.md`.
-2. [ ] Versión `1.0.0` en todos los paquetes + test de coherencia.
-3. [ ] `services/proc.py` (subprocesos sin ventana) y su uso en `git`, CLIs y `os.startfile`.
-4. [ ] Copia de la BD antes de migrar (`db/backup.py`) + tests.
-5. [ ] Migración `0007` y modelos.
-6. [ ] Reanudar sesión en backend: adapters, `RunManager.resume`, tarea e Inbox, detección de sesión inexistente, `usage_baseline`; `fake_cli.py` con `--resume`/`--conversation` + tests y e2e.
-7. [ ] Reanudar sesión en la UI (ejecución, tarea, Inbox, historial) + tests.
-8. [ ] `CliInfo` con sesión, fecha e instrucciones + sección «CLIs detectados» + tests.
-9. [ ] Carpeta de datos: puntero, tamaño, abrir, mover (backend con salida `75`) + tests; sección «General» con tema e idioma.
-10. [ ] Limpieza: ramas y retención de logs (API, arranque, UI) + tests.
-11. [ ] `housekeeping.py`: restos de agy, worktrees huérfanos y confianza al arrancar + tests.
-12. [ ] Rust: instancia única y supervisor del sidecar con reinicios, `restart_backend`, `open_logs` + `cargo test`.
-13. [ ] UI: «Reconectando…», URL nueva tras reinicio, «Abrir logs» + tests.
-14. [ ] Sección «Acerca de» y reorganización de `SettingsPage` según el diseño.
-15. [ ] Instalador: iconos, NSIS por usuario, español, hook de desinstalación, paso de firma opcional.
-16. [ ] e2e contra el sidecar empaquetado (`live_server` en modo binario, `test:packaged`) y guion de humo.
-17. [ ] Build de release, medida del arranque y, si supera 5 s, cambio a `--onedir`.
-18. [ ] Pruebas manuales con la app instalada: máquina limpia (Windows Sandbox o VM), actualizar encima de `0.8` con datos, desinstalar, instancia única, matar el sidecar, cerrar con ejecuciones activas, reanudar con Claude y agy reales, y las pendientes de fases anteriores (F5, «Examinar…», notificación, CSV, consolas).
-19. [ ] ADR 0012, README, `/code-review` y validación.
+1. [x] **R1 · Captura de la reanudación**: con Claude y agy reales, interrumpir una sesión (matar el backend) y relanzarla a mano con `--resume` / `--conversation` y la configuración nueva. Confirmar: que recuerda la conversación, que usa el MCP y los hooks nuevos (no los guardados), cómo crecen el transcript y la `cost-state`, y el texto que muestra cada CLI con un ID inexistente. Evidencias en `evidencias/r1-reanudar.md`.
+2. [x] Versión `1.0.0` en todos los paquetes + test de coherencia.
+3. [x] `services/proc.py` (subprocesos sin ventana) y su uso en `git`, CLIs y `os.startfile`.
+4. [x] Copia de la BD antes de migrar (`db/backup.py`) + tests.
+5. [x] Migración `0007` y modelos.
+6. [x] Reanudar sesión en backend: adapters, `RunManager.resume`, tarea e Inbox, detección de sesión inexistente, `usage_baseline`; `fake_cli.py` con `--resume`/`--conversation` + tests y e2e.
+7. [x] Reanudar sesión en la UI (ejecución, tarea, Inbox, historial) + tests.
+8. [x] `CliInfo` con sesión, fecha e instrucciones + sección «CLIs detectados» + tests.
+9. [x] Carpeta de datos: puntero, tamaño, abrir, mover (backend con salida `75`) + tests; sección «General» con tema e idioma.
+10. [x] Limpieza: ramas y retención de logs (API, arranque, UI) + tests.
+11. [x] `housekeeping.py`: restos de agy, worktrees huérfanos y confianza al arrancar + tests.
+12. [x] Rust: instancia única y supervisor del sidecar con reinicios, `restart_backend`, `open_logs` + `cargo test`.
+13. [x] UI: «Reconectando…», URL nueva tras reinicio, «Abrir logs» + tests.
+14. [x] Sección «Acerca de» y reorganización de `SettingsPage` según el diseño.
+15. [x] Instalador: iconos, NSIS por usuario, español, hook de desinstalación, paso de firma opcional.
+16. [x] e2e contra el sidecar empaquetado (`live_server` en modo binario, `test:packaged`) y guion de humo.
+17. [x] Build de release, medida del arranque y, si supera 5 s, cambio a `--onedir`.
+18. [x] Pruebas manuales con la app instalada: máquina limpia (Windows Sandbox o VM), actualizar encima de `0.8` con datos, desinstalar, instancia única, matar el sidecar, cerrar con ejecuciones activas, reanudar con Claude y agy reales, y las pendientes de fases anteriores (F5, «Examinar…», notificación, CSV, consolas).
+19. [x] ADR 0012, README, `/code-review` y validación.
 
 ## Tests previstos
 | Test | Cubre |

@@ -53,7 +53,9 @@ from agentic_os.services.hooks import (
 )
 from agentic_os.services.mcp_server import RunTokens
 from agentic_os.services.memory import add_agent_note, list_notes, render_memory
+from agentic_os.services.runs import resume as resume_ops
 from agentic_os.services.runs.launcher import resolve_executable
+from agentic_os.services.runs.resume import SESSION_MISSING
 from agentic_os.services.runs.screen import PermissionDialog
 from agentic_os.services.runs.session import RunSession
 from agentic_os.services.tasks import task_context
@@ -95,6 +97,13 @@ class RunManager:
         # Claude's PermissionRequest hook: what the open dialog asks, by run (the screen
         # cannot always be read cleanly).
         self._permission_requests: dict[str, str] = {}
+        # Resumed agy runs until their first hook confirms the conversation (agy opens a new
+        # one, silently, when it no longer has the requested one: evidence R1).
+        self._resume_unconfirmed: set[str] = set()
+        self._session_missing: set[str] = set()
+        # One resume at a time: two requests for the same run would start two CLIs on the
+        # same conversation.
+        self._resume_lock = threading.Lock()
         self.loop: asyncio.AbstractEventLoop | None = None
         # Called (from the run's thread) once a run has ended and its state is persisted.
         self.on_run_ended: Callable[[str], None] | None = None
@@ -152,10 +161,13 @@ class RunManager:
         task: Task | None = None,
         cwd: str | None = None,
         parent: Run | None = None,
+        resumed_from: Run | None = None,
+        baseline: dict | None = None,
     ) -> Run:
         """Starts a CLI session. `task`: a run the scheduler launches for a task's current stage;
         `cwd`: its workspace (the task's worktree), the project folder by default; `parent`: the
-        run that launched this one as its subagent (spawn_subagent)."""
+        run that launched this one as its subagent (spawn_subagent); `resumed_from`: the run
+        whose CLI conversation this one continues, with the transcript's `baseline` (resume)."""
         if self.loop is None:
             raise RuntimeError("RunManager.loop is not set (lifespan not started)")
         cwd = cwd or project.path
@@ -170,10 +182,69 @@ class RunManager:
         # reserved atomically before anything is written, and released when the run ends.
         folder = self._reserve_agy_folder(cwd) if cli == Cli.AGY else None
         try:
-            return self._launch(db, agent, project, prompt, task, cwd, cli, adapter, folder, parent)
+            return self._launch(
+                db,
+                agent,
+                project,
+                prompt,
+                task,
+                cwd,
+                cli,
+                adapter,
+                folder,
+                parent,
+                resumed_from,
+                baseline,
+            )
         except Exception:
             self._release_agy_folder(folder)
             raise
+
+    def resume(self, db: Session, old: Run) -> Run:
+        """«Reanudar sesión»: a new run that continues the CLI conversation of `old`, with a new
+        context and token. Its task (if any) runs again with it."""
+        with self._resume_lock:
+            db.refresh(old)  # a resume that just finished may have taken it
+            return self._resume(db, old)
+
+    def _resume(self, db: Session, old: Run) -> Run:
+        resume_ops.check(db, old, self.usage.transcript(old))
+        # The old run's usage is settled now: once the resumed run writes to the same
+        # transcript, a later read of the old one would count it too.
+        self.usage.refresh(old.id, final=True)
+        baseline = resume_ops.check(db, old, self.usage.transcript(old))
+        agent = db.get(Agent, old.agent_id) if old.agent_id else None
+        project = db.get(Project, old.project_id) if old.project_id else None
+        if agent is None or project is None:
+            raise ApiError(409, "not_resumable", "the run's agent or project no longer exists")
+        task = db.get(Task, old.task_id) if old.task_id else None
+        run = self.launch(
+            db,
+            agent,
+            project,
+            resume_ops.RESUME_PROMPT,
+            task,
+            old.cwd,
+            resumed_from=old,
+            baseline=baseline,
+        )
+        if task is not None:
+            task = db.get(Task, task.id)
+            assert task is not None
+            if run.status == RunStatus.FAILED:  # the process could not be spawned
+                task_ops.wait_for_human(
+                    db, task, WaitingReason.LAUNCH_FAILED, run.error or "", run_id=run.id
+                )
+            else:
+                inbox.resolve_pending(
+                    db, Resolution.DISMISSED, task_id=task.id, kinds=task_ops.ATTENTION_KINDS
+                )
+                task.waiting_reason = task.waiting_detail = None
+                task_ops.mark_running(db, task, run.id)
+            db.commit()
+            self._notify_change()
+        self.add_event(old.id, EventKind.SYSTEM, "resumed", run.id)
+        return run
 
     def _launch(
         self,
@@ -187,6 +258,8 @@ class RunManager:
         adapter: CliAdapter,
         folder: str | None,
         parent: Run | None = None,
+        resumed_from: Run | None = None,
+        baseline: dict | None = None,
     ) -> Run:
         run = Run(
             workspace_id=DEFAULT_WORKSPACE,
@@ -202,6 +275,8 @@ class RunManager:
             task_id=task.id if task else None,
             stage_id=task.stage_id if task else None,
             parent_run_id=parent.id if parent else None,
+            resumed_from_id=resumed_from.id if resumed_from else None,
+            usage_baseline=baseline if resumed_from else None,
         )
         db.add(run)
         db.flush()
@@ -223,6 +298,7 @@ class RunManager:
             instructions=self._instructions(db, run, agent, project, task),
             hook_command=write_hook_script(run_dir, self.public_url, token),
             overrides=self._settings.cli_command_overrides,
+            resume_session=resumed_from.cli_session_id if resumed_from else None,
         )
         try:
             spec = adapter.prepare(ctx)
@@ -232,6 +308,8 @@ class RunManager:
             raise
         run.cli_session_id = spec.session_id
         db.commit()
+        if resumed_from is not None and cli == Cli.AGY:
+            self._resume_unconfirmed.add(run.id)
 
         session = RunSession(
             run.id,
@@ -244,7 +322,7 @@ class RunManager:
             run.cols,
             run.rows,
             deferred_prompt=adapter.deferred_prompt(ctx),
-            on_end=lambda run_id=run.id: self._on_end(run_id, adapter, ctx, folder),
+            on_end=lambda run_id=run.id: self._on_end(run_id, adapter, ctx, folder, session),
             on_system_event=lambda name, detail="", run_id=run.id: self.add_event(
                 run_id, EventKind.SYSTEM, name, detail
             ),
@@ -268,12 +346,19 @@ class RunManager:
         return run
 
     def _on_end(
-        self, run_id: str, adapter: CliAdapter, ctx: LaunchContext, folder: str | None
+        self,
+        run_id: str,
+        adapter: CliAdapter,
+        ctx: LaunchContext,
+        folder: str | None,
+        session: RunSession | None = None,
     ) -> None:
         try:
             adapter.cleanup(ctx)
         finally:
             self._release_agy_folder(folder)
+            if ctx.resume_session:
+                self._end_of_resumed(run_id, session)
             self.usage.request(run_id, final=True)
             try:
                 self._after_run_end(run_id)
@@ -281,6 +366,24 @@ class RunManager:
                 log.exception("could not finish the run's links", run_id=run_id)
             if self.on_run_ended is not None:  # the scheduler moves the task on
                 self.on_run_ended(run_id)
+
+    def _end_of_resumed(self, run_id: str, session: RunSession | None) -> None:
+        """A resumed run whose CLI did not have the conversation any more ends as failed, with
+        an error the UI explains (Claude says so and exits; agy opened another one)."""
+        self._resume_unconfirmed.discard(run_id)
+        missing = run_id in self._session_missing or (
+            session is not None and session.session_missing()
+        )
+        self._session_missing.discard(run_id)
+        if not missing:
+            return
+        with self._db() as db:
+            run = db.get(Run, run_id)
+            if run is None:
+                return
+            run.status, run.error = RunStatus.FAILED, SESSION_MISSING
+            db.commit()
+        self.add_event(run_id, EventKind.SYSTEM, "session_missing")
 
     def _after_run_end(self, run_id: str) -> None:
         """A subagent's result goes to its parent; a parent's end stops its subagents."""
@@ -905,6 +1008,15 @@ class RunManager:
                 return
             if effect.permission_request:
                 self._permission_requests[run_id] = effect.permission_request
+            # A resumed agy run: its first conversation must be the one it asked for.
+            if effect.session_id and run_id in self._resume_unconfirmed:
+                self._resume_unconfirmed.discard(run_id)
+                if effect.session_id != run.cli_session_id:
+                    db.close()
+                    log.warning("resumed conversation not found", run_id=run_id)
+                    self._session_missing.add(run_id)
+                    self.stop(run_id)
+                    return
             # agy: the first conversation is the run's. A native subagent has its own
             # conversation and fires hooks through the same plugin: they are not the run's
             # turns (and must not replace its id).
