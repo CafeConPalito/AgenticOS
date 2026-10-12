@@ -1,4 +1,4 @@
-import type { RunActivity, RunEvent, RunStatus } from '@/api/types'
+import type { RunActivity, RunEvent, RunStatus, RunUsage } from '@/api/types'
 import { getApiBaseUrl } from '@/lib/api'
 
 export interface TerminalState {
@@ -16,6 +16,7 @@ export type ServerMessage =
   | ({ type: 'state' } & TerminalState)
   | { type: 'exit'; code: number | null; status: RunStatus }
   | ({ type: 'event' } & RunEvent)
+  | { type: 'usage'; run_id: string; usage: RunUsage }
 
 export interface TerminalSocketHandlers {
   onSnapshot: (data: string) => void
@@ -23,6 +24,8 @@ export interface TerminalSocketHandlers {
   onState: (state: TerminalState) => void
   onExit: (code: number | null, status: RunStatus) => void
   onEvent?: (event: RunEvent) => void
+  /** The run's usage changed (end of a turn, Claude's status line). */
+  onUsage?: (usage: RunUsage) => void
   onConnection?: (connected: boolean) => void
 }
 
@@ -97,6 +100,9 @@ export class TerminalSocket {
           name: message.name,
           detail: message.detail,
         })
+        break
+      case 'usage':
+        this.handlers.onUsage?.(message.usage)
         break
     }
   }

@@ -1,9 +1,11 @@
 import { useTranslation } from 'react-i18next'
+import { useMonthBreakdown } from '@/api/usage'
+import { formatTokens, formatUsd } from '@/lib/format'
 import { useTasks } from '@/api/tasks'
 import { OPEN_TASK_STATUSES, type Project, type TaskStatus } from '@/api/types'
 import { TaskCard } from '@/pages/tasks/TaskBits'
 
-function Kpi({ label, value }: { label: string; value?: number }) {
+function Kpi({ label, value }: { label: string; value?: number | string }) {
   const { t } = useTranslation()
   return (
     <div className="rounded-lg border bg-card px-4 py-3">
@@ -26,6 +28,15 @@ export function SummaryTab({ project }: { project: Project }) {
   const { t } = useTranslation()
   const git = project.git
   const tasks = useTasks({ projectId: project.id }).data
+  const month = useMonthBreakdown('project').data
+  const monthRow = month?.rows.find((r) => r.id === project.id)
+  const monthCost = !month
+    ? undefined
+    : !monthRow
+      ? formatUsd(0)
+      : monthRow.cost_usd > 0 || monthRow.tokens === 0
+        ? formatUsd(monthRow.cost_usd)
+        : formatTokens(monthRow.tokens)
   const count = (statuses: TaskStatus[]) =>
     tasks ? tasks.filter((task) => statuses.includes(task.status)).length : undefined
   const now = (tasks ?? []).filter((task) =>
@@ -37,7 +48,7 @@ export function SummaryTab({ project }: { project: Project }) {
         <Kpi label={t('projects.summary.openTasks')} value={count(OPEN_TASK_STATUSES)} />
         <Kpi label={t('projects.summary.running')} value={count(['running'])} />
         <Kpi label={t('projects.summary.waiting')} value={count(['waiting_human', 'review'])} />
-        <Kpi label={t('projects.summary.cost')} />
+        <Kpi label={t('projects.summary.cost')} value={monthCost} />
       </div>
       <section className="rounded-lg border bg-card px-4 py-3.5">
         <h2 className="mb-2 text-[14px] font-medium">{t('projects.summary.now')}</h2>

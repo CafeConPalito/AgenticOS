@@ -14,6 +14,8 @@ const SETTING: Record<InboxKind, keyof NotificationSettings> = {
   stalled: 'stalled',
   attention: 'stalled',
   delivery: 'delivery',
+  limit: 'limits',
+  quota: 'limits',
 }
 
 /**
@@ -36,7 +38,9 @@ export function useInboxNotifier() {
       void (async () => {
         if (settings[SETTING[item.kind]]) {
           const where = [item.agent_name, item.project_name].filter(Boolean).join(' · ')
-          const body = item.command ? `${item.title}\n${item.command}` : item.title
+          // Only an approval's command is meant for the person (limit and quota keep the CLI).
+          const command = item.kind === 'approval' ? item.command : null
+          const body = command ? `${item.title}\n${command}` : item.title
           await notify(`${t(`inbox.kinds.${item.kind}`)} · ${where}`, body, {
             sound: settings.sound,
             onClick: () => navigate(`/inbox?item=${item.id}`),

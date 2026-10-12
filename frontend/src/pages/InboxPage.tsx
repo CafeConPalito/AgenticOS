@@ -1,13 +1,16 @@
 import { useQueryClient } from '@tanstack/react-query'
 import {
   AlertTriangle,
+  BatteryWarning,
   Check,
   CheckCheck,
   Clock,
   HelpCircle,
   Inbox,
   OctagonAlert,
+  Gauge,
   PackageCheck,
+  Play,
   RotateCcw,
   ShieldCheck,
   SquareTerminal,
@@ -24,6 +27,7 @@ import {
   useInbox,
   useInboxSummary,
   usePermissionItem,
+  useResumeItem,
   useReviewItem,
 } from '@/api/inbox'
 import { taskKeys } from '@/api/tasks'
@@ -49,6 +53,8 @@ const KIND_STYLE: Record<InboxKind, { color: string; icon: typeof Inbox }> = {
   stalled: { color: 'var(--status-waiting)', icon: Clock },
   attention: { color: 'var(--status-failed)', icon: AlertTriangle },
   delivery: { color: 'var(--status-done)', icon: PackageCheck },
+  limit: { color: 'var(--status-waiting)', icon: Gauge },
+  quota: { color: 'var(--status-failed)', icon: BatteryWarning },
 }
 
 export default function InboxPage() {
@@ -167,7 +173,7 @@ function InboxCard({ item, focused }: { item: InboxItem; focused: boolean }) {
             </time>
           </div>
           <h2 className="mt-1 text-[15px] font-medium">{title}</h2>
-          {item.command && (
+          {item.kind === 'approval' && item.command && (
             <pre className="mt-2 overflow-x-auto rounded-md bg-terminal px-3 py-2 font-mono text-[13px] text-terminal-foreground">
               <span aria-hidden className="text-[#7F8DAA]">
                 {PROMPT}
@@ -200,9 +206,15 @@ function InboxActions({ item }: { item: InboxItem }) {
   const permission = usePermissionItem()
   const review = useReviewItem()
   const dismiss = useDismissItem()
+  const resume = useResumeItem()
   const [text, setText] = useState('')
   const [rejecting, setRejecting] = useState(false)
-  const busy = answer.isPending || permission.isPending || review.isPending || dismiss.isPending
+  const busy =
+    answer.isPending ||
+    permission.isPending ||
+    review.isPending ||
+    dismiss.isPending ||
+    resume.isPending
   const onError = (error: unknown) => toast.error(errorMessage(error))
 
   async function retryTask() {
@@ -339,6 +351,30 @@ function InboxActions({ item }: { item: InboxItem }) {
             {t('inbox.reviewReject')}
           </Button>
         </form>
+      )}
+      {item.kind === 'quota' && (
+        <Button
+          size="sm"
+          disabled={busy}
+          onClick={() =>
+            resume.mutate(item.id, {
+              onSuccess: () => toast.success(t('inbox.toast.resumed')),
+              onError,
+            })
+          }
+          className="bg-primary-action text-white hover:bg-primary-action-hover"
+        >
+          <Play />
+          {t('inbox.resume')}
+        </Button>
+      )}
+      {item.kind === 'limit' && (
+        <>
+          <span className="text-[12.5px] text-muted-foreground">{t('inbox.limitHint')}</span>
+          <Button size="sm" variant="outline" asChild>
+            <Link to="/ajustes">{t('inbox.openSettings')}</Link>
+          </Button>
+        </>
       )}
       {item.kind === 'attention' && item.task_id && (
         <Button size="sm" variant="outline" disabled={busy} onClick={() => void retryTask()}>

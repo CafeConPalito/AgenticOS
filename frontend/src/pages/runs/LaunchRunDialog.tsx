@@ -1,6 +1,7 @@
 import { Play } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
 import { useNavigate } from 'react-router'
 import { useAgents } from '@/api/agents'
 import { useProjects } from '@/api/projects'
@@ -90,6 +91,8 @@ function LaunchRunForm({
         prompt: prompt.trim(),
       })
       onClose()
+      // Over its CLI's daily limit (or out of quota) a manual run starts anyway: say so.
+      if (run.warning) toast.warning(t(`usage.warning.${run.warning}`))
       navigate(`/ejecuciones/${run.id}`)
     } catch (e) {
       setError(errorMessage(e))

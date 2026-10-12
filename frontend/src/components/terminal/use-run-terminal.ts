@@ -107,6 +107,8 @@ export function useRunTerminal(
         void queryClient.invalidateQueries({ queryKey: runKeys.all })
       },
       onEvent: (event) => applyRunEvent(queryClient, runId, event),
+      onUsage: (usage) =>
+        queryClient.setQueryData<Run>(runKeys.detail(runId), (run) => run && { ...run, usage }),
       onConnection: setConnected,
     })
     socketRef.current = socket

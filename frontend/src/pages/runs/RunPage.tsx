@@ -16,6 +16,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useNow } from '@/hooks/use-now'
 import { errorMessage } from '@/lib/form-errors'
 import { formatDateTime, formatDuration } from '@/lib/time'
+import { SessionUsage } from '@/components/usage/SessionUsage'
 import { RunEventsPanel } from './RunEventsPanel'
 import { RunStatusBadge } from './RunStatusBadge'
 import { useProjectColor } from './RunsTable'
@@ -120,6 +121,7 @@ function RunDetail({ run }: { run: Run }) {
         </div>
         <aside className="flex min-h-0 flex-col overflow-auto border-l p-4">
           <RunEventsPanel runId={run.id} />
+          <SessionUsage run={run} />
         </aside>
       </div>
       <ConfirmDialog

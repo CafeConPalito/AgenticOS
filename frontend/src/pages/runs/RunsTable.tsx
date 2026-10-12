@@ -13,6 +13,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { useNow } from '@/hooks/use-now'
+import { formatTokens, formatUsd, totalTokens } from '@/lib/format'
 import { formatDateTime, formatDuration } from '@/lib/time'
 import { RunStatusBadge } from './RunStatusBadge'
 
@@ -39,6 +40,8 @@ export function RunsTable({ runs, showAgent = true }: { runs: Run[]; showAgent?:
             <TableHead>{t('runs.columns.prompt')}</TableHead>
             <TableHead>{t('runs.columns.project')}</TableHead>
             <TableHead>{t('runs.columns.status')}</TableHead>
+            <TableHead className="text-right">{t('usage.columns.tokens')}</TableHead>
+            <TableHead className="text-right">{t('usage.columns.cost')}</TableHead>
             <TableHead className="pr-4 text-right">{t('runs.columns.duration')}</TableHead>
           </TableRow>
         </TableHeader>
@@ -89,6 +92,14 @@ export function RunsTable({ runs, showAgent = true }: { runs: Run[]; showAgent?:
                 </TableCell>
                 <TableCell>
                   <RunStatusBadge run={run} size="xs" />
+                </TableCell>
+                <TableCell className="text-right font-mono text-xs whitespace-nowrap">
+                  {run.usage.status === 'unavailable' || run.usage.status === 'pending'
+                    ? '—'
+                    : formatTokens(totalTokens(run.usage, run.cli))}
+                </TableCell>
+                <TableCell className="text-right font-mono text-xs whitespace-nowrap">
+                  {formatUsd(run.usage.cost_usd)}
                 </TableCell>
                 <TableCell className="pr-4 text-right font-mono text-xs">
                   {formatDuration(run.started_at, run.ended_at, now)}

@@ -151,7 +151,8 @@ describe('Run page', () => {
 
     expect(await screen.findByRole('heading', { name: 'Migra la base de datos' })).toBeVisible()
     expect(screen.getByText(es.runs.status.busy)).toBeVisible()
-    expect(screen.getByText(run.cli_session_id!)).toBeVisible()
+    // In the details and in «Consumo de la sesión».
+    expect(screen.getAllByText(run.cli_session_id!)[0]).toBeVisible()
     expect(await screen.findByText(`Dev · Migra la base de datos`)).toBeVisible() // breadcrumb
 
     await user.click(screen.getByRole('button', { name: es.runs.stop.button }))

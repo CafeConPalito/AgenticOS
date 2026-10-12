@@ -2,6 +2,8 @@ import { Bot, ChevronRight, Sparkles } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
 import { useAgents } from '@/api/agents'
+import { useMonthBreakdown } from '@/api/usage'
+import { formatTokens, formatUsd } from '@/lib/format'
 import type { Agent } from '@/api/types'
 import { AgentAvatar, CliTag, StatusBadge } from '@/components/agentic/primitives'
 import { EmptyState } from '@/components/EmptyState'
@@ -58,6 +60,13 @@ export default function AgentsPage() {
 function AgentsTable({ agents }: { agents: Agent[] }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const month = useMonthBreakdown('agent').data
+  // «Consumo del mes»: the cost, or the tokens for an agent whose CLI records no cost (agy).
+  const monthUsage = (id: string) => {
+    const row = month?.rows.find((r) => r.id === id)
+    if (!row) return t('common.none')
+    return row.cost_usd > 0 ? formatUsd(row.cost_usd) : formatTokens(row.tokens)
+  }
   return (
     <div className="overflow-hidden rounded-lg border bg-card">
       <Table>
@@ -114,7 +123,7 @@ function AgentsTable({ agents }: { agents: Agent[] }) {
                     ? `${agent.running_count} · ${agent.queued_count}`
                     : t('common.none')}
                 </TableCell>
-                <TableCell className="text-right font-mono">{t('common.none')}</TableCell>
+                <TableCell className="text-right font-mono">{monthUsage(agent.id)}</TableCell>
                 <TableCell>
                   <ChevronRight className="size-4 text-muted-foreground" />
                 </TableCell>
