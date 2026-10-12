@@ -1,6 +1,6 @@
 # Fase 07: Consumo · Spec
 
-- **Estado**: borrador
+- **Estado**: aprobada
 - **Rama**: `phase/07-consumo`
 
 ## Objetivo
