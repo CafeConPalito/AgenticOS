@@ -1,7 +1,7 @@
 # Fase 08: Empaquetado v1.0 (MVP) · Plan técnico
 
 - **Spec**: [spec.md](spec.md)
-- **Estado**: borrador
+- **Estado**: aprobado
 
 ## Diseño
 
