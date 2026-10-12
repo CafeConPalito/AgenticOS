@@ -155,6 +155,9 @@ export interface CliInfo {
   version: string | null
   models: ModelOption[]
   models_error: string | null
+  /** Whether the CLI has a logged-in session; null when it cannot be told. */
+  logged_in: boolean | null
+  checked_at: string | null
 }
 
 export type RunEventKind = 'mcp' | 'hook' | 'system'

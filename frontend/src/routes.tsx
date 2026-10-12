@@ -19,7 +19,7 @@ import ProjectDetailPage from '@/pages/projects/ProjectDetailPage'
 import ProjectsPage from '@/pages/projects/ProjectsPage'
 import RunPage from '@/pages/runs/RunPage'
 import RunsPage from '@/pages/runs/RunsPage'
-import SettingsPage from '@/pages/SettingsPage'
+import SettingsPage from '@/pages/settings/SettingsPage'
 import TaskPage from '@/pages/tasks/TaskPage'
 import UsagePage from '@/pages/UsagePage'
 

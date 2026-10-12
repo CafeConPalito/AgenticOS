@@ -1,4 +1,5 @@
-"""Catalog of the agent CLIs Agentic OS can drive: installation, version and models.
+"""Catalog of the agent CLIs Agentic OS can drive: installation, version, models and whether
+a session is logged in (phase 08).
 
 Probing runs the CLIs as subprocesses, which is slow (agy needs a few seconds to list models),
 so results are cached for a while; callers can force a refresh.
@@ -6,6 +7,7 @@ so results are cached for a while; callers can force a refresh.
 
 from __future__ import annotations
 
+import json
 import shutil
 import subprocess
 import threading
@@ -13,14 +15,17 @@ import time
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
+from datetime import datetime
 
 from pydantic import BaseModel
 
+from agentic_os.db.base import utcnow
 from agentic_os.models.agent import Cli
 from agentic_os.services import proc
 
 CACHE_TTL = 600.0
 VERSION_TIMEOUT = 15
+AUTH_TIMEOUT = 20
 MODELS_TIMEOUT = 45
 
 
@@ -38,6 +43,9 @@ class CliInfo(BaseModel):
     version: str | None = None
     models: list[ModelOption] = []
     models_error: str | None = None
+    # True / False when the CLI says so; None when it cannot be told (not installed, error).
+    logged_in: bool | None = None
+    checked_at: datetime | None = None
 
 
 Runner = Callable[[list[str], int], subprocess.CompletedProcess[str]]
@@ -70,17 +78,34 @@ def _agy_models(path: str, run: Runner) -> list[ModelOption]:
     return models
 
 
+def _claude_logged_in(path: str, run: Runner, info: CliInfo) -> bool | None:
+    """`claude auth status` prints JSON with `loggedIn` (Claude Code 2.1)."""
+    try:
+        result = run([path, "auth", "status"], AUTH_TIMEOUT)
+        data = json.loads(result.stdout)
+    except (OSError, subprocess.TimeoutExpired, ValueError):
+        return None
+    logged_in = data.get("loggedIn") if isinstance(data, dict) else None
+    return logged_in if isinstance(logged_in, bool) else None
+
+
+def _agy_logged_in(path: str, run: Runner, info: CliInfo) -> bool | None:
+    """agy has no status command: without a session it cannot list its models."""
+    return info.models_error is None
+
+
 @dataclass(frozen=True)
 class CliSpec:
     id: Cli
     name: str
     executable: str
     list_models: Callable[[str, Runner], list[ModelOption]]
+    logged_in: Callable[[str, Runner, CliInfo], bool | None]
 
 
 SPECS = [
-    CliSpec(Cli.CLAUDE, "Claude Code", "claude", _claude_models),
-    CliSpec(Cli.AGY, "Antigravity CLI", "agy", _agy_models),
+    CliSpec(Cli.CLAUDE, "Claude Code", "claude", _claude_models, _claude_logged_in),
+    CliSpec(Cli.AGY, "Antigravity CLI", "agy", _agy_models, _agy_logged_in),
 ]
 
 
@@ -96,8 +121,8 @@ class CliCatalog:
     def probe(self, spec: CliSpec) -> CliInfo:
         path = self.which(spec.executable)
         if not path:
-            return CliInfo(id=spec.id, name=spec.name, installed=False)
-        info = CliInfo(id=spec.id, name=spec.name, installed=True, path=path)
+            return CliInfo(id=spec.id, name=spec.name, installed=False, checked_at=utcnow())
+        info = CliInfo(id=spec.id, name=spec.name, installed=True, path=path, checked_at=utcnow())
         try:
             info.version = parse_version(self.run([path, "--version"], VERSION_TIMEOUT))
         except (OSError, subprocess.TimeoutExpired):
@@ -106,6 +131,7 @@ class CliCatalog:
             info.models = spec.list_models(path, self.run)
         except (OSError, subprocess.TimeoutExpired, RuntimeError) as error:
             info.models_error = str(error) or type(error).__name__
+        info.logged_in = spec.logged_in(path, self.run, info)
         return info
 
     def cached_version(self, cli: str) -> str | None:

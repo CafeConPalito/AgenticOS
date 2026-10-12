@@ -86,6 +86,8 @@ export const CLIS: CliInfo[] = [
       { id: 'opus', label: 'Opus (último)' },
     ],
     models_error: null,
+    logged_in: true,
+    checked_at: '2026-10-12T10:00:00Z',
   },
   {
     id: 'agy',
@@ -95,6 +97,8 @@ export const CLIS: CliInfo[] = [
     version: null,
     models: [],
     models_error: null,
+    logged_in: null,
+    checked_at: '2026-10-12T10:00:00Z',
   },
 ]
 

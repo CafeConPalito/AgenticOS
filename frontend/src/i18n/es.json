@@ -745,6 +745,28 @@
       "save": "Guardar límites",
       "saved": "Límites guardados",
       "invalid": "Escribe un número mayor que 0, o déjalo vacío."
+    },
+    "clis": {
+      "title": "CLIs detectados",
+      "check": "Comprobar",
+      "checked": "CLIs comprobados",
+      "checkedAgo": "Comprobado {{time}}",
+      "notFound": "No encontrado en el PATH",
+      "noVersion": "v—",
+      "status": {
+        "loggedIn": "Sesión iniciada",
+        "loggedOut": "Sin sesión",
+        "notDetected": "No detectado",
+        "unknown": "Sesión desconocida"
+      },
+      "install": {
+        "claude": "Instálalo desde PowerShell con «irm https://claude.ai/install.ps1 | iex» y abre «claude» para iniciar sesión.",
+        "agy": "Instala Antigravity CLI con su instalador oficial y abre «agy» para iniciar sesión."
+      },
+      "login": {
+        "claude": "Abre «claude» en una terminal e inicia sesión con /login.",
+        "agy": "Abre «agy» en una terminal para iniciar sesión."
+      }
     }
   },
   "usage": {
