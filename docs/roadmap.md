@@ -15,11 +15,12 @@ Flujo de cada fase: ver `CLAUDE.md` (Spec → Plan → Desarrollo → Validació
 | 06 | Subagentes y human-in-the-loop | cerrada (`v0.7`) | `spawn_subagent`, `create_subtask`, árbol de ejecuciones, Inbox, `request_human`, notificaciones de Windows | La aprobación llega a la Inbox y a la notificación, y la respuesta desbloquea al agente | [spec](phases/06-subagentes-hitl/spec.md) · [plan](phases/06-subagentes-hitl/plan.md) · [validación](phases/06-subagentes-hitl/validacion.md) |
 | 07 | Consumo | pendiente | Parsers de transcripts por CLI (ADR 0005; prototipo en `spikes/usage_probe.py`), coste equivalente API en Claude y solo tokens en `agy`, límite diario, panel por agente, proyecto y sesión | Las cifras coinciden con las del propio CLI | |
 | 08 | Empaquetado v1.0 (MVP) | pendiente | Instalador, ajustes, robustez (reinicios, ejecuciones huérfanas) | El instalador funciona en una máquina limpia; los e2e completos pasan | |
-| 09 | Conocimiento | pendiente | Subida en 3 niveles, conversión, URLs, imágenes, RAG local, MCP `search_knowledge` | Un agente usa un PDF del proyecto para responder | |
-| 10 | Skills | pendiente | Biblioteca SKILL.md en 3 niveles, autoselección, `propose_skill` | La skill relevante se carga sola; se registra una skill creada por un agente | |
-| 11 | Meta-agentes | pendiente | Agente Arquitecto, propuestas en borrador, plantillas | Se crea un "Redactor" desde una conversación y ejecuta una tarea | |
-| 12 | Avisos externos | pendiente | Telegram, email, Slack | Los avisos llegan al móvil | |
-| 13 | Modo servidor | pendiente | Docker, autenticación, Postgres, WS autenticado | La app funciona desplegada en un servidor | |
+| 09 | Mejora de UX/UI | pendiente | Revisar la navegación y simplificar la interfaz tras la v1.0: menú y flujos principales, menos elementos por pantalla, jerarquía visual más clara y coherente | Las tareas habituales se hacen en menos pasos y cada pantalla se entiende de un vistazo (revisión con el usuario) | |
+| 10 | Conocimiento | pendiente | Subida en 3 niveles, conversión, URLs, imágenes, RAG local, MCP `search_knowledge` | Un agente usa un PDF del proyecto para responder | |
+| 11 | Skills | pendiente | Biblioteca SKILL.md en 3 niveles, autoselección, `propose_skill` | La skill relevante se carga sola; se registra una skill creada por un agente | |
+| 12 | Meta-agentes | pendiente | Agente Arquitecto, propuestas en borrador, plantillas | Se crea un "Redactor" desde una conversación y ejecuta una tarea | |
+| 13 | Avisos externos | pendiente | Telegram, email, Slack | Los avisos llegan al móvil | |
+| 14 | Modo servidor | pendiente | Docker, autenticación, Postgres, WS autenticado | La app funciona desplegada en un servidor | |
 
 ## Historial
 | Fecha | Cambio |
@@ -38,3 +39,4 @@ Flujo de cada fase: ver `CLAUDE.md` (Spec → Plan → Desarrollo → Validació
 | 2026-10-11 | Fase 05 cerrada (`v0.6`). Fase 06 en spec. |
 | 2026-10-11 | Fase 06 en validación: ADR 0010 (human-in-the-loop y subagentes). |
 | 2026-10-11 | Fase 06 cerrada (`v0.7`). La fase 07 queda pendiente hasta que el usuario decida empezarla. |
+| 2026-10-12 | Nueva fase 09 (Mejora de UX/UI) tras la v1.0; las fases 09–13 pasan a ser 10–14. |

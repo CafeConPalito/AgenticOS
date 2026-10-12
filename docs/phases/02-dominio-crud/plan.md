@@ -43,7 +43,7 @@ backend/src/agentic_os/
 - `GET/PATCH/DELETE /api/agents/{id}`, `POST /api/agents/{id}/duplicate` (nombre «… (copia)»), `GET /api/agent-templates`.
 - `GET/POST /api/projects`. `POST` admite `create_folder: true`. Errores: ruta inexistente → **422** `folder_not_found`; duplicada → **409** `project_exists`; worktree sin git → **422** `worktree_requires_git`.
 - `GET/PATCH/DELETE /api/projects/{id}`. La respuesta incluye `git` detectado al vuelo.
-- `POST /api/projects/{id}/open`: abre la carpeta en el explorador del sistema (`os.startfile`). Lo hace el backend porque es local; en el modo servidor (fase 13) se desactivará.
+- `POST /api/projects/{id}/open`: abre la carpeta en el explorador del sistema (`os.startfile`). Lo hace el backend porque es local; en el modo servidor (fase 14) se desactivará.
 - `GET /api/clis` → `[{id, name, installed, path, version, models[], models_error}]`.
 - Errores con forma uniforme `{"detail": {"code": "...", "message": "..."}}` para que la UI traduzca por `code`.
 
@@ -116,7 +116,7 @@ frontend/src/
 | Manual: crear agente y proyecto en la app empaquetada → cerrar → reabrir → siguen ahí; selector de carpeta nativo; comparación visual con las capturas | CA1, CA5, CA6 |
 
 ## Decisiones (ADR)
-- **0006: Persistencia.** SQLite en la carpeta de datos, SQLAlchemy 2, Alembic programático al arrancar, ids UUID en texto, `workspace_id` en todas las tablas, migraciones incluidas en el ejecutable. Postgres se podrá usar en el modo servidor (fase 13) cambiando la URL.
+- **0006: Persistencia.** SQLite en la carpeta de datos, SQLAlchemy 2, Alembic programático al arrancar, ids UUID en texto, `workspace_id` en todas las tablas, migraciones incluidas en el ejecutable. Postgres se podrá usar en el modo servidor (fase 14) cambiando la URL.
 
 ## Riesgos
 - **Alembic dentro del ejecutable de PyInstaller**: se verifica en la tarea 8. Plan B: migraciones con `MigrationContext` y operaciones embebidas, sin archivos.

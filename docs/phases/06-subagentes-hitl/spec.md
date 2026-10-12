@@ -76,7 +76,7 @@ Cierra además el hueco que dejó la fase 05: un permiso pendiente del CLI dejab
 **Estados de tarea**: dos motivos nuevos de «Esperando humano»: `human_request` y `permission`. La tarea vuelve sola a «En ejecución» al resolverse.
 
 ### Fuera
-- Avisos externos: Telegram, email y Slack (fase 12).
+- Avisos externos: Telegram, email y Slack (fase 13).
 - Rediseño del Dashboard con las aprobaciones pendientes.
 - Consumo de los subagentes (fase 07).
 - Pausar una tarea concreta.

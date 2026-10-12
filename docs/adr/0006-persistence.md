@@ -5,7 +5,7 @@
 - **Contexto de decisión**: fase 02 ([`plan.md`](../phases/02-dominio-crud/plan.md))
 
 ## Contexto
-Agentic OS necesita guardar agentes y proyectos (y más adelante tareas, ejecuciones, consumo…) en la máquina del usuario, sin instalar nada aparte. El mismo backend debe poder pasar a modo servidor (fase 13) con varios usuarios.
+Agentic OS necesita guardar agentes y proyectos (y más adelante tareas, ejecuciones, consumo…) en la máquina del usuario, sin instalar nada aparte. El mismo backend debe poder pasar a modo servidor (fase 14) con varios usuarios.
 
 ## Decisión
 - **SQLite** en la carpeta de datos (`%APPDATA%\AgenticOS\agentic-os.db`), con `PRAGMA foreign_keys=ON` y modo WAL. `AGENTIC_OS_DATABASE_URL` permite usar otra base de datos (p. ej. Postgres en el modo servidor).

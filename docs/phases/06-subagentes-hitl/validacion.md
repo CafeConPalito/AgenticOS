@@ -82,7 +82,7 @@ Tests nuevos:
 ### Impacto en fases futuras
 - **Fase 07**: los subagentes (de Agentic OS y nativos) tienen su propio consumo. En Claude, el transcript del subagente llega en `agent_transcript_path` de `SubagentStop`.
 - **Fase 08**: la notificación nativa y el clic que lleva a la Inbox en la app empaquetada; políticas de aprobación automática.
-- **Fase 12**: los avisos externos pueden reutilizar `notified_at` y los tipos de la Inbox.
+- **Fase 13**: los avisos externos pueden reutilizar `notified_at` y los tipos de la Inbox.
 
 ## Comprobaciones pendientes del usuario
 - En la app de escritorio, comprobar la **notificación nativa de Windows** (Ajustes → «Probar aviso») y que llega un aviso con una pregunta real.

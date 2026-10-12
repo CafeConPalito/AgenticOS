@@ -17,7 +17,7 @@ Dar a Agentic OS persistencia y sus dos entidades base: **agentes** (quién trab
   - identidad: nombre, rol, descripción, color, avatar (inicial);
   - ejecución: CLI (`claude` | `agy`), modelo e instrucciones (markdown);
   - permisos y capacidades: modo de permisos (Autónomo / Restringido / Preguntar), herramientas permitidas (Leer archivos, Editar archivos, Terminal, Git, Web, Navegador, MCP agentic-os), concurrencia máxima (1–5, por defecto 1), «Puede lanzar subagentes», «Puede crear tareas»;
-  - estado: activo / borrador (el borrador servirá para las propuestas del Arquitecto en la fase 11).
+  - estado: activo / borrador (el borrador servirá para las propuestas del Arquitecto en la fase 12).
 - API REST: listar, obtener, crear, actualizar, borrar y duplicar.
 - **Plantillas**: Analista, Desarrollador, QA, Redactor y Comercial, con rol, instrucciones de partida, color, CLI y permisos razonables. Se elige una al pulsar «Nuevo agente» (o «En blanco») y después todo es editable.
 - **Catálogo de CLIs** (`GET /api/clis`):
@@ -57,8 +57,8 @@ Dar a Agentic OS persistencia y sus dos entidades base: **agentes** (quién trab
 ### Fuera
 - Pipelines, etapas y tareas, tanto modelos como UI (fase 05; el editor de pipeline se mueve también a la 05).
 - Ajustes, nombre del usuario y saludo del Dashboard (fase 08 o cuando se decida).
-- Conocimiento, Skills e Historial de ejecuciones (fases 09, 10 y 03–07).
-- Arquitecto (fase 11) e importar o exportar agentes.
+- Conocimiento, Skills e Historial de ejecuciones (fases 10, 11 y 03–07).
+- Arquitecto (fase 12) e importar o exportar agentes.
 - Ejecutar agentes (fases 03–05).
 
 ## Historias de usuario
@@ -80,6 +80,6 @@ Dar a Agentic OS persistencia y sus dos entidades base: **agentes** (quién trab
 
 ## Riesgos y preguntas abiertas
 - **`agy models` tarda 2–5 s**: se cachea en el backend (TTL de 10 min), con un botón de refresco en el selector.
-- **Concurrencia en SQLite**: un solo proceso de backend y sesiones cortas, sin problema en esta fase. Postgres llega en la fase 13.
+- **Concurrencia en SQLite**: un solo proceso de backend y sesiones cortas, sin problema en esta fase. Postgres llega en la fase 14.
 - **Carpetas en red o con permisos limitados**: se validan al guardar; si no son accesibles, el error se muestra en el formulario.
 - **Herramientas permitidas**: se guardan como capacidades genéricas; su traducción a los flags de cada CLI es de la fase 04 (ADR 0004).
