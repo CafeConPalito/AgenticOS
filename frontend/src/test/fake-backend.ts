@@ -385,6 +385,7 @@ export function createFakeBackend(
     notificationSettings?: NotificationSettings
     usage?: Partial<FakeUsage>
     branches?: ProjectBranches[]
+    clis?: CliInfo[]
   } = {},
 ) {
   const usage: FakeUsage = { ...emptyUsage(), ...(seed.usage ?? {}) }
@@ -767,7 +768,7 @@ export function createFakeBackend(
     if (path === '/api/health')
       return json(200, { status: 'ok', name: 'Agentic OS', version: '0.1.0' })
     if (path === '/api/agent-templates') return json(200, TEMPLATES)
-    if (path.startsWith('/api/clis')) return json(200, CLIS)
+    if (path.startsWith('/api/clis')) return json(200, seed.clis ?? CLIS)
 
     if (path === '/api/agents') {
       if (method === 'GET') return json(200, agents)

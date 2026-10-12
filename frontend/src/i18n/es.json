@@ -934,5 +934,12 @@
       "limit_reached": "Has superado el límite diario de este CLI. La ejecución se lanza igualmente.",
       "quota_reached": "Este CLI se quedó sin cuota. La ejecución se lanza igualmente."
     }
+  },
+  "cliReadiness": {
+    "missingTitle": "No hay ningún CLI de agentes instalado.",
+    "missing": "Agentic OS trabaja con Claude Code y Antigravity CLI: instala al menos uno e inicia sesión para que tus agentes puedan trabajar.",
+    "loggedOutTitle": "Ningún CLI tiene sesión iniciada.",
+    "loggedOut": "Abre el CLI en una terminal e inicia sesión para que tus agentes puedan trabajar.",
+    "open": "Ver CLIs detectados"
   }
 }
