@@ -78,6 +78,7 @@ QUOTA_LINES = 10  # only the bottom of the screen: the agent's own text may ment
 # «Reanudar sesión» with a conversation the CLI no longer has (phase 08, evidence R1). agy shows
 # nothing: it opens a new conversation (detected by its hooks instead).
 SESSION_MISSING = {Cli.CLAUDE: re.compile(r"No conversation found with session ID")}
+SESSION_MISSING_LINES = 4
 
 
 @dataclass(frozen=True)
@@ -210,8 +211,12 @@ class ScreenState:
         return notice[:300]
 
     def session_missing(self) -> bool:
+        """Only the bottom of the screen: the agent's own output may quote the message."""
         pattern = SESSION_MISSING.get(self.cli)
-        return bool(pattern and pattern.search(self.text()))
+        if pattern is None:
+            return False
+        lines = [line for line in self.text().splitlines() if line.strip()]
+        return any(pattern.search(line) for line in lines[-SESSION_MISSING_LINES:])
 
     def exit_armed(self) -> bool:
         return bool(EXIT_ARMED.search(self.text()))

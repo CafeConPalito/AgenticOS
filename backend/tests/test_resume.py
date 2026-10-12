@@ -135,6 +135,13 @@ def test_claude_says_it_has_no_such_conversation():
     assert screen.session_missing()
 
 
+def test_the_message_quoted_by_the_agent_is_not_a_lost_session():
+    screen = ScreenState(Cli.CLAUDE, 120, 30)
+    screen.feed("grep: screen.py: No conversation found with session ID\r\n")
+    screen.feed("".join(f"línea {n}\r\n" for n in range(10)))
+    assert not screen.session_missing()
+
+
 def test_the_real_screen_of_claude(tmp_path: Path):
     log = (
         Path(__file__).parents[2] / "docs/phases/08-empaquetado/evidencias/r1-claude-bogus.raw.log"

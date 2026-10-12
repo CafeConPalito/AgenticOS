@@ -105,9 +105,15 @@ def task_branches(db: Session, project: Project) -> list[TaskBranch]:
     return sorted(branches, key=lambda b: b.last_commit, reverse=True)
 
 
-def delete_branches(db: Session, project: Project, names: list[str], force: bool) -> list[str]:
-    """Deletes task branches. Without `force` only merged ones; never one still in use."""
-    known = {b.name: b for b in task_branches(db, project)}
+def delete_branches(
+    db: Session, project: Project, names: list[str], force: bool
+) -> tuple[list[str], dict[str, str]]:
+    """Deletes task branches. Without `force` only those merged into the base branch; never one
+    still in use. Returns (deleted, {branch: why it could not be deleted})."""
+    try:
+        known = {b.name: b for b in task_branches(db, project)}
+    except git.GitError as error:
+        raise ApiError(409, "git_failed", str(error), "project_id") from error
     for name in names:
         branch = known.get(name)
         if branch is None:
@@ -116,12 +122,18 @@ def delete_branches(db: Session, project: Project, names: list[str], force: bool
             raise ApiError(409, "branch_in_use", f"{name} is still in use", "branches")
         if not branch.merged and not force:
             raise ApiError(409, "branch_not_merged", f"{name} has unmerged work", "branches")
-    deleted = []
+    deleted, failed = [], {}
     for name in names:
-        git.run(project.path, "branch", "-D" if force else "-d", name)
+        # `-D`: whether it is merged was checked above against the project's base branch;
+        # `git branch -d` would check it against whatever is checked out.
+        try:
+            git.run(project.path, "branch", "-D", name)
+        except git.GitError as error:
+            failed[name] = str(error)
+            continue
         deleted.append(name)
         log.info("task_branch_deleted", project=project.name, branch=name, force=force)
-    return deleted
+    return deleted, failed
 
 
 # ---------------------------------------------------------------- terminal logs
@@ -166,8 +178,9 @@ def purge_logs(db: Session, runs_dir: Path, days: int | None) -> tuple[int, int]
             )
         )
     )
-    freed = 0
+    freed, purged = 0, 0
     for run in runs:
+        complete = True
         for path in (Path(run.log_path) if run.log_path else None, runs_dir / run.id):
             if path is None or not path.exists():
                 continue
@@ -178,10 +191,13 @@ def purge_logs(db: Session, runs_dir: Path, days: int | None) -> tuple[int, int]
                 else:
                     path.unlink()
                 freed += size
-            except OSError as error:
+            except OSError as error:  # locked (antivirus, indexer): tried again next time
+                complete = False
                 log.warning("could not delete a run's log", run_id=run.id, error=str(error))
-        run.log_purged = True
+        if complete:
+            run.log_purged = True
+            purged += 1
     db.commit()
     if runs:
-        log.info("run_logs_purged", runs=len(runs), freed=freed, days=days)
-    return len(runs), freed
+        log.info("run_logs_purged", runs=purged, freed=freed, days=days)
+    return purged, freed

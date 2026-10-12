@@ -422,7 +422,7 @@ export function createFakeBackend(
         if (!branch.merged && !body.force) return apiError(409, 'branch_not_merged')
       }
       project.branches = project.branches.filter((b) => !names.includes(b.name))
-      return json(200, { deleted: names })
+      return json(200, { deleted: names, failed: {} })
     }
     if (path === '/api/settings/data-dir') return json(200, dataDir)
     if (path === '/api/settings/data-dir/open') return json(204, null)

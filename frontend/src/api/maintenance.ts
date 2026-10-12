@@ -42,7 +42,10 @@ export function useDeleteBranches() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (body: { project_id: string; branches: string[]; force?: boolean }) =>
-      api.post<{ deleted: string[] }>('/api/maintenance/branches/delete', body),
+      api.post<{ deleted: string[]; failed: Record<string, string> }>(
+        '/api/maintenance/branches/delete',
+        body,
+      ),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: maintenanceKeys.branches }),
   })
 }

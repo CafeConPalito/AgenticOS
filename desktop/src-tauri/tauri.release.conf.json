@@ -3,19 +3,6 @@
   "bundle": {
     "externalBin": [
       "binaries/agentic-os-backend"
-    ],
-    "windows": {
-      "signCommand": {
-        "cmd": "powershell",
-        "args": [
-          "-NoProfile",
-          "-ExecutionPolicy",
-          "Bypass",
-          "-File",
-          "../../scripts/sign.ps1",
-          "%1"
-        ]
-      }
-    }
+    ]
   }
 }

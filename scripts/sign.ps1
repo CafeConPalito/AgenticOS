@@ -3,7 +3,7 @@
 # unsigned (ADR 0012) and this step is ready for when there is a certificate.
 #
 # Called by Tauri for the app and the installer (bundle.windows.signCommand in
-# tauri.release.conf.json) and by build-backend.ps1 for the sidecar.
+# tauri.sign.conf.json, only used when the variable is set) and by build-backend.ps1.
 param([Parameter(Mandatory = $true)][string]$Path)
 $ErrorActionPreference = 'Stop'
 

@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from agentic_os.api import settings as settings_api
 from agentic_os.api.projects import get_project_or_404
 from agentic_os.db.base import DEFAULT_WORKSPACE
 from agentic_os.db.session import get_session
@@ -46,6 +47,8 @@ class BranchDelete(BaseModel):
 
 class BranchesDeleted(BaseModel):
     deleted: list[str]
+    # Branches git could not delete, with its message (the others are deleted).
+    failed: dict[str, str] = {}
 
 
 class MaintenanceSettings(BaseModel):
@@ -85,8 +88,8 @@ def list_branches(db: DbSession) -> list[ProjectBranches]:
 @router.post("/maintenance/branches/delete")
 def delete_branches(payload: BranchDelete, db: DbSession) -> BranchesDeleted:
     project = get_project_or_404(db, payload.project_id)
-    deleted = maintenance.delete_branches(db, project, payload.branches, payload.force)
-    return BranchesDeleted(deleted=deleted)
+    deleted, failed = maintenance.delete_branches(db, project, payload.branches, payload.force)
+    return BranchesDeleted(deleted=deleted, failed=failed)
 
 
 @router.get("/settings/maintenance")
@@ -104,4 +107,5 @@ def put_maintenance(payload: MaintenanceSettings, db: DbSession) -> MaintenanceS
 def clean_logs(request: Request, db: DbSession) -> LogsCleaned:
     runs_dir = Path(request.app.state.settings.data_dir) / "runs"
     runs, freed = maintenance.purge_logs(db, runs_dir, maintenance.retention_days(db))
+    settings_api.forget_sizes()
     return LogsCleaned(runs=runs, freed_bytes=freed)

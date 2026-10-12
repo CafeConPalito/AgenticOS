@@ -40,6 +40,11 @@ class MoveAccepted(BaseModel):
     restarting: bool
 
 
+def forget_sizes() -> None:
+    """After something freed space (log cleanup): the next read measures again."""
+    _sizes.clear()
+
+
 def _usage(path: Path, fresh: bool = False) -> datadir.Usage:
     key = str(path)
     cached = _sizes.get(key)
@@ -76,10 +81,19 @@ def move_data_dir(
     payload: DataDirMove, request: Request, background: BackgroundTasks
 ) -> MoveAccepted:
     """Records the move and restarts the backend, which moves the data before opening it."""
-    if request.app.state.run_manager.live_ids():
-        raise ApiError(409, "runs_active", "stop the running agents first")
-    target = datadir.request_move(Path(request.app.state.settings.data_dir), payload.to)
+    # Nothing may start between this check and the restart: the scheduler stops first.
+    scheduler = request.app.state.scheduler
+    scheduler.stop()
+    try:
+        if request.app.state.run_manager.live_ids():
+            raise ApiError(409, "runs_active", "stop the running agents first")
+        target = datadir.request_move(Path(request.app.state.settings.data_dir), payload.to)
+    except Exception:
+        scheduler.start()
+        raise
     restart = getattr(request.app.state, "request_restart", None)
     if restart is not None:
         background.add_task(restart)  # after the response is sent
+    else:
+        scheduler.start()  # development: the move waits for a manual restart
     return MoveAccepted(to=str(target), restarting=restart is not None)

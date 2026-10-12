@@ -59,7 +59,9 @@ def test_an_interrupted_task_resumes_its_session(tmp_path: Path, cli: str):
         assert run["resumed_from_id"] == old_id
         assert run["cli_session_id"] == old["cli_session_id"]
         assert run["task_id"] == task_id
-        assert api.task(task_id)["status"] in ("running", "done")  # it may finish at once
+        task = api.task(task_id)
+        assert task["status"] in ("running", "done")  # it may finish at once
+        assert task["waiting_reason"] is None
         assert not attention_items(api, task_id)
         old = api.get(f"/api/runs/{old_id}")
         assert (old["resumed_by_id"], old["resumable"]) == (run["id"], False)

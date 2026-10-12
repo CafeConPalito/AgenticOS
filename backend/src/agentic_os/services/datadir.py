@@ -164,9 +164,12 @@ def apply_pending_move(home: Path | None = None) -> bool:
             if same(source, home) and entry.name in HOME_ONLY:
                 continue
             destination = target / entry.name
-            copied.append(destination)
+            # Back to the home folder, `logs` may already be there: merged, and left alone if
+            # the move is rolled back.
+            if not destination.exists():
+                copied.append(destination)
             if entry.is_dir():
-                shutil.copytree(entry, destination)
+                shutil.copytree(entry, destination, dirs_exist_ok=True)
             else:
                 shutil.copy2(entry, destination)
         database = target / DB_FILENAME

@@ -161,7 +161,8 @@
     "not_enough_space": "No hay espacio libre suficiente en esa unidad.",
     "branch_not_found": "Esa rama ya no existe.",
     "branch_in_use": "La rama está en uso: su tarea sigue abierta o tiene un worktree.",
-    "branch_not_merged": "La rama tiene trabajo sin fusionar."
+    "branch_not_merged": "La rama tiene trabajo sin fusionar.",
+    "git_failed": "git ha fallado en ese proyecto."
   },
   "cli": {
     "claude": "Claude Code",
@@ -832,7 +833,8 @@
       "deleted": "{{count}} ramas borradas",
       "forceTitle": "¿Borrar «{{name}}»?",
       "forceDescription": "La rama tiene trabajo que no está en la rama base. Si la borras, ese trabajo se pierde.",
-      "forceConfirm": "Borrar igualmente"
+      "forceConfirm": "Borrar igualmente",
+      "deleteFailed": "No se pudo borrar «{{name}}»: {{error}}"
     },
     "about": {
       "title": "Acerca de",

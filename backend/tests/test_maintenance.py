@@ -75,11 +75,11 @@ def test_merged_branches_go_unmerged_ones_need_force(client: TestClient, tmp_pat
     deleted = client.post(
         delete, json={"project_id": project, "branches": ["agentic/T-1", "agentic/T-9"]}
     ).json()
-    assert deleted == {"deleted": ["agentic/T-1", "agentic/T-9"]}
+    assert deleted == {"deleted": ["agentic/T-1", "agentic/T-9"], "failed": {}}
     forced = client.post(
         delete, json={"project_id": project, "branches": ["agentic/T-2"], "force": True}
     ).json()
-    assert forced == {"deleted": ["agentic/T-2"]}
+    assert forced == {"deleted": ["agentic/T-2"], "failed": {}}
     assert set(branches_of(client)) == {"agentic/T-3"}
 
 
@@ -146,3 +146,33 @@ def test_without_retention_nothing_is_deleted(client: TestClient):
     client.put("/api/settings/maintenance", json={"log_retention_days": None})
     assert client.post("/api/maintenance/logs/cleanup").json() == {"runs": 0, "freed_bytes": 0}
     assert log.exists()
+
+
+def test_merged_into_the_base_branch_whatever_is_checked_out(client: TestClient, tmp_path: Path):
+    project, _ = setup_branches(client, tmp_path)
+    repo = tmp_path / "web app"
+    sh(repo, "checkout", "-q", "-b", "feature-x", "main~0")
+    (repo / "x.txt").write_text("x", "utf-8")
+    sh(repo, "add", "-A")
+    sh(repo, "commit", "-q", "-m", "x")
+    deleted = client.post(
+        "/api/maintenance/branches/delete",
+        json={"project_id": project, "branches": ["agentic/T-1"]},
+    ).json()
+    assert deleted == {"deleted": ["agentic/T-1"], "failed": {}}
+
+
+def test_a_locked_log_is_tried_again_later(client: TestClient, monkeypatch):
+    log = add_run(client, "old", days_ago=100)
+    real_unlink = Path.unlink
+
+    def locked(self, missing_ok=False):
+        if self == log:
+            raise PermissionError("in use")
+        return real_unlink(self, missing_ok=missing_ok)
+
+    monkeypatch.setattr(Path, "unlink", locked)
+    assert client.post("/api/maintenance/logs/cleanup").json()["runs"] == 0
+    assert client.get("/api/runs/old").json()["log_purged"] is False
+    monkeypatch.setattr(Path, "unlink", real_unlink)
+    assert client.post("/api/maintenance/logs/cleanup").json()["runs"] == 1

@@ -117,8 +117,12 @@ function Branches() {
     remove.mutate(
       { project_id: projectId, branches, force },
       {
-        onSuccess: ({ deleted }) =>
-          toast.success(t('settings.cleanup.deleted', { count: deleted.length })),
+        onSuccess: ({ deleted, failed }) => {
+          if (deleted.length)
+            toast.success(t('settings.cleanup.deleted', { count: deleted.length }))
+          for (const [name, error] of Object.entries(failed))
+            toast.error(t('settings.cleanup.deleteFailed', { name, error }))
+        },
         onError: (error) => toast.error(errorMessage(error)),
       },
     )

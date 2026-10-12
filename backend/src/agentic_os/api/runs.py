@@ -47,7 +47,8 @@ def _get(db: Session, run_id: str) -> Run:
     return run
 
 
-def _read(run: Run, manager: RunManager) -> RunRead:
+def _read(run: Run, manager: RunManager, detail: bool = False) -> RunRead:
+    """`detail`: also whether it can be resumed (a few queries: not for every row of a list)."""
     result = RunRead.model_validate(run)
     result.usage = RunUsage(**usage_payload(run))
     db = object_session(run)
@@ -56,7 +57,7 @@ def _read(run: Run, manager: RunManager) -> RunRead:
         stage = db.get(Stage, run.stage_id) if run.stage_id else None
         result.task_code = task.code if task else None
         result.stage_name = stage.name if stage else None
-    if db is not None and RunStatus(run.status) in resume_ops.RESUMABLE:
+    if detail and db is not None and RunStatus(run.status) in resume_ops.RESUMABLE:
         result.resumed_by_id = resume_ops.resumed_by(db, run.id)
         result.resumable = resume_ops.resumable(db, run)
     session = manager.get(run.id)
@@ -113,7 +114,7 @@ def list_runs(
 
 @router.get("/runs/{run_id}")
 def get_run(run_id: str, db: DbSession, manager: Manager) -> RunRead:
-    return _read(_get(db, run_id), manager)
+    return _read(_get(db, run_id), manager, detail=True)
 
 
 @router.get("/runs/{run_id}/events")
@@ -156,7 +157,7 @@ def answer_permission(
 def resume_run(run_id: str, db: DbSession, manager: Manager) -> RunRead:
     """«Reanudar sesión»: a new run continues this one's CLI conversation."""
     run = manager.resume(db, _get(db, run_id))
-    return _read(run, manager)
+    return _read(run, manager, detail=True)
 
 
 @router.post("/runs/{run_id}/stop", status_code=status.HTTP_202_ACCEPTED)

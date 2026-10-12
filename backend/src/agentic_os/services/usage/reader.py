@@ -176,8 +176,8 @@ class UsageService:
                 if item is None:
                     return
                 run_id, final, retry, backfill = item
-                if backfill and self._stopping.is_set():
-                    continue
+                if backfill and (self._stopping.is_set() or self._is_final(run_id)):
+                    continue  # settled meanwhile (e.g. before «Reanudar sesión», phase 08)
                 try:
                     if self.refresh(run_id, final, last_try=not retry):
                         self._retry_later(run_id)  # Claude may still be closing
@@ -185,6 +185,11 @@ class UsageService:
                     log.exception("could not read the run's usage", run_id=run_id)
             finally:
                 self._queue.task_done()
+
+    def _is_final(self, run_id: str) -> bool:
+        with self._db() as db:
+            run = db.get(Run, run_id)
+            return run is None or run.usage_status in (UsageStatus.FINAL, UsageStatus.UNAVAILABLE)
 
     # ------------------------------------------------------------------ hooks
     def note_transcript(self, run_id: str, path: str, own: bool) -> None:

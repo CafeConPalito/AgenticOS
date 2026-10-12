@@ -101,6 +101,9 @@ class RunManager:
         # one, silently, when it no longer has the requested one: evidence R1).
         self._resume_unconfirmed: set[str] = set()
         self._session_missing: set[str] = set()
+        # One resume at a time: two requests for the same run would start two CLIs on the
+        # same conversation.
+        self._resume_lock = threading.Lock()
         self.loop: asyncio.AbstractEventLoop | None = None
         # Called (from the run's thread) once a run has ended and its state is persisted.
         self.on_run_ended: Callable[[str], None] | None = None
@@ -200,6 +203,15 @@ class RunManager:
     def resume(self, db: Session, old: Run) -> Run:
         """«Reanudar sesión»: a new run that continues the CLI conversation of `old`, with a new
         context and token. Its task (if any) runs again with it."""
+        with self._resume_lock:
+            db.refresh(old)  # a resume that just finished may have taken it
+            return self._resume(db, old)
+
+    def _resume(self, db: Session, old: Run) -> Run:
+        resume_ops.check(db, old, self.usage.transcript(old))
+        # The old run's usage is settled now: once the resumed run writes to the same
+        # transcript, a later read of the old one would count it too.
+        self.usage.refresh(old.id, final=True)
         baseline = resume_ops.check(db, old, self.usage.transcript(old))
         agent = db.get(Agent, old.agent_id) if old.agent_id else None
         project = db.get(Project, old.project_id) if old.project_id else None
@@ -227,6 +239,7 @@ class RunManager:
                 inbox.resolve_pending(
                     db, Resolution.DISMISSED, task_id=task.id, kinds=task_ops.ATTENTION_KINDS
                 )
+                task.waiting_reason = task.waiting_detail = None
                 task_ops.mark_running(db, task, run.id)
             db.commit()
             self._notify_change()

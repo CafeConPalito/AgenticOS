@@ -173,3 +173,18 @@ def test_api_move_waits_for_the_runs(client: TestClient, home: Path, tmp_path, m
     response = client.post("/api/settings/data-dir/move", json={"to": str(tmp_path / "new")})
     assert response.status_code == 409
     assert response.json()["detail"]["code"] == "runs_active"
+
+
+def test_moving_back_home_where_an_old_logs_folder_was_left(home: Path, tmp_path: Path):
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    make_data(elsewhere)
+    (home / "logs").mkdir()
+    (home / "logs" / "old.log").write_text("locked once", "utf-8")
+    datadir.write_pointer({"data_dir": str(elsewhere)})
+    datadir.request_move(elsewhere, str(home))
+
+    assert datadir.apply_pending_move() is True
+
+    assert sorted(p.name for p in (home / "logs").iterdir()) == ["backend.log", "old.log"]
+    assert default_data_dir() == home
