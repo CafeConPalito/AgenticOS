@@ -1,6 +1,6 @@
 {
   "name": "agentic-os",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "description": "Agentic OS: orquestador de agentes de IA de escritorio",
   "workspaces": [
