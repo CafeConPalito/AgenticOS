@@ -1,6 +1,6 @@
 # Fase 09: Mejora de UX/UI · Spec
 
-- **Estado**: borrador
+- **Estado**: aprobada
 - **Rama**: `phase/09-ux-ui`
 - **Diseño de referencia**: `docs/design/v2/` (Agentic OS v7, Claude Design) y su revisión en `docs/design/v2/revision.md`.
 
