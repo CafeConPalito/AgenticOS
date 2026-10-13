@@ -1,86 +1,94 @@
 # Fase 09: Mejora de UX/UI · Spec
 
-- **Estado**: borrador (contenido aceptado por el usuario; se aprueba al incorporar la revisión de Claude Design)
+- **Estado**: borrador
 - **Rama**: `phase/09-ux-ui`
+- **Diseño de referencia**: `docs/design/v2/` (Agentic OS v7, Claude Design) y su revisión en `docs/design/v2/revision.md`.
 
 ## Objetivo
-Tras usar la v1.0, lo que más estorba es que **las tareas habituales exigen demasiados pasos** y que **la navegación no deja claro dónde está cada cosa** (ocho entradas sueltas en el menú; Ejecuciones, Tablero e Inbox se solapan). Esta fase reordena la navegación, convierte el Dashboard en el punto de partida real («qué está pasando y qué necesita de mí»), acorta los flujos principales y añade la paleta de comandos (Ctrl+K) del diseño. No añade funciones de dominio nuevas.
+Tras usar la v1.0, lo que más estorba es que **las tareas habituales exigen demasiados pasos** y que **la navegación no deja claro dónde está cada cosa**. Esta fase adopta el diseño v7: **Inicio pasa a ser el centro de la app** («qué necesita de mí» y «qué hacen mis agentes»), la navegación se reduce a una cabecera con cuatro destinos, los flujos principales se acortan, se añade la paleta de comandos (Ctrl+K) y se aplica el nuevo acabado visual a toda la app. No añade funciones de dominio nuevas.
 
 ## Alcance
 ### Dentro
-**Navegación** (menú lateral agrupado):
-- Tres grupos con su título:
-  - **Trabajo**: Inicio (Dashboard), Tablero, Inbox.
-  - **Configuración**: Agentes, Proyectos.
-  - **Sistema**: Ejecuciones, Consumo, Ajustes.
-- La Inbox muestra en el menú el **contador** de peticiones pendientes (y en ámbar si hay aprobaciones).
-- Las migas de pan y la acción principal de la cabecera se revisan en todas las pantallas para que sean coherentes (una sola acción principal por pantalla, siempre en el mismo sitio).
-- Desde una tarea se llega a sus ejecuciones y desde una ejecución a su tarea, sin pasar por la lista de Ejecuciones (que queda como historial global).
+**Esqueleto y navegación** (v7 `screens.md` «Esqueleto» y `AppHeader`):
+- Desaparece la barra lateral. Cabecera translúcida de 56 px con: logo, «Volver» (fuera de Inicio), migas, **navegación superior** (Tablero · Ejecuciones · Ajustes, con contadores), buscador que abre Ctrl+K, botón de terminal, estado de conexión y tema.
+- **Conocimiento** no aparece en la navegación hasta la fase que lo construya.
+- Las páginas que hoy están en el menú y dejan de estarlo **siguen existiendo con su ruta** y se llega a ellas desde Inicio, Ctrl+K y las migas:
+  - **Inbox** → «Te necesitan · Ver todas» en Inicio; las peticiones resueltas se consultan desde ahí (enlace «Resueltas»).
+  - **Consumo** → desde «Gasto de hoy» en la columna de resumen y desde Ctrl+K.
+  - **Agentes** → la rejilla de agentes de Inicio («Nuevo agente», clic → ficha); la lista actual se mantiene como ruta.
+  - **Proyectos** → la columna de resumen («Ver todos», «+»).
+- Desde una tarea se llega a sus ejecuciones y desde una ejecución a su tarea.
 
-**Dashboard** (según la revisión de Claude Design; base: `docs/design/screens.md` §1):
-- **Saludo y resumen**: «N agentes trabajando · N esperándote · N peticiones en el Inbox» y la fecha.
-- **Tarjetas de agentes** en vivo: estado (trabajando, esperando, inactivo), tarea y proyecto actuales, cronómetro y acción «Asignar tarea». Clic en la tarjeta → su tarea actual (o el agente si está inactivo).
-- **Aprobaciones pendientes** (hasta 3, con «Ver Inbox →»): **Aprobar / Rechazar** directamente desde el Dashboard; «Responder» en las preguntas abre la petición en la Inbox.
-- **Actividad reciente**: línea de tiempo de los últimos eventos (tareas creadas, terminadas, rechazadas en QA, peticiones de aprobación, ejecuciones interrumpidas…) con enlace a la tarea.
-- **Consumo de hoy**: la tarjeta actual, con barras por agente y el límite diario.
-- Se mantiene el aviso de CLIs no listos.
-- Estados: vacío (sin agentes: guía para crear el primero), cargando (skeletons) y desconectado.
-- Se actualiza en vivo (el mismo mecanismo que ya usan Tablero e Inbox).
+**Inicio** (v7 `screens.md` §1, capturas `03a`–`03d`, `01a`/`01b`):
+- **Saludo** con la fecha, las sesiones en vivo y tres chips: trabajando · esperan respuesta · gastado hoy.
+- **Te necesitan** (`NeedsYouPanel`): las 3 primeras peticiones con sus acciones (aprobar, rechazar, responder con opciones o texto, reanudar sesión), «Ver todas · n» / «Ver menos» y el estado vacío «Nada pendiente…».
+- **Avisos de CLI** (`CliAlertItem`) dentro de «Te necesitan», adaptados a lo que sabemos hoy (ver Riesgos): CLI sin cuota (el aviso `quota` de la fase 07), CLI con la sesión cerrada o no detectado, y límite diario al 95 % o más. Acciones: ir a Ajustes > CLIs y «Posponer».
+- **Agentes**: una sola rejilla de `AgentCard` v7 (sin equipos): estado, sesiones vivas con su tarea y tiempo, peticiones pendientes, línea animada si está en ejecución y, al pasar el ratón o con el foco, coste, tokens y «+ Asignar tarea». Clic → ficha del agente.
+- **Columna de resumen** (`SummaryAside`, 300 px, fija al hacer scroll): Proyectos (abiertas y quién trabaja), Gasto de hoy (con el límite diario), CLIs (una fila por CLI con el uso de su **límite diario** y la sesión; sin cuentas).
+- Estados: normal, vacío (sin peticiones y sin agentes, con guía para crear el primero), cargando y desconectado. Tema claro (`03d`).
+- Se actualiza en vivo (el mismo mecanismo que Tablero e Inbox).
 
-**Menos pasos en los flujos principales**:
-- **Nueva tarea desde cualquier pantalla**: botón en la cabecera, Ctrl+K y atajo de teclado. El diálogo **rellena solo** el proyecto y el agente según el contexto (desde un proyecto, una tarjeta de agente, una columna del Tablero) y recuerda la última elección.
-- **Crear y encolar** es la acción por defecto; dejarla en el backlog es la opción secundaria. Tras crearla, un toast con «Ver tarea».
-- **Aprobar, rechazar y responder** sin salir de donde se está: Dashboard, Inbox, detalle de la tarea y la notificación nativa (que ya lleva a la petición).
-- Revisar los diálogos de **Nuevo agente** y **Nuevo proyecto** para pedir solo lo imprescindible al crear (el resto, con valores por defecto, se edita después).
-- Se mide el número de pasos de cada flujo antes y después (ver CA1).
+**Menos pasos**:
+- **Nueva tarea** (`NewTaskDialog` v7): «Qué hay que hacer», proyecto y agente; acción **«Crear y encolar»**. Se abre con `N`, desde Ctrl+K y desde «+» en una tarjeta de agente (agente preseleccionado). Desde un proyecto, rellena el proyecto; recuerda la última elección. Toast «T-n en la cola de <agente>» con enlace a la tarea. Se mantiene la opción de dejarla en el backlog y de añadir descripción (plegada) porque hoy se usan.
+- **Nuevo agente** (`05`): plantillas en rejilla, nombre, rol, CLI, modelo, permisos e instrucciones; se crea como **borrador** y se activa desde su ficha («Activar»).
+- **Nuevo proyecto** (`06`): nombre, carpeta (con «Examinar…»), pipeline (plantilla o sin pipeline) y color.
+- **Peticiones**: el mismo componente de acciones (`RequestActions`) en Inicio, la lista de peticiones y el detalle de la tarea.
 
-**Paleta de comandos (Ctrl+K)** (según la revisión de Claude Design; base: captura `13b`):
-- **Ir a**: secciones, agentes, proyectos y tareas (búsqueda por nombre o `T-n`).
-- **Acciones**: nueva tarea, nuevo agente, nuevo proyecto, lanzar ejecución, pausar/reanudar el scheduler, cambiar el tema, abrir Ajustes.
-- Navegable solo con el teclado; muestra los atajos.
-- Una **ayuda de atajos** (tecla `?`) con todos los atajos de la app.
+**Paleta de comandos y atajos** (`CommandPalette`, `ShortcutsDialog`, capturas `07a`, `07b`, `08`):
+- Acciones: nueva tarea (`N`), nuevo agente, nuevo proyecto, abrir terminal, cambiar tema, atajos (`?`). Ir a: Inicio, Proyectos, Tablero, Ejecuciones, Consumo, Peticiones, Ajustes. Agentes, proyectos y tareas (por nombre o `T-n`) al buscar.
+- Teclado completo (↑↓, Enter, Esc). Ayuda de atajos con `?`.
+- Las teclas de un solo carácter no actúan con el foco en un campo, en la terminal o con un diálogo abierto, y se pueden desactivar en Ajustes («Atajos de una tecla»).
 
-**Ajustes**: las seis secciones se ordenan con un **índice lateral** (o pestañas) para no tener que desplazarse por una única página larga. Sin cambios de funcionalidad.
+**Otras pantallas** (v7 `screens.md` §5, §6, §8):
+- **Ficha de agente**: cabecera con «Asignar tarea», «Activar» (si es borrador) y «Editar»; peticiones y tareas del agente, su consumo, y la configuración plegada al final. La edición sigue en sus pestañas actuales.
+- **Detalle de tarea**: los datos de la sesión pasan a una línea bajo la salida en directo.
+- **Ejecuciones**: jerarquía de columnas de la v7 (sin columna de cuenta).
 
-**Revisión con el usuario**: al final del desarrollo se recorren con el usuario los flujos de CA1 y cada pantalla; lo que salga y quepa en el alcance se corrige en la fase; lo demás se anota para fases futuras.
+**Ajustes**: se mantienen las **seis secciones** (CLIs detectados, General, Notificaciones, Límites diarios, Limpieza, Acerca de) con el acabado v7 y un **índice lateral**. Se añade el interruptor **«Atajos de una tecla»** en General.
+
+**Acabado visual v7 en toda la app** (`v2/design-system.md` y `v2/tokens.css`): radios mayores, separadores suaves, superficies con degradado, sombras en capas, vidrio en cabecera, diálogos, Ctrl+K y toasts, fondo atmosférico y animaciones de entrada. Todo respeta `prefers-reduced-motion` y el contraste AA en los dos temas.
+
+**Revisión con el usuario**: al final se recorren con el usuario los flujos de CA1 y cada pantalla; lo que salga y quepa en el alcance se corrige en la fase; lo demás se anota.
 
 ### Fuera
-- Funciones nuevas de dominio (Conocimiento, Skills, Arquitecto: fases 10–12).
-- Cambiar el sistema visual (tokens, tipografía, colores) más allá de lo necesario para la jerarquía de las pantallas tocadas.
-- Rediseñar a fondo el detalle de la tarea, la terminal o el Tablero (solo se ajustan sus accesos y acciones).
-- Diseño para móvil o pantallas estrechas (la app es de escritorio; se mantiene el mínimo actual).
-- Idiomas además del español.
-- Atajos configurables por el usuario.
-- Políticas de aprobación automática (siguen anotadas para una fase futura).
+- **Equipos de agentes y varias cuentas por CLI** (cuota, plan y sesiones por cuenta, «Nuevo equipo», «Añadir CLI o cuenta»): **fase 10** (nueva, ver roadmap).
+- **Conocimiento y skills** en la navegación y en Inicio: se añaden en su fase.
+- Porcentaje de la cuota real de la suscripción (Claude Pro/Max, Google): los CLIs no lo exponen (fase 07).
+- Rediseño a fondo de la terminal y del Tablero (solo heredan el acabado y los accesos).
+- Móvil, otros idiomas y atajos configurables.
+- Políticas de aprobación automática.
 
 ## Historias de usuario
-- Como usuario, quiero abrir la app y ver de un vistazo qué hacen mis agentes y qué necesitan de mí.
-- Como usuario, quiero aprobar o rechazar una petición desde el Dashboard sin tener que ir a la Inbox.
-- Como usuario, quiero crear y encolar una tarea desde cualquier pantalla en pocos pasos, sin elegir otra vez lo que ya está claro por el contexto.
-- Como usuario, quiero encontrar cualquier agente, proyecto o tarea con Ctrl+K y lanzar las acciones habituales desde el teclado.
-- Como usuario, quiero un menú agrupado en el que sepa dónde está cada cosa.
+- Como usuario, quiero abrir la app y ver de un vistazo qué necesitan de mí y qué hacen mis agentes, y resolver las peticiones ahí mismo.
+- Como usuario, quiero crear y encolar una tarea con una tecla o desde la tarjeta de un agente, sin elegir otra vez lo que ya está claro.
+- Como usuario, quiero encontrar cualquier agente, proyecto o tarea con Ctrl+K.
+- Como usuario, quiero una navegación corta en la que sepa dónde está cada cosa.
+- Como usuario, quiero que la app tenga un acabado cuidado y coherente en todas las pantallas.
 
 ## Criterios de aceptación
 | # | Criterio | Cómo se verifica |
 |---|---|---|
-| CA1 | **Menos pasos** en los flujos principales, medidos antes y después: (a) crear y encolar una tarea desde un proyecto, (b) aprobar una petición pendiente al abrir la app, (c) ir a la tarea en la que trabaja un agente, (d) encontrar una tarea por su `T-n`. Cada flujo baja de pasos y ninguno supera 3 interacciones tras el cambio | Tabla antes/después en `validacion.md` + tests de UI de cada flujo |
-| CA2 | El menú lateral muestra los tres grupos con sus secciones y el contador de la Inbox, que se actualiza en vivo | Test de UI + captura |
-| CA3 | El Dashboard muestra resumen, tarjetas de agentes en vivo, aprobaciones pendientes, actividad reciente y consumo de hoy, con sus estados vacío, cargando y desconectado | Tests de UI + capturas (oscuro y claro) |
-| CA4 | Aprobar y rechazar desde el Dashboard resuelve la petición (igual que desde la Inbox) y desbloquea al agente | Test de UI + e2e del backend con el CLI falso |
-| CA5 | El diálogo de nueva tarea rellena proyecto y agente según el contexto y recuerda la última elección; «Crear y encolar» encola la tarea | Tests de UI |
-| CA6 | Ctrl+K abre la paleta desde cualquier pantalla; encuentra secciones, agentes, proyectos y tareas, y ejecuta las acciones listadas; todo con el teclado | Tests de UI |
-| CA7 | `?` muestra la ayuda de atajos; ningún atajo interfiere con la terminal cuando tiene el foco | Test de UI + prueba manual con una ejecución en vivo |
-| CA8 | Ajustes tiene un índice lateral (o pestañas) y sus funciones siguen igual | Tests de UI existentes en verde + captura |
-| CA9 | Las migas de pan y la acción principal son coherentes en todas las pantallas | Revisión con el usuario (checklist por pantalla) |
-| CA10 | Revisión con el usuario: recorre los flujos de CA1 y cada pantalla y da su OK; lo pendiente queda anotado | Acta en `validacion.md` |
-| CA11 | Lint, typecheck y todos los tests (backend y frontend) en verde | `npm run check` / CI local |
+| CA1 | **Menos pasos**, medidos antes y después: (a) crear y encolar una tarea para un agente, (b) aprobar una petición al abrir la app, (c) ir a la tarea en la que trabaja un agente, (d) encontrar una tarea por su `T-n`. Cada flujo baja de pasos y ninguno supera 3 interacciones | Tabla antes/después en `validacion.md` + tests de UI |
+| CA2 | Cabecera v7 con la navegación superior y sus contadores en vivo; sin barra lateral; Inbox, Consumo, Agentes y Proyectos siguen accesibles por ruta, Inicio y Ctrl+K | Tests de UI + capturas |
+| CA3 | Inicio muestra saludo, «Te necesitan», agentes y la columna de resumen, con los estados normal, vacío, cargando, desconectado y tema claro, fiel a las capturas v7 (salvo equipos y cuentas) | Tests de UI + capturas comparadas con `v2/screenshots` |
+| CA4 | Aprobar, rechazar, responder y reanudar desde Inicio funcionan igual que desde la Inbox y desbloquean al agente | Test de UI + e2e del backend con el CLI falso |
+| CA5 | Los avisos de CLI aparecen en «Te necesitan» (cuota agotada, sesión cerrada, límite diario ≥ 95 %), cuentan en el contador y «Posponer» los oculta en la sesión | Tests de UI |
+| CA6 | Nueva tarea: se abre con `N`, Ctrl+K y «+» de una tarjeta (agente preseleccionado), recuerda la última elección y «Crear y encolar» la encola | Tests de UI |
+| CA7 | Nuevo agente se crea como borrador y se activa desde su ficha; Nuevo proyecto pide nombre, carpeta, pipeline y color | Tests de UI + tests de la API si cambia |
+| CA8 | Ctrl+K encuentra secciones, agentes, proyectos y tareas y ejecuta las acciones; `?` muestra los atajos; ningún atajo actúa con el foco en la terminal o en un campo; «Atajos de una tecla» los desactiva | Tests de UI + prueba manual con una ejecución en vivo |
+| CA9 | Ajustes conserva sus seis secciones con índice lateral y añade «Atajos de una tecla» | Tests de UI existentes en verde + captura |
+| CA10 | El acabado v7 se aplica a todas las pantallas en los dos temas, con contraste AA y sin animaciones con `prefers-reduced-motion` | Capturas + revisión con el usuario |
+| CA11 | Revisión con el usuario de los flujos de CA1 y de cada pantalla, con su OK; lo pendiente queda anotado | Acta en `validacion.md` |
+| CA12 | Lint, typecheck y todos los tests (backend y frontend) en verde | `npm run check` / CI local |
 
 ## Prerrequisitos
 - Fase 08 cerrada (`v1.0`).
-- **Revisión del diseño con Claude Design** (prompt en `docs/design/prompt-claude-design-fase09.md`), guardada en `docs/design/` y revisada como en `revision.md`. Es la referencia visual de esta fase: donde difiera del diseño original, manda la revisión. Si propone algo fuera de este alcance, se anota para una fase futura o se amplía la spec con el OK del usuario.
+- Diseño v7 en `docs/design/v2/`, revisado en `docs/design/v2/revision.md`.
 
 ## Riesgos y preguntas abiertas
-- **Datos del Dashboard**: la actividad reciente y el estado en vivo de cada agente probablemente necesitan endpoints nuevos de solo lectura (p. ej. `GET /activity` y el estado por agente). Se concretará en el plan; no cambian el modelo de datos salvo que el plan lo justifique.
-- **Atajos y terminal**: xterm.js captura el teclado; los atajos globales (incluido Ctrl+K) no deben robar teclas al CLI cuando la terminal tiene el foco. Se decidirá en el plan qué atajos se respetan dentro de la terminal.
+- **Datos de Inicio**: las sesiones vivas por agente, la actividad de cada proyecto y los contadores probablemente necesitan endpoints nuevos de solo lectura (o ampliar los actuales). Se concretará en el plan, sin cambiar el modelo de datos salvo lo mínimo (p. ej. guardar el interruptor de atajos).
+- **Cuota en la columna de CLIs**: el diseño muestra el % de la cuota de cada cuenta, que los CLIs no exponen. Se sustituye por el % del **límite diario** que fija el usuario (coste en Claude, tokens en agy) y el estado de la sesión.
+- **Código de referencia que falta**: la v7 depende de `../v1.1/code` (`RequestActions`, `kbd`), que no está en el repo. Se toma del prototipo (`v2/prototype/RequestActions.dc.html`) y de `v2/components.md`.
+- **Atajos y terminal**: xterm.js captura el teclado; Ctrl+K y las teclas de un carácter no deben robar teclas al CLI.
+- **Rendimiento del acabado**: el vidrio (`backdrop-filter`) y el fondo atmosférico pueden costar en WebView2 con terminales en vivo; se mide y, si hace falta, se simplifica en las pantallas con terminal.
 - **Línea base de CA1**: hay que contar los pasos actuales antes de tocar nada (primer paso del desarrollo).
-- **Lista de Ejecuciones**: queda como historial en «Sistema». Si en la revisión resulta que no se usa, se puede proponer quitarla del menú en una fase futura.
