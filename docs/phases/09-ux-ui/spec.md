@@ -1,6 +1,6 @@
 # Fase 09: Mejora de UX/UI · Spec
 
-- **Estado**: borrador
+- **Estado**: borrador (contenido aceptado por el usuario; se aprueba al incorporar la revisión de Claude Design)
 - **Rama**: `phase/09-ux-ui`
 
 ## Objetivo
@@ -17,7 +17,7 @@ Tras usar la v1.0, lo que más estorba es que **las tareas habituales exigen dem
 - Las migas de pan y la acción principal de la cabecera se revisan en todas las pantallas para que sean coherentes (una sola acción principal por pantalla, siempre en el mismo sitio).
 - Desde una tarea se llega a sus ejecuciones y desde una ejecución a su tarea, sin pasar por la lista de Ejecuciones (que queda como historial global).
 
-**Dashboard** (según `docs/design/screens.md` §1 y las capturas `01a`/`01b`):
+**Dashboard** (según la revisión de Claude Design; base: `docs/design/screens.md` §1):
 - **Saludo y resumen**: «N agentes trabajando · N esperándote · N peticiones en el Inbox» y la fecha.
 - **Tarjetas de agentes** en vivo: estado (trabajando, esperando, inactivo), tarea y proyecto actuales, cronómetro y acción «Asignar tarea». Clic en la tarjeta → su tarea actual (o el agente si está inactivo).
 - **Aprobaciones pendientes** (hasta 3, con «Ver Inbox →»): **Aprobar / Rechazar** directamente desde el Dashboard; «Responder» en las preguntas abre la petición en la Inbox.
@@ -34,7 +34,7 @@ Tras usar la v1.0, lo que más estorba es que **las tareas habituales exigen dem
 - Revisar los diálogos de **Nuevo agente** y **Nuevo proyecto** para pedir solo lo imprescindible al crear (el resto, con valores por defecto, se edita después).
 - Se mide el número de pasos de cada flujo antes y después (ver CA1).
 
-**Paleta de comandos (Ctrl+K)** (según la captura `13b`):
+**Paleta de comandos (Ctrl+K)** (según la revisión de Claude Design; base: captura `13b`):
 - **Ir a**: secciones, agentes, proyectos y tareas (búsqueda por nombre o `T-n`).
 - **Acciones**: nueva tarea, nuevo agente, nuevo proyecto, lanzar ejecución, pausar/reanudar el scheduler, cambiar el tema, abrir Ajustes.
 - Navegable solo con el teclado; muestra los atajos.
@@ -77,7 +77,7 @@ Tras usar la v1.0, lo que más estorba es que **las tareas habituales exigen dem
 
 ## Prerrequisitos
 - Fase 08 cerrada (`v1.0`).
-- Diseño de referencia en `docs/design/` (pantallas 1, 13b y elementos globales).
+- **Revisión del diseño con Claude Design** (prompt en `docs/design/prompt-claude-design-fase09.md`), guardada en `docs/design/` y revisada como en `revision.md`. Es la referencia visual de esta fase: donde difiera del diseño original, manda la revisión. Si propone algo fuera de este alcance, se anota para una fase futura o se amplía la spec con el OK del usuario.
 
 ## Riesgos y preguntas abiertas
 - **Datos del Dashboard**: la actividad reciente y el estado en vivo de cada agente probablemente necesitan endpoints nuevos de solo lectura (p. ej. `GET /activity` y el estado por agente). Se concretará en el plan; no cambian el modelo de datos salvo que el plan lo justifique.
