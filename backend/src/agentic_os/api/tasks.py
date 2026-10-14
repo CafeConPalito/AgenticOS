@@ -1,4 +1,6 @@
 import json
+import re
+import unicodedata
 from pathlib import Path
 from typing import Annotated
 
@@ -175,6 +177,26 @@ def read_task(db: Session, task: Task) -> TaskRead:
     return read_tasks(db, [task])[0]
 
 
+DEFAULT_SEARCH = 20
+MAX_SEARCH = 50
+
+
+def _fold(text: str) -> str:
+    """Lower case without accents: «Diseño» finds «diseno»."""
+    decomposed = unicodedata.normalize("NFD", text.casefold())
+    return "".join(c for c in decomposed if not unicodedata.combining(c))
+
+
+def _search(tasks: list[Task], q: str) -> list[Task]:
+    """Tasks whose title contains `q`; for `T-n` or `n`, the task with that number comes first."""
+    needle = _fold(q.strip())
+    match = re.fullmatch(r"(?:t-)?(\d+)", needle)
+    number = int(match.group(1)) if match else None
+    exact = [t for t in tasks if t.number == number]
+    titled = [t for t in tasks if t.number != number and needle in _fold(t.title)]
+    return exact + titled
+
+
 # ---------------------------------------------------------------------- tasks
 @router.get("/tasks")
 def list_tasks(
@@ -183,6 +205,8 @@ def list_tasks(
     agent_id: str | None = None,
     status_: Annotated[list[TaskStatus] | None, Query(alias="status")] = None,
     parent_task_id: str | None = None,
+    q: Annotated[str | None, Query(max_length=200)] = None,
+    limit: Annotated[int | None, Query(ge=1, le=MAX_SEARCH)] = None,
 ) -> list[TaskRead]:
     query = select(Task).where(Task.workspace_id == DEFAULT_WORKSPACE)
     if parent_task_id:
@@ -194,7 +218,12 @@ def list_tasks(
     if status_:
         query = query.where(Task.status.in_([s.value for s in status_]))
     query = query.order_by(Task.number.desc())
-    return read_tasks(db, list(db.scalars(query)))
+    tasks = list(db.scalars(query))
+    if q and q.strip():
+        tasks = _search(tasks, q)[: limit or DEFAULT_SEARCH]
+    elif limit:
+        tasks = tasks[:limit]
+    return read_tasks(db, tasks)
 
 
 @router.post("/tasks", status_code=status.HTTP_201_CREATED)

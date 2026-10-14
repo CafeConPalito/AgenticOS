@@ -4,6 +4,7 @@ from agentic_os.api import (
     agents,
     clis,
     health,
+    home,
     inbox,
     maintenance,
     memory,
@@ -25,6 +26,7 @@ api_router.include_router(clis.router)
 api_router.include_router(runs.router)
 api_router.include_router(tasks.router)
 api_router.include_router(inbox.router)
+api_router.include_router(home.router)
 api_router.include_router(usage.router)
 api_router.include_router(settings.router)
 api_router.include_router(maintenance.router)
