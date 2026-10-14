@@ -10,37 +10,6 @@ vi.mock('@/lib/notify', () => ({
   askNotificationPermission: async () => 'granted',
 }))
 
-describe('Settings · CLIs detectados', () => {
-  it('shows each CLI with its session and how to install a missing one', async () => {
-    createFakeBackend()
-    renderApp('/ajustes')
-
-    const list = await screen.findByRole('list', { name: es.settings.clis.title })
-    const [claude, agy] = within(list).getAllByRole('listitem')
-    expect(claude).toHaveTextContent('Claude Code')
-    expect(claude).toHaveTextContent('v2.1.296')
-    expect(claude).toHaveTextContent(es.settings.clis.status.loggedIn)
-    expect(agy).toHaveTextContent(es.settings.clis.status.notDetected)
-    expect(agy).toHaveTextContent(es.settings.clis.notFound)
-    expect(agy).toHaveTextContent(es.settings.clis.install.agy)
-  })
-
-  it('«Comprobar» probes the CLIs again', async () => {
-    const backend = createFakeBackend()
-    const user = userEvent.setup()
-    renderApp('/ajustes')
-
-    const [button] = await screen.findAllByRole('button', { name: es.settings.clis.check })
-    await user.click(button)
-    await waitFor(() =>
-      expect(
-        backend.callsTo('GET', '/api/clis').filter((c) => c.query === '?refresh=true'),
-      ).toHaveLength(1),
-    )
-    expect(await screen.findByText(es.settings.clis.checked)).toBeVisible()
-  })
-})
-
 describe('Settings · General', () => {
   it('shows the data folder with its size and moves it after confirmation', async () => {
     const backend = createFakeBackend()
@@ -167,14 +136,13 @@ describe('Settings · Acerca de', () => {
 })
 
 describe('Settings · índice y atajos', () => {
-  it('has an index with the six sections, linked to their anchors', async () => {
+  it('has an index with the five sections, linked to their anchors', async () => {
     createFakeBackend()
     renderApp('/ajustes')
     const index = await screen.findByRole('navigation', { name: es.settings.index })
     const links = within(index).getAllByRole('link')
     expect(links.map((l) => l.textContent)).toEqual(Object.values(es.settings.sections))
     expect(links.map((l) => l.getAttribute('href'))).toEqual([
-      '#clis',
       '#general',
       '#notifications',
       '#limits',
@@ -212,11 +180,13 @@ describe('Settings · índice y atajos', () => {
     expect(router.state.location.hash).toBe('#limits')
 
     const scroll = vi.spyOn(Element.prototype, 'scrollIntoView')
-    await router.navigate('/ajustes#clis')
-    await waitFor(() => expect(scroll.mock.contexts.at(-1)).toBe(document.getElementById('clis')))
+    await router.navigate('/ajustes#general')
+    await waitFor(() =>
+      expect(scroll.mock.contexts.at(-1)).toBe(document.getElementById('general')),
+    )
   })
 
-  it('/ajustes#clis lands on the CLIs section', async () => {
+  it('/ajustes#notifications lands on that section', async () => {
     createFakeBackend()
     const scroll = vi.spyOn(Element.prototype, 'scrollIntoView')
     renderApp('/ajustes#notifications')
@@ -224,6 +194,13 @@ describe('Settings · índice y atajos', () => {
     await waitFor(() =>
       expect(scroll.mock.contexts.at(-1)).toBe(document.getElementById('notifications')),
     )
+  })
+
+  it('the old link /ajustes#clis lands on CLIs y cuentas (they moved out of Ajustes)', async () => {
+    createFakeBackend()
+    const { router } = renderApp('/ajustes#clis')
+    await waitFor(() => expect(router.state.location.pathname).toBe('/clis'))
+    expect(await screen.findByRole('heading', { name: es.clis.title })).toBeVisible()
   })
 
   it('the «Atajos de una tecla» switch turns N and ? off and on', async () => {

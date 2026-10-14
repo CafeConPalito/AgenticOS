@@ -21,6 +21,7 @@ import i18n from '@/i18n'
 import { errorMessage } from '@/lib/form-errors'
 import { cn } from '@/lib/utils'
 import type { AgentFormValues } from '../agent-form'
+import { AccountSelect, FallbackFields } from '../AgentLinks'
 
 const CLIS: CliId[] = ['claude', 'agy']
 const DEFAULT_MODEL = '__default__' // Radix Select cannot use "" as an item value
@@ -54,6 +55,28 @@ function OptionCard({
     >
       {children}
     </button>
+  )
+}
+
+/** The secondary CLI reads and writes the form's two fields together. */
+function FallbackWatch() {
+  const { setValue } = useFormContext<AgentFormValues>()
+  const [cli, accountId, fallbackAccountId, fallbackModel] = useWatch<
+    AgentFormValues,
+    ['cli', 'account_id', 'fallback_account_id', 'fallback_model']
+  >({ name: ['cli', 'account_id', 'fallback_account_id', 'fallback_model'] })
+  return (
+    <FallbackFields
+      idPrefix="agent"
+      cli={cli}
+      accountId={accountId}
+      fallbackAccountId={fallbackAccountId}
+      fallbackModel={fallbackModel}
+      onChange={(value) => {
+        setValue('fallback_account_id', value.fallback_account_id, { shouldDirty: true })
+        setValue('fallback_model', value.fallback_model, { shouldDirty: true })
+      }}
+    />
   )
 }
 
@@ -102,7 +125,11 @@ export function ExecutionTab() {
                       key={id}
                       selected={field.value === id}
                       onSelect={() => {
-                        if (field.value !== id) setValue('model', '', { shouldDirty: true })
+                        if (field.value !== id) {
+                          setValue('model', '', { shouldDirty: true })
+                          // The login belongs to the CLI: the new CLI starts with its default.
+                          setValue('account_id', null, { shouldDirty: true })
+                        }
                         field.onChange(id)
                       }}
                     >
@@ -173,6 +200,28 @@ export function ExecutionTab() {
           </div>
         </Field>
       </div>
+
+      <Field
+        label={t('agents.fields.account')}
+        htmlFor="agent-account"
+        help={t('agents.fields.accountHelp')}
+        className="max-w-[512px]"
+      >
+        <Controller
+          control={control}
+          name="account_id"
+          render={({ field }) => (
+            <AccountSelect
+              id="agent-account"
+              cli={cli}
+              value={field.value}
+              onChange={field.onChange}
+            />
+          )}
+        />
+      </Field>
+
+      <FallbackWatch />
 
       <Field label={t('agents.fields.permissions')}>
         <Controller

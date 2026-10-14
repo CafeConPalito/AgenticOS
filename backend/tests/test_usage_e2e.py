@@ -63,8 +63,9 @@ def test_claude_live_cost_from_the_status_line(tmp_path):
         # Over the daily limit a manual run still starts, with a warning.
         api.post("/api/runs/" + run["id"] + "/stop")
         assert wait_until(lambda: usage_of(api, run["id"])["status"] == "final", 30)
-        response = api.client_put("/api/settings/usage-limits", {"claude_usd": 0.0001})
-        assert response["claude_usd"] == 0.0001
+        claude = next(a for a in api.get("/api/accounts") if a["cli"] == "claude")
+        saved = api.patch(f"/api/accounts/{claude['id']}", {"daily_limit": 0.0001})
+        assert saved["daily_limit"] == 0.0001
         assert [i["kind"] for i in pending(api, "limit")] == ["limit"]
         second = api.post("/api/runs", {"agent_id": agent, "project_id": project, "prompt": "hola"})
         assert second["warning"] == "limit_reached"

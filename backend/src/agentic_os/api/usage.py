@@ -5,21 +5,24 @@ from datetime import date, datetime, timedelta
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Query, Request, Response
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy.orm import Session
 
 from agentic_os.db.session import get_session
-from agentic_os.errors import ApiError
+from agentic_os.errors import ApiError, NotFound
 from agentic_os.schemas.usage import (
     Breakdown,
     DailySeries,
+    LimitState,
+    LimitsUpdate,
     SessionRow,
     TodayAgent,
-    UsageLimits,
     UsageSummary,
     UsageToday,
 )
+from agentic_os.services import accounts as account_ops
 from agentic_os.services.usage import limits as usage_limits
-from agentic_os.services.usage import stats
+from agentic_os.services.usage import stats, switching
 
 router = APIRouter(tags=["usage"])
 DbSession = Annotated[Session, Depends(get_session)]
@@ -37,6 +40,7 @@ class Period:
         date_to: Annotated[date | None, Query(alias="to")] = None,
         agent_id: str | None = None,
         project_id: str | None = None,
+        account_id: str | None = None,
     ) -> None:
         last = date_to or today()
         first = date_from or last - timedelta(days=29)
@@ -45,7 +49,7 @@ class Period:
         if (last - first).days >= MAX_DAYS:
             raise ApiError(422, "period_too_long", f"at most {MAX_DAYS} days", "from")
         self.first, self.last = first, last
-        self.agent_id, self.project_id = agent_id, project_id
+        self.agent_id, self.project_id, self.account_id = agent_id, project_id, account_id
 
 
 PeriodDep = Annotated[Period, Depends()]
@@ -54,13 +58,18 @@ PeriodDep = Annotated[Period, Depends()]
 @router.get("/usage/summary")
 def get_summary(db: DbSession, period: PeriodDep) -> UsageSummary:
     return stats.summary(
-        db, period.first, period.last, agent_id=period.agent_id, project_id=period.project_id
+        db,
+        period.first,
+        period.last,
+        agent_id=period.agent_id,
+        project_id=period.project_id,
+        account_id=period.account_id,
     )
 
 
 @router.get("/usage/daily")
 def get_daily(
-    db: DbSession, period: PeriodDep, group: Literal["agent", "project"] = "agent"
+    db: DbSession, period: PeriodDep, group: Literal["agent", "project", "account"] = "agent"
 ) -> DailySeries:
     return stats.daily(
         db,
@@ -69,12 +78,15 @@ def get_daily(
         group,
         agent_id=period.agent_id,
         project_id=period.project_id,
+        account_id=period.account_id,
     )
 
 
 @router.get("/usage/breakdown")
 def get_breakdown(
-    db: DbSession, period: PeriodDep, group: Literal["agent", "project", "task"] = "agent"
+    db: DbSession,
+    period: PeriodDep,
+    group: Literal["agent", "project", "task", "account"] = "agent",
 ) -> Breakdown:
     return stats.breakdown(
         db,
@@ -83,6 +95,7 @@ def get_breakdown(
         group,
         agent_id=period.agent_id,
         project_id=period.project_id,
+        account_id=period.account_id,
     )
 
 
@@ -103,6 +116,7 @@ def get_sessions(
         period.last,
         agent_id=period.agent_id,
         project_id=period.project_id,
+        account_id=period.account_id,
         sort=sort,
         descending=direction == "desc",
         limit=limit,
@@ -122,6 +136,7 @@ def get_sessions_csv(
         period.last,
         agent_id=period.agent_id,
         project_id=period.project_id,
+        account_id=period.account_id,
         sort=sort,
         descending=direction == "desc",
         limit=None,
@@ -154,14 +169,42 @@ def get_today(db: DbSession) -> UsageToday:
 
 
 @router.get("/settings/usage-limits")
-def get_usage_limits(db: DbSession) -> UsageLimits:
-    return usage_limits.get_limits(db)
+def get_usage_limits(db: DbSession) -> list[LimitState]:
+    """The daily limit of each account, with how far it is today."""
+    return usage_limits.states(db, today())
+
+
+class SwitchThreshold(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    threshold: int
+
+
+@router.get("/settings/switch-threshold")
+def get_switch_threshold(db: DbSession) -> SwitchThreshold:
+    """The percent of a subscription window at which an agent with a secondary CLI asks."""
+    return SwitchThreshold(threshold=switching.threshold(db))
+
+
+@router.put("/settings/switch-threshold")
+def put_switch_threshold(
+    payload: SwitchThreshold, db: DbSession, request: Request
+) -> SwitchThreshold:
+    switching.set_threshold(db, payload.threshold)
+    db.commit()
+    request.app.state.scheduler.check_limits(force=True)
+    return SwitchThreshold(threshold=switching.threshold(db))
 
 
 @router.put("/settings/usage-limits")
-def put_usage_limits(payload: UsageLimits, db: DbSession, request: Request) -> UsageLimits:
-    saved = usage_limits.save_limits(db, payload)
+def put_usage_limits(payload: LimitsUpdate, db: DbSession, request: Request) -> list[LimitState]:
+    known = {a.id: a for a in account_ops.list_accounts(db)}
+    for entry in payload.limits:
+        account = known.get(entry.account_id)
+        if account is None:
+            raise NotFound("account")
+        account_ops.set_daily_limit(account, entry.daily_limit)
     usage_limits.sync_limit_items(db, today())
     db.commit()
     request.app.state.scheduler.poke()  # a raised limit lets queued tasks start
-    return saved
+    return usage_limits.states(db, today())

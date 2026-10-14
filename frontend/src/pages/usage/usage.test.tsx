@@ -27,6 +27,8 @@ function session(overrides: Partial<SessionRow>): SessionRow {
     task_id: 'task-1',
     task_code: 'T-1',
     task_title: 'Requisitos del checkout',
+    account_id: null,
+    account_label: '',
     cli: 'claude',
     model: 'claude-sonnet-4-5',
     status: 'completed',
@@ -156,9 +158,9 @@ describe('Límites diarios (Ajustes)', () => {
     const backend = createFakeBackend()
     const user = userEvent.setup()
     renderApp('/ajustes')
-    const claude = await screen.findByLabelText(es.settings.limits.claude, { exact: false })
+    const claude = await screen.findByLabelText('Claude Code · coste del día', { exact: false })
     await user.type(claude, '25,5')
-    const agy = screen.getByLabelText(es.settings.limits.agy, { exact: false })
+    const agy = screen.getByLabelText('Antigravity · tokens del día', { exact: false })
     await user.type(agy, 'mucho')
     expect(screen.getByRole('alert')).toHaveTextContent(es.settings.limits.invalid)
     expect(screen.getByRole('button', { name: es.settings.limits.save })).toBeDisabled()
@@ -167,8 +169,10 @@ describe('Límites diarios (Ajustes)', () => {
     await user.click(screen.getByRole('button', { name: es.settings.limits.save }))
     await waitFor(() =>
       expect(backend.callsTo('PUT', '/api/settings/usage-limits')[0]?.body).toEqual({
-        claude_usd: 25.5,
-        agy_tokens: 2_000_000,
+        limits: [
+          { account_id: 'account-system-claude', daily_limit: 25.5 },
+          { account_id: 'account-system-agy', daily_limit: 2_000_000 },
+        ],
       }),
     )
   })
@@ -180,14 +184,14 @@ describe('Inbox · límites y cuota', () => {
       kind: 'quota',
       title: 'Antigravity se ha quedado sin cuota',
       detail: 'Quota exhausted · Refreshes in 2h',
-      command: 'agy',
+      command: 'account-system-agy',
       run_id: 'run-1',
       notified_at: '2026-10-12T10:00:00Z',
     })
     const limit = makeInboxItem({
       kind: 'limit',
       title: 'Límite diario de Claude Code alcanzado',
-      command: 'claude',
+      command: 'account-system-claude',
       notified_at: '2026-10-12T10:00:00Z',
     })
     const backend = createFakeBackend({ inbox: [quota, limit] })

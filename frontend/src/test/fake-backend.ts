@@ -1,6 +1,8 @@
 import type { ProjectBranches } from '@/api/maintenance'
 import {
   ACTIVE_RUN_STATUSES,
+  type Account,
+  type AgyQuotaState,
   type Agent,
   type AgentTemplate,
   type CliInfo,
@@ -14,7 +16,8 @@ import {
   type Breakdown,
   type DailySeries,
   type SessionRow,
-  type UsageLimits,
+  type LimitState,
+  type Team,
   type UsageSummary,
   type UsageToday,
   type NotificationSettings,
@@ -124,6 +127,11 @@ export function makeAgent(overrides: Partial<Agent> = {}): Agent {
     can_create_tasks: false,
     status: 'active',
     template: null,
+    team_id: null,
+    account_id: null,
+    fallback_account_id: null,
+    fallback_model: '',
+    using_fallback: false,
     queued_count: 0,
     running_count: 0,
     created_at: now(),
@@ -183,6 +191,8 @@ export function makeRun(overrides: Partial<Run> = {}): Run {
     resumed_by_id: null,
     resumable: false,
     log_purged: false,
+    account_id: null,
+    account_label: '',
     task_code: null,
     stage_name: null,
     created_at: now(),
@@ -236,6 +246,7 @@ export function makeTask(overrides: Partial<Task> = {}): Task {
     worktree_path: null,
     branch: null,
     blocked: null,
+    blocked_by: null,
     active_run_id: null,
     last_run_id: null,
     queued_at: now(),
@@ -257,6 +268,67 @@ export function makeTask(overrides: Partial<Task> = {}): Task {
     },
     ...overrides,
   }
+}
+
+export function makeAccount(overrides: Partial<Account> = {}): Account {
+  seq += 1
+  return {
+    id: `account-${seq}`,
+    cli: 'claude',
+    label: '',
+    name: 'Cuenta del sistema',
+    email: '',
+    plan: '',
+    is_default: false,
+    is_system: false,
+    session_state: 'ok',
+    session_checked_at: '2026-10-14T10:00:00Z',
+    daily_limit: null,
+    unit: 'usd',
+    used_today: 0,
+    quota: [],
+    agents: [],
+    live_runs: 0,
+    logging_in: false,
+    ...overrides,
+  }
+}
+
+export function makeTeam(overrides: Partial<Team> = {}): Team {
+  seq += 1
+  return {
+    id: `team-${seq}`,
+    name: 'Producto',
+    description: '',
+    position: seq,
+    agent_ids: [],
+    created_at: now(),
+    updated_at: now(),
+    ...overrides,
+  }
+}
+
+/** The two system accounts a fresh install has (Claude Code's and agy's). */
+export function systemAccounts(): Account[] {
+  return [
+    makeAccount({
+      id: 'account-system-claude',
+      cli: 'claude',
+      name: 'Cuenta del sistema',
+      is_default: true,
+      is_system: true,
+      email: '',
+    }),
+    makeAccount({
+      id: 'account-system-agy',
+      cli: 'agy',
+      name: 'Cuenta del sistema',
+      unit: 'tokens',
+      is_default: true,
+      is_system: true,
+      session_state: 'unknown',
+    }),
+  ]
 }
 
 export function makeInboxItem(overrides: Partial<InboxItem> = {}): InboxItem {
@@ -317,7 +389,6 @@ export interface FakeUsage {
   breakdown: Breakdown
   sessions: SessionRow[]
   today: UsageToday
-  limits: UsageLimits
 }
 
 export function emptyUsage(): FakeUsage {
@@ -344,30 +415,8 @@ export function emptyUsage(): FakeUsage {
       cache_read_tokens: 0,
       cost_usd: 0,
       agents: [],
-      limits: [
-        {
-          cli: 'claude',
-          unit: 'usd',
-          limit: null,
-          used: 0,
-          ratio: null,
-          reached: false,
-          near: false,
-          quota_exhausted: false,
-        },
-        {
-          cli: 'agy',
-          unit: 'tokens',
-          limit: null,
-          used: 0,
-          ratio: null,
-          reached: false,
-          near: false,
-          quota_exhausted: false,
-        },
-      ],
+      limits: [],
     },
-    limits: { claude_usd: null, agy_tokens: null },
   }
 }
 
@@ -396,9 +445,160 @@ export function createFakeBackend(
     clis?: CliInfo[]
     /** Overrides parts of GET /api/home; by default it is derived from the rest of the seed. */
     home?: Partial<Home>
+    /** The CLI accounts (default: the two system ones). */
+    accounts?: Account[]
+    teams?: Team[]
+    /** agy's opt-in quota line (default: available, off). */
+    agyQuota?: AgyQuotaState
   } = {},
 ) {
   const usage: FakeUsage = { ...emptyUsage(), ...(seed.usage ?? {}) }
+  const accounts: Account[] = structuredClone(seed.accounts ?? systemAccounts())
+  const teams: Team[] = structuredClone(seed.teams ?? [])
+  const agyQuota: AgyQuotaState = {
+    available: true,
+    enabled: false,
+    taken: false,
+    running: false,
+    ...(seed.agyQuota ?? {}),
+  }
+
+  /** The daily limits, derived from the accounts the way the backend derives them. */
+  function limitStates(): LimitState[] {
+    return accounts.map((account) => {
+      const ratio = account.daily_limit ? account.used_today / account.daily_limit : null
+      return {
+        account_id: account.id,
+        account_name: account.name,
+        is_default: account.is_default,
+        cli: account.cli,
+        unit: account.unit,
+        limit: account.daily_limit,
+        used: account.used_today,
+        ratio,
+        reached: ratio !== null && ratio >= 1,
+        near: ratio !== null && ratio >= 0.8,
+        quota_exhausted: false,
+      }
+    })
+  }
+
+  function handleAccounts(
+    method: string,
+    path: string,
+    body: Record<string, unknown>,
+  ): Response | null {
+    if (path === '/api/clis/agy/quota') {
+      if (method === 'PUT') {
+        if (!agyQuota.available) return apiError(409, 'agy_not_set_up')
+        if (agyQuota.running) return apiError(409, 'agy_running')
+        if (agyQuota.taken) return apiError(409, 'status_line_taken')
+        agyQuota.enabled = Boolean(body.enabled)
+      }
+      return json(200, agyQuota)
+    }
+    if (path === '/api/accounts') {
+      if (method === 'GET') return json(200, accounts)
+      if (body.cli === 'agy') return apiError(409, 'accounts_unsupported', 'cli')
+      const account = makeAccount({
+        cli: body.cli as Account['cli'],
+        label: String(body.label ?? ''),
+        name: String(body.label ?? '') || 'Cuenta nueva',
+        session_state: 'unknown',
+        session_checked_at: null,
+      })
+      accounts.push(account)
+      return json(201, account)
+    }
+    if (path === '/api/teams') {
+      if (method === 'GET') return json(200, teams)
+      const team = makeTeam({
+        name: String(body.name),
+        description: String(body.description ?? ''),
+        agent_ids: [...((body.agent_ids as string[]) ?? [])],
+      })
+      moveAgents(team)
+      teams.push(team)
+      return json(201, team)
+    }
+    const teamMatch = path.match(/^\/api\/teams\/([^/]+)$/)
+    if (teamMatch) {
+      const index = teams.findIndex((t) => t.id === teamMatch[1])
+      if (index < 0) return apiError(404, 'team_not_found')
+      if (method === 'DELETE') {
+        teams.splice(index, 1)
+        agents.forEach((a) => {
+          if (a.team_id === teamMatch[1]) a.team_id = null
+        })
+        return json(204, null)
+      }
+      const team = teams[index]
+      if (typeof body.name === 'string') team.name = body.name
+      if (typeof body.description === 'string') team.description = body.description
+      if (Array.isArray(body.agent_ids)) {
+        team.agent_ids = body.agent_ids as string[]
+        moveAgents(team)
+      }
+      return json(200, team)
+    }
+    if (path === '/api/settings/switch-threshold') {
+      if (method === 'PUT') switchThreshold = Number(body.threshold)
+      return json(200, { threshold: switchThreshold })
+    }
+    if (path === '/api/settings/usage-limits') {
+      if (method === 'PUT') {
+        for (const entry of body.limits as { account_id: string; daily_limit: number | null }[]) {
+          const account = accounts.find((a) => a.id === entry.account_id)
+          if (!account) return apiError(404, 'account_not_found')
+          account.daily_limit = entry.daily_limit
+        }
+      }
+      return json(200, limitStates())
+    }
+    const match = path.match(/^\/api\/accounts\/([^/]+)(?:\/(default|probe|login))?$/)
+    if (!match) return null
+    const index = accounts.findIndex((a) => a.id === match[1])
+    if (index < 0) return apiError(404, 'account_not_found')
+    const account = accounts[index]
+    if (match[2] === 'default') {
+      accounts.forEach((a) => {
+        if (a.cli === account.cli) a.is_default = a.id === account.id
+      })
+      return json(200, account)
+    }
+    if (match[2] === 'probe') {
+      account.session_checked_at = now()
+      return json(200, account)
+    }
+    if (match[2] === 'login') {
+      account.logging_in = method === 'POST'
+      return method === 'POST' ? json(200, account) : json(204, null)
+    }
+    if (method === 'PATCH') {
+      if (typeof body.label === 'string') {
+        account.label = body.label
+        account.name = account.email || body.label
+      }
+      if ('daily_limit' in body) account.daily_limit = body.daily_limit as number | null
+      return json(200, account)
+    }
+    if (account.is_system) return apiError(409, 'system_account')
+    if (agents.some((a) => a.account_id === account.id)) return apiError(409, 'account_in_use')
+    accounts.splice(index, 1)
+    return json(204, null)
+  }
+
+  /** An agent is in one team: the members of `team` leave the one they were in. */
+  function moveAgents(team: Team) {
+    teams.forEach((other) => {
+      if (other.id !== team.id)
+        other.agent_ids = other.agent_ids.filter((id) => !team.agent_ids.includes(id))
+    })
+    agents.forEach((agent) => {
+      if (team.agent_ids.includes(agent.id)) agent.team_id = team.id
+      else if (agent.team_id === team.id) agent.team_id = null
+    })
+  }
 
   const dataDir = {
     path: 'C:\\Users\\marta\\AppData\\Roaming\\AgenticOS',
@@ -440,15 +640,15 @@ export function createFakeBackend(
       if (!String(body.to ?? '').trim()) return apiError(422, 'path_not_absolute', 'to')
       return json(202, { to: body.to, restarting: true })
     }
-    if (path === '/api/settings/usage-limits') {
-      if (method === 'PUT') usage.limits = body as unknown as UsageLimits
-      return json(200, usage.limits)
-    }
     if (path === '/api/usage/summary') return json(200, usage.summary)
     if (path === '/api/usage/daily') return json(200, usage.daily)
     if (path === '/api/usage/breakdown') return json(200, usage.breakdown)
     if (path === '/api/usage/sessions') return json(200, usage.sessions)
-    if (path === '/api/usage/today') return json(200, usage.today)
+    if (path === '/api/usage/today')
+      return json(200, {
+        ...usage.today,
+        limits: seed.usage?.today?.limits?.length ? usage.today.limits : limitStates(),
+      })
     if (path === '/api/usage/sessions.csv')
       return new Response('inicio,fin', {
         status: 200,
@@ -508,6 +708,11 @@ export function createFakeBackend(
     if (match[2] === 'review')
       resolve(body.approve ? 'approved' : 'rejected', String(body.reason ?? ''))
     if (match[2] === 'resume') resolve('approved')
+    if (match[2] === 'switch') {
+      const agent = agents.find((a) => a.id === item.agent_id)
+      if (agent && body.choice === 'switch') agent.using_fallback = true
+      resolve('answered', String(body.choice))
+    }
     if (match[2] === 'dismiss') resolve(item.kind === 'delivery' ? 'reviewed' : 'dismissed')
     return json(200, item)
   }
@@ -515,6 +720,7 @@ export function createFakeBackend(
   const taskEvents = { ...(seed.taskEvents ?? {}) }
   const pipelines: Record<string, Pipeline | null> = { ...(seed.pipelines ?? {}) }
   const scheduler = { paused: seed.paused ?? false }
+  let switchThreshold = 90
   const agents = [...(seed.agents ?? [])]
   const projects = [...(seed.projects ?? [])]
   const runs = [...(seed.runs ?? [])]
@@ -537,6 +743,9 @@ export function createFakeBackend(
         status: agent.status,
         state:
           agent.status === 'draft' ? 'draft' : waiting ? 'waiting' : running ? 'running' : 'idle',
+        team_id: agent.team_id,
+        account_id: agent.account_id,
+        using_fallback: agent.using_fallback,
         queued: own.filter((t) => t.status === 'queued').length,
         pending_requests: requests,
         sessions: [
@@ -794,6 +1003,12 @@ export function createFakeBackend(
         prompt: String(body.prompt),
         cwd: project.path,
         status: 'starting',
+        ...(() => {
+          const account =
+            accounts.find((a) => a.id === agent.account_id) ??
+            accounts.find((a) => a.cli === agent.cli && a.is_default)
+          return { account_id: account?.id ?? null, account_label: account?.name ?? '' }
+        })(),
       })
       runs.unshift(run)
       return json(201, run)
@@ -866,6 +1081,13 @@ export function createFakeBackend(
       agents.push(agent)
       return json(201, agent)
     }
+    const clearMatch = path.match(/^\/api\/agents\/([^/]+)\/fallback\/clear$/)
+    if (clearMatch) {
+      const agent = agents.find((a) => a.id === clearMatch[1])
+      if (!agent) return apiError(404, 'agent_not_found')
+      agent.using_fallback = false
+      return json(200, agent)
+    }
     const agentMatch = path.match(/^\/api\/agents\/([^/]+)(\/duplicate)?$/)
     if (agentMatch) {
       const index = agents.findIndex((a) => a.id === agentMatch[1])
@@ -926,6 +1148,7 @@ export function createFakeBackend(
       body: init?.body ? body : undefined,
     })
     return (
+      handleAccounts(method, url.pathname, body) ??
       handleRuns(method, url.pathname, url.searchParams, body) ??
       handleMemory(method, url.pathname, body) ??
       handleTasks(method, url.pathname, url.searchParams, body) ??
@@ -938,6 +1161,9 @@ export function createFakeBackend(
 
   return {
     agents,
+    accounts,
+    teams,
+    agyQuota,
     projects,
     runs,
     notes,

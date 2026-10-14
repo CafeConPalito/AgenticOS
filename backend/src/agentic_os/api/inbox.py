@@ -15,9 +15,11 @@ from agentic_os.schemas.inbox import (
     InboxReview,
     InboxSummary,
     NotificationSettings,
+    SwitchAnswer,
 )
 from agentic_os.services import inbox
 from agentic_os.services import tasks as task_ops
+from agentic_os.services.usage import switching
 
 router = APIRouter(tags=["inbox"])
 DbSession = Annotated[Session, Depends(get_session)]
@@ -103,6 +105,19 @@ def resume_item(
     item = _get(db, item_id)
     _pending(item, InboxKind.QUOTA)
     manager.resume_after_quota(db, item)
+    db.commit()
+    scheduler.poke()
+    return read_items(db, [item])[0]
+
+
+@router.post("/inbox/{item_id}/switch")
+def switch_item(
+    item_id: str, payload: SwitchAnswer, db: DbSession, scheduler: SchedulerDep
+) -> InboxItemRead:
+    """«Cambiar de CLI» → Cambiar al secundario / Seguir con el actual."""
+    item = _get(db, item_id)
+    _pending(item, InboxKind.SWITCH)
+    switching.answer(db, item, payload.choice)
     db.commit()
     scheduler.poke()
     return read_items(db, [item])[0]

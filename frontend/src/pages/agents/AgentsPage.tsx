@@ -1,15 +1,23 @@
 import { Bot, ChevronRight, Plus, Sparkles } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router'
+import { useNavigate, useSearchParams } from 'react-router'
 import { useAgents } from '@/api/agents'
+import { useTeams } from '@/api/teams'
 import { useMonthBreakdown } from '@/api/usage'
 import { formatTokens, formatUsd } from '@/lib/format'
-import type { Agent } from '@/api/types'
+import type { Agent, Team } from '@/api/types'
 import { AgentAvatar, CliTag, StatusBadge } from '@/components/agentic/primitives'
 import { EmptyState } from '@/components/EmptyState'
 import { PageContainer, PageHeader } from '@/components/page'
 import { Button } from '@/components/ui/button'
 import { useDialogs } from '@/stores/dialogs'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   Table,
@@ -20,6 +28,9 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { TemplatePicker } from './TemplatePicker'
+
+const ALL = '__all__' // Radix Select cannot use "" as an item value
+const NO_TEAM = '__none__'
 
 export default function AgentsPage() {
   const { t } = useTranslation()
@@ -54,7 +65,7 @@ export default function AgentsPage() {
           ))}
         </div>
       ) : agents && agents.length > 0 ? (
-        <AgentsTable agents={agents} />
+        <AgentsList agents={agents} />
       ) : (
         <EmptyState
           icon={Bot}
@@ -68,7 +79,51 @@ export default function AgentsPage() {
   )
 }
 
-function AgentsTable({ agents }: { agents: Agent[] }) {
+/** The agents, filterable by team once there is any (`?equipo=<id>` or `?equipo=sin`). */
+function AgentsList({ agents }: { agents: Agent[] }) {
+  const { t } = useTranslation()
+  const teams = useTeams().data ?? []
+  const [params, setParams] = useSearchParams()
+  const wanted = params.get('equipo')
+  const filter = wanted === 'sin' ? NO_TEAM : teams.some((x) => x.id === wanted) ? wanted : null
+  const shown = agents.filter((a) =>
+    filter === null ? true : filter === NO_TEAM ? !a.team_id : a.team_id === filter,
+  )
+  return (
+    <>
+      {teams.length > 0 && (
+        <div className="flex justify-end">
+          <Select
+            value={filter ?? ALL}
+            onValueChange={(value) => {
+              if (!value) return
+              const next = new URLSearchParams(params)
+              if (value === ALL) next.delete('equipo')
+              else next.set('equipo', value === NO_TEAM ? 'sin' : value)
+              setParams(next, { replace: true })
+            }}
+          >
+            <SelectTrigger aria-label={t('agents.fields.team')} className="w-[220px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>{t('agents.allTeams')}</SelectItem>
+              <SelectItem value={NO_TEAM}>{t('teams.none')}</SelectItem>
+              {teams.map((team) => (
+                <SelectItem key={team.id} value={team.id}>
+                  {team.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+      <AgentsTable agents={shown} teams={teams} />
+    </>
+  )
+}
+
+function AgentsTable({ agents, teams }: { agents: Agent[]; teams: Team[] }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const month = useMonthBreakdown('agent').data
@@ -84,6 +139,7 @@ function AgentsTable({ agents }: { agents: Agent[] }) {
         <TableHeader className="bg-subtle">
           <TableRow className="hover:bg-transparent">
             <TableHead className="px-4">{t('agents.columns.agent')}</TableHead>
+            {teams.length > 0 && <TableHead>{t('agents.columns.team')}</TableHead>}
             <TableHead>{t('agents.columns.cli')}</TableHead>
             <TableHead>{t('agents.columns.model')}</TableHead>
             <TableHead>{t('agents.columns.status')}</TableHead>
@@ -113,6 +169,11 @@ function AgentsTable({ agents }: { agents: Agent[] }) {
                     </div>
                   </div>
                 </TableCell>
+                {teams.length > 0 && (
+                  <TableCell className="text-[13px] text-muted-foreground">
+                    {teams.find((x) => x.id === agent.team_id)?.name ?? t('teams.none')}
+                  </TableCell>
+                )}
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <CliTag cli={agent.cli} label={t(`cli.${agent.cli}`)} />

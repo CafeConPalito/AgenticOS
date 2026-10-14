@@ -1,19 +1,18 @@
 import asyncio
-import contextlib
-import json
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, Request, WebSocket, WebSocketDisconnect, status
+from fastapi import APIRouter, Depends, Query, Request, WebSocket, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session, object_session
 
 from agentic_os.api.agents import _get as get_agent_row
 from agentic_os.api.projects import get_project_or_404 as get_project_row
+from agentic_os.api.terminal import serve_terminal
 from agentic_os.db.base import DEFAULT_WORKSPACE
 from agentic_os.db.session import get_session
 from agentic_os.errors import ApiError, NotFound
-from agentic_os.models import ACTIVE_STATUSES, Cli, Run, RunEvent, RunStatus, Stage, Task
+from agentic_os.models import ACTIVE_STATUSES, CliAccount, Run, RunEvent, RunStatus, Stage, Task
 from agentic_os.schemas.run import (
     ControlAction,
     ControlRequest,
@@ -23,6 +22,7 @@ from agentic_os.schemas.run import (
     RunRead,
 )
 from agentic_os.schemas.usage import RunUsage
+from agentic_os.services import accounts as account_ops
 from agentic_os.services.runs import resume as resume_ops
 from agentic_os.services.runs.manager import RunManager
 from agentic_os.services.runs.session import SCROLLBACK_LIMIT, ControlConflict, RunSession
@@ -52,6 +52,9 @@ def _read(run: Run, manager: RunManager, detail: bool = False) -> RunRead:
     result = RunRead.model_validate(run)
     result.usage = RunUsage(**usage_payload(run))
     db = object_session(run)
+    account = db.get(CliAccount, run.account_id) if run.account_id and db is not None else None
+    if account is not None:
+        result.account_label = account_ops.display_name(account)
     if run.task_id and db is not None:
         task = db.get(Task, run.task_id)
         stage = db.get(Stage, run.stage_id) if run.stage_id else None
@@ -78,8 +81,9 @@ def _live(manager: RunManager, run_id: str) -> RunSession:
 def launch_run(payload: RunCreate, db: DbSession, manager: Manager) -> RunRead:
     agent = get_agent_row(db, payload.agent_id)
     project = get_project_row(db, payload.project_id)
-    # Over its CLI's daily limit (or out of quota) a manual run is still allowed: the UI warns.
-    gate = usage_limits.blocked(db, Cli(agent.cli))
+    # Over its account's daily limit, out of quota or logged out a manual run is still allowed
+    # (the CLI shows its own login): the UI warns.
+    gate = usage_limits.blocked(db, account_ops.of_agent(db, agent))
     run = manager.launch(db, agent, project, payload.prompt)
     result = _read(run, manager)
     result.warning = f"{gate}_reached" if gate else None
@@ -195,48 +199,4 @@ async def run_terminal(websocket: WebSocket, run_id: str, client_id: str) -> Non
         await websocket.close()
         return
 
-    snapshot, viewer = session.attach(client_id)
-    await websocket.send_json({"type": "snapshot", "data": snapshot})
-    await websocket.send_json(session.state_message())
-
-    async def pump() -> None:
-        with contextlib.suppress(WebSocketDisconnect, RuntimeError):
-            await _pump()
-
-    async def _pump() -> None:
-        while True:
-            message = await viewer.queue.get()
-            if message is None:  # dropped for being too slow: the client reconnects
-                await websocket.close(code=4408)
-                return
-            await websocket.send_json(message)
-            if message.get("type") == "exit":
-                await websocket.close()
-                return
-
-    async def listen() -> None:
-        with contextlib.suppress(WebSocketDisconnect, RuntimeError):
-            while True:
-                try:
-                    message = json.loads(await websocket.receive_text())
-                except ValueError:
-                    continue  # malformed frame: ignore it, keep the terminal open
-                if not isinstance(message, dict):
-                    continue
-                kind = message.get("type")
-                # PTY writes and resizes (which persist the size) block: keep them off the loop.
-                if kind == "input" and isinstance(message.get("data"), str):
-                    await asyncio.to_thread(session.write_input, client_id, message["data"])
-                elif kind == "resize":
-                    with contextlib.suppress(TypeError, ValueError, KeyError):
-                        cols, rows = int(message["cols"]), int(message["rows"])
-                        await asyncio.to_thread(session.resize, client_id, cols, rows)
-
-    # Whichever ends first (client gone, or the run exited and we closed) ends the other.
-    tasks = {asyncio.create_task(pump()), asyncio.create_task(listen())}
-    try:
-        _, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
-        for task in pending:
-            task.cancel()
-    finally:
-        session.detach(client_id)
+    await serve_terminal(websocket, session, client_id)

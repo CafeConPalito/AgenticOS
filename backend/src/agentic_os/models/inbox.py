@@ -15,8 +15,10 @@ class InboxKind(StrEnum):
     STALLED = "stalled"  # idle for a while without complete_task
     DELIVERY = "delivery"  # a task is done
     ATTENTION = "attention"  # a task waits for the person because something failed
-    LIMIT = "limit"  # a CLI reached its daily limit (phase 07)
-    QUOTA = "quota"  # the CLI ran out of its account quota (phase 07)
+    LIMIT = "limit"  # an account reached its daily limit (phase 07; per account since phase 10)
+    QUOTA = "quota"  # the account ran out of its subscription quota (phase 07)
+    ACCOUNT = "account"  # the session of an account is logged out (phase 10)
+    SWITCH = "switch"  # an agent's account is about to run out: switch CLI or stay (phase 10)
 
 
 class InboxStatus(StrEnum):

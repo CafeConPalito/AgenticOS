@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { Check, Play, RotateCcw, SquareTerminal, X } from 'lucide-react'
+import { ArrowLeftRight, Check, LogIn, Play, RotateCcw, SquareTerminal, X } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
@@ -11,6 +11,7 @@ import {
   usePermissionItem,
   useResumeItem,
   useReviewItem,
+  useSwitchItem,
 } from '@/api/inbox'
 import { taskKeys } from '@/api/tasks'
 import type { InboxItem } from '@/api/types'
@@ -42,6 +43,7 @@ export function RequestActions({
   const review = useReviewItem()
   const dismiss = useDismissItem()
   const resume = useResumeItem()
+  const switchCli = useSwitchItem()
   const [text, setText] = useState('')
   const [rejecting, setRejecting] = useState(false)
   const busy =
@@ -49,7 +51,8 @@ export function RequestActions({
     permission.isPending ||
     review.isPending ||
     dismiss.isPending ||
-    resume.isPending
+    resume.isPending ||
+    switchCli.isPending
   const onError = (error: unknown) => toast.error(errorMessage(error))
 
   async function retryTask() {
@@ -208,6 +211,48 @@ export function RequestActions({
           {t('inbox.resume')}
         </Button>
       )}
+      {item.kind === 'switch' && item.options.length > 0 && (
+        <>
+          {/* The backend offers [switch, stay] in that order, named after the accounts. */}
+          <Button
+            size="sm"
+            disabled={busy}
+            onClick={() =>
+              switchCli.mutate(
+                { id: item.id, choice: 'switch' },
+                { onSuccess: () => toast.success(t('inbox.toast.switched')), onError },
+              )
+            }
+            className="bg-primary-action text-white hover:bg-primary-action-hover"
+          >
+            <ArrowLeftRight />
+            {item.options[0]}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={busy}
+            onClick={() =>
+              switchCli.mutate(
+                { id: item.id, choice: 'stay' },
+                { onSuccess: () => toast.success(t('inbox.toast.stayed')), onError },
+              )
+            }
+          >
+            {item.options[1]}
+          </Button>
+        </>
+      )}
+      {item.kind === 'switch' && item.options.length === 0 && (
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={busy}
+          onClick={() => dismiss.mutate(item.id, { onError })}
+        >
+          {t('inbox.understood')}
+        </Button>
+      )}
       {item.kind === 'limit' && (
         <>
           <span className="text-[12.5px] text-muted-foreground">{t('inbox.limitHint')}</span>
@@ -215,6 +260,19 @@ export function RequestActions({
             <Link to="/ajustes">{t('inbox.openSettings')}</Link>
           </Button>
         </>
+      )}
+      {item.kind === 'account' && (
+        <Button
+          size="sm"
+          className="bg-primary-action text-white hover:bg-primary-action-hover"
+          asChild
+        >
+          {/* The item names the account in `command`: «CLIs y cuentas» opens its login. */}
+          <Link to={`/clis?reconectar=${item.command ?? ''}`}>
+            <LogIn />
+            {t('inbox.reconnect')}
+          </Link>
+        </Button>
       )}
       {item.kind === 'attention' && item.task_id && <ResumeTaskSession taskId={item.task_id} />}
       {item.kind === 'attention' && item.task_id && (

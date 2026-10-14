@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from agentic_os.models import Activity, Cli
+from agentic_os.services.quota import QuotaWindow, windows_from_status_line
 
 # Hooks each adapter registers. agy fires PreInvocation on every model step of a turn.
 # Pre/PostToolUse are only for the CLIs' native subagents (spike P10): Claude's `Agent` tool
@@ -39,7 +40,8 @@ TOOL_EVENTS = {"PreToolUse", "PostToolUse"}
 TURN_START = {"UserPromptSubmit", "PreInvocation"}
 TURN_END = {"Stop"}
 # Claude's status line runs the same script with this "event": its JSON carries the session's
-# cost so far (evidence C0 of phase 07). The script prints nothing, so the TUI shows no line.
+# cost so far (evidence C0 of phase 07) and, for subscribers, the usage of the 5 h and weekly
+# windows (evidence S1 of phase 10). The script prints nothing, so the TUI shows no line.
 STATUS_LINE = "StatusLine"
 
 
@@ -87,6 +89,11 @@ class HookEffect:
     # Claude's status line: the session's API-equivalent cost so far, and the CLI version.
     cost_usd: float | None = None
     cli_version: str | None = None
+    # The status line of either CLI (phase 10): the subscription windows it reports, and who the
+    # account is (agy names it: `email`, `plan_tier`).
+    quota: tuple[QuotaWindow, ...] = ()
+    email: str | None = None
+    plan: str | None = None
 
 
 def describe_tool(tool: object, tool_input: object) -> str:
@@ -111,11 +118,15 @@ def interpret(cli: Cli, event: str, payload: object) -> HookEffect:
         cost = data.get("cost") if isinstance(data.get("cost"), dict) else {}
         value = cost.get("total_cost_usd")
         return HookEffect(
-            transcript_path=transcript,
+            # agy's status line is snake_case, unlike its hooks.
+            transcript_path=_text(data.get("transcript_path")),
             cost_usd=float(value)
             if isinstance(value, int | float) and not isinstance(value, bool)
             else None,
             cli_version=_text(data.get("version")),
+            quota=tuple(windows_from_status_line(cli, data)),
+            email=_text(data.get("email")),
+            plan=_text(data.get("plan_tier")),
         )
     if event == "PermissionRequest":
         return HookEffect(

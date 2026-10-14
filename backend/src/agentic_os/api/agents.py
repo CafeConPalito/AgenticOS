@@ -4,10 +4,18 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from agentic_os.db.base import DEFAULT_WORKSPACE
+from agentic_os.db.base import DEFAULT_WORKSPACE, utcnow
 from agentic_os.db.session import get_session
 from agentic_os.errors import ApiError, NotFound
-from agentic_os.models import Agent, Task, TaskStatus, WaitingReason
+from agentic_os.models import (
+    Agent,
+    Cli,
+    CliAccount,
+    Task,
+    TaskStatus,
+    Team,
+    WaitingReason,
+)
 from agentic_os.schemas.agent import (
     AgentCreate,
     AgentDuplicate,
@@ -15,6 +23,7 @@ from agentic_os.schemas.agent import (
     AgentTemplate,
     AgentUpdate,
 )
+from agentic_os.services import accounts
 from agentic_os.services.tasks import wait_for_human
 from agentic_os.services.templates import BY_ID, TEMPLATES
 
@@ -27,6 +36,45 @@ def _get(session: Session, agent_id: str) -> Agent:
     if agent is None or agent.workspace_id != DEFAULT_WORKSPACE:
         raise NotFound("agent")
     return agent
+
+
+def _check_links(session: Session, cli: str, team_id: str | None, account_id: str | None) -> None:
+    """The team and the account an agent points to must exist, and the account must be one of
+    the agent's CLI."""
+    if team_id and session.get(Team, team_id) is None:
+        raise ApiError(422, "team_not_found", "the team does not exist", "team_id")
+    if account_id:
+        account = session.get(CliAccount, account_id)
+        if account is None:
+            raise ApiError(422, "account_not_found", "the account does not exist", "account_id")
+        if account.cli != cli:
+            raise ApiError(
+                422, "account_cli_mismatch", "the account is of another CLI", "account_id"
+            )
+
+
+def _check_fallback(session: Session, agent: Agent | None, values: dict) -> None:
+    """The secondary account must exist and differ from the main one (an agent with the same
+    account on both sides has nothing to switch to). The main account is the explicit one or, if
+    none, the default account of the agent's CLI."""
+    account_id = values.get("fallback_account_id")
+    if not account_id:
+        return
+    account = session.get(CliAccount, account_id)
+    if account is None:
+        raise ApiError(
+            422, "account_not_found", "the account does not exist", "fallback_account_id"
+        )
+    cli = str(values.get("cli", agent.cli if agent else Cli.CLAUDE))
+    main_id = values.get("account_id", agent.account_id if agent else None)
+    main = session.get(CliAccount, main_id) if main_id else accounts.default_for(session, Cli(cli))
+    if main is not None and main.id == account.id:
+        raise ApiError(
+            422,
+            "fallback_same_account",
+            "the secondary account is the main one",
+            "fallback_account_id",
+        )
 
 
 def _counts(session: Session, agent_ids: list[str]) -> dict[tuple[str, str], int]:
@@ -48,6 +96,9 @@ def _read_many(session: Session, agents: list[Agent]) -> list[AgentRead]:
         read = AgentRead.model_validate(agent)
         read.queued_count = counts.get((agent.id, TaskStatus.QUEUED), 0)
         read.running_count = counts.get((agent.id, TaskStatus.RUNNING), 0)
+        read.using_fallback = bool(
+            agent.using_fallback_until and agent.using_fallback_until > utcnow()
+        )
         result.append(read)
     return result
 
@@ -83,6 +134,10 @@ def create_agent(payload: AgentCreate, session: DbSession) -> AgentRead:
     values.update(payload.model_dump(exclude_unset=True, exclude={"template"}))
     if not values.get("name"):
         raise ApiError(422, "name_required", "name is required", "name")
+    cli = str(values.get("cli") or Cli.CLAUDE)
+    _check_links(session, cli, values.get("team_id"), values.get("account_id"))
+    values["fallback_account_id"] = values.get("fallback_account_id") or None
+    _check_fallback(session, None, values)
     agent = Agent(workspace_id=DEFAULT_WORKSPACE, **values)
     session.add(agent)
     session.commit()
@@ -100,8 +155,37 @@ def update_agent(agent_id: str, payload: AgentUpdate, session: DbSession) -> Age
     changes = payload.model_dump(exclude_unset=True)
     if "name" in changes and not changes["name"]:
         raise ApiError(422, "name_required", "name is required", "name")
+    # Changing the CLI leaves the old CLI's account behind (unless a new one was sent).
+    if changes.get("cli", agent.cli) != agent.cli and "account_id" not in changes:
+        changes["account_id"] = None
+    # Checked before assigning: a wrong id would fail the flush with a foreign key error.
+    _check_links(
+        session,
+        str(changes.get("cli", agent.cli)),
+        changes.get("team_id", agent.team_id),
+        changes.get("account_id", agent.account_id),
+    )
+    if "fallback_account_id" in changes:
+        # Radix selects emit "" for «none».
+        changes["fallback_account_id"] = changes["fallback_account_id"] or None
+    _check_fallback(session, agent, changes)
     for field, value in changes.items():
         setattr(agent, field, value)
+    if not agent.fallback_account_id:
+        # Without a secondary there is nothing to run on or to ask about.
+        agent.fallback_model = ""
+        agent.using_fallback_until = None
+        agent.switch_decided_until = None
+    session.commit()
+    return _read(session, agent)
+
+
+@router.post("/agents/{agent_id}/fallback/clear")
+def clear_fallback(agent_id: str, session: DbSession) -> AgentRead:
+    """Back to the main CLI before the window resets. Queued tasks follow; a running one ends
+    with the CLI it started with."""
+    agent = _get(session, agent_id)
+    agent.using_fallback_until = None
     session.commit()
     return _read(session, agent)
 
@@ -113,7 +197,14 @@ def duplicate_agent(
     """Copies an agent. The UI sends the localized name for the copy."""
     source = _get(session, agent_id)
     copied = AgentRead.model_validate(source).model_dump(
-        exclude={"id", "created_at", "updated_at", "queued_count", "running_count"}
+        exclude={
+            "id",
+            "created_at",
+            "updated_at",
+            "queued_count",
+            "running_count",
+            "using_fallback",
+        }
     )
     copied["name"] = payload.name if payload and payload.name else f"{source.name} (2)"[:80]
     agent = Agent(workspace_id=DEFAULT_WORKSPACE, **copied)

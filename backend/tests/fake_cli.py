@@ -35,6 +35,7 @@ Usage: python fake_cli.py [--ignore-exit] [--no-trust] [--deaf] [-i] "<prompt>" 
 from __future__ import annotations
 
 import json
+import os
 import signal
 import subprocess
 import sys
@@ -43,6 +44,51 @@ import time
 import uuid
 from pathlib import Path
 
+
+def subcommand() -> None:
+    """The CLIs' non-interactive commands Agentic OS runs to know an account (phase 10):
+    `auth status` (Claude: JSON, exit 1 without a session) and `models` (agy: «id<TAB>label»).
+    FAKE_CLI_AUTH=down logs the account out; FAKE_CLI_EMAIL / FAKE_CLI_PLAN name it."""
+    args = sys.argv[1:]
+    logged_in = os.environ.get("FAKE_CLI_AUTH") != "down"
+    email = os.environ.get("FAKE_CLI_EMAIL", "fake@example.com")
+    config = os.environ.get("CLAUDE_CONFIG_DIR")
+    login_file = Path(config) / "fake-login.json" if config else None
+    if os.environ.get("FAKE_CLI_REQUIRE_LOGIN") and login_file is not None:
+        # An account folder only has a session after `auth login` wrote its login there.
+        logged_in = login_file.is_file()
+        if logged_in:
+            email = json.loads(login_file.read_text("utf-8"))["email"]
+    if args[:2] == ["auth", "login"]:
+        if "--email" in args:
+            email = args[args.index("--email") + 1]
+        print("Opening the browser to sign in…", flush=True)
+        time.sleep(0.5)
+        if login_file is not None:
+            login_file.parent.mkdir(parents=True, exist_ok=True)
+            login_file.write_text(json.dumps({"email": email}), "utf-8")
+        print("Login successful.", flush=True)
+        sys.exit(0)
+    if args[:2] == ["auth", "status"]:
+        data = {
+            "loggedIn": logged_in,
+            "authMethod": "claude.ai" if logged_in else "none",
+            "configDirectory": config or "~/.claude",
+        }
+        if logged_in:
+            data["email"] = email
+            data["subscriptionType"] = os.environ.get("FAKE_CLI_PLAN", "pro")
+        print(json.dumps(data))
+        sys.exit(0 if logged_in else 1)
+    if args[:1] == ["models"]:
+        if not logged_in:
+            print("not logged in", file=sys.stderr)
+            sys.exit(1)
+        print("fake-model\tFake model")
+        sys.exit(0)
+
+
+subcommand()
 IGNORE_EXIT = "--ignore-exit" in sys.argv
 NO_TRUST = "--no-trust" in sys.argv
 DEAF = "--deaf" in sys.argv
@@ -427,9 +473,14 @@ def cost_so_far() -> float:
 
 
 def status_line() -> None:
-    """Claude refreshes its status line after a turn: its JSON carries the cost so far."""
+    """Claude refreshes its status line after a turn: its JSON carries the cost so far and, for
+    a subscriber, the usage of its windows (FAKE_CLI_RATE_LIMITS: the `rate_limits` object)."""
     if CLAUDE_MODE and usage_so_far["input"]:
-        hook_payload("StatusLine", {"cost": {"total_cost_usd": cost_so_far()}, "version": "9.9"})
+        payload = {"cost": {"total_cost_usd": cost_so_far()}, "version": "9.9"}
+        limits = os.environ.get("FAKE_CLI_RATE_LIMITS")
+        if limits:
+            payload["rate_limits"] = json.loads(limits)
+        hook_payload("StatusLine", payload)
 
 
 def cost_state() -> None:
@@ -593,6 +644,8 @@ def main() -> None:
         out(f"No conversation found with session ID: {RESUME}")
         sys.exit(1)
     carried_usage()
+    if os.environ.get("FAKE_CLI_SHOW_CONFIG"):  # which login folder the run was started with
+        out(f"CONFIG_DIR={os.environ.get('CLAUDE_CONFIG_DIR', '')}")
     if CLAUDE_MODE:
         hook("SessionStart")
     if AGY_MODE:

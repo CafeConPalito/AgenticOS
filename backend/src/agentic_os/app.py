@@ -4,6 +4,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+import structlog
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -16,13 +17,19 @@ from agentic_os.db.migrate import upgrade_to_head
 from agentic_os.db.session import create_db_engine, database_url, make_sessionmaker
 from agentic_os.errors import register_error_handlers
 from agentic_os.logging_setup import configure_logging
+from agentic_os.models import CliAccount
+from agentic_os.services import accounts as account_ops
 from agentic_os.services import housekeeping
+from agentic_os.services.accounts_login import AccountLogins
 from agentic_os.services.clis import CliCatalog
 from agentic_os.services.mcp_server import mount_app
 from agentic_os.services.runs.manager import RunManager
 from agentic_os.services.scheduler import Scheduler
-from agentic_os.services.trust import TrustCleaner, agy_settings, claude_config
+from agentic_os.services.trust import TrustCleaner, account_trust_files, agy_settings, claude_config
+from agentic_os.services.usage import limits as usage_limits
 from agentic_os.services.worktrees import Worktrees
+
+log = structlog.get_logger()
 
 
 class AgentGateway:
@@ -35,6 +42,34 @@ class AgentGateway:
             await send({"type": "http.response.body", "body": b""})
             return
         await gate(scope, receive, send)
+
+
+def check_sessions(sessions, manager: RunManager, scheduler: Scheduler) -> None:
+    """At startup (slow: it runs the CLIs): which accounts are logged in. A logout shows up in
+    «Te necesitan» before any task trips over it."""
+    try:
+        with sessions() as db:
+            for account in account_ops.list_accounts(db):
+                manager.probe_account(db, account)
+                db.commit()
+            usage_limits.sync_session_items(db)
+            db.commit()
+        scheduler.poke()
+    except Exception:
+        log.exception("could not check the accounts' sessions")
+
+
+def session_checked_after_login(
+    sessions, manager: RunManager, scheduler: Scheduler, account_id: str
+) -> None:
+    """A login terminal closed: ask the CLI who is logged in now, and let the scheduler know."""
+    with sessions() as db:
+        account = db.get(CliAccount, account_id)
+        if account is not None:
+            manager.probe_account(db, account)
+            usage_limits.sync_session_items(db)
+            db.commit()
+    scheduler.poke()
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -63,6 +98,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 "claude": settings.claude_config_file or claude_config(),
                 "agy": settings.agy_settings_file or agy_settings(),
             },
+            extra_configs=lambda: account_trust_files(app.state.sessionmaker),
         )
         worktrees = Worktrees(trust)
         scheduler.prepare_workspace = worktrees.prepare
@@ -74,8 +110,23 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         )
         manager.usage.on_updated = lambda run_id: scheduler.check_limits()
         manager.on_run_ended = scheduler.run_ended
+        manager.on_quota_changed = scheduler.check_limits
         manager.on_tasks_changed = scheduler.poke
         scheduler.recover()
+        scheduler.probe_account = manager.probe_account
+        logins = AccountLogins(settings.cli_command_overrides)
+        logins.loop = asyncio.get_running_loop()
+        logins.on_end = lambda account_id: session_checked_after_login(
+            app.state.sessionmaker, manager, scheduler, account_id
+        )
+        app.state.logins = logins
+        if settings.check_sessions_at_startup:
+            threading.Thread(
+                target=check_sessions,
+                args=(app.state.sessionmaker, manager, scheduler),
+                name="startup-sessions",
+                daemon=True,
+            ).start()
         # Leftovers of earlier crashes (phase 08): agy plugins before the scheduler can write
         # new ones; the slow rest (git, old logs) in the background.
         housekeeping.stale_agy_plugins(app.state.sessionmaker)
@@ -98,6 +149,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 yield
         finally:
             app.state.mcp_gate = None
+            logins.shutdown()
             # The scheduler stops first: the runs closed by the shutdown are not "stopped by the
             # user"; their tasks are found interrupted on the next start.
             scheduler.stop()

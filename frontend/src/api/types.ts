@@ -24,18 +24,29 @@ export interface AgentFields {
   can_spawn_subagents: boolean
   can_create_tasks: boolean
   status: AgentStatus
+  /** Phase 10. Null: no team / the default account of its CLI. */
+  team_id: string | null
+  account_id: string | null
+  /** The secondary CLI (phase 10): an account, which fixes the CLI, and a model. */
+  fallback_account_id: string | null
+  fallback_model: string
 }
 
 export interface Agent extends AgentFields {
   id: string
   template: string | null
+  /** Running with its secondary CLI right now (the person switched). */
+  using_fallback: boolean
   queued_count: number
   running_count: number
   created_at: string
   updated_at: string
 }
 
-export interface AgentTemplate extends Omit<AgentFields, 'max_concurrency' | 'status'> {
+export interface AgentTemplate extends Omit<
+  AgentFields,
+  'max_concurrency' | 'status' | 'team_id' | 'account_id' | 'fallback_account_id' | 'fallback_model'
+> {
   id: string
 }
 
@@ -130,6 +141,9 @@ export interface Run {
   resumable: boolean
   /** Its terminal log was deleted by the log retention. */
   log_purged: boolean
+  /** The CLI account it ran with (phase 10) and its name. */
+  account_id: string | null
+  account_label: string
   task_code: string | null
   stage_name: string | null
   created_at: string
@@ -137,8 +151,8 @@ export interface Run {
   controller: string | null
   viewers: number
   usage: RunUsage
-  /** A manual run launched over its CLI's daily limit or out of quota. */
-  warning?: 'limit_reached' | 'quota_reached' | null
+  /** A manual run launched with an account over its daily limit, out of quota or logged out. */
+  warning?: 'limit_reached' | 'quota_reached' | 'session_reached' | null
 }
 
 export interface ModelOption {
@@ -242,7 +256,9 @@ export interface Task {
   worktree_path: string | null
   branch: string | null
   /** A queued task that cannot start now even with a free agent. */
-  blocked: 'folder_busy' | 'limit_claude' | 'limit_agy' | 'quota_claude' | 'quota_agy' | null
+  blocked: 'folder_busy' | 'limit' | 'quota' | 'session' | 'decision' | null
+  /** The account behind `limit`, `quota` and `session`. */
+  blocked_by: string | null
   active_run_id: string | null
   last_run_id: string | null
   queued_at: string | null
@@ -345,6 +361,8 @@ export type InboxKind =
   | 'attention'
   | 'limit'
   | 'quota'
+  | 'account'
+  | 'switch'
 
 export type InboxResolution =
   'approved' | 'rejected' | 'answered' | 'answered_in_terminal' | 'reviewed' | 'dismissed'
@@ -403,12 +421,16 @@ export interface TreeNode {
 }
 
 // ------------------------------------------------------------------ usage (phase 07)
-export interface UsageLimits {
-  claude_usd: number | null
-  agy_tokens: number | null
+/** The daily limit of one account (USD for Claude Code, tokens for agy); null: none. */
+export interface AccountLimit {
+  account_id: string
+  daily_limit: number | null
 }
 
 export interface LimitState {
+  account_id: string
+  account_name: string
+  is_default: boolean
   cli: CliId
   unit: 'usd' | 'tokens'
   limit: number | null
@@ -448,7 +470,7 @@ export interface DailyPoint {
 }
 
 export interface DailySeries {
-  group: 'agent' | 'project'
+  group: 'agent' | 'project' | 'account'
   groups: UsageGroup[]
   days: DailyPoint[]
 }
@@ -464,7 +486,7 @@ export interface BreakdownRow {
 }
 
 export interface Breakdown {
-  group: 'agent' | 'project' | 'task'
+  group: 'agent' | 'project' | 'task' | 'account'
   rows: BreakdownRow[]
 }
 
@@ -481,6 +503,8 @@ export interface SessionRow {
   task_id: string | null
   task_code: string | null
   task_title: string | null
+  account_id: string | null
+  account_label: string
   cli: CliId
   model: string
   status: RunStatus
@@ -530,6 +554,10 @@ export interface HomeAgent {
   cli: CliId
   status: AgentStatus
   state: AgentState
+  team_id: string | null
+  account_id: string | null
+  /** Running with its secondary CLI (then `cli` and `account_id` are the secondary's). */
+  using_fallback: boolean
   queued: number
   pending_requests: number
   sessions: HomeSession[]
@@ -561,4 +589,68 @@ export interface Home {
   agents: HomeAgent[]
   projects: HomeProject[]
   counts: HomeCounts
+}
+
+// ------------------------------------------------------------------ accounts and teams (phase 10)
+export type SessionState = 'ok' | 'down' | 'unknown'
+
+/** A window of a subscription (5 h, weekly…) as the CLI's status line reported it. */
+export interface QuotaWindow {
+  /** five_hour, seven_day (Claude Code) · gemini-5h, gemini-weekly, 3p-5h, 3p-weekly (agy). */
+  id: string
+  used_pct: number
+  resets_at: string
+  read_at: string
+  /** The window ended since it was read: 0 % until a session reads it again. */
+  expired: boolean
+}
+
+export interface AccountAgent {
+  id: string
+  name: string
+  color: string
+}
+
+export interface Account {
+  id: string
+  cli: CliId
+  label: string
+  /** What the UI shows: the email once known, else the label. */
+  name: string
+  email: string
+  plan: string
+  is_default: boolean
+  /** The CLI's own configuration (it cannot be removed). */
+  is_system: boolean
+  session_state: SessionState
+  session_checked_at: string | null
+  daily_limit: number | null
+  unit: 'usd' | 'tokens'
+  used_today: number
+  quota: QuotaWindow[]
+  agents: AccountAgent[]
+  live_runs: number
+  /** A login terminal is open for it. */
+  logging_in: boolean
+}
+
+export interface Team {
+  id: string
+  name: string
+  description: string
+  position: number
+  agent_ids: string[]
+  created_at: string
+  updated_at: string
+}
+
+/** Whether Agentic OS reads agy's subscription quota (an opt-in status line in agy's settings). */
+export interface AgyQuotaState {
+  /** agy was run once: its settings file exists. */
+  available: boolean
+  enabled: boolean
+  /** The person has a status line of their own: it is left alone. */
+  taken: boolean
+  /** An agy process is open: its settings cannot be changed now. */
+  running: boolean
 }

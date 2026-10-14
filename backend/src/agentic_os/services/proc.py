@@ -9,18 +9,22 @@ from __future__ import annotations
 import os
 import subprocess
 import sys
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 
 NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
 
 def run(
-    argv: Sequence[str], timeout: float, cwd: str | None = None
+    argv: Sequence[str],
+    timeout: float,
+    cwd: str | None = None,
+    env: Mapping[str, str] | None = None,
 ) -> subprocess.CompletedProcess[str]:
     """Runs a command to completion, capturing its output as text, with no window or stdin."""
     return subprocess.run(
         list(argv),
         cwd=cwd,
+        env=dict(env) if env is not None else None,
         capture_output=True,
         text=True,
         encoding="utf-8",

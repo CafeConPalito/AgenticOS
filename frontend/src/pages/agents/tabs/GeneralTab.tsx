@@ -5,6 +5,7 @@ import { ColorPicker, Field } from '@/components/page'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import type { AgentFormValues } from '../agent-form'
+import { TeamSelect } from '../AgentLinks'
 
 export function GeneralTab() {
   const { t } = useTranslation()
@@ -22,6 +23,15 @@ export function GeneralTab() {
       </Field>
       <Field label={t('agents.fields.role')} htmlFor="agent-role" error={errors.role?.message}>
         <Input id="agent-role" {...register('role')} />
+      </Field>
+      <Field label={t('agents.fields.team')} htmlFor="agent-team">
+        <Controller
+          control={control}
+          name="team_id"
+          render={({ field }) => (
+            <TeamSelect id="agent-team" value={field.value} onChange={field.onChange} />
+          )}
+        />
       </Field>
       <Field
         label={t('agents.fields.avatar')}

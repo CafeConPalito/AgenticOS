@@ -31,8 +31,12 @@ from agentic_os.schemas.usage import (
     UsageSummary,
     UsageTotals,
 )
+from agentic_os.services import accounts as account_ops
 
 DEFAULT_PROJECT_COLOR = "#7C9CFF"
+# An account has no colour of its own: the charts give each one a stable colour by its position.
+ACCOUNT_COLORS = ("#8FB4FF", "#4FD1C5", "#F2C94C", "#C4A1FF", "#FFA06B", "#B5E061")
+REMOVED_ACCOUNT_COLOR = "#8A94A6"
 FAILED_STATUSES = {RunStatus.FAILED.value, RunStatus.INTERRUPTED.value}
 SESSION_SORTS = {
     "started_at",
@@ -98,6 +102,7 @@ def runs_between(
     *,
     agent_id: str | None = None,
     project_id: str | None = None,
+    account_id: str | None = None,
     cli: Cli | None = None,
     tz: tzinfo | None = None,
 ) -> list[Run]:
@@ -113,6 +118,8 @@ def runs_between(
         query = query.where(Run.agent_id == agent_id)
     if project_id:
         query = query.where(Run.project_id == project_id)
+    if account_id:
+        query = query.where(Run.account_id == account_id)
     if cli is not None:
         query = query.where(Run.cli == cli.value)
     return [run for run in db.scalars(query) if start <= started(run) < end]
@@ -167,10 +174,13 @@ def summary(
     *,
     agent_id: str | None = None,
     project_id: str | None = None,
+    account_id: str | None = None,
     tz: tzinfo | None = None,
     now: datetime | None = None,
 ) -> UsageSummary:
-    runs = runs_between(db, first, last, agent_id=agent_id, project_id=project_id, tz=tz)
+    runs = runs_between(
+        db, first, last, agent_id=agent_id, project_id=project_id, account_id=account_id, tz=tz
+    )
     length = (last - first).days + 1
     previous = runs_between(
         db,
@@ -178,6 +188,7 @@ def summary(
         first - timedelta(days=1),
         agent_id=agent_id,
         project_id=project_id,
+        account_id=account_id,
         tz=tz,
     )
     return UsageSummary(date_from=first, date_to=last, kpis=_kpis(runs, previous, now or utcnow()))
@@ -188,6 +199,8 @@ def _group_of(run: Run, group: str) -> str:
         return run.agent_id or f"name:{run.agent_name}"
     if group == "project":
         return run.project_id or f"name:{run.project_name}"
+    if group == "account":
+        return run.account_id or "removed"
     return run.task_id or "manual"
 
 
@@ -199,6 +212,10 @@ def _groups(db: Session, runs: list[Run], group: str) -> dict[str, Group]:
         project_colors = {
             p.id: p.color for p in db.scalars(select(Project).where(Project.id.in_(ids)))
         }
+    accounts = {a.id: a for a in account_ops.list_accounts(db)} if group == "account" else {}
+    account_colors = {
+        account_id: ACCOUNT_COLORS[i % len(ACCOUNT_COLORS)] for i, account_id in enumerate(accounts)
+    }
     tasks: dict[str, Task] = {}
     if group == "task":
         ids = {r.task_id for r in runs if r.task_id}
@@ -212,6 +229,14 @@ def _groups(db: Session, runs: list[Run], group: str) -> dict[str, Group]:
         elif group == "project":
             color = project_colors.get(run.project_id or "", DEFAULT_PROJECT_COLOR)
             found[key] = Group(id=run.project_id, name=run.project_name, color=color)
+        elif group == "account":
+            account = accounts.get(run.account_id or "")
+            name = account_ops.display_name(account) if account else run.account_label
+            found[key] = Group(
+                id=run.account_id,
+                name=name or "Cuenta quitada",
+                color=account_colors.get(run.account_id or "", REMOVED_ACCOUNT_COLOR),
+            )
         else:
             task = tasks.get(run.task_id or "")
             name = f"{task.code} · {task.title}" if task else "Ejecuciones manuales"
@@ -227,9 +252,12 @@ def daily(
     *,
     agent_id: str | None = None,
     project_id: str | None = None,
+    account_id: str | None = None,
     tz: tzinfo | None = None,
 ) -> DailySeries:
-    runs = runs_between(db, first, last, agent_id=agent_id, project_id=project_id, tz=tz)
+    runs = runs_between(
+        db, first, last, agent_id=agent_id, project_id=project_id, account_id=account_id, tz=tz
+    )
     groups = _groups(db, runs, group)
     cost: dict[date, dict[str, float]] = defaultdict(lambda: defaultdict(float))
     tokens: dict[date, dict[str, int]] = defaultdict(lambda: defaultdict(int))
@@ -258,9 +286,12 @@ def breakdown(
     *,
     agent_id: str | None = None,
     project_id: str | None = None,
+    account_id: str | None = None,
     tz: tzinfo | None = None,
 ) -> Breakdown:
-    runs = runs_between(db, first, last, agent_id=agent_id, project_id=project_id, tz=tz)
+    runs = runs_between(
+        db, first, last, agent_id=agent_id, project_id=project_id, account_id=account_id, tz=tz
+    )
     groups = _groups(db, runs, group)
     per: dict[str, list[Run]] = defaultdict(list)
     for run in runs:
@@ -298,13 +329,17 @@ def sessions(
     *,
     agent_id: str | None = None,
     project_id: str | None = None,
+    account_id: str | None = None,
     sort: str = "started_at",
     descending: bool = True,
     limit: int | None = 500,
     tz: tzinfo | None = None,
     now: datetime | None = None,
 ) -> list[SessionRow]:
-    runs = runs_between(db, first, last, agent_id=agent_id, project_id=project_id, tz=tz)
+    runs = runs_between(
+        db, first, last, agent_id=agent_id, project_id=project_id, account_id=account_id, tz=tz
+    )
+    names = {a.id: account_ops.display_name(a) for a in account_ops.list_accounts(db)}
     ids = {r.task_id for r in runs if r.task_id}
     tasks = {t.id: t for t in db.scalars(select(Task).where(Task.id.in_(ids)))}
     moment = now or utcnow()
@@ -325,6 +360,8 @@ def sessions(
                 task_id=run.task_id,
                 task_code=task.code if task else None,
                 task_title=task.title if task else None,
+                account_id=run.account_id,
+                account_label=names.get(run.account_id or "", run.account_label),
                 cli=run.cli,
                 model=_model_of(run),
                 status=run.status,
@@ -365,6 +402,7 @@ CSV_COLUMNS = (
     "proyecto",
     "tarea",
     "cli",
+    "cuenta",
     "modelo",
     "estado",
     "tokens_entrada",
@@ -395,6 +433,7 @@ def sessions_csv(db: Session, rows: list[SessionRow]) -> str:
                 row.project_name,
                 f"{row.task_code} {row.task_title}" if row.task_code else "",
                 row.cli,
+                row.account_label,
                 row.model,
                 row.status,
                 run.input_tokens,

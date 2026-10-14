@@ -1,0 +1,76 @@
+{
+    "session_id":  "session-id",
+    "transcript_path":  "C:\\\\transcript.jsonl",
+    "cwd":  "C:\\\\project",
+    "scratchpad_dir":  "C:\\\\scratch",
+    "prompt_id":  "4468f029-5855-48b6-b328-5773fd0ffa4c",
+    "effort":  {
+                   "level":  "medium"
+               },
+    "session_name":  null,
+    "model":  {
+                  "id":  "claude-sonnet-5-5",
+                  "display_name":  "Sonnet 5.5"
+              },
+    "workspace":  {
+                      "current_dir":  "C:\\\\project",
+                      "project_dir":  "C:\\\\project"
+                  },
+    "version":  "2.1.299",
+    "output_style":  {
+                         "name":  "default"
+                     },
+    "cost":  {
+                 "total_cost_usd":  0.0471656,
+                 "total_duration_ms":  24592,
+                 "total_api_duration_ms":  2580,
+                 "total_lines_added":  0,
+                 "total_lines_removed":  0
+             },
+    "context_window":  {
+                           "total_input_tokens":  39887,
+                           "total_output_tokens":  4,
+                           "context_window_size":  1000000,
+                           "current_usage":  {
+                                                 "input_tokens":  2,
+                                                 "output_tokens":  4,
+                                                 "cache_creation_input_tokens":  11027,
+                                                 "cache_read_input_tokens":  28858
+                                             },
+                           "used_percentage":  4,
+                           "remaining_percentage":  96
+                       },
+    "exceeds_200k_tokens":  false,
+    "prompt_cache":  {
+                         "warm":  true,
+                         "caching_observed":  true,
+                         "ttl":  "1h",
+                         "expires_at":  1791994975,
+                         "requests":  1,
+                         "misses":  0,
+                         "expected_rebuilds":  0,
+                         "hit_ratio":  0.7234938701832677,
+                         "cache_write_tokens":  11027,
+                         "miss_recache_tokens":  0,
+                         "last_miss_at":  null,
+                         "last_miss_cause":  null,
+                         "miss_causes":  {
+
+                                         },
+                         "recache_tokens_if_cold":  39887
+                     },
+    "fast_mode":  false,
+    "thinking":  {
+                     "enabled":  true
+                 },
+    "rate_limits":  {
+                        "five_hour":  {
+                                          "used_percentage":  11,
+                                          "resets_at":  1792003200
+                                      },
+                        "seven_day":  {
+                                          "used_percentage":  75,
+                                          "resets_at":  1792249200
+                                      }
+                    }
+}

@@ -1,29 +1,50 @@
-import { Bot, Plus } from 'lucide-react'
+import { Bot, Pencil, Plus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import type { HomeAgent, TodayAgent } from '@/api/types'
+import type { HomeAgent, Team, TodayAgent } from '@/api/types'
 import { EmptyState } from '@/components/EmptyState'
 import { Button } from '@/components/ui/button'
 import { useDialogs } from '@/stores/dialogs'
 import { AgentCard } from './AgentCard'
 
-/** All the agents in one grid; drafts last. */
+const GRID = 'grid grid-cols-[repeat(auto-fill,minmax(250px,1fr))] gap-3'
+
+/** Drafts last, the rest in the order they come. */
+const draftsLast = (agents: HomeAgent[]) =>
+  [...agents].sort((a, b) => Number(a.state === 'draft') - Number(b.state === 'draft'))
+
+/** The agents grouped by team (phase 10); one grid when there are no teams. */
 export function AgentGrid({
   agents,
+  teams,
   usage,
   highlighted,
   waitingRuns,
 }: {
   agents: HomeAgent[]
+  teams: Team[]
   usage: TodayAgent[]
   highlighted: string | null
   waitingRuns: Set<string>
 }) {
   const { t } = useTranslation()
   const openNewAgent = useDialogs((s) => s.openNewAgent)
-  const ordered = [...agents].sort(
-    (a, b) => Number(a.state === 'draft') - Number(b.state === 'draft'),
-  )
+  const openTeam = useDialogs((s) => s.openTeam)
   const maxCost = Math.max(0, ...usage.map((u) => u.cost_usd))
+  const known = new Set(teams.map((team) => team.id))
+  // An agent whose team is gone (deleted meanwhile) reads as having none.
+  const loose = draftsLast(agents.filter((a) => !a.team_id || !known.has(a.team_id)))
+
+  const cards = (list: HomeAgent[]) =>
+    list.map((agent) => (
+      <AgentCard
+        key={agent.id}
+        agent={agent}
+        highlighted={highlighted === agent.id}
+        usage={usage.find((u) => u.id === agent.id)}
+        maxCost={maxCost}
+        waitingRuns={waitingRuns}
+      />
+    ))
 
   return (
     <section
@@ -35,46 +56,105 @@ export function AgentGrid({
           {t('home.agents.title')}
         </h2>
         <span className="text-xs text-muted-foreground">
-          {t('home.agents.count', { count: agents.length })}
+          {teams.length > 0
+            ? t('home.agents.countTeams', { teams: teams.length, agents: agents.length })
+            : t('home.agents.count', { count: agents.length })}
         </span>
-        {agents.length > 0 && (
+        <div className="ml-auto flex items-center gap-1">
           <button
             type="button"
-            onClick={openNewAgent}
-            className="ml-auto flex h-[30px] items-center gap-1.5 rounded-full px-3 text-[12.5px] text-muted-foreground hover:bg-accent hover:text-foreground"
+            onClick={() => openTeam()}
+            className="flex h-[30px] items-center gap-1.5 rounded-full px-3 text-[12.5px] text-muted-foreground hover:bg-accent hover:text-foreground"
           >
             <Plus className="size-3.5" />
-            {t('home.agents.new')}
+            {t('teams.new')}
           </button>
-        )}
+          {agents.length > 0 && (
+            <button
+              type="button"
+              onClick={() => openNewAgent()}
+              className="flex h-[30px] items-center gap-1.5 rounded-full px-3 text-[12.5px] text-muted-foreground hover:bg-accent hover:text-foreground"
+            >
+              <Plus className="size-3.5" />
+              {t('home.agents.new')}
+            </button>
+          )}
+        </div>
       </div>
-      {agents.length === 0 ? (
+      {agents.length === 0 && teams.length === 0 ? (
         <EmptyState
           icon={Bot}
           title={t('home.agents.empty.title')}
           description={t('home.agents.empty.description')}
         >
           <Button
-            onClick={openNewAgent}
+            onClick={() => openNewAgent()}
             className="bg-primary-action text-white hover:bg-primary-action-hover"
           >
             <Plus />
             {t('home.agents.new')}
           </Button>
         </EmptyState>
+      ) : teams.length === 0 ? (
+        <div className={GRID}>{cards(loose)}</div>
       ) : (
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(250px,1fr))] gap-3">
-          {ordered.map((agent) => (
-            <AgentCard
-              key={agent.id}
-              agent={agent}
-              highlighted={highlighted === agent.id}
-              usage={usage.find((u) => u.id === agent.id)}
-              maxCost={maxCost}
-              waitingRuns={waitingRuns}
-            />
-          ))}
-        </div>
+        <>
+          {teams.map((team) => {
+            const members = draftsLast(agents.filter((a) => a.team_id === team.id))
+            const active = members.filter((a) => a.state === 'running' || a.state === 'waiting')
+            return (
+              <section key={team.id} aria-label={team.name} className="flex flex-col gap-2.5">
+                <div className="flex items-center gap-3">
+                  <h3 className="text-[13px] font-bold">{team.name}</h3>
+                  <span className="text-xs whitespace-nowrap text-muted-foreground">
+                    {t('home.agents.teamMeta', { count: members.length, active: active.length })}
+                  </span>
+                  <span
+                    aria-hidden
+                    className="h-px flex-1 bg-[linear-gradient(90deg,var(--sep),transparent)]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => openNewAgent({ teamId: team.id })}
+                    aria-label={t('teams.addAgentTo', { team: team.name })}
+                    className="flex h-7 items-center gap-1 rounded-full px-2.5 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
+                  >
+                    <Plus className="size-3" />
+                    {t('teams.addAgent')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => openTeam(team)}
+                    aria-label={t('teams.editTeam', { team: team.name })}
+                    className="grid size-7 place-items-center rounded-full text-muted-foreground hover:bg-accent hover:text-foreground"
+                  >
+                    <Pencil className="size-3.5" />
+                  </button>
+                </div>
+                {members.length > 0 ? (
+                  <div className={GRID}>{cards(members)}</div>
+                ) : (
+                  <p className="text-xs text-muted-foreground">{t('teams.emptyTeam')}</p>
+                )}
+              </section>
+            )
+          })}
+          {loose.length > 0 && (
+            <section aria-label={t('teams.none')} className="flex flex-col gap-2.5">
+              <div className="flex items-center gap-3">
+                <h3 className="text-[13px] font-bold">{t('teams.none')}</h3>
+                <span className="text-xs whitespace-nowrap text-muted-foreground">
+                  {t('home.agents.count', { count: loose.length })}
+                </span>
+                <span
+                  aria-hidden
+                  className="h-px flex-1 bg-[linear-gradient(90deg,var(--sep),transparent)]"
+                />
+              </div>
+              <div className={GRID}>{cards(loose)}</div>
+            </section>
+          )}
+        </>
       )}
     </section>
   )

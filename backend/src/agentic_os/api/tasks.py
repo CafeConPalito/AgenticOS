@@ -39,11 +39,13 @@ from agentic_os.schemas.task import (
     TreeNode,
 )
 from agentic_os.schemas.usage import UsageTotals
+from agentic_os.services import accounts as account_ops
 from agentic_os.services import tasks as task_ops
 from agentic_os.services.proc import open_in_file_manager
 from agentic_os.services.runs.manager import RunManager
 from agentic_os.services.scheduler import Scheduler, blocked_reason
 from agentic_os.services.usage import limits as usage_limits
+from agentic_os.services.usage import switching
 from agentic_os.services.usage.stats import task_usage
 
 router = APIRouter(tags=["tasks"])
@@ -115,20 +117,29 @@ def read_tasks(db: Session, tasks: list[Task]) -> list[TaskRead]:
             done_total[0] += count
 
     usage = task_usage(db, ids)
-    # Queued tasks of a CLI over its daily limit or out of quota wait (phase 07).
+    # Queued tasks of an account over its daily limit, out of quota or logged out wait
+    # (phases 07 and 10).
     gates: dict[str, str | None] = {}
+    index = None
+    deciding: set[str] = set()
     if any(t.status == TaskStatus.QUEUED for t in tasks):
-        gates = {cli.value: gate for cli, gate in usage_limits.blocked_all(db).items()}
+        gates = usage_limits.blocked_all(db)
+        index = account_ops.AccountIndex(db)
+        deciding = switching.decisions_pending(db)
     result = []
     for task in tasks:
         project = projects[task.project_id]
         project_stages = stages.get(task.project_id, [])
         stage = next((s for s in project_stages if s.id == task.stage_id), None)
         agent = agents.get(task.agent_id) if task.agent_id else None
-        blocked = None
+        blocked = blocked_by = None
         if task.status == TaskStatus.QUEUED:
-            gate = gates.get(agent.cli) if agent else None
-            blocked = blocked_reason(db, task, project) or (f"{gate}_{agent.cli}" if gate else None)
+            account = index.of(agent) if agent and index else None
+            gate = gates.get(account.id) if account else None
+            decision = "decision" if agent is not None and agent.id in deciding else None
+            blocked = blocked_reason(db, task, project) or decision or gate
+            if gate is not None and blocked == gate and account is not None:
+                blocked_by = account_ops.display_name(account)
         result.append(
             TaskRead(
                 id=task.id,
@@ -156,6 +167,7 @@ def read_tasks(db: Session, tasks: list[Task]) -> list[TaskRead]:
                 worktree_path=task.worktree_path,
                 branch=task.branch,
                 blocked=blocked,
+                blocked_by=blocked_by,
                 active_run_id=active.get(task.id),
                 last_run_id=last.get(task.id),
                 queued_at=task.queued_at,

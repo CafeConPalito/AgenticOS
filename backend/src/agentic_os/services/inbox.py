@@ -44,6 +44,8 @@ SETTING_FOR = {
     InboxKind.ATTENTION: "stalled",
     InboxKind.LIMIT: "limits",
     InboxKind.QUOTA: "limits",
+    InboxKind.ACCOUNT: "limits",
+    InboxKind.SWITCH: "limits",
 }
 
 

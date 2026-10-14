@@ -17,7 +17,9 @@ from collections.abc import Callable
 from pathlib import Path
 
 import structlog
+from sqlalchemy import select
 
+from agentic_os.models import Cli, CliAccount
 from agentic_os.services import proc
 
 log = structlog.get_logger()
@@ -93,16 +95,35 @@ def forget_agy(path: Path, folders: list[str]) -> list[str]:
     return folders
 
 
+def account_claude_config(config_dir: str | Path) -> Path:
+    """Where Claude Code keeps the folder trust of an account with its own login folder."""
+    return Path(config_dir) / ".claude.json"
+
+
+def account_trust_files(sessions) -> dict[str, list[Path]]:
+    """The trust files of the accounts that keep their login in a folder of their own."""
+    with sessions() as db:
+        folders = db.scalars(
+            select(CliAccount.config_dir).where(
+                CliAccount.cli == Cli.CLAUDE.value, CliAccount.config_dir.is_not(None)
+            )
+        ).all()
+    return {"claude": [account_claude_config(folder) for folder in folders]}
+
+
 class TrustCleaner:
     def __init__(
         self,
         pending_file: Path,
         configs: dict[str, Path] | None = None,
         is_running: Callable[[str], bool] = process_running,
+        extra_configs: Callable[[], dict[str, list[Path]]] | None = None,
     ) -> None:
         self._pending_file = pending_file
         self._configs = configs or {"claude": claude_config(), "agy": agy_settings()}
         self._is_running = is_running
+        # More files of a CLI that appear while the app runs: the accounts' own folders.
+        self._extra_configs = extra_configs or (lambda: {})
         self._lock = threading.Lock()
 
     def _pending(self) -> dict[str, list[str]]:
@@ -133,6 +154,7 @@ class TrustCleaner:
             if not any(pending.values()):
                 return {}
             forgetters = {"claude": forget_claude, "agy": forget_agy}
+            extra = self._extra_configs()
             for cli, folders in pending.items():
                 if not folders or self._is_running(IMAGES[cli]):
                     continue
@@ -141,6 +163,13 @@ class TrustCleaner:
                 except OSError:
                     log.exception("could not clean the folder trust", cli=cli)
                     continue
+                # The accounts' own files are best effort, each on its own: one locked file must
+                # not undo what the main one already got.
+                for path in extra.get(cli, []):
+                    try:
+                        forgetters[cli](path, folders)
+                    except OSError:
+                        log.exception("could not clean an account's folder trust", path=str(path))
                 pending[cli] = [f for f in folders if f not in done]
             self._save(pending)
             return {cli: len(f) for cli, f in pending.items() if f}

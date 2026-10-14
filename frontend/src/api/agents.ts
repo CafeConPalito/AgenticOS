@@ -53,6 +53,15 @@ export function useUpdateAgent(id: string) {
   })
 }
 
+/** Back to the main CLI before the window resets. */
+export function useClearFallback() {
+  const invalidate = useInvalidateAgents()
+  return useMutation({
+    mutationFn: (id: string) => api.post<Agent>(`/api/agents/${id}/fallback/clear`),
+    onSuccess: (agent) => invalidate(agent),
+  })
+}
+
 export function useDuplicateAgent() {
   const invalidate = useInvalidateAgents()
   return useMutation({

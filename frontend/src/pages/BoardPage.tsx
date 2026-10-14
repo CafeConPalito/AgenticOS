@@ -566,7 +566,10 @@ function QueueCard({
       <div className="text-[11.5px] text-muted-foreground">
         {task.stage_name ?? t('tasks.noStage')} · <PriorityLabel priority={task.priority} />
         {task.blocked && (
-          <span className="text-status-waiting"> · {t(`tasks.blocked.${task.blocked}`)}</span>
+          <span className="text-status-waiting">
+            {' '}
+            · {t(`tasks.blocked.${task.blocked}`, { account: task.blocked_by ?? '' })}
+          </span>
         )}
       </div>
     </article>

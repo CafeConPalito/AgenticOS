@@ -1,9 +1,10 @@
+from datetime import datetime
 from enum import StrEnum
 
-from sqlalchemy import JSON, Boolean, CheckConstraint, Integer, String, Text
+from sqlalchemy import JSON, Boolean, CheckConstraint, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
-from agentic_os.db.base import Base, IdMixin, TimestampMixin, WorkspaceMixin
+from agentic_os.db.base import Base, IdMixin, TimestampMixin, UTCDateTime, WorkspaceMixin
 
 
 class Cli(StrEnum):
@@ -65,3 +66,21 @@ class Agent(IdMixin, WorkspaceMixin, TimestampMixin, Base):
     can_create_tasks: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     status: Mapped[str] = mapped_column(String(16), nullable=False, default=AgentStatus.ACTIVE)
     template: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    # Phase 10. No team: shown under «Sin equipo». No account: the default one of its CLI.
+    team_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("teams.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    account_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("cli_accounts.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    # The secondary CLI (phase 10): an account (which fixes the CLI) and a model the agent can
+    # switch to when its main account is about to run out of quota. Optional.
+    fallback_account_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("cli_accounts.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    fallback_model: Mapped[str] = mapped_column(String(80), nullable=False, default="")
+    # The person chose to switch: the agent runs with the secondary until this moment (the reset
+    # of the window that was about to run out). Past it, it is back on the main one.
+    using_fallback_until: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    # The person chose to stay: no new question until this moment (the same reset).
+    switch_decided_until: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)

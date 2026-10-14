@@ -168,6 +168,7 @@ function RunSidePanel({ run }: { run: Run }) {
       ),
     ],
     [t('runs.details.cli'), t(`cli.${run.cli}`)],
+    [t('runs.details.account'), run.account_label || t('common.none')],
     [
       t('runs.details.model'),
       <span className="font-mono">{run.model || t('cli.defaultModel')}</span>,

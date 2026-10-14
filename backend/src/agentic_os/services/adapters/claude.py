@@ -80,4 +80,6 @@ class ClaudeAdapter(CliAdapter):
         ]
         if ctx.model:
             argv += ["--model", ctx.model]
-        return LaunchSpec(argv, clean_env(), session_id)
+        # The account's folder wins over a CLAUDE_CONFIG_DIR of the person (system account:
+        # nothing is added and their own value, if any, is kept).
+        return LaunchSpec(argv, {**clean_env(), **ctx.account_env}, session_id)

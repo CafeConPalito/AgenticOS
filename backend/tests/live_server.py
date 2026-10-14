@@ -79,6 +79,7 @@ def _environment(settings: Settings) -> dict[str, str]:
     env.update(
         AGENTIC_OS_DATA_DIR=str(settings.data_dir),
         AGENTIC_OS_CLI_COMMAND_OVERRIDES=json.dumps(settings.cli_command_overrides),
+        AGENTIC_OS_CHECK_SESSIONS_AT_STARTUP=json.dumps(settings.check_sessions_at_startup),
     )
     if settings.claude_config_file:
         env["AGENTIC_OS_CLAUDE_CONFIG_FILE"] = str(settings.claude_config_file)

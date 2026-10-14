@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useAccounts } from '@/api/accounts'
 import { useClis } from '@/api/clis'
 import { useHome } from '@/api/home'
 import { useInbox } from '@/api/inbox'
+import { useTeams } from '@/api/teams'
 import { useUsageToday } from '@/api/usage'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useHealth } from '@/hooks/useHealth'
@@ -22,6 +24,8 @@ export default function HomePage() {
   // A stand-in backend (or an older one) may answer something else: show nothing, not a crash.
   const pending = useMemo(() => (Array.isArray(pendingData) ? pendingData : []), [pendingData])
   const clis = useClis().data
+  const accounts = useAccounts().data
+  const teams = useTeams().data
   const todayQuery = useUsageToday()
   const today =
     todayQuery.data && Array.isArray(todayQuery.data.agents) ? todayQuery.data : undefined
@@ -34,8 +38,8 @@ export default function HomePage() {
     [pending],
   )
   const alerts = useMemo(
-    () => buildCliAlerts({ pending, clis, today, snoozed, t }),
-    [pending, clis, today, snoozed, t],
+    () => buildCliAlerts({ pending, clis, accounts, today, snoozed, t }),
+    [pending, clis, accounts, today, snoozed, t],
   )
   const waitingRuns = useMemo(
     () => new Set(pending.flatMap((item) => (item.run_id ? [item.run_id] : []))),
@@ -80,6 +84,7 @@ export default function HomePage() {
         <NeedsYouPanel requests={requests} alerts={alerts} onHoverAgent={setHighlighted} />
         <AgentGrid
           agents={agents}
+          teams={Array.isArray(teams) ? teams : []}
           usage={today?.agents ?? []}
           highlighted={highlighted}
           waitingRuns={waitingRuns}
@@ -90,6 +95,7 @@ export default function HomePage() {
         projects={projects}
         today={today}
         clis={Array.isArray(clis) ? clis : []}
+        accounts={Array.isArray(accounts) ? accounts : []}
       />
     </div>
   )

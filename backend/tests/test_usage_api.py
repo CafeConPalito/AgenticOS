@@ -7,8 +7,8 @@ from datetime import datetime, timedelta
 from fastapi.testclient import TestClient
 
 from agentic_os.db.base import DEFAULT_WORKSPACE, utcnow
-from agentic_os.models import Agent, InboxKind, Project, Run, RunStatus
-from agentic_os.services import inbox
+from agentic_os.models import Agent, Cli, InboxKind, Project, Run, RunStatus
+from agentic_os.services import accounts, inbox
 
 
 def seed(client: TestClient) -> dict[str, str]:
@@ -87,18 +87,29 @@ def test_invalid_periods(client: TestClient):
 
 def test_limits_settings_and_runs_carry_their_usage(client: TestClient):
     seed(client)
-    assert client.get("/api/settings/usage-limits").json() == {
-        "claude_usd": None,
-        "agy_tokens": None,
-    }
-    assert client.put("/api/settings/usage-limits", json={"claude_usd": 0}).status_code == 422
-    saved = client.put("/api/settings/usage-limits", json={"claude_usd": 1.5, "agy_tokens": 10})
-    assert saved.json() == {"claude_usd": 1.5, "agy_tokens": 10}
+    states = client.get("/api/settings/usage-limits").json()
+    assert [(s["cli"], s["limit"]) for s in states] == [("claude", None), ("agy", None)]
+    claude, agy = (s["account_id"] for s in states)
+
+    def put(claude_limit, agy_limit=None):
+        return client.put(
+            "/api/settings/usage-limits",
+            json={
+                "limits": [
+                    {"account_id": claude, "daily_limit": claude_limit},
+                    {"account_id": agy, "daily_limit": agy_limit},
+                ]
+            },
+        )
+
+    assert put(0).status_code == 422
+    saved = put(1.5, 10)
+    assert [(s["cli"], s["limit"]) for s in saved.json()] == [("claude", 1.5), ("agy", 10)]
     today = client.get("/api/usage/today").json()
     assert today["limits"][0]["reached"] is True
     pending = client.get("/api/inbox", params={"status": "pending"}).json()
     assert [item["kind"] for item in pending] == ["limit"]
-    client.put("/api/settings/usage-limits", json={"claude_usd": 100})
+    put(100)
     assert client.get("/api/inbox", params={"status": "pending"}).json() == []
 
     runs = client.get("/api/runs").json()
@@ -112,7 +123,7 @@ def test_limits_settings_and_runs_carry_their_usage(client: TestClient):
 def test_resume_a_quota_item(client: TestClient):
     with client.app.state.sessionmaker() as db:
         item = inbox.create(db, InboxKind.QUOTA, "Antigravity se ha quedado sin cuota", "x")
-        item.command = "agy"
+        item.command = accounts.default_for(db, Cli.AGY).id
         db.commit()
         item_id = item.id
     assert client.post(f"/api/inbox/{item_id}/answer", json={"text": "x"}).status_code == 409

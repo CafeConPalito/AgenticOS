@@ -59,6 +59,9 @@ class Settings(BaseSettings):
     agy_settings_file: Path | None = None
     # Debugging: appends every hook payload received (JSON lines) to this file.
     hook_log: Path | None = None
+    # Asks each CLI at startup whether its accounts are logged in (phase 10). Tests turn it off:
+    # it would run the real CLIs.
+    check_sessions_at_startup: bool = True
 
 
 @lru_cache

@@ -156,6 +156,11 @@ export function AgentCard({
           <span className="truncate">{agent.role}</span>
           <span>·</span>
           <span className="font-mono">{CLI_TAG[agent.cli]}</span>
+          {agent.using_fallback && (
+            <span className="rounded-full bg-subtle px-1.5 text-[10.5px] font-medium text-status-waiting">
+              {t('home.agents.usingFallback')}
+            </span>
+          )}
           <span>·</span>
           <span>{queued}</span>
         </div>

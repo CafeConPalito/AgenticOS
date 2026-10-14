@@ -11,7 +11,8 @@
     "usage": "Consumo",
     "settings": "Ajustes",
     "main": "Secciones",
-    "home": "Inicio"
+    "home": "Inicio",
+    "clis": "CLIs y cuentas"
   },
   "header": {
     "search": "Buscar agentes, tareas o acciones…",
@@ -142,7 +143,17 @@
     "branch_not_found": "Esa rama ya no existe.",
     "branch_in_use": "La rama está en uso: su tarea sigue abierta o tiene un worktree.",
     "branch_not_merged": "La rama tiene trabajo sin fusionar.",
-    "git_failed": "git ha fallado en ese proyecto."
+    "git_failed": "git ha fallado en ese proyecto.",
+    "agy_running": "Cierra Antigravity antes de cambiar sus ajustes.",
+    "agy_not_set_up": "Abre Antigravity una vez para que cree sus ajustes.",
+    "status_line_taken": "Antigravity ya tiene una línea de estado propia: no se toca.",
+    "accounts_unsupported": "Este CLI guarda un único inicio de sesión: no admite más cuentas.",
+    "system_account": "La cuenta del sistema no se puede quitar.",
+    "account_in_use": "Hay agentes que usan esta cuenta: cámbialos de cuenta primero.",
+    "account_busy": "La cuenta tiene una ejecución o un inicio de sesión en marcha.",
+    "account_not_found": "Esa cuenta ya no existe.",
+    "team_not_found": "Ese equipo ya no existe.",
+    "account_cli_mismatch": "Esa cuenta es de otro CLI."
   },
   "cli": {
     "claude": "Claude Code",
@@ -171,7 +182,8 @@
       "model": "Modelo",
       "status": "Estado",
       "queue": "En cola",
-      "usage": "Consumo del mes"
+      "usage": "Consumo del mes",
+      "team": "Equipo"
     },
     "status": {
       "active": "Activo",
@@ -219,8 +231,19 @@
       "spawnHelp": "Ejecuciones hijas en paralelo",
       "createTasks": "Puede crear tareas",
       "createTasksHelp": "En el backlog de sus proyectos",
-      "status": "Estado"
+      "status": "Estado",
+      "team": "Equipo",
+      "account": "Cuenta",
+      "accountHelp": "El inicio de sesión del CLI con el que trabaja. Su límite diario y su cuota son los de esa cuenta.",
+      "accountDefault": "Predeterminada · {{name}}",
+      "accountDefaultNone": "Predeterminada",
+      "fallback": "CLI secundario",
+      "fallbackHelp": "Si la cuenta principal está a punto de agotar su cuota, te propone cambiar a esta cuenta hasta que se reinicie.",
+      "fallbackNone": "Ninguno",
+      "fallbackModel": "Modelo del secundario"
     },
+    "usingFallback": "Usando el secundario",
+    "backToMain": "Volver al principal",
     "permission": {
       "autonomous": "Autónomo",
       "autonomousHelp": "Ejecuta comandos y edita sin preguntar, siempre dentro de su workspace.",
@@ -260,8 +283,9 @@
       "sessions": "Sesiones",
       "period": "Últimos 30 días.",
       "config": "Configuración",
-      "configHint": "CLI, modelo, permisos y concurrencia"
-    }
+      "configHint": "Equipo, CLI, cuenta, modelo, permisos y concurrencia"
+    },
+    "allTeams": "Todos los equipos"
   },
   "projects": {
     "title": "Proyectos",
@@ -412,7 +436,9 @@
       "project": "Proyecto",
       "allAgents": "Todos los agentes",
       "allProjects": "Todos los proyectos",
-      "activeOnly": "Solo activas"
+      "activeOnly": "Solo activas",
+      "account": "Cuenta",
+      "allAccounts": "Todas las cuentas"
     },
     "columns": {
       "started": "Inicio",
@@ -421,7 +447,8 @@
       "project": "Proyecto",
       "cli": "CLI",
       "status": "Estado",
-      "duration": "Duración"
+      "duration": "Duración",
+      "account": "Cuenta"
     },
     "open": "Abrir ejecución de {{name}}: {{prompt}}",
     "emptyTitle": "Todavía no hay ejecuciones",
@@ -445,7 +472,8 @@
       "lastStatus": "Estado actual",
       "resumedFrom": "Reanuda",
       "resumedBy": "Reanudada en",
-      "openRun": "Ver ejecución"
+      "openRun": "Ver ejecución",
+      "account": "Cuenta"
     },
     "stop": {
       "button": "Parar",
@@ -533,10 +561,10 @@
     },
     "blocked": {
       "folder_busy": "Carpeta ocupada",
-      "limit_claude": "Límite diario de Claude Code alcanzado",
-      "limit_agy": "Límite diario de Antigravity alcanzado",
-      "quota_claude": "Claude Code sin cuota",
-      "quota_agy": "Antigravity sin cuota"
+      "limit": "Límite diario de {{account}} alcanzado",
+      "quota": "{{account}} sin cuota",
+      "session": "{{account}} sin sesión",
+      "decision": "Esperando tu decisión: ¿cambiar de CLI?"
     },
     "noAgent": "Sin agente",
     "noStage": "Sin pipeline",
@@ -641,7 +669,8 @@
       "duration": "Duración",
       "cost": "Coste",
       "branch": "Rama",
-      "folder": "Carpeta"
+      "folder": "Carpeta",
+      "account": "Cuenta"
     }
   },
   "board": {
@@ -711,7 +740,9 @@
       "delivery": "Tarea completada",
       "attention": "Necesita atención",
       "limit": "Límite diario",
-      "quota": "Cuota agotada"
+      "quota": "Cuota agotada",
+      "account": "Sesión cerrada",
+      "switch": "Cambiar de CLI"
     },
     "approvalTitle": "¿Puedo continuar?",
     "answerPlaceholder": "Responder con texto…",
@@ -740,15 +771,19 @@
       "approved": "Aprobado",
       "rejected": "Rechazado",
       "done": "Hecho",
-      "resumed": "El agente continúa"
+      "resumed": "El agente continúa",
+      "switched": "El agente usa su CLI secundario hasta que se reinicie la cuota",
+      "stayed": "Se queda con el CLI actual hasta que se reinicie la cuota"
     },
+    "understood": "Entendido",
     "resume": "Reanudar",
     "limitHint": "Se resuelve solo mañana o al subir el límite en Ajustes.",
-    "openSettings": "Abrir Ajustes"
+    "openSettings": "Abrir Ajustes",
+    "reconnect": "Reconectar"
   },
   "settings": {
     "title": "Ajustes",
-    "subtitle": "CLIs, datos, notificaciones, límites y apariencia.",
+    "subtitle": "Datos, notificaciones, límites y apariencia.",
     "notifications": {
       "title": "Notificaciones de Windows",
       "description": "Avisos del sistema cuando un agente necesita algo de ti, aunque la ventana esté en segundo plano.",
@@ -774,36 +809,25 @@
     },
     "limits": {
       "title": "Límites diarios",
-      "description": "Al superar el límite de un CLI, el scheduler deja de lanzar tareas nuevas de ese CLI hasta mañana. Las ejecuciones en marcha siguen y puedes lanzar a mano.",
-      "claude": "Claude Code · coste del día",
-      "claudeHelp": "Coste equivalente API en USD, tal como lo calcula Claude Code.",
-      "agy": "Antigravity · tokens del día",
-      "agyHelp": "Entrada, salida y razonamiento; la caché no cuenta. agy no informa del coste.",
+      "description": "Al superar el límite de una cuenta, el scheduler deja de lanzar tareas nuevas con ella hasta mañana; las demás cuentas del mismo CLI siguen. Las ejecuciones en marcha siguen y puedes lanzar a mano.",
       "none": "Sin límite",
       "save": "Guardar límites",
       "saved": "Límites guardados",
-      "invalid": "Escribe un número mayor que 0, o déjalo vacío."
-    },
-    "clis": {
-      "title": "CLIs detectados",
-      "check": "Comprobar",
-      "checked": "CLIs comprobados",
-      "checkedAgo": "Comprobado {{time}}",
-      "notFound": "No encontrado en el PATH",
-      "noVersion": "v—",
-      "status": {
-        "loggedIn": "Sesión iniciada",
-        "loggedOut": "Sin sesión",
-        "notDetected": "No detectado",
-        "unknown": "Sesión desconocida"
+      "invalid": "Escribe un número mayor que 0, o déjalo vacío.",
+      "row": {
+        "usd": "{{name}} · coste del día",
+        "tokens": "{{name}} · tokens del día"
       },
-      "install": {
-        "claude": "Instálalo desde PowerShell con «irm https://claude.ai/install.ps1 | iex» y abre «claude» para iniciar sesión.",
-        "agy": "Instala Antigravity CLI con su instalador oficial y abre «agy» para iniciar sesión."
+      "help": {
+        "usd": "Coste equivalente API en USD, tal como lo calcula Claude Code.",
+        "tokens": "Entrada, salida y razonamiento; la caché no cuenta. agy no informa del coste."
       },
-      "login": {
-        "claude": "Abre «claude» en una terminal e inicia sesión con /login.",
-        "agy": "Abre «agy» en una terminal para iniciar sesión."
+      "threshold": {
+        "label": "Avisar para cambiar de CLI al llegar a",
+        "help": "Porcentaje de la ventana de suscripción de la cuenta principal a partir del cual un agente con CLI secundario te pregunta si cambia.",
+        "save": "Guardar umbral",
+        "saved": "Umbral guardado",
+        "invalid": "Escribe un número entre 50 y 100."
       }
     },
     "general": {
@@ -866,7 +890,6 @@
     },
     "index": "Secciones de Ajustes",
     "sections": {
-      "clis": "CLIs detectados",
       "general": "General",
       "notifications": "Notificaciones",
       "limits": "Límites diarios",
@@ -902,7 +925,10 @@
       "byProject": "Por proyecto",
       "cost": "Coste",
       "tokens": "Tokens",
-      "empty": "Sin consumo en este periodo."
+      "empty": "Sin consumo en este periodo.",
+      "byAccount": "Por cuenta",
+      "titleAccount": "Coste diario por cuenta",
+      "tokensTitleAccount": "Tokens diarios por cuenta"
     },
     "breakdown": {
       "title": "Reparto del periodo",
@@ -944,11 +970,17 @@
     },
     "columns": {
       "tokens": "Tokens",
-      "cost": "Coste"
+      "cost": "Coste",
+      "account": "Cuenta"
     },
     "warning": {
-      "limit_reached": "Has superado el límite diario de este CLI. La ejecución se lanza igualmente.",
-      "quota_reached": "Este CLI se quedó sin cuota. La ejecución se lanza igualmente."
+      "limit_reached": "Has superado el límite diario de esta cuenta. La ejecución se lanza igualmente.",
+      "quota_reached": "Esta cuenta se quedó sin cuota. La ejecución se lanza igualmente.",
+      "session_reached": "La sesión de esta cuenta está cerrada: el CLI te pedirá iniciar sesión en la terminal."
+    },
+    "filters": {
+      "account": "Cuenta",
+      "allAccounts": "Todas las cuentas"
     }
   },
   "cliReadiness": {
@@ -977,18 +1009,18 @@
       "empty": "Nada pendiente. Tus agentes no necesitan nada de ti ahora mismo."
     },
     "alerts": {
-      "kind": "Aviso del sistema · CLIs",
+      "kind": "Aviso del sistema · CLIs y cuentas",
       "now": "ahora",
-      "review": "Revisar CLIs",
+      "review": "Revisar cuentas",
       "snooze": "Posponer",
       "snoozed": "Aviso pospuesto",
-      "loggedOut": {
-        "title": "{{cli}}: sin sesión iniciada",
-        "context": "Abre el CLI en una terminal e inicia sesión para que sus agentes puedan trabajar."
-      },
       "nearLimit": {
         "title": "{{cli}} casi sin límite diario · {{percent}}",
         "context": "Cuando llegue al 100 % sus tareas esperarán. Sube el límite en Ajustes o espera al reinicio de mañana."
+      },
+      "quotaNear": {
+        "title": "{{account}} · {{window}} al {{percent}} %",
+        "context": "Cuando llegue al 100 % sus agentes esperarán. {{reset}}. Cambia sus agentes a otra cuenta o espera al reinicio."
       }
     },
     "agents": {
@@ -1008,6 +1040,7 @@
       "requests_other": "{{count}} peticiones",
       "queued": "{{count}} en cola",
       "queueEmpty": "cola vacía",
+      "usingFallback": "Usando el secundario",
       "assign": "Asignar tarea a {{name}}",
       "usage": "Ver desglose de consumo",
       "tokens": "{{value}} tok",
@@ -1019,7 +1052,10 @@
       "empty": {
         "title": "Aún no tienes agentes",
         "description": "Crea tu primer agente o parte de una plantilla: Analista, Desarrollador, QA, Redactor, Comercial."
-      }
+      },
+      "countTeams": "{{teams}} equipos · {{agents}} agentes",
+      "teamMeta_one": "{{count}} agente · {{active}} activos",
+      "teamMeta_other": "{{count}} agentes · {{active}} activos"
     },
     "summary": {
       "label": "Resumen",
@@ -1041,7 +1077,18 @@
         "down": "sin sesión",
         "missing": "no detectado",
         "unknown": "sesión sin comprobar"
-      }
+      },
+      "accountsCount_one": "{{count}} cuenta",
+      "accountsCount_other": "{{count}} cuentas",
+      "sessionsCount_one": "{{count}} sesión",
+      "sessionsCount_other": "{{count}} sesiones",
+      "accountFree": "libre",
+      "expand": "Ver las cuentas de {{cli}}",
+      "collapse": "Ocultar las cuentas de {{cli}}",
+      "quotaTitle": "Cuota más alta entre sus cuentas: {{percent}}",
+      "dailyTitle": "Límite diario: {{percent}}",
+      "quotaWindow": "{{window}}: {{percent}}",
+      "addAccount": "Añadir cuenta"
     }
   },
   "shortcuts": {
@@ -1076,7 +1123,9 @@
       "toggleTheme": "Cambiar tema",
       "pauseScheduler": "Pausar el scheduler",
       "resumeScheduler": "Reanudar el scheduler",
-      "shortcuts": "Atajos de teclado"
+      "shortcuts": "Atajos de teclado",
+      "addAccount": "Añadir cuenta de CLI",
+      "newTeam": "Nuevo equipo"
     },
     "goto": {
       "home": "Inicio",
@@ -1086,9 +1135,131 @@
       "runs": "Ejecuciones",
       "usage": "Consumo",
       "inbox": "Peticiones",
-      "settings": "Ajustes"
+      "settings": "Ajustes",
+      "clis": "CLIs y cuentas"
     },
     "schedulerPaused": "Scheduler en pausa",
     "schedulerResumed": "Scheduler en marcha"
+  },
+  "clis": {
+    "title": "CLIs y cuentas",
+    "subtitle": "Cada cuenta tiene su sesión, su límite diario y la cuota de su suscripción. Puedes tener varias cuentas del mismo CLI y asignar a cada agente la que debe usar.",
+    "check": "Comprobar",
+    "checked": "CLIs y cuentas comprobados",
+    "addAccount": "Añadir cuenta",
+    "installed": "Instalado",
+    "noVersion": "v—",
+    "notDetected": "No detectado",
+    "accountsOf": "Cuentas de {{cli}}",
+    "install": {
+      "claude": "No se ha encontrado Claude Code en el PATH. Instálalo desde PowerShell con «irm https://claude.ai/install.ps1 | iex» y pulsa «Comprobar».",
+      "agy": "No se ha encontrado Antigravity CLI en el PATH. Instálalo con su instalador oficial y pulsa «Comprobar»."
+    },
+    "single": {
+      "agy": "Antigravity guarda su sesión en el almacén de credenciales del sistema, así que solo admite una cuenta: la que tengas iniciada en tu usuario."
+    },
+    "agyQuota": {
+      "label": "Leer la cuota de Antigravity",
+      "help": "Antigravity solo cuenta su cuota (ventanas de 5 h y semanal) a una línea de estado, y la lee de su fichero de ajustes. Al activarlo se añade esa línea; no hace nada fuera de Agentic OS y no cambia lo que ves en agy. Puedes quitarla cuando quieras.",
+      "notAvailable": "Abre Antigravity una vez para que cree sus ajustes y podamos añadir la línea.",
+      "taken": "Ya tienes una línea de estado propia en Antigravity: no la tocamos, así que no se puede leer la cuota.",
+      "running": "Cierra Antigravity para cambiar sus ajustes (los reescribe mientras está abierto).",
+      "on": "Leyendo la cuota de Antigravity",
+      "off": "Línea de estado de Antigravity quitada"
+    }
+  },
+  "accounts": {
+    "system": "· cuenta del sistema",
+    "default": "Predeterminada",
+    "signIn": "Iniciar sesión",
+    "reconnect": "Reconectar",
+    "openLogin": "Abrir el inicio de sesión",
+    "check": "Comprobar",
+    "more": "Más acciones de {{name}}",
+    "makeDefault": "Hacer predeterminada",
+    "madeDefault": "{{name}} es ahora la cuenta predeterminada",
+    "systemKept": "La cuenta del sistema no se puede quitar",
+    "remove": "Quitar",
+    "removeTitle": "¿Quitar «{{name}}»?",
+    "removeDescription": "Se borra su carpeta de inicio de sesión. Sus ejecuciones antiguas se conservan. Para volver a usarla tendrás que iniciar sesión otra vez.",
+    "removed": "Cuenta «{{name}}» quitada",
+    "sessions_one": "{{count}} sesión activa",
+    "sessions_other": "{{count}} sesiones activas",
+    "noAgents": "Ningún agente la usa",
+    "agents": "Agentes que la usan",
+    "session": {
+      "ok": "Sesión iniciada",
+      "down": "Sin sesión",
+      "unknown": "Sin comprobar",
+      "loggingIn": "Iniciando sesión…",
+      "checked": "Comprobado {{time}}"
+    },
+    "today": {
+      "label": "Hoy",
+      "ofLimit": "{{percent}} del límite diario",
+      "noLimit": "Sin límite diario"
+    },
+    "quota": {
+      "label": "Cuota de la suscripción",
+      "none": "Aún no hay datos de cuota: llegan cuando un agente trabaja con esta cuenta.",
+      "reset": "La ventana se reinició: sin datos desde entonces",
+      "resetsIn": "Se reinicia en {{time}}",
+      "resetsOn": "Se reinicia el {{when}}",
+      "readAgo": "leído {{time}}",
+      "windows": {
+        "five_hour": "Ventana de 5 h",
+        "seven_day": "Semanal",
+        "gemini-5h": "Gemini · 5 h",
+        "gemini-weekly": "Gemini · semanal",
+        "3p-5h": "Claude y GPT · 5 h",
+        "3p-weekly": "Claude y GPT · semanal"
+      }
+    },
+    "add": {
+      "button": "Añadir cuenta",
+      "title": "Añadir cuenta de {{cli}}",
+      "description": "La cuenta tendrá su propia carpeta de inicio de sesión: no toca la que ya usas. Al continuar se abre el inicio de sesión del CLI.",
+      "label": "Nombre",
+      "labelHelp": "Opcional. Cuando inicies sesión se mostrará su correo.",
+      "labelPlaceholder": "Personal, Trabajo…",
+      "email": "Correo",
+      "emailHelp": "Opcional. Se rellena en la página de inicio de sesión.",
+      "submit": "Crear e iniciar sesión"
+    },
+    "login": {
+      "title": "Iniciar sesión · {{cli}}",
+      "description": "Sigue los pasos del CLI. Se abrirá el navegador; si no, copia la dirección que aparece. Algunos pasos piden pegar un código aquí.",
+      "checking": "Comprobando la sesión…",
+      "done": "Sesión iniciada como {{name}}",
+      "notLoggedIn": "El CLI terminó sin iniciar sesión. Puedes volver a intentarlo.",
+      "cancel": "Cancelar",
+      "close": "Cerrar",
+      "opening": "Abriendo el inicio de sesión…"
+    }
+  },
+  "teams": {
+    "none": "Sin equipo",
+    "new": "Nuevo equipo",
+    "newTitle": "Nuevo equipo",
+    "editTitle": "Editar equipo",
+    "description": "Un equipo agrupa agentes en Inicio. Un agente está en un solo equipo.",
+    "name": "Nombre",
+    "namePlaceholder": "Producto, Contenidos…",
+    "purpose": "Para qué sirve",
+    "members": "Agentes del equipo",
+    "noAgents": "Aún no hay agentes que añadir.",
+    "inTeam": "en {{team}}",
+    "moves": "pasa de {{team}}",
+    "create": "Crear equipo",
+    "created": "Equipo «{{name}}» creado",
+    "saved": "Equipo «{{name}}» guardado",
+    "delete": "Borrar equipo",
+    "deleteTitle": "¿Borrar el equipo «{{name}}»?",
+    "deleteDescription": "Sus agentes no se borran: pasan a «Sin equipo».",
+    "deleted": "Equipo «{{name}}» borrado",
+    "addAgent": "Agente",
+    "addAgentTo": "Añadir un agente al equipo {{team}}",
+    "editTeam": "Editar el equipo {{team}}",
+    "emptyTeam": "Este equipo aún no tiene agentes."
   }
 }

@@ -2,26 +2,97 @@ import { Gauge } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-import type { UsageLimits } from '@/api/types'
-import { useSaveUsageLimits, useUsageLimits } from '@/api/usage'
+import type { LimitState } from '@/api/types'
+import {
+  useSaveSwitchThreshold,
+  useSaveUsageLimits,
+  useSwitchThreshold,
+  useUsageLimits,
+} from '@/api/usage'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { errorMessage } from '@/lib/form-errors'
 
-/** «Límites diarios» (phase 07): USD for Claude Code, tokens for Antigravity. */
+/** «Límites diarios» (phases 07 and 10): one per account, USD for Claude Code, tokens for agy. */
 export function LimitsSection() {
   const limits = useUsageLimits().data
-  return limits ? <LimitsForm initial={limits} /> : <Skeleton className="h-48 rounded-xl" />
+  return Array.isArray(limits) ? (
+    <>
+      <LimitsForm initial={limits} />
+      <SwitchThreshold />
+    </>
+  ) : (
+    <Skeleton className="h-48 rounded-xl" />
+  )
 }
 
-function LimitsForm({ initial }: { initial: UsageLimits }) {
+/** The percent of a subscription window at which an agent with a secondary CLI asks. */
+function SwitchThreshold() {
+  const { t } = useTranslation()
+  const current = useSwitchThreshold().data?.threshold
+  const save = useSaveSwitchThreshold()
+  const [text, setText] = useState<string | null>(null)
+  const value = text ?? (current === undefined ? '' : String(current))
+  const parsed = Number(value)
+  const invalid = !Number.isInteger(parsed) || parsed < 50 || parsed > 100
+  return (
+    <form
+      className="flex items-center gap-4 rounded-xl border border-sep p-4 shadow-card bg-card-grad"
+      onSubmit={(e) => {
+        e.preventDefault()
+        if (invalid) return
+        save.mutate(parsed, {
+          onSuccess: () => {
+            setText(null)
+            toast.success(t('settings.limits.threshold.saved'))
+          },
+          onError: (error) => toast.error(errorMessage(error)),
+        })
+      }}
+    >
+      <label htmlFor="switch-threshold" className="flex-1">
+        <span id="threshold-title" className="block text-[13.5px] font-medium">
+          {t('settings.limits.threshold.label')}
+        </span>
+        <span className="block text-xs text-muted-foreground">
+          {t('settings.limits.threshold.help')}
+        </span>
+        {text !== null && invalid && (
+          <span role="alert" className="block pt-1 text-[12.5px] text-status-failed">
+            {t('settings.limits.threshold.invalid')}
+          </span>
+        )}
+      </label>
+      <Input
+        id="switch-threshold"
+        aria-label={t('settings.limits.threshold.label')}
+        inputMode="numeric"
+        value={value}
+        onChange={(e) => setText(e.target.value)}
+        className="h-8 w-[80px] text-right font-mono"
+      />
+      <span className="text-xs text-muted-foreground">%</span>
+      <Button
+        type="submit"
+        size="sm"
+        disabled={invalid || save.isPending || text === null}
+        className="bg-primary-action text-white hover:bg-primary-action-hover"
+      >
+        {t('settings.limits.threshold.save')}
+      </Button>
+    </form>
+  )
+}
+
+const asText = (limit: number | null) => (limit === null ? '' : String(limit))
+
+function LimitsForm({ initial }: { initial: LimitState[] }) {
   const { t } = useTranslation()
   const save = useSaveUsageLimits()
-  const [claude, setClaude] = useState(
-    initial.claude_usd === null ? '' : String(initial.claude_usd),
+  const [values, setValues] = useState<Record<string, string>>(() =>
+    Object.fromEntries(initial.map((s) => [s.account_id, asText(s.limit)])),
   )
-  const [agy, setAgy] = useState(initial.agy_tokens === null ? '' : String(initial.agy_tokens))
 
   const parse = (text: string, integer: boolean): number | null | undefined => {
     const clean = text.trim().replace(/\s/g, '').replace(',', '.')
@@ -29,15 +100,18 @@ function LimitsForm({ initial }: { initial: UsageLimits }) {
     const value = integer ? Number(clean.replace(/\./g, '')) : Number(clean)
     return Number.isFinite(value) && value > 0 ? value : undefined
   }
-  const claudeValue = parse(claude, false)
-  const agyValue = parse(agy, true)
-  const invalid = claudeValue === undefined || agyValue === undefined
+  const parsed = initial.map((s) => parse(values[s.account_id] ?? '', s.unit === 'tokens'))
+  const invalid = parsed.some((value) => value === undefined)
+  const several = (cli: string) => initial.filter((s) => s.cli === cli).length > 1
 
   function submit(e: React.FormEvent) {
     e.preventDefault()
     if (invalid) return
     save.mutate(
-      { claude_usd: claudeValue, agy_tokens: agyValue === null ? null : Math.round(agyValue) },
+      initial.map((s, i) => ({
+        account_id: s.account_id,
+        daily_limit: parsed[i] === null ? null : Math.round((parsed[i] as number) * 100) / 100,
+      })),
       {
         onSuccess: () => toast.success(t('settings.limits.saved')),
         onError: (error) => toast.error(errorMessage(error)),
@@ -56,36 +130,40 @@ function LimitsForm({ initial }: { initial: UsageLimits }) {
       </h2>
       <p className="mb-2 text-[13px] text-muted-foreground">{t('settings.limits.description')}</p>
       <form onSubmit={submit} className="flex flex-col">
-        {(
-          [
-            ['claude', claude, setClaude, '$'],
-            ['agy', agy, setAgy, 'tokens'],
-          ] as const
-        ).map(([key, value, setValue, unit]) => (
-          <label
-            key={key}
-            htmlFor={`limit-${key}`}
-            className="flex items-center gap-4 border-b py-2.5 last:border-b-0"
-          >
-            <span className="flex-1">
-              <span className="block text-[13.5px] font-medium">{t(`settings.limits.${key}`)}</span>
-              <span className="block text-xs text-muted-foreground">
-                {t(`settings.limits.${key}Help`)}
+        {initial.map((state) => {
+          const cliName = t(`cli.${state.cli}`)
+          // With a single account the CLI's name is enough; with several, which one it is.
+          const label = several(state.cli) ? `${cliName} · ${state.account_name}` : cliName
+          return (
+            <label
+              key={state.account_id}
+              htmlFor={`limit-${state.account_id}`}
+              className="flex items-center gap-4 border-b py-2.5 last:border-b-0"
+            >
+              <span className="flex-1">
+                <span className="block text-[13.5px] font-medium">
+                  {t(`settings.limits.row.${state.unit}`, { name: label })}
+                </span>
+                <span className="block text-xs text-muted-foreground">
+                  {t(`settings.limits.help.${state.unit}`)}
+                </span>
               </span>
-            </span>
-            <span className="flex items-center gap-2">
-              <Input
-                id={`limit-${key}`}
-                inputMode="decimal"
-                value={value}
-                onChange={(e) => setValue(e.target.value)}
-                placeholder={t('settings.limits.none')}
-                className="h-8 w-[140px] text-right font-mono"
-              />
-              <span className="w-12 text-xs text-muted-foreground">{unit}</span>
-            </span>
-          </label>
-        ))}
+              <span className="flex items-center gap-2">
+                <Input
+                  id={`limit-${state.account_id}`}
+                  inputMode="decimal"
+                  value={values[state.account_id] ?? ''}
+                  onChange={(e) => setValues((v) => ({ ...v, [state.account_id]: e.target.value }))}
+                  placeholder={t('settings.limits.none')}
+                  className="h-8 w-[140px] text-right font-mono"
+                />
+                <span className="w-12 text-xs text-muted-foreground">
+                  {state.unit === 'usd' ? '$' : 'tokens'}
+                </span>
+              </span>
+            </label>
+          )
+        })}
         {invalid && (
           <p role="alert" className="pt-2 text-[12.5px] text-status-failed">
             {t('settings.limits.invalid')}

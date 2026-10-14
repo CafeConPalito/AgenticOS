@@ -18,6 +18,7 @@ export function SessionFactsLine({ run, task }: { run: Run; task: Task }) {
         : '—'
   const facts: [string, string][] = []
   if (run.cli_session_id) facts.push([t('tasks.facts.session'), run.cli_session_id])
+  if (run.account_label) facts.push([t('tasks.facts.account'), run.account_label])
   facts.push([t('tasks.facts.duration'), formatDuration(run.started_at, run.ended_at, now)])
   facts.push([t('tasks.facts.cost'), cost])
   if (task.branch) facts.push([t('tasks.facts.branch'), task.branch])

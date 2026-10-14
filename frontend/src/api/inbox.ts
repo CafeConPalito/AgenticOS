@@ -60,6 +60,12 @@ export const useReviewItem = () =>
 export const useDismissItem = () =>
   useInboxMutation((id: string) => api.post<InboxItem>(`/api/inbox/${id}/dismiss`))
 
+/** «Cambiar de CLI»: switch to the agent's secondary until the window resets, or stay. */
+export const useSwitchItem = () =>
+  useInboxMutation(({ id, choice }: { id: string; choice: 'switch' | 'stay' }) =>
+    api.post<InboxItem>(`/api/inbox/${id}/switch`, { choice }),
+  )
+
 /** «Cuota agotada» → Reanudar: the task runs again and its CLI is no longer held. */
 export const useResumeItem = () =>
   useInboxMutation((id: string) => api.post<InboxItem>(`/api/inbox/${id}/resume`))

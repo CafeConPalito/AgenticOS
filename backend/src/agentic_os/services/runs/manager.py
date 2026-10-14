@@ -24,6 +24,7 @@ from agentic_os.models import (
     Agent,
     AgentStatus,
     Cli,
+    CliAccount,
     EventKind,
     InboxItem,
     InboxKind,
@@ -40,14 +41,17 @@ from agentic_os.models import (
     Verdict,
     WaitingReason,
 )
+from agentic_os.services import accounts as account_ops
 from agentic_os.services import inbox
 from agentic_os.services import tasks as task_ops
 from agentic_os.services.adapters import CliAdapter, LaunchContext, adapter_for
+from agentic_os.services.agent_target import Target, target_for
 from agentic_os.services.context import build_context, build_instructions
 from agentic_os.services.hooks import (
     HOOK_EVENTS,
     STATUS_LINE,
     TOOL_EVENTS,
+    HookEffect,
     interpret,
     write_hook_script,
 )
@@ -59,7 +63,7 @@ from agentic_os.services.runs.resume import SESSION_MISSING
 from agentic_os.services.runs.screen import PermissionDialog
 from agentic_os.services.runs.session import RunSession
 from agentic_os.services.tasks import task_context
-from agentic_os.services.usage.limits import CLI_NAMES
+from agentic_os.services.usage.limits import title_name
 from agentic_os.services.usage.reader import UsageService
 
 PERMISSION_DETAIL = {
@@ -108,6 +112,7 @@ class RunManager:
         self.loop: asyncio.AbstractEventLoop | None = None
         # Called (from the run's thread) once a run has ended and its state is persisted.
         self.on_run_ended: Callable[[str], None] | None = None
+        self.on_quota_changed: Callable[[], None] | None = None
         # Called when tasks change outside an API request (a permission dialog, an answer…).
         self.on_tasks_changed: Callable[[], None] | None = None
         # Usage of the runs (phase 07). Without `start()` it reads synchronously (tests).
@@ -176,7 +181,13 @@ class RunManager:
             raise ApiError(
                 422, "folder_not_found", "the project folder does not exist", "project_id"
             )
-        cli = Cli(agent.cli)
+        if resumed_from is not None:
+            # A resumed conversation lives in the CLI, account and model that started it.
+            account = self._account_of_run(db, resumed_from)
+            target = Target(Cli(resumed_from.cli), account, resumed_from.model, False)
+        else:
+            target = target_for(db, agent, index=None)
+        cli = target.cli
         adapter = adapter_for(cli)
         resolve_executable(cli, self._settings.cli_command_overrides)  # fail before any write
         # Two agy runs in one folder would share the workspace plugin (ADR 0004): the folder is
@@ -190,7 +201,7 @@ class RunManager:
                 prompt,
                 task,
                 cwd,
-                cli,
+                target,
                 adapter,
                 folder,
                 parent,
@@ -255,13 +266,14 @@ class RunManager:
         prompt: str,
         task: Task | None,
         cwd: str,
-        cli: Cli,
+        target: Target,
         adapter: CliAdapter,
         folder: str | None,
         parent: Run | None = None,
         resumed_from: Run | None = None,
         baseline: dict | None = None,
     ) -> Run:
+        cli, account, model = target.cli, target.account, target.model
         run = Run(
             workspace_id=DEFAULT_WORKSPACE,
             agent_id=agent.id,
@@ -269,8 +281,10 @@ class RunManager:
             agent_name=agent.name,
             agent_color=agent.color,
             project_name=project.name,
+            account_id=account.id,
+            account_label=account_ops.display_name(account),
             cli=cli.value,
-            model=agent.model,
+            model=model,
             prompt=prompt,
             cwd=cwd,
             task_id=task.id if task else None,
@@ -288,7 +302,7 @@ class RunManager:
         ctx = LaunchContext(
             run_id=run.id,
             cli=cli,
-            model=agent.model,
+            model=model,
             prompt=prompt,
             permission_mode=PermissionMode(agent.permission_mode),
             allowed_tools=tuple(agent.allowed_tools),
@@ -300,6 +314,7 @@ class RunManager:
             hook_command=write_hook_script(run_dir, self.public_url, token),
             overrides=self._settings.cli_command_overrides,
             resume_session=resumed_from.cli_session_id if resumed_from else None,
+            account_env=account_ops.env_for(account),
         )
         try:
             spec = adapter.prepare(ctx)
@@ -345,6 +360,21 @@ class RunManager:
                 self._live[run.id] = session
         db.refresh(run)
         return run
+
+    def cli_installed(self, cli: Cli) -> bool:
+        return account_ops.is_installed(cli, self._settings.cli_command_overrides)
+
+    def probe_account(self, db: Session, account: CliAccount) -> CliAccount:
+        """Asks the account's CLI whether its session is alive (the caller commits)."""
+        return account_ops.probe(db, account, self._settings.cli_command_overrides)
+
+    @staticmethod
+    def _account_of_run(db: Session, run: Run) -> CliAccount:
+        """The login an earlier run used (its account may be gone: then the CLI's default)."""
+        earlier = db.get(CliAccount, run.account_id) if run.account_id else None
+        if earlier is not None and earlier.cli == run.cli:
+            return earlier
+        return account_ops.default_for(db, Cli(run.cli))
 
     def _on_end(
         self,
@@ -688,16 +718,20 @@ class RunManager:
                     return
                 cli = Cli(run.cli)
                 task = db.get(Task, run.task_id) if run.task_id else None
+                account = db.get(CliAccount, run.account_id) if run.account_id else None
+                account = account or account_ops.default_for(db, cli)
                 if not inbox.pending(db, run_id=run_id, kinds=(InboxKind.QUOTA,)):
+                    siblings = len(account_ops.list_accounts(db, cli))
                     item = inbox.create(
                         db,
                         InboxKind.QUOTA,
-                        f"{CLI_NAMES[cli]} se ha quedado sin cuota",
+                        f"{title_name(account, siblings)} se ha quedado sin cuota",
                         notice,
                         task=task,
                         run=run,
                     )
-                    item.command = cli.value  # which CLI is blocked (limits.quota_pending)
+                    # Which account is held (limits.quota_pending_accounts)
+                    item.command = account.id
                 if task is not None and task.status == TaskStatus.RUNNING:
                     task_ops.wait_for_human(db, task, WaitingReason.QUOTA, notice, run_id)
                 db.commit()
@@ -992,6 +1026,23 @@ class RunManager:
         detail = json.dumps({"id": node, "description": description[:300]}, ensure_ascii=False)
         self.add_event(run_id, EventKind.HOOK, name, detail)
 
+    def _record_account_status(self, account_id: str | None, effect: HookEffect) -> None:
+        """The subscription windows and the identity the CLI reported for the run's account."""
+        if account_id is None or not (effect.quota or effect.email or effect.plan):
+            return
+        try:
+            with self._db() as db:
+                account = db.get(CliAccount, account_id)
+                if account is None:
+                    return
+                account_ops.record_identity(account, effect.email or "", effect.plan or "")
+                changed = account_ops.record_quota(account, effect.quota)
+                db.commit()
+            if changed and self.on_quota_changed is not None:
+                self.on_quota_changed()
+        except Exception:
+            log.exception("could not record the account status", account_id=account_id)
+
     # ------------------------------------------------------------------ CLI hooks
     def on_hook(self, run_id: str, event: str, payload: object) -> None:
         session = self.get(run_id)
@@ -1001,11 +1052,14 @@ class RunManager:
                 return
             cli = Cli(run.cli)
             effect = interpret(cli, event, payload)
-            if event == STATUS_LINE:  # Claude's status line: only the cost so far
+            if event == STATUS_LINE:  # the status line: cost so far, and the account's quota
+                account_id = run.account_id
                 db.close()
                 if effect.transcript_path:
                     self.usage.note_transcript(run_id, effect.transcript_path, own=True)
-                self.usage.status_line(run_id, effect.cost_usd, effect.cli_version)
+                if cli == Cli.CLAUDE:
+                    self.usage.status_line(run_id, effect.cost_usd, effect.cli_version)
+                self._record_account_status(account_id, effect)
                 return
             if effect.permission_request:
                 self._permission_requests[run_id] = effect.permission_request
