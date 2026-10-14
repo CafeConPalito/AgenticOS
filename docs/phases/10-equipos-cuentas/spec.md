@@ -173,3 +173,38 @@ Poder usar **varias cuentas del mismo CLI** y asignar a cada agente la suya. Ade
 - **Fiabilidad de la cuota**: hay quejas de usuarios de que el `/usage` de agy no se actualiza durante la sesión. La app mostrará la antigüedad del dato y no lo usará para bloquear.
 - **Ejecuciones antiguas**: las ejecuciones antiguas no tenían cuenta y se asignan a la cuenta del sistema de su CLI.
 - **Límites por cuenta frente a «Gasto de hoy»**: la cifra global de Inicio sigue siendo la suma del día. Hay que decidir en el plan si se mantiene un tope global además de los límites por cuenta.
+
+## Ampliación (2026-10-14): CLI secundario y alerta de cambio por cuota
+Pedida por el usuario durante el desarrollo; entra en la fase. **Pendiente de aprobación** como el resto de la spec.
+
+### Dentro
+- **CLI secundario por agente**: además de su CLI, cuenta y modelo, un agente puede declarar un secundario con el mismo trío (una cuenta de cualquier CLI, que fija el CLI, y un modelo). Opcional. No puede ser la misma cuenta que la principal. Se declara en «Ejecución» de la ficha y en «Nuevo agente».
+- **Umbral**: «se va a superar la cuota» es una **ventana de la suscripción de la cuenta principal ≥ 90 %** (5 h o semanal, las que leemos del CLI). El umbral se ajusta en Ajustes › Límites. El límite diario del usuario sigue como hasta ahora (aviso al 95 %, bloqueo al 100 %).
+- **Alerta «Cambio de CLI»** en «Te necesitan», por agente con secundario y ventana por encima del umbral: «{agente}: {cuenta} va por el {n} % de su {ventana}. Cambiar a {secundario} o seguir con el actual, con el riesgo de que se quede parado». Dos acciones: **Cambiar a {secundario}** y **Seguir con {actual}**.
+- **Qué cambia al elegir**:
+  - «Cambiar»: el agente pasa a usar su secundario. Las tareas **en cola y las siguientes** se lanzan con él; la **ejecución en marcha termina con el actual** (una conversación no pasa de un CLI a otro: no se interrumpe nada).
+  - «Seguir»: sigue con el principal y no se vuelve a preguntar hasta que esa ventana se reinicie.
+  - El cambio dura hasta que la ventana de la cuenta principal se reinicia; entonces el agente **vuelve al principal** solo. También se puede volver antes desde la ficha.
+- **Sin respuesta**: mientras la alerta está pendiente, las tareas en cola de ese agente **esperan tu decisión** (motivo «Esperando decisión»); no se lanzan con ninguno.
+- **El secundario también se vigila**: si su cuenta tiene la sesión cerrada, está retenida o su ventana también supera el umbral, la alerta no lo ofrece y lo dice.
+- La tarjeta del agente en Inicio y la ficha indican «Usando el secundario» mientras dure.
+- Las ejecuciones guardan la cuenta, el CLI y el modelo que usaron (ya lo hacen por ejecución), así que Ejecuciones y Consumo reflejan el cambio.
+
+### Fuera
+- Cambiar de CLI **dentro de una conversación en marcha** o relanzarla con el secundario.
+- Cambio automático sin preguntar (se descartó: decide el usuario).
+- Más de un secundario por agente.
+
+### Criterios de aceptación (nuevos)
+| # | Criterio | Cómo se verifica |
+|---|---|---|
+| CA16 | Se declara un secundario (cuenta y modelo) en «Nuevo agente» y en la ficha; no puede ser la misma cuenta | Tests de API y de UI |
+| CA17 | Con una ventana de la cuenta principal ≥ umbral aparece la alerta con «Cambiar a…» y «Seguir con…» y el porcentaje, la ventana y el reinicio | Tests del backend (detección) y de UI |
+| CA18 | «Cambiar»: las tareas en cola y las nuevas se lanzan con el secundario (CLI, cuenta y modelo); la ejecución en marcha sigue con el actual | Tests del scheduler y e2e con CLI falso |
+| CA19 | Con la alerta pendiente, las tareas del agente esperan («Esperando decisión»); al responder se lanzan | Tests del scheduler |
+| CA20 | «Seguir»: no vuelve a preguntar hasta el reinicio de la ventana; al reiniciarse, un cambio hecho vuelve al principal | Tests con reloj simulado |
+| CA21 | Si el secundario no es utilizable (sesión cerrada, retenido, también ≥ umbral), la alerta no lo ofrece y lo explica | Tests |
+
+### Riesgos
+- Muchas partes del código usan `agent.cli`: hace falta una única función que diga con qué CLI, cuenta y modelo lanza un agente ahora, y usarla en el scheduler, el lanzador, Inicio y las alertas.
+- El cambio de CLI pierde el contexto de la conversación: el agente retoma desde la tarea, la memoria del proyecto y `get_context`. Se dice en la alerta.

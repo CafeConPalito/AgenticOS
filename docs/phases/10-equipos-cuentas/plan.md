@@ -218,3 +218,33 @@ Desviaciones:
 - No hizo falta tocar `resume.py`, `maintenance.py` ni `housekeeping.py`: la reanudación elige la cuenta en `RunManager._account_for` y la limpieza de confianza se amplió en `TrustCleaner`.
 - Los dos tests que fallaban en `test_usage_stats.py` no eran del código: fijaban `DAY = 2026-10-12` pero los avisos llevan la hora real.
 - Dos defectos encontrados por los tests y corregidos: el `PATCH` de un agente validaba equipo/cuenta después de asignarlos (un id erróneo daba un error de clave foránea en vez de 422) y los selectores de equipo y cuenta propagaban el valor vacío que Radix emite al montar.
+
+## Ampliación: CLI secundario y alerta de cambio (pendiente de aprobación)
+Ver la ampliación de la [spec](spec.md#ampliación-2026-10-14-cli-secundario-y-alerta-de-cambio-por-cuota).
+
+### Diseño
+- **Modelo** (migración `0009`): `agents.fallback_account_id` (FK `cli_accounts`, `SET NULL`), `agents.fallback_model` (texto), `agents.using_fallback_until` (fecha: el agente usa el secundario hasta ese reinicio) y `agents.switch_decided_until` (fecha: no volver a preguntar hasta ese reinicio). Nuevo `InboxKind.SWITCH`. El CLI del secundario es el de su cuenta.
+- **Una sola fuente de verdad**: `services/agent_target.py` con `target_for(db, agent, now) -> Target(cli, account, model, using_fallback)`: el principal, o el secundario si `using_fallback_until` no ha pasado. Lo usan el lanzador (`RunManager.launch`/`_launch`), el scheduler (puerta por cuenta, carpeta de agy), `/api/home` y la API de tareas (`blocked`). Sustituye a `accounts.of_agent` + `agent.cli` + `agent.model` en esos sitios.
+- **Detección** (`services/usage/switching.py`): tras registrar la cuota de una cuenta y en el housekeeping, para cada agente con secundario, sin cambio activo ni decisión vigente y sin alerta pendiente, si la ventana abierta más usada de su cuenta principal ≥ umbral → crea la alerta `switch` (`command` = id del agente; el detalle lleva ventana, %, reinicio y si el secundario es utilizable). Si el secundario no lo es, no ofrece cambiar. El umbral vive en `app_state` (`switch_threshold`, 90 por defecto).
+- **Respuesta**: `POST /api/inbox/{id}/switch` con `{"choice": "switch" | "stay"}`. «switch» fija `using_fallback_until` = reinicio de la ventana; «stay» fija `switch_decided_until` = reinicio. Ambas resuelven el aviso y despiertan al scheduler.
+- **Scheduler**: la tarea en cola de un agente con alerta `switch` pendiente **espera** (`blocked = "decision"`). Al pasar `using_fallback_until` el agente vuelve al principal por sí solo (se calcula en `target_for`).
+- **API**: `AgentRead` añade `fallback_account_id`, `fallback_model` y `using_fallback` (+ hasta cuándo); `PATCH /api/agents/{id}` valida que el secundario exista y no sea la cuenta principal; `POST /api/agents/{id}/fallback/clear` para volver antes.
+- **UI**: «Ejecución» de la ficha y «Nuevo agente» con «CLI secundario» (cuenta y modelo, «Sin secundario»); la alerta en Inicio con sus dos botones (en `RequestActions`); la tarjeta del agente y la ficha indican «Usando el secundario hasta …»; Ajustes › Límites con el umbral; textos de `tasks.blocked.decision`.
+
+### Tareas
+1. [ ] Migración `0009`, modelo y API del secundario (CA16).
+2. [ ] `agent_target.py` y su uso en lanzador, scheduler, home y tareas (CA18).
+3. [ ] Detección y alerta `switch`, con el umbral (CA17, CA21).
+4. [ ] Respuesta «Cambiar»/«Seguir», espera de las tareas y vuelta al principal (CA18–CA20).
+5. [ ] UI: ficha, «Nuevo agente», alerta, tarjeta, Ajustes (CA16, CA17, CA21).
+6. [ ] Tests y e2e con CLI falso (cambio de CLI de claude a agy y viceversa); ADR 0014 ampliado.
+
+### Tests previstos
+| Test | Cubre |
+|---|---|
+| `test_agent_fallback_api`: declarar, misma cuenta, cuenta inexistente, quitar | CA16 |
+| `test_agent_target`: principal, secundario activo, vuelta al reiniciarse | CA18, CA20 |
+| `test_switching`: umbral, una alerta por agente y ventana, secundario no utilizable | CA17, CA21 |
+| `test_scheduler_switch`: espera con la alerta pendiente, cambia, sigue, no interrumpe la ejecución en marcha | CA18, CA19 |
+| `test_switch_e2e`: CLI falso, una tarea con claude y la siguiente con agy | CA18 |
+| `agent-links.test.tsx`, `home.test.tsx` | CA16, CA17 |
