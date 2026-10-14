@@ -3,7 +3,12 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import type { LimitState } from '@/api/types'
-import { useSaveUsageLimits, useUsageLimits } from '@/api/usage'
+import {
+  useSaveSwitchThreshold,
+  useSaveUsageLimits,
+  useSwitchThreshold,
+  useUsageLimits,
+} from '@/api/usage'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -13,9 +18,70 @@ import { errorMessage } from '@/lib/form-errors'
 export function LimitsSection() {
   const limits = useUsageLimits().data
   return Array.isArray(limits) ? (
-    <LimitsForm initial={limits} />
+    <>
+      <LimitsForm initial={limits} />
+      <SwitchThreshold />
+    </>
   ) : (
     <Skeleton className="h-48 rounded-xl" />
+  )
+}
+
+/** The percent of a subscription window at which an agent with a secondary CLI asks. */
+function SwitchThreshold() {
+  const { t } = useTranslation()
+  const current = useSwitchThreshold().data?.threshold
+  const save = useSaveSwitchThreshold()
+  const [text, setText] = useState<string | null>(null)
+  const value = text ?? (current === undefined ? '' : String(current))
+  const parsed = Number(value)
+  const invalid = !Number.isInteger(parsed) || parsed < 50 || parsed > 100
+  return (
+    <form
+      className="flex items-center gap-4 rounded-xl border border-sep p-4 shadow-card bg-card-grad"
+      onSubmit={(e) => {
+        e.preventDefault()
+        if (invalid) return
+        save.mutate(parsed, {
+          onSuccess: () => {
+            setText(null)
+            toast.success(t('settings.limits.threshold.saved'))
+          },
+          onError: (error) => toast.error(errorMessage(error)),
+        })
+      }}
+    >
+      <label htmlFor="switch-threshold" className="flex-1">
+        <span id="threshold-title" className="block text-[13.5px] font-medium">
+          {t('settings.limits.threshold.label')}
+        </span>
+        <span className="block text-xs text-muted-foreground">
+          {t('settings.limits.threshold.help')}
+        </span>
+        {text !== null && invalid && (
+          <span role="alert" className="block pt-1 text-[12.5px] text-status-failed">
+            {t('settings.limits.threshold.invalid')}
+          </span>
+        )}
+      </label>
+      <Input
+        id="switch-threshold"
+        aria-label={t('settings.limits.threshold.label')}
+        inputMode="numeric"
+        value={value}
+        onChange={(e) => setText(e.target.value)}
+        className="h-8 w-[80px] text-right font-mono"
+      />
+      <span className="text-xs text-muted-foreground">%</span>
+      <Button
+        type="submit"
+        size="sm"
+        disabled={invalid || save.isPending || text === null}
+        className="bg-primary-action text-white hover:bg-primary-action-hover"
+      >
+        {t('settings.limits.threshold.save')}
+      </Button>
+    </form>
   )
 }
 

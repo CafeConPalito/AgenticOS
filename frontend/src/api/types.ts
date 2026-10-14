@@ -27,11 +27,16 @@ export interface AgentFields {
   /** Phase 10. Null: no team / the default account of its CLI. */
   team_id: string | null
   account_id: string | null
+  /** The secondary CLI (phase 10): an account, which fixes the CLI, and a model. */
+  fallback_account_id: string | null
+  fallback_model: string
 }
 
 export interface Agent extends AgentFields {
   id: string
   template: string | null
+  /** Running with its secondary CLI right now (the person switched). */
+  using_fallback: boolean
   queued_count: number
   running_count: number
   created_at: string
@@ -40,7 +45,7 @@ export interface Agent extends AgentFields {
 
 export interface AgentTemplate extends Omit<
   AgentFields,
-  'max_concurrency' | 'status' | 'team_id' | 'account_id'
+  'max_concurrency' | 'status' | 'team_id' | 'account_id' | 'fallback_account_id' | 'fallback_model'
 > {
   id: string
 }
@@ -251,7 +256,7 @@ export interface Task {
   worktree_path: string | null
   branch: string | null
   /** A queued task that cannot start now even with a free agent. */
-  blocked: 'folder_busy' | 'limit' | 'quota' | 'session' | null
+  blocked: 'folder_busy' | 'limit' | 'quota' | 'session' | 'decision' | null
   /** The account behind `limit`, `quota` and `session`. */
   blocked_by: string | null
   active_run_id: string | null
@@ -357,6 +362,7 @@ export type InboxKind =
   | 'limit'
   | 'quota'
   | 'account'
+  | 'switch'
 
 export type InboxResolution =
   'approved' | 'rejected' | 'answered' | 'answered_in_terminal' | 'reviewed' | 'dismissed'
@@ -550,6 +556,8 @@ export interface HomeAgent {
   state: AgentState
   team_id: string | null
   account_id: string | null
+  /** Running with its secondary CLI (then `cli` and `account_id` are the secondary's). */
+  using_fallback: boolean
   queued: number
   pending_requests: number
   sessions: HomeSession[]

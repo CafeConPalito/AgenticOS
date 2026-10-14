@@ -11,11 +11,18 @@ export function ConfigDisclosure({ agent }: { agent: Agent }) {
   const teams = useTeams().data
   const account = accountOf(accounts, agent)
   const team = teams?.find((x) => x.id === agent.team_id)
+  const fallback = accounts?.find((a) => a.id === agent.fallback_account_id)
   const items: [string, string][] = [
     [t('agents.fields.team'), team?.name ?? t('teams.none')],
     [t('agents.fields.cli'), t(`cli.${agent.cli}`)],
     [t('agents.fields.account'), account?.name ?? '—'],
     [t('agents.fields.model'), agent.model || t('cli.defaultModel')],
+    [
+      t('agents.fields.fallback'),
+      fallback
+        ? `${fallback.name}${agent.fallback_model ? ` · ${agent.fallback_model}` : ''}`
+        : t('agents.fields.fallbackNone'),
+    ],
     [t('agents.fields.permissions'), t(`agents.permission.${agent.permission_mode}`)],
     [t('agents.fields.concurrency'), String(agent.max_concurrency)],
   ]

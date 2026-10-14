@@ -236,8 +236,14 @@
       "account": "Cuenta",
       "accountHelp": "El inicio de sesión del CLI con el que trabaja. Su límite diario y su cuota son los de esa cuenta.",
       "accountDefault": "Predeterminada · {{name}}",
-      "accountDefaultNone": "Predeterminada"
+      "accountDefaultNone": "Predeterminada",
+      "fallback": "CLI secundario",
+      "fallbackHelp": "Si la cuenta principal está a punto de agotar su cuota, te propone cambiar a esta cuenta hasta que se reinicie.",
+      "fallbackNone": "Ninguno",
+      "fallbackModel": "Modelo del secundario"
     },
+    "usingFallback": "Usando el secundario",
+    "backToMain": "Volver al principal",
     "permission": {
       "autonomous": "Autónomo",
       "autonomousHelp": "Ejecuta comandos y edita sin preguntar, siempre dentro de su workspace.",
@@ -557,7 +563,8 @@
       "folder_busy": "Carpeta ocupada",
       "limit": "Límite diario de {{account}} alcanzado",
       "quota": "{{account}} sin cuota",
-      "session": "{{account}} sin sesión"
+      "session": "{{account}} sin sesión",
+      "decision": "Esperando tu decisión: ¿cambiar de CLI?"
     },
     "noAgent": "Sin agente",
     "noStage": "Sin pipeline",
@@ -734,7 +741,8 @@
       "attention": "Necesita atención",
       "limit": "Límite diario",
       "quota": "Cuota agotada",
-      "account": "Sesión cerrada"
+      "account": "Sesión cerrada",
+      "switch": "Cambiar de CLI"
     },
     "approvalTitle": "¿Puedo continuar?",
     "answerPlaceholder": "Responder con texto…",
@@ -763,8 +771,11 @@
       "approved": "Aprobado",
       "rejected": "Rechazado",
       "done": "Hecho",
-      "resumed": "El agente continúa"
+      "resumed": "El agente continúa",
+      "switched": "El agente usa su CLI secundario hasta que se reinicie la cuota",
+      "stayed": "Se queda con el CLI actual hasta que se reinicie la cuota"
     },
+    "understood": "Entendido",
     "resume": "Reanudar",
     "limitHint": "Se resuelve solo mañana o al subir el límite en Ajustes.",
     "openSettings": "Abrir Ajustes",
@@ -810,6 +821,13 @@
       "help": {
         "usd": "Coste equivalente API en USD, tal como lo calcula Claude Code.",
         "tokens": "Entrada, salida y razonamiento; la caché no cuenta. agy no informa del coste."
+      },
+      "threshold": {
+        "label": "Avisar para cambiar de CLI al llegar a",
+        "help": "Porcentaje de la ventana de suscripción de la cuenta principal a partir del cual un agente con CLI secundario te pregunta si cambia.",
+        "save": "Guardar umbral",
+        "saved": "Umbral guardado",
+        "invalid": "Escribe un número entre 50 y 100."
       }
     },
     "general": {
@@ -1022,6 +1040,7 @@
       "requests_other": "{{count}} peticiones",
       "queued": "{{count}} en cola",
       "queueEmpty": "cola vacía",
+      "usingFallback": "Usando el secundario",
       "assign": "Asignar tarea a {{name}}",
       "usage": "Ver desglose de consumo",
       "tokens": "{{value}} tok",

@@ -129,6 +129,9 @@ export function makeAgent(overrides: Partial<Agent> = {}): Agent {
     template: null,
     team_id: null,
     account_id: null,
+    fallback_account_id: null,
+    fallback_model: '',
+    using_fallback: false,
     queued_count: 0,
     running_count: 0,
     created_at: now(),
@@ -538,6 +541,10 @@ export function createFakeBackend(
       }
       return json(200, team)
     }
+    if (path === '/api/settings/switch-threshold') {
+      if (method === 'PUT') switchThreshold = Number(body.threshold)
+      return json(200, { threshold: switchThreshold })
+    }
     if (path === '/api/settings/usage-limits') {
       if (method === 'PUT') {
         for (const entry of body.limits as { account_id: string; daily_limit: number | null }[]) {
@@ -701,6 +708,11 @@ export function createFakeBackend(
     if (match[2] === 'review')
       resolve(body.approve ? 'approved' : 'rejected', String(body.reason ?? ''))
     if (match[2] === 'resume') resolve('approved')
+    if (match[2] === 'switch') {
+      const agent = agents.find((a) => a.id === item.agent_id)
+      if (agent && body.choice === 'switch') agent.using_fallback = true
+      resolve('answered', String(body.choice))
+    }
     if (match[2] === 'dismiss') resolve(item.kind === 'delivery' ? 'reviewed' : 'dismissed')
     return json(200, item)
   }
@@ -708,6 +720,7 @@ export function createFakeBackend(
   const taskEvents = { ...(seed.taskEvents ?? {}) }
   const pipelines: Record<string, Pipeline | null> = { ...(seed.pipelines ?? {}) }
   const scheduler = { paused: seed.paused ?? false }
+  let switchThreshold = 90
   const agents = [...(seed.agents ?? [])]
   const projects = [...(seed.projects ?? [])]
   const runs = [...(seed.runs ?? [])]
@@ -732,6 +745,7 @@ export function createFakeBackend(
           agent.status === 'draft' ? 'draft' : waiting ? 'waiting' : running ? 'running' : 'idle',
         team_id: agent.team_id,
         account_id: agent.account_id,
+        using_fallback: agent.using_fallback,
         queued: own.filter((t) => t.status === 'queued').length,
         pending_requests: requests,
         sessions: [
@@ -1066,6 +1080,13 @@ export function createFakeBackend(
       if (template) agent.id = `agent-from-${template.id}`
       agents.push(agent)
       return json(201, agent)
+    }
+    const clearMatch = path.match(/^\/api\/agents\/([^/]+)\/fallback\/clear$/)
+    if (clearMatch) {
+      const agent = agents.find((a) => a.id === clearMatch[1])
+      if (!agent) return apiError(404, 'agent_not_found')
+      agent.using_fallback = false
+      return json(200, agent)
     }
     const agentMatch = path.match(/^\/api\/agents\/([^/]+)(\/duplicate)?$/)
     if (agentMatch) {

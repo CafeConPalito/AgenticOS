@@ -5,7 +5,13 @@ import { FormProvider, useForm, useWatch } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { Link, Navigate, useNavigate, useParams } from 'react-router'
 import { toast } from 'sonner'
-import { useAgent, useDeleteAgent, useDuplicateAgent, useUpdateAgent } from '@/api/agents'
+import {
+  useAgent,
+  useClearFallback,
+  useDeleteAgent,
+  useDuplicateAgent,
+  useUpdateAgent,
+} from '@/api/agents'
 import type { Agent } from '@/api/types'
 import { AgentAvatar, StatusBadge } from '@/components/agentic/primitives'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
@@ -67,6 +73,7 @@ function AgentEditor({ agent, tab }: { agent: Agent; tab: Tab }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const update = useUpdateAgent(agent.id)
+  const clearFallback = useClearFallback()
   const duplicate = useDuplicateAgent()
   const remove = useDeleteAgent()
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -158,6 +165,18 @@ function AgentEditor({ agent, tab }: { agent: Agent; tab: Tab }) {
               <span>{t(`cli.${cli}`)}</span>
               <span aria-hidden>·</span>
               <span className="font-mono">{model || t('cli.defaultModel')}</span>
+              {agent.using_fallback && (
+                <>
+                  <StatusBadge tone="waiting" label={t('agents.usingFallback')} size="xs" />
+                  <button
+                    type="button"
+                    className="text-xs underline hover:text-foreground"
+                    onClick={() => clearFallback.mutate(agent.id)}
+                  >
+                    {t('agents.backToMain')}
+                  </button>
+                </>
+              )}
             </div>
           </div>
           <Button

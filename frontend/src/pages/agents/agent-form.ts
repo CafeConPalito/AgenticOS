@@ -20,6 +20,8 @@ export function agentSchema() {
     status: z.enum(['active', 'draft']),
     team_id: z.string().nullable(),
     account_id: z.string().nullable(),
+    fallback_account_id: z.string().nullable(),
+    fallback_model: z.string().trim().max(80),
   })
 }
 
@@ -41,6 +43,8 @@ export const AGENT_FIELDS = [
   'status',
   'team_id',
   'account_id',
+  'fallback_account_id',
+  'fallback_model',
 ] as const satisfies readonly (keyof AgentFields)[]
 
 export function toFormValues(agent: Agent): AgentFormValues {

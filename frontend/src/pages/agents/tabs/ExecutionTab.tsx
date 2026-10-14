@@ -21,7 +21,7 @@ import i18n from '@/i18n'
 import { errorMessage } from '@/lib/form-errors'
 import { cn } from '@/lib/utils'
 import type { AgentFormValues } from '../agent-form'
-import { AccountSelect } from '../AgentLinks'
+import { AccountSelect, FallbackFields } from '../AgentLinks'
 
 const CLIS: CliId[] = ['claude', 'agy']
 const DEFAULT_MODEL = '__default__' // Radix Select cannot use "" as an item value
@@ -55,6 +55,28 @@ function OptionCard({
     >
       {children}
     </button>
+  )
+}
+
+/** The secondary CLI reads and writes the form's two fields together. */
+function FallbackWatch() {
+  const { setValue } = useFormContext<AgentFormValues>()
+  const [cli, accountId, fallbackAccountId, fallbackModel] = useWatch<
+    AgentFormValues,
+    ['cli', 'account_id', 'fallback_account_id', 'fallback_model']
+  >({ name: ['cli', 'account_id', 'fallback_account_id', 'fallback_model'] })
+  return (
+    <FallbackFields
+      idPrefix="agent"
+      cli={cli}
+      accountId={accountId}
+      fallbackAccountId={fallbackAccountId}
+      fallbackModel={fallbackModel}
+      onChange={(value) => {
+        setValue('fallback_account_id', value.fallback_account_id, { shouldDirty: true })
+        setValue('fallback_model', value.fallback_model, { shouldDirty: true })
+      }}
+    />
   )
 }
 
@@ -198,6 +220,8 @@ export function ExecutionTab() {
           )}
         />
       </Field>
+
+      <FallbackWatch />
 
       <Field label={t('agents.fields.permissions')}>
         <Controller

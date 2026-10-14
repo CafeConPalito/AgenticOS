@@ -32,6 +32,7 @@ export const usageKeys = {
     ['usage', 'sessions', f, sort, dir] as const,
   today: ['usage', 'today'] as const,
   limits: ['settings', 'usage-limits'] as const,
+  threshold: ['settings', 'switch-threshold'] as const,
 }
 
 export const PERIODS: PeriodDays[] = [7, 30, 90]
@@ -122,6 +123,26 @@ export function useUsageLimits() {
   return useQuery({
     queryKey: usageKeys.limits,
     queryFn: () => api.get<LimitState[]>('/api/settings/usage-limits'),
+  })
+}
+
+/** The percent of a subscription window at which an agent with a secondary CLI asks. */
+export function useSwitchThreshold() {
+  return useQuery({
+    queryKey: usageKeys.threshold,
+    queryFn: () => api.get<{ threshold: number }>('/api/settings/switch-threshold'),
+  })
+}
+
+export function useSaveSwitchThreshold() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (threshold: number) =>
+      api.put<{ threshold: number }>('/api/settings/switch-threshold', { threshold }),
+    onSuccess: (value) => {
+      queryClient.setQueryData(usageKeys.threshold, value)
+      return queryClient.invalidateQueries({ queryKey: ['inbox'] })
+    },
   })
 }
 

@@ -1,5 +1,6 @@
 import {
   AlertTriangle,
+  ArrowLeftRight,
   BatteryWarning,
   CheckCheck,
   Clock,
@@ -32,6 +33,7 @@ export const KIND_STYLE: Record<InboxKind, { color: string; icon: typeof Inbox }
   limit: { color: 'var(--status-waiting)', icon: Gauge },
   quota: { color: 'var(--status-failed)', icon: BatteryWarning },
   account: { color: 'var(--status-waiting)', icon: UserX },
+  switch: { color: 'var(--status-waiting)', icon: ArrowLeftRight },
 }
 
 /** A request of the agents to the person, with its actions while pending. */

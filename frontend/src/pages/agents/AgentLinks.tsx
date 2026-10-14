@@ -1,7 +1,9 @@
 import { useTranslation } from 'react-i18next'
-import { useAccounts } from '@/api/accounts'
+import { accountOf, useAccounts } from '@/api/accounts'
+import { useClis } from '@/api/clis'
 import { useTeams } from '@/api/teams'
 import type { CliId } from '@/api/types'
+import { Field } from '@/components/page'
 import {
   Select,
   SelectContent,
@@ -87,5 +89,101 @@ export function AccountSelect({
         ))}
       </SelectContent>
     </Select>
+  )
+}
+
+const DEFAULT_MODEL = '__default__'
+
+/**
+ * «CLI secundario» of an agent: an account (which fixes the CLI) and a model it switches to when
+ * its main account is about to run out. Not the main account itself.
+ */
+export function FallbackFields({
+  idPrefix,
+  cli,
+  accountId,
+  fallbackAccountId,
+  fallbackModel,
+  onChange,
+}: {
+  idPrefix: string
+  cli: CliId
+  accountId: string | null
+  fallbackAccountId: string | null
+  fallbackModel: string
+  onChange: (value: { fallback_account_id: string | null; fallback_model: string }) => void
+}) {
+  const { t } = useTranslation()
+  const accounts = useAccounts().data ?? []
+  const clis = useClis().data
+  const main = accountOf(accounts, { cli, account_id: accountId })
+  const options = accounts.filter((a) => a.id !== main?.id)
+  const current =
+    fallbackAccountId && options.some((a) => a.id === fallbackAccountId) ? fallbackAccountId : NONE
+  const selected = options.find((a) => a.id === current)
+  const models = clis?.find((c) => c.id === selected?.cli)?.models ?? []
+  return (
+    <div className="grid grid-cols-2 gap-5">
+      <Field
+        label={t('agents.fields.fallback')}
+        htmlFor={`${idPrefix}-fallback`}
+        help={t('agents.fields.fallbackHelp')}
+      >
+        <Select
+          value={current}
+          onValueChange={(v) =>
+            v &&
+            onChange({
+              fallback_account_id: v === NONE ? null : v,
+              // The model belongs to the CLI: a new account starts with its default.
+              fallback_model: '',
+            })
+          }
+        >
+          <SelectTrigger id={`${idPrefix}-fallback`} className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={NONE}>{t('agents.fields.fallbackNone')}</SelectItem>
+            {options.map((account) => (
+              <SelectItem key={account.id} value={account.id}>
+                {t(`cli.${account.cli}`)} · {account.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </Field>
+      {selected && (
+        <Field label={t('agents.fields.fallbackModel')} htmlFor={`${idPrefix}-fallback-model`}>
+          <Select
+            value={fallbackModel || DEFAULT_MODEL}
+            onValueChange={(v) =>
+              onChange({
+                fallback_account_id: selected.id,
+                fallback_model: v === DEFAULT_MODEL ? '' : v,
+              })
+            }
+          >
+            <SelectTrigger
+              id={`${idPrefix}-fallback-model`}
+              className="w-full font-mono text-[12.5px]"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={DEFAULT_MODEL}>{t('cli.defaultModel')}</SelectItem>
+              {fallbackModel && !models.some((m) => m.id === fallbackModel) && (
+                <SelectItem value={fallbackModel}>{fallbackModel}</SelectItem>
+              )}
+              {models.map((m) => (
+                <SelectItem key={m.id} value={m.id}>
+                  <span className="font-mono">{m.id}</span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Field>
+      )}
+    </div>
   )
 }

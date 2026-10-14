@@ -29,7 +29,7 @@ import type { NewAgentInit } from '@/stores/dialogs'
 import i18n from '@/i18n'
 import { errorMessage } from '@/lib/form-errors'
 import { cn } from '@/lib/utils'
-import { AccountSelect, TeamSelect } from './AgentLinks'
+import { AccountSelect, FallbackFields, TeamSelect } from './AgentLinks'
 import { TemplatePicker } from './TemplatePicker'
 
 const CLIS: CliId[] = ['claude', 'agy']
@@ -47,6 +47,8 @@ interface Draft {
   color: string
   team_id: string | null
   account_id: string | null
+  fallback_account_id: string | null
+  fallback_model: string
 }
 
 const BLANK: Draft = {
@@ -60,6 +62,8 @@ const BLANK: Draft = {
   color: BLANK_COLOR,
   team_id: null,
   account_id: null,
+  fallback_account_id: null,
+  fallback_model: '',
 }
 
 /** Creates an agent as a draft (activated later from its page): from a template or blank. */
@@ -111,6 +115,8 @@ function NewAgentForm({ onClose, init }: { onClose: () => void; init: NewAgentIn
             color: template.color,
             team_id: d.team_id,
             account_id: null,
+            fallback_account_id: null,
+            fallback_model: '',
           }
         : { ...BLANK, team_id: d.team_id },
     )
@@ -131,6 +137,8 @@ function NewAgentForm({ onClose, init }: { onClose: () => void; init: NewAgentIn
         color: draft.color,
         team_id: draft.team_id,
         account_id: draft.account_id,
+        fallback_account_id: draft.fallback_account_id,
+        fallback_model: draft.fallback_model,
         status: 'draft',
       })
       toast.success(t('agents.new.created', { name: agent.name }))
@@ -181,7 +189,14 @@ function NewAgentForm({ onClose, init }: { onClose: () => void; init: NewAgentIn
               <Select
                 value={draft.cli}
                 onValueChange={(v) =>
-                  setDraft((d) => ({ ...d, cli: v as CliId, model: '', account_id: null }))
+                  setDraft((d) => ({
+                    ...d,
+                    cli: v as CliId,
+                    model: '',
+                    account_id: null,
+                    fallback_account_id: null,
+                    fallback_model: '',
+                  }))
                 }
               >
                 <SelectTrigger id="new-agent-cli" className="w-full">
@@ -234,6 +249,15 @@ function NewAgentForm({ onClose, init }: { onClose: () => void; init: NewAgentIn
               </Select>
             </Field>
           </div>
+
+          <FallbackFields
+            idPrefix="new-agent"
+            cli={draft.cli}
+            accountId={draft.account_id}
+            fallbackAccountId={draft.fallback_account_id}
+            fallbackModel={draft.fallback_model}
+            onChange={(value) => setDraft((d) => ({ ...d, ...value }))}
+          />
 
           <Field label={t('agents.fields.permissions')}>
             <div
