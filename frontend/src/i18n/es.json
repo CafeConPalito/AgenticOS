@@ -48,11 +48,6 @@
     "openLogs": "Abrir logs"
   },
   "pages": {
-    "dashboard": {
-      "title": "Dashboard",
-      "emptyTitle": "Tus agentes, de un vistazo",
-      "emptyDescription": "Aquí verás qué hace cada agente, las aprobaciones pendientes y la actividad reciente."
-    },
     "agents": {
       "title": "Agentes",
       "emptyTitle": "Aún no tienes agentes",
@@ -943,5 +938,94 @@
     "loggedOutTitle": "Ningún CLI tiene sesión iniciada.",
     "loggedOut": "Abre el CLI en una terminal e inicia sesión para que tus agentes puedan trabajar.",
     "open": "Ver CLIs detectados"
+  },
+  "home": {
+    "title": "Inicio",
+    "live_one": "{{count}} sesión en vivo",
+    "live_other": "{{count}} sesiones en vivo",
+    "greeting": {
+      "morning": "Buenos días",
+      "afternoon": "Buenas tardes",
+      "evening": "Buenas noches"
+    },
+    "chips": {
+      "working": "trabajando",
+      "waiting": "esperan respuesta",
+      "spent": "gastados hoy"
+    },
+    "needs": {
+      "title": "Te necesitan",
+      "all": "Ver todas · {{count}}",
+      "less": "Ver menos",
+      "resolved": "Resueltas",
+      "empty": "Nada pendiente. Tus agentes no necesitan nada de ti ahora mismo."
+    },
+    "alerts": {
+      "kind": "Aviso del sistema · CLIs",
+      "now": "ahora",
+      "review": "Revisar CLIs",
+      "snooze": "Posponer",
+      "snoozed": "Aviso pospuesto",
+      "loggedOut": {
+        "title": "{{cli}}: sin sesión iniciada",
+        "context": "Abre el CLI en una terminal e inicia sesión para que sus agentes puedan trabajar."
+      },
+      "nearLimit": {
+        "title": "{{cli}} casi sin límite diario · {{percent}}",
+        "context": "Cuando llegue al 100 % sus tareas esperarán. Sube el límite en Ajustes o espera al reinicio de mañana."
+      }
+    },
+    "agents": {
+      "title": "Agentes",
+      "count_one": "{{count}} agente",
+      "count_other": "{{count}} agentes",
+      "new": "Nuevo agente",
+      "draft": "Borrador · actívalo desde su ficha",
+      "free": "Disponible · sin tareas en curso",
+      "states": {
+        "running": "Trabajando",
+        "waiting": "Te espera",
+        "idle": "Libre",
+        "draft": "Borrador"
+      },
+      "requests_one": "{{count}} petición",
+      "requests_other": "{{count}} peticiones",
+      "queued": "{{count}} en cola",
+      "queueEmpty": "cola vacía",
+      "assign": "Asignar tarea a {{name}}",
+      "usage": "Ver desglose de consumo",
+      "tokens": "{{value}} tok",
+      "session": {
+        "waiting": "esperándote",
+        "resumable": "reanudable",
+        "starting": "iniciando"
+      },
+      "empty": {
+        "title": "Aún no tienes agentes",
+        "description": "Crea tu primer agente o parte de una plantilla: Analista, Desarrollador, QA, Redactor, Comercial."
+      }
+    },
+    "summary": {
+      "label": "Resumen",
+      "projects": "Proyectos",
+      "projectsMeta": "{{count}} en total",
+      "openTasks": "{{count}} abiertas",
+      "idle": "Sin actividad",
+      "allProjects": "Ver todos",
+      "newProject": "Nuevo proyecto",
+      "noProjects": "Aún no hay proyectos.",
+      "spend": "Gasto de hoy",
+      "ofLimit": "{{percent}} del límite diario",
+      "noLimit": "Sin límite diario",
+      "warnAt": "Aviso al 80 %",
+      "clis": "CLIs",
+      "manage": "Gestionar",
+      "cliSession": {
+        "ok": "sesión iniciada",
+        "down": "sin sesión",
+        "missing": "no detectado",
+        "unknown": "sesión sin comprobar"
+      }
+    }
   }
 }

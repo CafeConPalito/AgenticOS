@@ -12,7 +12,7 @@ import AgentEditorPage from '@/pages/agents/AgentEditorPage'
 import AgentsPage from '@/pages/agents/AgentsPage'
 import NewAgentPage from '@/pages/agents/NewAgentPage'
 import BoardPage from '@/pages/BoardPage'
-import DashboardPage from '@/pages/DashboardPage'
+import HomePage from '@/pages/home/HomePage'
 import InboxPage from '@/pages/InboxPage'
 import NewProjectPage from '@/pages/projects/NewProjectPage'
 import ProjectDetailPage from '@/pages/projects/ProjectDetailPage'
@@ -30,7 +30,7 @@ export const routes: RouteObject[] = [
     path: '/',
     element: <AppShell />,
     children: [
-      { index: true, element: <DashboardPage /> },
+      { index: true, element: <HomePage /> },
       {
         path: 'agentes',
         handle: crumb(() => <TextCrumb i18nKey="nav.agents" />),

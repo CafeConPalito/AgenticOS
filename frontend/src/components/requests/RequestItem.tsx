@@ -33,16 +33,86 @@ export const KIND_STYLE: Record<InboxKind, { color: string; icon: typeof Inbox }
 }
 
 /** A request of the agents to the person, with its actions while pending. */
-export function RequestItem({ item, focused = false }: { item: InboxItem; focused?: boolean }) {
+export function RequestItem({
+  item,
+  focused = false,
+  variant = 'card',
+  onHover,
+}: {
+  item: InboxItem
+  focused?: boolean
+  /** `row`: the line of Inicio's «Te necesitan» panel, without its own card. */
+  variant?: 'card' | 'row'
+  /** `row`: the agent being hovered, to highlight its card. */
+  onHover?: (agentId: string | null) => void
+}) {
   const { t } = useTranslation()
   const style = KIND_STYLE[item.kind]
   const Icon = style.icon
   const title = item.kind === 'approval' ? t('inbox.approvalTitle') : item.title
+  if (variant === 'row')
+    return (
+      <article
+        aria-label={`${t(`inbox.kinds.${item.kind}`)}: ${title}`}
+        onMouseEnter={() => onHover?.(item.agent_id)}
+        onMouseLeave={() => onHover?.(null)}
+        className="grid grid-cols-[30px_minmax(0,1fr)] gap-3.5 border-t border-sep px-[18px] py-4"
+      >
+        <AgentAvatar name={item.agent_name || '?'} color={item.agent_color} size={30} />
+        <div className="flex min-w-0 flex-col gap-1.5">
+          <div className="flex items-baseline gap-3">
+            <h3 className="min-w-0 flex-1 text-sm font-medium text-pretty">{title}</h3>
+            <time className="shrink-0 text-xs text-muted-foreground" dateTime={item.created_at}>
+              {relativeTime(item.created_at)}
+            </time>
+          </div>
+          <div className="flex min-w-0 items-center gap-1.5 text-xs whitespace-nowrap text-muted-foreground">
+            <span>{t(`inbox.kinds.${item.kind}`)}</span>
+            {item.agent_name && (
+              <>
+                <span>·</span>
+                {item.agent_id ? (
+                  <Link to={`/agentes/${item.agent_id}`} className="hover:text-foreground">
+                    {item.agent_name}
+                  </Link>
+                ) : (
+                  <span>{item.agent_name}</span>
+                )}
+              </>
+            )}
+            {item.task_id && item.task_code && (
+              <>
+                <span>·</span>
+                <Link
+                  to={`/tablero/tareas/${item.task_id}`}
+                  className="truncate hover:text-foreground"
+                >
+                  {item.task_code} · {item.task_title ?? ''}
+                </Link>
+              </>
+            )}
+          </div>
+          {item.kind === 'approval' && item.command && (
+            <code className="self-start rounded-lg bg-terminal px-2 py-[3px] font-mono text-xs text-terminal-foreground">
+              {item.command}
+            </code>
+          )}
+          {item.detail && (
+            <p className="text-[12.5px] text-pretty text-muted-foreground">{item.detail}</p>
+          )}
+          {item.status === 'pending' && (
+            <div className="mt-1">
+              <RequestActions item={item} inline />
+            </div>
+          )}
+        </div>
+      </article>
+    )
   return (
     <article
       aria-label={`${t(`inbox.kinds.${item.kind}`)}: ${title}`}
       className={cn(
-        'overflow-hidden rounded-xl border bg-card',
+        'overflow-hidden rounded-xl border border-sep shadow-card bg-card-grad',
         focused && 'border-ring ring-1 ring-ring',
       )}
     >

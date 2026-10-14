@@ -375,6 +375,3 @@
   text-transform: uppercase;
   color: var(--muted-foreground);
 }
-@utility rise-delay {
-  animation-delay: var(--rise-delay, 0ms);
-}

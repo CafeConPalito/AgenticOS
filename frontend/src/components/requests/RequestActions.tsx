@@ -19,10 +19,21 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { api } from '@/lib/api'
 import { errorMessage } from '@/lib/form-errors'
+import { cn } from '@/lib/utils'
 import { ResumeTaskSession } from '@/pages/runs/ResumeSession'
 
 /** What can be done with a pending request, by kind. Shared by Inicio, Peticiones and the task. */
-export function RequestActions({ item }: { item: InboxItem }) {
+export function RequestActions({
+  item,
+  inline = false,
+  extra,
+}: {
+  item: InboxItem
+  /** No footer bar: the actions sit inside the item (Inicio). */
+  inline?: boolean
+  /** More buttons after the kind's own (Inicio's «Revisar CLIs» and «Posponer»). */
+  extra?: React.ReactNode
+}) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const showDock = useDock((s) => s.show)
@@ -62,7 +73,12 @@ export function RequestActions({ item }: { item: InboxItem }) {
     )
 
   return (
-    <div className="flex flex-wrap items-center gap-2 border-t bg-subtle px-4 py-2.5">
+    <div
+      className={cn(
+        'flex flex-wrap items-center gap-2',
+        !inline && 'border-t border-sep bg-subtle px-4 py-2.5',
+      )}
+    >
       {item.kind === 'approval' && (
         <>
           <Button
@@ -233,6 +249,7 @@ export function RequestActions({ item }: { item: InboxItem }) {
           </Button>
         )
       )}
+      {extra}
       {item.run_id && (
         <Button
           size="sm"

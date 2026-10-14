@@ -151,45 +151,6 @@ describe('Consumo', () => {
   })
 })
 
-describe('Consumo de hoy (Dashboard)', () => {
-  it('shows today and warns near and over the daily limits', async () => {
-    const usage = emptyUsage()
-    usage.today = {
-      ...usage.today,
-      tokens: 3_820_000,
-      cache_read_tokens: 2_610_000,
-      cost_usd: 6.51,
-      agents: [{ id: 'agent-1', name: 'Dev', color: '#4FD1C5', cost_usd: 6.51, tokens: 10 }],
-      limits: [
-        { ...usage.today.limits[0], limit: 8, used: 6.51, ratio: 0.81, near: true },
-        {
-          ...usage.today.limits[1],
-          limit: 1000,
-          used: 1200,
-          ratio: 1.2,
-          near: true,
-          reached: true,
-          quota_exhausted: true,
-        },
-      ],
-    }
-    createFakeBackend({ usage })
-    renderApp('/')
-    const card = await screen.findByRole('region', { name: es.usage.today.title })
-    expect(await within(card).findByText('3,82 M')).toBeVisible()
-    expect(within(card).getByText('2,61 M en caché')).toBeVisible()
-    expect(within(card).getAllByText('6,51 $', { normalizer: plain }).length).toBeGreaterThan(0)
-    expect(within(card).getByText('Cerca del límite diario de Claude Code')).toBeVisible()
-    expect(
-      within(card).getByText('Antigravity sin cuota: no se lanzan tareas nuevas'),
-    ).toBeVisible()
-    expect(within(card).getByRole('link', { name: es.usage.today.detail })).toHaveAttribute(
-      'href',
-      '/consumo',
-    )
-  })
-})
-
 describe('Límites diarios (Ajustes)', () => {
   it('saves the limits and rejects invalid values', async () => {
     const backend = createFakeBackend()
