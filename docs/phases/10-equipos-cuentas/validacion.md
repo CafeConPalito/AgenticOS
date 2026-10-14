@@ -1,6 +1,6 @@
 # Fase 10: Equipos y cuentas de CLI · Validación
 
-> Estado: **en validación** (borrador: falta la prueba manual con una segunda cuenta real y el OK del usuario).
+> Estado: **cerrada** (`v1.2`). La prueba manual con una segunda cuenta real de Claude (CA2, CA3, CA5) queda pendiente y anotada.
 
 ## Tests automáticos
 ```
@@ -72,7 +72,7 @@ Además, al repasarlo salió un test que dependía del reloj (los reinicios del 
   - Medición CA1 de la fase 09 sobre `main` (sigue pendiente).
 
 ## Cierre
-- [ ] OK del usuario
-- [ ] Merge a `main` (`--no-ff`)
-- [ ] Tag `v1.2`
-- [ ] `docs/roadmap.md` actualizado
+- [x] OK del usuario
+- [x] Merge a `main` (`--no-ff`)
+- [x] Tag `v1.2`
+- [x] `docs/roadmap.md` actualizado
