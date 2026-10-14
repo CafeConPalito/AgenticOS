@@ -1,5 +1,6 @@
 import { create } from 'zustand'
-import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware'
+import { createJSONStorage, persist } from 'zustand/middleware'
+import { safeStorage } from '@/lib/safe-storage'
 
 export type DockPosition = 'bottom' | 'right'
 
@@ -16,31 +17,6 @@ interface DockState {
 }
 
 export const DOCK_DEFAULTS = { open: false, position: 'bottom', activeRunId: null } as const
-
-// Storage can be unavailable (private mode, blocked site data): the dock then just forgets.
-const safeStorage: StateStorage = {
-  getItem: (name) => {
-    try {
-      return localStorage.getItem(name)
-    } catch {
-      return null
-    }
-  },
-  setItem: (name, value) => {
-    try {
-      localStorage.setItem(name, value)
-    } catch {
-      // ignore
-    }
-  },
-  removeItem: (name) => {
-    try {
-      localStorage.removeItem(name)
-    } catch {
-      // ignore
-    }
-  },
-}
 
 export const useDock = create<DockState>()(
   persist(

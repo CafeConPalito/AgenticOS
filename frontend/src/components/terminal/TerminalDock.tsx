@@ -65,6 +65,7 @@ function OpenDock() {
   return (
     <aside
       aria-label={t('dock.label')}
+      data-terminal-dock
       className={cn(
         'flex shrink-0 flex-col bg-terminal text-terminal-foreground',
         position === 'bottom' ? 'h-[260px] border-t' : 'w-[440px] border-l',
