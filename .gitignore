@@ -30,3 +30,6 @@ logs/
 Thumbs.db
 .vscode/
 .idea/
+
+# Raw captures of the CLI probes (real emails and paths): never committed
+spikes/out/

@@ -38,7 +38,8 @@ from agentic_os.services.scheduler import Scheduler
 from agentic_os.services.usage import limits, stats
 
 TZ = timezone(timedelta(hours=2))  # Madrid in October
-DAY = date(2026, 10, 12)
+# Today: the Inbox items are stamped with the real clock, so «the day» must be the real one.
+DAY = datetime.now(TZ).date()
 
 
 @pytest.fixture

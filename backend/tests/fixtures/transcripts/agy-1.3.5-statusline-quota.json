@@ -1,0 +1,60 @@
+{
+    "cwd":  "C:\\project",
+    "session_id":  "conversation-id",
+    "conversation_id":  "conversation-id",
+    "transcript_path":  "C:\\transcript.jsonl",
+    "model":  {
+                  "id":  "Gemini 3.8 Flash (High)",
+                  "display_name":  "Gemini 3.8 Flash (High)",
+                  "effort":  "high"
+              },
+    "workspace":  {
+                      "current_dir":  "C:\\project",
+                      "project_dir":  "C:\\project"
+                  },
+    "version":  "1.3.5",
+    "context_window":  {
+                           "total_input_tokens":  16715,
+                           "total_output_tokens":  23,
+                           "context_window_size":  1048576,
+                           "used_percentage":  1.5940666198730469,
+                           "remaining_percentage":  98.40593338012695,
+                           "current_usage":  {
+                                                 "input_tokens":  11714,
+                                                 "output_tokens":  23,
+                                                 "cache_creation_input_tokens":  0,
+                                                 "cache_read_input_tokens":  0
+                                             }
+                       },
+    "exceeds_200k_tokens":  false,
+    "product":  "antigravity",
+    "quota":  {
+                  "3p-5h":  {
+                                "remaining_fraction":  1,
+                                "reset_time":  "2026-10-14T20:26:53Z",
+                                "reset_in_seconds":  17999
+                            },
+                  "3p-weekly":  {
+                                    "remaining_fraction":  1,
+                                    "reset_time":  "2026-10-21T15:26:53Z",
+                                    "reset_in_seconds":  604799
+                                },
+                  "gemini-5h":  {
+                                    "remaining_fraction":  0.982825,
+                                    "reset_time":  "2026-10-14T16:46:59Z",
+                                    "reset_in_seconds":  4805
+                                },
+                  "gemini-weekly":  {
+                                        "remaining_fraction":  0.9756125,
+                                        "reset_time":  "2026-10-16T17:27:05Z",
+                                        "reset_in_seconds":  180011
+                                    }
+              },
+    "agent_state":  "idle",
+    "sandbox":  {
+                    "enabled":  false
+                },
+    "plan_tier":  "Google AI Pro",
+    "email":  "user@example.com",
+    "terminal_width":  120
+}
