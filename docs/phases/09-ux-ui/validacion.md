@@ -1,6 +1,6 @@
 # Fase 09: Mejora de UX/UI · Validación
 
-> Estado: **pendiente de revisión con el usuario** (CA11) y de `/code-review`.
+> Estado: **cerrada** (OK del usuario el 2026-10-14).
 
 ## Tests automáticos
 ```
@@ -24,8 +24,8 @@ backend (pytest):   nuevos test_home_api.py (5) y test_tasks_api.py (+1) en verd
 | CA7 | Nuevo agente como borrador + «Activar»; Nuevo proyecto con carpeta, pipeline y color | ✅ | `new-agent.test.tsx`, `new-project.test.tsx`, `agent-summary.test.tsx` |
 | CA8 | Ctrl+K, `?`, guardas de foco/terminal/diálogo y preferencia | ✅ (prueba manual con ejecución en vivo: ⏳) | `shortcuts.test.ts`, `palette.test.tsx`, `settings.test.tsx` |
 | CA9 | Ajustes con índice lateral y «Atajos de una tecla» | ✅ | `settings.test.tsx` |
-| CA10 | Acabado v7 en los dos temas, AA, sin animaciones con `prefers-reduced-motion` | ⏳ | tokens y primitivas aplicados; falta revisión con el usuario y medida de rendimiento con terminal en vivo en WebView2 |
-| CA11 | Revisión con el usuario | ⏳ | — |
+| CA10 | Acabado v7 en los dos temas, AA, sin animaciones con `prefers-reduced-motion` | ✅ (revisado con el usuario) | tokens y primitivas aplicados; falta revisión con el usuario y medida de rendimiento con terminal en vivo en WebView2 |
+| CA11 | Revisión con el usuario | ✅ | revisión conjunta con la app en marcha; el usuario da la fase por finalizada |
 | CA12 | Lint, typecheck y tests en verde | ✅ salvo los 2 fallos previos de `test_usage_stats.py` | arriba |
 
 ### Tabla de pasos de CA1 (antes: contados sobre el código de la v1.0 · después: tests)
@@ -60,8 +60,18 @@ Al añadir los tests apareció otro fallo: `cmdk` consumía Ctrl+K dentro de la 
 - **Cambios respecto a la spec**: el plan se dio por aprobado con la orden «ejecuta el plan». La etapa del pipeline en «Nueva tarea» no es seleccionable: la tarea siempre empieza en la primera etapa (lo que ya hacía el backend), así que el campo muestra «Empieza en <etapa> con <agente>». Se retiraron `TodayUsageCard` y `CliReadinessBanner` (sustituidos por el resumen y los avisos de Inicio) y los componentes `sidebar` y `use-mobile`.
 - **Impacto en fases futuras**: la fase 10 (equipos y cuentas) añade la cuota por cuenta a la columna de CLIs y los equipos a la rejilla; `/api/home` y `CliAlertItem` ya están preparados para ello.
 
+## Corregido durante la revisión con el usuario
+- agy 1.3.5 pide «Accept this file edit?» (opción «No, reject this change»), que el detector no conocía: el diálogo no llegaba a la Inbox y la ejecución se quedaba parada (`a1e5970`).
+- «Eventos MCP» se solapaba con «Consumo de la sesión» en la columna derecha de tarea y ejecución, y ahora va después del consumo (`885562d`, `1444c7a`).
+- Una ejecución terminada se reproducía a un solo tamaño y salía descolocada: el log registra ahora el tamaño del PTY (OSC 7770) y la terminal pasiva lo sigue (`f273293`). Solo afecta a las ejecuciones nuevas.
+
+## Pendiente para fases futuras
+- `GET /api/tasks?q=` carga todas las tareas por pulsación (hallazgo 8 del review).
+- Los 2 fallos de `test_usage_stats.py` (límites diarios) no se investigaron ni se confirmaron sobre `main`.
+- Medición manual de CA1 sobre `main` y medida de rendimiento de `backdrop-filter` con terminal en vivo no registradas.
+
 ## Cierre
-- [ ] OK del usuario
-- [ ] Merge a `main` (`--no-ff`)
-- [ ] Tag `v0.9`
-- [ ] `docs/roadmap.md` actualizado
+- [x] OK del usuario
+- [x] Merge a `main` (`--no-ff`)
+- [x] Tag `v0.9`
+- [x] `docs/roadmap.md` actualizado
