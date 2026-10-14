@@ -14,6 +14,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useParams } from 'react-router'
 import { toast } from 'sonner'
+import { useInbox } from '@/api/inbox'
 import { usePipeline } from '@/api/pipelines'
 import { useRun, useRuns } from '@/api/runs'
 import {
@@ -31,6 +32,7 @@ import { AgentAvatar, ProjectChip } from '@/components/agentic/primitives'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { EmptyState } from '@/components/EmptyState'
 import { Field, PageContainer } from '@/components/page'
+import { RequestItem } from '@/components/requests/RequestItem'
 import { TerminalPanel } from '@/components/terminal/TerminalPanel'
 import { Button } from '@/components/ui/button'
 import {
@@ -57,6 +59,7 @@ import { SessionUsage } from '@/components/usage/SessionUsage'
 import { ResumeTaskSession } from '@/pages/runs/ResumeSession'
 import { RunEventsPanel } from '@/pages/runs/RunEventsPanel'
 import { RunStatusBadge } from '@/pages/runs/RunStatusBadge'
+import { SessionFactsLine } from './SessionFactsLine'
 import { PriorityLabel, TaskStatusBadge } from './TaskBits'
 
 export default function TaskPage() {
@@ -196,11 +199,7 @@ function TaskDetail({ task }: { task: Task }) {
           {run ? (
             <>
               <TerminalPanel key={run.id} run={run} />
-              <div className="flex gap-4 px-0.5 font-mono text-[11.5px] text-muted-foreground">
-                <span>{t('runs.terminalInfo', { cols: run.cols, rows: run.rows })}</span>
-                <span className="truncate">{run.cwd}</span>
-                {task.branch && <span className="ml-auto">{task.branch}</span>}
-              </div>
+              <SessionFactsLine run={run} task={task} />
             </>
           ) : (
             <div className="grid flex-1 place-items-center rounded-lg border border-dashed text-sm text-muted-foreground">
@@ -208,7 +207,7 @@ function TaskDetail({ task }: { task: Task }) {
             </div>
           )}
         </div>
-        <aside className="flex min-h-0 flex-col overflow-auto border-l p-4">
+        <aside className="flex min-h-0 flex-col overflow-auto border-l p-4 [&>*]:shrink-0">
           <ExecutionTree
             task={task}
             selected={runId}
@@ -216,8 +215,8 @@ function TaskDetail({ task }: { task: Task }) {
               setPicked(id === (task.active_run_id ?? task.last_run_id) ? null : id)
             }
           />
-          {runId && <RunEventsPanel runId={runId} />}
           {run && <SessionUsage run={run} taskTotal={task.usage} />}
+          {runId && <RunEventsPanel runId={runId} />}
         </aside>
       </div>
 
@@ -420,6 +419,7 @@ function TaskSidePanel({ task, stages }: { task: Task; stages: Stage[] }) {
   const { t } = useTranslation()
   const events = useTaskEvents(task.id, isMoving(task)).data ?? []
   const runs = useRuns({ taskId: task.id }).data ?? []
+  const requests = (useInbox('pending').data ?? []).filter((item) => item.task_id === task.id)
   const lastSummary = [...events]
     .reverse()
     .find((e) => e.kind === 'stage_completed' || e.kind === 'completed_manually')
@@ -441,11 +441,16 @@ function TaskSidePanel({ task, stages }: { task: Task; stages: Stage[] }) {
               {task.waiting_detail}
             </p>
           )}
-          <Link to="/inbox" className="mt-2 inline-block text-xs text-ring hover:underline">
-            {t('tasks.detail.openInbox')}
-          </Link>
+          {requests.length === 0 && (
+            <Link to="/inbox" className="mt-2 inline-block text-xs text-ring hover:underline">
+              {t('tasks.detail.openInbox')}
+            </Link>
+          )}
         </section>
       )}
+      {requests.map((item) => (
+        <RequestItem key={item.id} item={item} />
+      ))}
       {task.parent_task_id && (
         <Link
           to={`/tablero/tareas/${task.parent_task_id}`}

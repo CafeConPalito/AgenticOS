@@ -1,7 +1,8 @@
-import { ChartColumn } from 'lucide-react'
+import { ChartColumn, Download } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router'
+import { toast } from 'sonner'
 import {
   PERIODS,
   periodFromParam,
@@ -9,11 +10,14 @@ import {
   useUsageBreakdown,
   useUsageDaily,
   useUsageSessions,
+  downloadSessionsCsv,
   useUsageSummary,
 } from '@/api/usage'
 import { EmptyState } from '@/components/EmptyState'
 import { PageContainer, PageHeader } from '@/components/page'
+import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { errorMessage } from '@/lib/form-errors'
 import { formatPercent, formatTokens, formatUsd } from '@/lib/format'
 import { DailyChart, type Metric } from './usage/DailyChart'
 import { KpiCard, Segmented, ShareBar } from './usage/parts'
@@ -45,6 +49,13 @@ export default function UsagePage() {
     setParams(next, { replace: true })
   }
 
+  function exportCsv() {
+    downloadSessionsCsv({ days }).then(
+      () => toast.success(t('usage.exported')),
+      (error: unknown) => toast.error(errorMessage(error)),
+    )
+  }
+
   const kpis = summary.data?.kpis
   // With only agy (no cost) the chart shows tokens instead of an empty cost chart.
   const metric: Metric = kpis && kpis.cost_usd === 0 && kpis.tokens > 0 ? 'tokens' : 'cost'
@@ -61,12 +72,18 @@ export default function UsagePage() {
         title={t('pages.usage.title')}
         subtitle={t('usage.subtitle')}
         actions={
-          <Segmented
-            label={t('usage.period.30')}
-            value={days}
-            options={PERIODS.map((p) => ({ value: p, label: t(`usage.period.${p}`) }))}
-            onChange={(value) => update('periodo', value === 30 ? null : String(value))}
-          />
+          <>
+            <Segmented
+              label={t('usage.period.30')}
+              value={days}
+              options={PERIODS.map((p) => ({ value: p, label: t(`usage.period.${p}`) }))}
+              onChange={(value) => update('periodo', value === 30 ? null : String(value))}
+            />
+            <Button variant="outline" onClick={exportCsv}>
+              <Download />
+              {t('header.primary.exportCsv')}
+            </Button>
+          </>
         }
       />
 
@@ -116,7 +133,10 @@ export default function UsagePage() {
       </section>
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,2.2fr)_minmax(260px,1fr)]">
-        <section className="rounded-xl border bg-card px-4 py-3.5" aria-label={chartTitle}>
+        <section
+          className="rounded-xl border border-sep px-4 py-3.5 shadow-card bg-card-grad"
+          aria-label={chartTitle}
+        >
           <div className="mb-3 flex items-center justify-between gap-3">
             <h2 className="text-[14px] font-medium">{chartTitle}</h2>
             <Segmented
@@ -136,7 +156,7 @@ export default function UsagePage() {
           )}
         </section>
 
-        <section className="rounded-xl border bg-card px-4 py-3.5">
+        <section className="rounded-xl border border-sep px-4 py-3.5 shadow-card bg-card-grad">
           <h2 className="mb-3 text-[14px] font-medium">{t('usage.breakdown.title')}</h2>
           {breakdown.data && breakdown.data.rows.length === 0 && (
             <p className="text-[13px] text-muted-foreground">{t('usage.breakdown.empty')}</p>
@@ -169,7 +189,7 @@ export default function UsagePage() {
         </section>
       </div>
 
-      <section className="overflow-hidden rounded-xl border bg-card">
+      <section className="overflow-hidden rounded-xl border border-sep shadow-card bg-card-grad">
         <h2 className="border-b px-4 py-3 text-[14px] font-medium">{t('usage.sessions.title')}</h2>
         {sessions.data && sessions.data.length === 0 ? (
           <EmptyState

@@ -1,0 +1,1196 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@400;500;700&family=Ubuntu+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+html,body{margin:0;height:100%;background:#0A1A33}
+*{box-sizing:border-box}
+body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+button,a,[role="link"]{transition:background-color .2s cubic-bezier(.25,.1,.25,1),color .2s,border-color .2s,box-shadow .25s,transform .18s cubic-bezier(.25,.1,.25,1)}
+button:active{transform:scale(.97)}
+[role="link"]:hover{transform:translateY(-1px)}
+@keyframes sheetIn{from{opacity:0;transform:translateY(10px) scale(.985)}to{opacity:1;transform:none}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes riseIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes sweep{from{background-position:150% 0}to{background-position:-50% 0}}
+[data-ag]:hover [data-ag-sec],[data-ag]:focus-within [data-ag-sec]{opacity:0!important}
+[data-ag]:hover [data-ag-use],[data-ag]:focus-within [data-ag-use]{opacity:1!important;pointer-events:auto!important}
+summary::-webkit-details-marker{display:none}
+details[open]>summary [data-chev]{transform:rotate(90deg)}
+button,input,textarea,select{font:inherit;color:inherit}
+button{cursor:pointer}
+a{color:var(--ring);text-decoration:none}a:hover{text-decoration:underline}
+*:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+::selection{background:#2E5BD6;color:#fff}
+::-webkit-scrollbar{width:10px;height:10px}::-webkit-scrollbar-thumb{background:color-mix(in oklch,var(--muted-foreground) 35%,transparent);border-radius:14px;border:2px solid transparent;background-clip:padding-box}::-webkit-scrollbar-track{background:transparent}
+[data-theme="dark"]{--background:#0A1A33;--foreground:#FFFFFF;--card:#0F2242;--popover:#13284D;--primary-action:#2E5BD6;--primary-action-hover:#3B69E8;--secondary:#16305A;--muted:#122A4E;--muted-foreground:#A8B6CF;--accent:#1A3562;--destructive:#E5484D;--border:#1E3A66;--input:#24426F;--ring:#7AA2FF;--subtle:#0C1D38;--term-bg:#050E1E;--st-queued:#9DB0D0;--st-running:#4CC9F0;--st-waiting:#F5B547;--st-review:#B39CFF;--st-done:#43D392;--st-failed:#FF6B6F;--st-cancelled:#8492AE;--sep:color-mix(in oklch,#1E3A66 65%,transparent);--glass:color-mix(in oklch,#0A1A33 70%,transparent);--glass-pop:color-mix(in oklch,#13284D 82%,transparent);--shadow-card:0 1px 0 rgba(255,255,255,.04) inset,0 1px 2px rgba(0,0,0,.25),0 8px 24px rgba(0,0,0,.18);--shadow-pop:0 0 0 .5px rgba(255,255,255,.08),0 24px 64px rgba(0,0,0,.5);--card-grad:linear-gradient(180deg,#13294B 0%,#0F2242 70%);--atmos:radial-gradient(900px 520px at 8% -12%,rgba(46,91,214,.42),transparent 62%),radial-gradient(720px 440px at 96% -4%,rgba(76,201,240,.13),transparent 60%),radial-gradient(900px 600px at 70% 115%,rgba(179,156,255,.09),transparent 60%),radial-gradient(rgba(255,255,255,.04) 1px,transparent 1.2px) 0 0/22px 22px;color-scheme:dark}
+[data-theme="light"]{--background:#F4F6FA;--foreground:#0A1A33;--card:#FFFFFF;--popover:#FFFFFF;--primary-action:#1B3F8F;--primary-action-hover:#24499F;--secondary:#E9EEF6;--muted:#EEF2F8;--muted-foreground:#4B5B78;--accent:#E3EAF5;--destructive:#C9302C;--border:#D6DEEA;--input:#C9D3E3;--ring:#2E5BD6;--subtle:#F8FAFD;--term-bg:#0A1A33;--st-queued:#4F6385;--st-running:#0A78A3;--st-waiting:#9A6200;--st-review:#6A4FD1;--st-done:#12805A;--st-failed:#C9302C;--st-cancelled:#647089;--sep:color-mix(in oklch,#D6DEEA 80%,transparent);--glass:color-mix(in oklch,#F4F6FA 72%,transparent);--glass-pop:color-mix(in oklch,#FFFFFF 84%,transparent);--shadow-card:0 1px 2px rgba(10,26,51,.05),0 6px 20px rgba(10,26,51,.06);--shadow-pop:0 0 0 .5px rgba(10,26,51,.08),0 24px 64px rgba(10,26,51,.18);--card-grad:linear-gradient(180deg,#FFFFFF 0%,#FBFCFE 100%);--atmos:radial-gradient(900px 520px at 8% -12%,rgba(46,91,214,.14),transparent 62%),radial-gradient(720px 440px at 96% -4%,rgba(76,201,240,.10),transparent 60%),radial-gradient(rgba(10,26,51,.05) 1px,transparent 1.2px) 0 0/22px 22px;color-scheme:light}
+@keyframes pulse{0%{box-shadow:0 0 0 0 color-mix(in oklch,var(--st-running) 70%,transparent)}100%{box-shadow:0 0 0 7px transparent}}
+@keyframes toastIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</helmet>
+<div data-theme="{{ theme }}" style="position:relative;height:100vh;min-width:1100px;display:flex;flex-direction:column;background:var(--background);color:var(--foreground);font-family:Ubuntu,system-ui,sans-serif;font-size:13px;line-height:1.45;overflow:hidden">
+<div aria-hidden="true" style="position:absolute;inset:0;pointer-events:none;background:var(--atmos)"></div>
+
+<header style="position:absolute;top:0;left:0;right:0;z-index:20;height:56px;display:flex;align-items:center;gap:12px;padding:0 22px;border-bottom:1px solid var(--sep);background:var(--glass);backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px)">
+  <a href="#/" aria-label="Agentic OS · Inicio" style="display:flex;align-items:center;gap:10px;color:var(--foreground);text-decoration:none" style-hover="text-decoration:none">
+    <span style="width:28px;height:28px;flex:none;border-radius:10px;background:linear-gradient(145deg,#3B69E8,#1B3F8F);box-shadow:inset 0 0 0 1px rgba(255,255,255,.14),0 6px 18px -6px #2E5BD6;display:grid;place-items:center;position:relative"><span style="width:10px;height:10px;border-radius:3px;border:2px solid #fff"></span><span style="position:absolute;right:5px;top:5px;width:5px;height:5px;border-radius:50%;background:#4CC9F0"></span></span>
+    <span style="font-weight:700;font-size:15px;letter-spacing:-.01em;white-space:nowrap">Agentic OS</span>
+  </a>
+  <span style="width:1px;height:22px;background:var(--border);margin:0 4px"></span>
+  <sc-if value="{{ notHome }}"><a href="#/" aria-label="Volver al inicio" title="Volver al inicio" style="width:28px;height:28px;flex:none;border-radius:999px;border:0;background:var(--muted);display:grid;place-items:center;color:var(--foreground)" style-hover="background:var(--accent);text-decoration:none"><span style="width:15px;height:15px;background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/arrow-left.svg) center/contain no-repeat"></span></a></sc-if>
+  <nav aria-label="Migas de pan" style="display:flex;align-items:center;gap:4px;min-width:0;flex:1">
+    <sc-for list="{{ crumbs }}" as="c" hint-placeholder-count="1">
+      <sc-if value="{{ c.sep }}"><span style="width:13px;height:13px;flex:none;color:var(--muted-foreground);background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/chevron-right.svg) center/contain no-repeat"></span></sc-if>
+      <sc-if value="{{ c.link }}"><a href="{{ c.href }}" style="padding:3px 6px;border-radius:5px;color:var(--muted-foreground);white-space:nowrap" style-hover="background:var(--accent);color:var(--foreground);text-decoration:none">{{ c.label }}</a></sc-if>
+      <sc-if value="{{ c.last }}" hint-placeholder-val="{{ true }}"><span aria-current="page" style="padding:3px 6px;font-weight:500;white-space:nowrap">{{ c.label }}</span></sc-if>
+    </sc-for>
+  </nav>
+  <nav aria-label="Secciones" style="display:flex;gap:2px;flex:none">
+    <sc-for list="{{ topNav }}" as="n" hint-placeholder-count="4"><a href="{{ n.href }}" aria-current="{{ n.cur }}" style="height:30px;padding:0 10px;border-radius:999px;background:{{ n.bg }};color:{{ n.fg }};display:flex;align-items:center;gap:6px;font-size:12.5px;white-space:nowrap" style-hover="background:var(--accent);color:var(--foreground);text-decoration:none">{{ n.label }}<sc-if value="{{ n.n }}"><span style="font-family:'Ubuntu Mono',monospace;font-size:11.5px;color:var(--muted-foreground)">{{ n.n }}</span></sc-if></a></sc-for>
+  </nav>
+  <button onClick="{{ openPal }}" style="width:220px;height:32px;display:flex;align-items:center;gap:8px;padding:0 6px 0 12px;border:1px solid transparent;border-radius:999px;background:color-mix(in oklch,var(--muted) 80%,transparent);color:var(--muted-foreground);font-size:12.5px" style-hover="border-color:var(--ring)"><span style="width:14px;height:14px;flex:none;background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/search.svg) center/contain no-repeat"></span><span style="flex:1;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Buscar agentes, tareas o acciones…</span><span style="display:flex;gap:3px"><span style="font-family:'Ubuntu Mono',monospace;font-size:11px;min-width:18px;height:18px;padding:0 5px;border-radius:4px;border:1px solid var(--border);background:var(--card);color:var(--muted-foreground);display:inline-grid;place-items:center">Ctrl</span><span style="font-family:'Ubuntu Mono',monospace;font-size:11px;min-width:18px;height:18px;padding:0 5px;border-radius:4px;border:1px solid var(--border);background:var(--card);color:var(--muted-foreground);display:inline-grid;place-items:center">K</span></span></button>
+  <button onClick="{{ toggleDock }}" title="Terminal (Ctrl+`)" aria-label="Terminal" aria-pressed="{{ dock }}" style="width:32px;height:32px;display:grid;place-items:center;border:0;border-radius:999px;background:{{ dockBtnBg }}" style-hover="background:var(--accent)"><span style="width:15px;height:15px;flex:none;background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/square-terminal.svg) center/contain no-repeat"></span></button>
+  <span title="Backend conectado · ws://127.0.0.1:4317" style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted-foreground)"><span style="width:7px;height:7px;border-radius:50%;background:var(--st-done)"></span>Conectado</span>
+  <button onClick="{{ toggleTheme }}" aria-label="Cambiar tema" title="Cambiar tema" style="width:32px;height:32px;display:grid;place-items:center;border:0;border-radius:999px;background:transparent" style-hover="background:var(--accent)"><span style="width:15px;height:15px;background:currentColor;mask:url({{ themeIcon }}) center/contain no-repeat"></span></button>
+  
+</header>
+
+<div ref="{{ cRef }}" style="position:relative;z-index:1;flex:1;min-height:0;overflow:auto;padding-top:56px;scroll-padding-top:56px">
+
+<!-- ================= INICIO ================= -->
+<sc-if value="{{ is.inicio }}" hint-placeholder-val="{{ true }}">
+<div data-screen-label="Inicio" style="padding:28px 32px 56px;max-width:1520px;margin:0 auto;display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:48px;align-items:start">
+
+<div style="display:flex;flex-direction:column;gap:32px;min-width:0">
+  <div style="display:flex;flex-direction:column;gap:14px;min-width:0;animation:riseIn .55s 0s both cubic-bezier(.2,.8,.2,1)">
+    <div style="font-family:'Ubuntu Mono',monospace;font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted-foreground)">{{ todayL }}</div>
+    <h1 style="margin:-6px 0 0;font-size:40px;font-weight:700;letter-spacing:-.035em;line-height:1.05;white-space:nowrap">Buenos días, Marta</h1>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--muted-foreground);white-space:nowrap">
+      <span style="height:30px;padding:0 13px;border-radius:999px;border:1px solid var(--sep);background:color-mix(in oklch,var(--card) 65%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);display:flex;align-items:center;gap:7px"><span style="width:7px;height:7px;border-radius:50%;background:var(--st-running);animation:pulse 1.6s ease-out infinite"></span><strong style="color:var(--foreground);font-weight:500">{{ nWorking }}</strong>trabajando</span>
+      <span style="height:30px;padding:0 13px;border-radius:999px;border:1px solid var(--sep);background:color-mix(in oklch,var(--card) 65%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);display:flex;align-items:center;gap:7px"><span style="width:7px;height:7px;border-radius:50%;background:var(--st-waiting)"></span><strong style="color:var(--foreground);font-weight:500">{{ nReqAll }}</strong>esperan respuesta</span>
+      <span style="height:30px;padding:0 13px;border-radius:999px;border:1px solid var(--sep);background:color-mix(in oklch,var(--card) 65%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);display:flex;align-items:center;gap:7px"><strong style="color:var(--foreground);font-weight:500;font-family:'Ubuntu Mono',monospace">{{ todayTotal }}</strong>gastados hoy</span>
+    </div>
+  </div>
+
+  <sc-if value="{{ hasAny }}" hint-placeholder-val="{{ true }}">
+  <section aria-labelledby="rq-h" style="border:1px solid color-mix(in oklch,var(--st-waiting) 50%,var(--sep));border-radius:20px;background:linear-gradient(180deg,color-mix(in oklch,var(--st-waiting) 10%,var(--card)) 0,var(--card) 150px);box-shadow:0 0 0 4px color-mix(in oklch,var(--st-waiting) 7%,transparent),0 22px 50px -18px color-mix(in oklch,var(--st-waiting) 30%,transparent),var(--shadow-card);overflow:hidden;animation:riseIn .55s 0.08s both cubic-bezier(.2,.8,.2,1)">
+    <div style="height:60px;display:flex;align-items:center;gap:12px;padding:0 14px 0 18px">
+      <span style="width:30px;height:30px;flex:none;border-radius:999px;background:#F5B547;color:#0A1A33;display:grid;place-items:center;box-shadow:0 0 22px color-mix(in oklch,#F5B547 50%,transparent)"><span style="width:15px;height:15px;flex:none;background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/hand.svg) center/contain no-repeat"></span></span>
+      <h2 id="rq-h" style="margin:0;font-size:18px;font-weight:700;letter-spacing:-.02em">Te necesitan</h2>
+      <span style="height:20px;min-width:20px;padding:0 7px;border-radius:999px;background:#F5B547;color:#0A1A33;font-size:11.5px;font-weight:700;display:grid;place-items:center">{{ nReqAll }}</span>
+      <sc-if value="{{ hasMore }}"><button onClick="{{ toggleReqMenu }}" aria-expanded="{{ reqMenu }}" style="margin-left:auto;height:30px;padding:0 12px;border-radius:999px;border:0;background:transparent;color:var(--muted-foreground);font-size:12.5px;display:flex;align-items:center;gap:6px" style-hover="background:var(--accent);color:var(--foreground)">{{ reqMoreL }}</button></sc-if>
+    </div>
+    <sc-for list="{{ reqShow }}" as="rq" hint-placeholder-count="3">
+      <article onMouseEnter="{{ rq.hover }}" onMouseLeave="{{ unhover }}" style="display:grid;grid-template-columns:30px minmax(0,1fr);gap:14px;padding:16px 18px;border-top:1px solid var(--sep)">
+        <a href="{{ rq.agHref }}" title="{{ rq.ag.name }}" style="width:30px;height:30px;border-radius:9px;background:linear-gradient(150deg,rgba(255,255,255,.34),rgba(255,255,255,0) 58%),{{ rq.ag.color }};box-shadow:inset 0 0 0 1px rgba(255,255,255,.2);color:#0A1A33;font-weight:700;font-size:13px;display:grid;place-items:center" style-hover="text-decoration:none">{{ rq.ag.initial }}</a>
+        <div style="min-width:0;display:flex;flex-direction:column;gap:6px">
+          <div style="display:flex;align-items:baseline;gap:12px;min-width:0">
+            <span style="flex:1;min-width:0;font-size:14px;font-weight:500;text-wrap:pretty">{{ rq.title }}</span>
+            <span style="flex:none;font-size:12px;color:var(--muted-foreground)">{{ rq.when }}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;min-width:0;font-size:12px;color:var(--muted-foreground);white-space:nowrap">
+            <span style="display:flex;align-items:center;gap:5px"><span style="width:12px;height:12px;flex:none;background:currentColor;mask:url({{ rq.tm.icon }}) center/contain no-repeat"></span>{{ rq.tm.l }}</span><span>·</span>
+            <a href="{{ rq.agHref }}" style="color:var(--muted-foreground)" style-hover="color:var(--foreground)">{{ rq.ag.name }}</a><span>·</span>
+            <a href="{{ rq.taskHref }}" style="color:var(--muted-foreground);overflow:hidden;text-overflow:ellipsis" style-hover="color:var(--foreground)">{{ rq.taskL }}</a>
+          </div>
+          <sc-if value="{{ rq.cmd }}"><code style="align-self:flex-start;font-family:'Ubuntu Mono',monospace;font-size:12px;padding:3px 8px;border-radius:8px;background:var(--term-bg);color:#E6EDF7">{{ rq.cmd }}</code></sc-if>
+          <div style="font-size:12.5px;color:var(--muted-foreground);text-wrap:pretty">{{ rq.ctx }}</div>
+          <div style="margin-top:4px"><dc-import name="RequestActions" item="{{ rq }}" hint-size="100%,28px"></dc-import></div>
+        </div>
+      </article>
+    </sc-for>
+    <sc-for list="{{ cliAlerts }}" as="al" hint-placeholder-count="0">
+      <article style="display:grid;grid-template-columns:30px minmax(0,1fr);gap:14px;padding:16px 18px;border-top:1px solid var(--sep)">
+        <span style="width:30px;height:30px;border-radius:9px;background:var(--muted);color:var(--st-waiting);display:grid;place-items:center"><span style="width:15px;height:15px;flex:none;background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/gauge.svg) center/contain no-repeat"></span></span>
+        <div style="min-width:0;display:flex;flex-direction:column;gap:6px">
+          <div style="display:flex;align-items:baseline;gap:12px"><span style="flex:1;min-width:0;font-size:14px;font-weight:500">{{ al.title }}</span><span style="flex:none;font-size:12px;color:var(--muted-foreground)">ahora</span></div>
+          <div style="font-size:12px;color:var(--muted-foreground)">Aviso del sistema · CLIs y cuentas</div>
+          <div style="font-size:12.5px;color:var(--muted-foreground);text-wrap:pretty">{{ al.ctx }}</div>
+          <div style="margin-top:4px;display:flex;gap:6px">
+            <button onClick="{{ al.manage }}" style="height:28px;padding:0 12px;border-radius:999px;border:0;background:var(--primary-action);color:#fff;font-weight:500" style-hover="background:var(--primary-action-hover)">{{ al.cta }}</button>
+            <button onClick="{{ al.snooze }}" style="height:28px;padding:0 12px;border-radius:999px;border:1px solid var(--border);background:transparent" style-hover="background:var(--accent)">Posponer</button>
+          </div>
+        </div>
+      </article>
+    </sc-for>
+  </section>
+  </sc-if>
+  <sc-if value="{{ noReq }}"><div style="display:flex;align-items:center;gap:8px;color:var(--muted-foreground)"><span style="color:var(--st-done);display:flex"><span style="width:15px;height:15px;flex:none;background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/circle-check.svg) center/contain no-repeat"></span></span>Nada pendiente. Tus agentes no necesitan nada de ti ahora mismo.</div></sc-if>
+
+  <section aria-labelledby="eq-h" style="display:flex;flex-direction:column;gap:26px;min-width:0;animation:riseIn .55s 0.16s both cubic-bezier(.2,.8,.2,1)">
+    <div style="display:flex;align-items:center;gap:10px">
+      <h2 id="eq-h" style="margin:0;font-size:18px;font-weight:700;letter-spacing:-.02em">Agentes</h2><span style="font-size:12px;color:var(--muted-foreground)">{{ teamsMeta }}</span>
+      <button onClick="{{ addTeam }}" style="margin-left:auto;height:30px;padding:0 12px;border-radius:999px;border:0;background:transparent;color:var(--muted-foreground);display:flex;align-items:center;gap:6px;font-size:12.5px" style-hover="background:var(--accent);color:var(--foreground)"><span style="width:14px;height:14px;flex:none;background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/users-round.svg) center/contain no-repeat"></span>Nuevo equipo</button>
+    </div>
+    <sc-for list="{{ teams }}" as="tm" hint-placeholder-count="3">
+      <div style="display:flex;flex-direction:column;gap:10px;min-width:0">
+        <div style="display:flex;align-items:center;gap:8px;min-width:0">
+          <span style="font-weight:700;white-space:nowrap;letter-spacing:-.005em">{{ tm.name }}</span>
+          <span title="{{ tm.desc }}" style="font-size:12px;color:var(--muted-foreground);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ tm.meta }}</span>
+          <span style="flex:1;min-width:24px;height:1px;background:linear-gradient(90deg,var(--sep),transparent)"></span>
+          <span style="display:flex;gap:2px">
+            <button onClick="{{ tm.addAgent }}" style="height:26px;padding:0 8px;border-radius:999px;border:0;background:transparent;color:var(--muted-foreground);display:flex;align-items:center;gap:5px;font-size:12px" style-hover="background:var(--accent);color:var(--foreground)"><span style="width:13px;height:13px;flex:none;background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/plus.svg) center/contain no-repeat"></span>Agente</button>
+            <button onClick="{{ tm.edit }}" aria-label="Editar {{ tm.name }}" title="Editar equipo" style="width:26px;height:26px;border-radius:999px;border:0;background:transparent;color:var(--muted-foreground);display:grid;place-items:center" style-hover="background:var(--accent);color:var(--foreground)"><span style="width:12px;height:12px;flex:none;background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/pencil.svg) center/contain no-repeat"></span></button>
+          </span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px">
+          <sc-for list="{{ tm.agents }}" as="a" hint-placeholder-count="3">
+            <div data-ag="" onClick="{{ a.open }}" onKeyDown="{{ a.key }}" tabindex="0" role="link" aria-label="{{ a.aria }}" style="position:relative;border:1px solid {{ a.border }};box-shadow:{{ a.shadow }},var(--shadow-card);border-radius:16px;background:var(--card-grad);padding:13px 14px 10px;overflow:visible;display:flex;flex-direction:column;gap:8px;cursor:pointer">
+              <span aria-hidden="true" style="display:{{ a.runBar }};position:absolute;left:16px;right:16px;top:-1px;height:2px;border-radius:2px;background:linear-gradient(90deg,transparent 0,var(--st-running) 50%,transparent 100%) 0 0/50% 100% no-repeat;animation:sweep 2.6s linear infinite"></span>
+              <sc-if value="{{ a.hasReq }}"><span style="position:absolute;top:-9px;right:12px;height:18px;padding:0 8px;border-radius:999px;background:#F5B547;color:#0A1A33;font-size:10.5px;font-weight:700;display:flex;align-items:center;box-shadow:0 0 0 3px var(--background)">{{ a.reqL }}</span></sc-if>
+              <div style="display:flex;align-items:center;gap:10px;min-width:0">
+                <span style="width:30px;height:30px;flex:none;border-radius:9px;background:linear-gradient(150deg,rgba(255,255,255,.34),rgba(255,255,255,0) 58%),{{ a.color }};box-shadow:inset 0 0 0 1px rgba(255,255,255,.2),0 6px 14px -6px {{ a.color }};color:#0A1A33;font-weight:700;font-size:13px;display:grid;place-items:center">{{ a.initial }}</span>
+                <span style="flex:1;min-width:0;font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ a.name }}</span>
+                <span style="flex:none;display:flex;align-items:center;gap:5px;font-size:12px;font-weight:500;color:{{ a.st.c }};white-space:nowrap"><span style="width:6px;height:6px;border-radius:50%;background:currentColor;animation:{{ a.pulse }}"></span>{{ a.stL }}</span>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:2px;min-width:0;min-height:24px">
+                <sc-for list="{{ a.inst }}" as="i" hint-placeholder-count="1">
+                  <a href="{{ i.href }}" onClick="{{ stop }}" title="{{ i.title }}" style="height:24px;display:flex;align-items:center;gap:8px;min-width:0;padding:0 6px;margin:0 -6px;border-radius:7px;white-space:nowrap;color:var(--foreground)" style-hover="background:var(--subtle);text-decoration:none">
+                    <span style="width:6px;height:6px;flex:none;border-radius:50%;background:{{ i.c }};animation:{{ i.pulse }}"></span>
+                    <span style="font-family:'Ubuntu Mono',monospace;font-size:12px;color:var(--muted-foreground);flex:none">{{ i.code }}</span>
+                    <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis">{{ i.task }}</span>
+                    <span style="width:7px;height:7px;flex:none;border-radius:2px;background:{{ i.pcolor }}"></span>
+                    <span style="font-family:'Ubuntu Mono',monospace;font-size:12px;color:var(--muted-foreground);flex:none">{{ i.elapsed }}</span>
+                  </a>
+                </sc-for>
+                <sc-if value="{{ a.noTask }}"><div style="height:24px;display:flex;align-items:center;color:var(--muted-foreground);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ a.idleShort }}</div></sc-if>
+              </div>
+              <div style="display:grid;align-items:center">
+                <div data-ag-sec="" style="grid-area:1/1;height:28px;display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted-foreground);white-space:nowrap;overflow:hidden;transition:opacity .15s"><span style="overflow:hidden;text-overflow:ellipsis">{{ a.role }}</span><span>·</span><span style="font-family:'Ubuntu Mono',monospace">{{ a.cliTag }}</span><span>·</span><span>{{ a.queueL }}</span></div>
+                <div data-ag-use="" style="grid-area:1/1;display:flex;gap:6px;opacity:0;pointer-events:none;transition:opacity .15s">
+                  <button onClick="{{ a.showUsage }}" title="Ver desglose de consumo" style="flex:1;min-width:0;height:28px;display:flex;align-items:center;gap:8px;padding:0 10px;border-radius:999px;border:0;background:var(--subtle);font-size:11.5px;color:var(--muted-foreground);white-space:nowrap" style-hover="background:var(--accent);color:var(--foreground)">
+                    <strong style="font-family:'Ubuntu Mono',monospace;font-weight:500;color:var(--foreground)">{{ a.cost }}</strong><span>{{ a.tok }} tok</span>
+                    <span style="flex:1;height:4px;border-radius:999px;background:var(--muted);overflow:hidden;min-width:24px"><span style="display:block;height:100%;width:{{ a.pctW }};background:var(--muted-foreground)"></span></span>
+                    <span>{{ a.queueL }}</span>
+                  </button>
+                  <button onClick="{{ a.assign }}" aria-label="Asignar tarea a {{ a.name }}" title="Asignar tarea" style="width:28px;height:28px;flex:none;border-radius:999px;border:0;background:var(--subtle);color:var(--muted-foreground);display:grid;place-items:center" style-hover="background:var(--accent);color:var(--foreground)"><span style="width:14px;height:14px;flex:none;background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/plus.svg) center/contain no-repeat"></span></button>
+                </div>
+              </div>
+            </div>
+          </sc-for>
+          <sc-if value="{{ tm.empty }}"><button onClick="{{ tm.addAgent }}" style="height:96px;border-radius:14px;border:1px dashed var(--input);background:transparent;color:var(--muted-foreground)" style-hover="border-color:var(--ring);color:var(--foreground)">Sin agentes · Añadir el primero</button></sc-if>
+        </div>
+      </div>
+    </sc-for>
+  </section>
+</div>
+
+<aside aria-label="Resumen" style="position:sticky;top:84px;display:flex;flex-direction:column;gap:30px;min-width:0;padding:20px 0 0 28px;border-left:1px solid var(--sep);animation:riseIn .55s 0.24s both cubic-bezier(.2,.8,.2,1)">
+  <section aria-labelledby="pr-h" style="display:flex;flex-direction:column;gap:4px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><h2 id="pr-h" style="margin:0;flex:none;white-space:nowrap;font-family:'Ubuntu Mono',monospace;font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--muted-foreground)">Proyectos</h2><span style="font-size:12px;color:var(--muted-foreground)">{{ projMeta }}</span><a href="#/proyectos" style="margin-left:auto;font-size:12px;color:var(--muted-foreground)" style-hover="color:var(--foreground)">Ver todos</a><button onClick="{{ openNewProject }}" aria-label="Nuevo proyecto" title="Nuevo proyecto" style="width:24px;height:24px;flex:none;border-radius:999px;border:0;background:transparent;color:var(--muted-foreground);display:grid;place-items:center" style-hover="background:var(--accent);color:var(--foreground)"><span style="width:13px;height:13px;flex:none;background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/plus.svg) center/contain no-repeat"></span></button></div>
+    <sc-for list="{{ projSummary }}" as="p" hint-placeholder-count="3">
+      <a href="{{ p.href }}" title="{{ p.activity }}" style="display:grid;grid-template-columns:8px minmax(0,1fr) auto;column-gap:10px;row-gap:1px;align-items:center;padding:6px 8px;margin:0 -8px;border-radius:9px;color:var(--foreground)" style-hover="background:var(--subtle);text-decoration:none">
+        <span style="width:8px;height:8px;border-radius:2px;background:{{ p.color }}"></span>
+        <span style="min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ p.name }}</span>
+        <span style="font-size:12px;color:var(--muted-foreground);white-space:nowrap">{{ p.open }}</span>
+        <span style="grid-column:2;min-width:0;font-size:12px;color:var(--muted-foreground);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ p.activity }}</span>
+        <span style="grid-column:3;display:flex;gap:2px;justify-content:flex-end"><sc-for list="{{ p.agents }}" as="a" hint-placeholder-count="0"><span title="{{ a.name }}" style="width:16px;height:16px;border-radius:5px;background:{{ a.color }};color:#0A1A33;font-weight:700;font-size:9px;display:grid;place-items:center">{{ a.initial }}</span></sc-for></span>
+      </a>
+    </sc-for>
+    <sc-if value="{{ noProjects }}"><div style="font-size:12px;color:var(--muted-foreground)">Aún no hay proyectos.</div></sc-if>
+  </section>
+
+  <section aria-labelledby="gs-h" style="display:flex;flex-direction:column;gap:10px">
+    <div style="display:flex;align-items:baseline;gap:8px"><h2 id="gs-h" style="margin:0;flex:none;white-space:nowrap;font-family:'Ubuntu Mono',monospace;font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--muted-foreground)">Gasto de hoy</h2><span style="margin-left:auto;font-family:'Ubuntu Mono',monospace"><strong style="font-weight:700;font-size:20px;letter-spacing:-.02em">{{ todayTotal }}</strong><span style="color:var(--muted-foreground)"> / 25 €</span></span></div>
+    <span style="height:6px;border-radius:999px;background:var(--muted);position:relative"><span style="position:absolute;left:0;top:0;bottom:0;width:{{ todayPct }};background:{{ spendC }};border-radius:999px"></span><span title="Aviso al 80 %" style="position:absolute;left:80%;top:-3px;bottom:-3px;width:1px;background:var(--muted-foreground)"></span></span>
+    <span style="font-size:12px;color:var(--muted-foreground)">{{ todayPct }} del límite diario</span>
+  </section>
+
+  <section aria-labelledby="cl-h" style="display:flex;flex-direction:column;gap:4px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><h2 id="cl-h" style="margin:0;flex:none;white-space:nowrap;font-family:'Ubuntu Mono',monospace;font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--muted-foreground)">CLIs</h2><span style="min-width:0;font-size:12px;color:var(--muted-foreground);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ cliMeta }}</span><a href="#/clis" style="margin-left:auto;font-size:12px;color:var(--muted-foreground)" style-hover="color:var(--foreground)">Gestionar</a><button onClick="{{ openAddCli }}" aria-label="Añadir CLI o cuenta" title="Añadir CLI o cuenta" style="width:24px;height:24px;flex:none;border-radius:999px;border:0;background:transparent;color:var(--muted-foreground);display:grid;place-items:center" style-hover="background:var(--accent);color:var(--foreground)"><span style="width:13px;height:13px;flex:none;background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/plus.svg) center/contain no-repeat"></span></button></div>
+    <sc-for list="{{ cliSummary }}" as="c" hint-placeholder-count="2">
+      <button onClick="{{ c.toggle }}" aria-expanded="{{ c.open }}" title="{{ c.qTitle }}" style="width:calc(100% + 16px);display:grid;grid-template-columns:24px minmax(0,1fr) 56px 34px 12px;column-gap:8px;row-gap:1px;align-items:center;padding:6px 8px;margin:0 -8px;border:0;border-radius:9px;background:transparent;text-align:left" style-hover="background:var(--subtle)">
+        <span style="font-family:'Ubuntu Mono',monospace;font-size:10px;font-weight:700;height:18px;border-radius:5px;border:1px solid var(--border);color:var(--muted-foreground);display:grid;place-items:center">{{ c.tag }}</span>
+        <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ c.name }}</span>
+        <span style="height:4px;border-radius:999px;background:var(--muted);overflow:hidden"><span style="display:block;height:100%;width:{{ c.qw }};background:{{ c.qc }}"></span></span>
+        <span style="font-family:'Ubuntu Mono',monospace;font-size:12px;color:{{ c.qtc }};text-align:right">{{ c.qw }}</span>
+        <span style="width:12px;height:12px;color:var(--muted-foreground);background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/chevron-down.svg) center/contain no-repeat;transform:{{ c.rot }};transition:transform .15s"></span>
+        <span style="grid-column:2 / 6;font-size:12px;color:var(--muted-foreground);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ c.meta }}</span>
+      </button>
+      <sc-if value="{{ c.open }}">
+        <div style="display:flex;flex-direction:column;gap:2px;padding:2px 0 6px 32px">
+          <sc-for list="{{ c.accounts }}" as="ac" hint-placeholder-count="1">
+            <a href="#/clis" title="{{ ac.qTitle }}" style="display:grid;grid-template-columns:minmax(0,1fr) 56px 34px;column-gap:8px;row-gap:1px;align-items:center;padding:5px 8px;margin:0 -8px;border-radius:8px;color:var(--foreground);font-size:12.5px" style-hover="background:var(--subtle);text-decoration:none">
+              <span style="min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ ac.email }}</span>
+              <span style="height:4px;border-radius:999px;background:var(--muted);overflow:hidden"><span style="display:block;height:100%;width:{{ ac.qw }};background:{{ ac.qc }}"></span></span>
+              <span style="font-family:'Ubuntu Mono',monospace;font-size:11.5px;color:{{ ac.qtc }};text-align:right">{{ ac.qw }}</span>
+              <span style="grid-column:1 / 4;font-size:11.5px;color:var(--muted-foreground);white-space:nowrap">{{ ac.plan }} · {{ ac.sessL }}</span>
+            </a>
+          </sc-for>
+        </div>
+      </sc-if>
+    </sc-for>
+  </section>
+
+  <section aria-labelledby="kn-h" style="display:flex;flex-direction:column;gap:4px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><h2 id="kn-h" style="margin:0;flex:none;white-space:nowrap;font-family:'Ubuntu Mono',monospace;font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--muted-foreground)">Conocimiento y skills</h2><a href="#/conocimiento" style="margin-left:auto;font-size:12px;color:var(--muted-foreground)" style-hover="color:var(--foreground)">Abrir</a></div>
+    <a href="#/conocimiento" style="font-size:12px;color:var(--muted-foreground);text-wrap:pretty" style-hover="color:var(--foreground);text-decoration:none">{{ knowMeta }}</a>
+  </section>
+</aside>
+</div>
+</sc-if>
+
+<!-- ================= CLIs ================= -->
+<sc-if value="{{ is.clis }}">
+<div data-screen-label="CLIs y cuentas" style="animation:riseIn .55s 0s both cubic-bezier(.2,.8,.2,1);padding:32px 32px 56px;max-width:1240px;margin:0 auto;display:flex;flex-direction:column;gap:24px">
+  <div style="display:flex;align-items:flex-end;gap:16px">
+    <div style="flex:1"><h1 style="margin:0;font-size:30px;font-weight:700;letter-spacing:-.028em;line-height:1.15">CLIs y cuentas</h1><div style="margin-top:4px;color:var(--muted-foreground);text-wrap:pretty">Cada cuenta tiene su propia cuota. Puedes tener varias cuentas del mismo CLI y asignar a cada agente la que debe usar.</div></div>
+    <button onClick="{{ openAddCli }}" style="height:34px;padding:0 14px;border-radius:999px;border:0;background:var(--primary-action);background-image:linear-gradient(180deg,rgba(255,255,255,.16),rgba(255,255,255,0));box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 8px 18px -8px var(--primary-action);color:#fff;font-weight:500;display:flex;align-items:center;gap:7px" style-hover="background:var(--primary-action-hover)"><span style="width:15px;height:15px;background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/plus.svg) center/contain no-repeat"></span>Añadir CLI o cuenta</button>
+  </div>
+  <sc-for list="{{ cliFull }}" as="c" hint-placeholder-count="2">
+    <section style="border:1px solid var(--sep);border-radius:18px;background:var(--card-grad);box-shadow:var(--shadow-card);overflow:hidden">
+      <div style="display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--sep)">
+        <span style="width:32px;height:32px;border-radius:10px;border:1px solid var(--border);background:var(--subtle);display:grid;place-items:center;font-family:'Ubuntu Mono',monospace;font-weight:700;font-size:12px">{{ c.tag }}</span>
+        <div style="flex:1"><div style="font-weight:500;font-size:14px">{{ c.name }}</div><div style="font-size:12px;color:var(--muted-foreground)">{{ c.by }} · <span style="font-family:'Ubuntu Mono',monospace">{{ c.ver }}</span> · {{ c.sessL }}</div></div>
+        <span style="display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 8px;border-radius:999px;font-size:11px;font-weight:500;color:var(--st-done);background:color-mix(in oklch,var(--st-done) 14%,transparent);border:1px solid color-mix(in oklch,var(--st-done) 36%,transparent)"><span style="width:6px;height:6px;border-radius:50%;background:currentColor"></span>Instalado</span>
+        <button onClick="{{ c.addAcc }}" style="height:30px;padding:0 11px;border-radius:9px;border:1px solid var(--border);background:transparent;display:flex;align-items:center;gap:6px" style-hover="border-color:var(--ring)"><span style="width:14px;height:14px;background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/user-plus.svg) center/contain no-repeat"></span>Añadir cuenta</button>
+      </div>
+      <sc-for list="{{ c.accounts }}" as="ac" hint-placeholder-count="1">
+        <div style="padding:14px 16px;border-bottom:1px solid var(--sep);display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <span style="width:26px;height:26px;border-radius:50%;background:var(--secondary);display:grid;place-items:center;font-weight:700;font-size:12px">{{ ac.initial }}</span>
+            <span style="font-weight:500">{{ ac.email }}</span>
+            <span style="font-size:11px;padding:0 7px;height:19px;display:inline-grid;place-items:center;border-radius:999px;background:var(--muted);color:var(--muted-foreground)">{{ ac.plan }}</span>
+            <sc-if value="{{ ac.def }}"><span style="font-size:11px;padding:0 7px;height:19px;display:inline-grid;place-items:center;border-radius:999px;border:1px solid var(--ring);color:var(--ring)">Predeterminada</span></sc-if>
+            <span style="display:flex;align-items:center;gap:6px;margin-left:12px;font-size:12px;color:var(--muted-foreground)">Usada por<span style="display:flex;gap:3px"><sc-for list="{{ ac.agents }}" as="a" hint-placeholder-count="1"><span title="{{ a.name }}" style="width:20px;height:20px;border-radius:8px;background:{{ a.color }};color:#0A1A33;font-weight:700;font-size:10px;display:grid;place-items:center">{{ a.initial }}</span></sc-for></span><sc-if value="{{ ac.noAgents }}"><span>ningún agente</span></sc-if></span>
+            <span style="margin-left:auto;display:flex;gap:6px">
+              <sc-if value="{{ ac.notDef }}"><button onClick="{{ ac.makeDef }}" style="height:28px;padding:0 10px;border-radius:9px;border:1px solid var(--border);background:transparent;font-size:12px" style-hover="border-color:var(--ring)">Hacer predeterminada</button></sc-if>
+              <button onClick="{{ ac.logout }}" style="height:28px;padding:0 10px;border-radius:9px;border:1px solid color-mix(in oklch,var(--st-failed) 45%,transparent);background:transparent;color:var(--st-failed);font-size:12px" style-hover="background:color-mix(in oklch,var(--st-failed) 12%,transparent)">Cerrar sesión</button>
+            </span>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px">
+            <sc-for list="{{ ac.quotas }}" as="q" hint-placeholder-count="2">
+              <div style="border-radius:9px;border:1px solid {{ q.bd }};background:var(--subtle);padding:10px 12px;display:flex;flex-direction:column;gap:7px">
+                <div style="display:flex;font-size:12px"><span style="flex:1;color:var(--muted-foreground)">{{ q.l }}</span><span style="font-family:'Ubuntu Mono',monospace;font-weight:500;color:{{ q.tc }}">{{ q.p }}</span></div>
+                <div style="height:6px;border-radius:3px;background:var(--muted);overflow:hidden"><div style="height:100%;width:{{ q.p }};background:{{ q.c }}"></div></div>
+                <div style="font-size:11px;color:var(--muted-foreground)">{{ q.meta }}</div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="display:flex;flex-direction:column">
+            <div style="font-size:11.5px;color:var(--muted-foreground);margin-bottom:4px">Sesiones activas</div>
+            <sc-for list="{{ ac.sessions }}" as="s" hint-placeholder-count="2">
+              <div style="display:grid;grid-template-columns:110px 150px minmax(0,1fr) 140px 80px 130px;gap:12px;align-items:center;padding:8px 0;border-top:1px solid var(--sep);font-size:12.5px">
+                <span style="font-family:'Ubuntu Mono',monospace;color:var(--muted-foreground)">{{ s.id }}</span>
+                <a href="{{ s.agHref }}" style="display:flex;align-items:center;gap:7px;color:var(--foreground)"><span style="width:20px;height:20px;border-radius:8px;background:{{ s.ag.color }};color:#0A1A33;font-weight:700;font-size:10px;display:grid;place-items:center">{{ s.ag.initial }}</span>{{ s.ag.name }}</a>
+                <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ s.task }}</span>
+                <span style="display:flex;align-items:center;gap:6px;color:var(--muted-foreground)"><span style="width:8px;height:8px;border-radius:2px;background:{{ s.pcolor }}"></span>{{ s.pname }}</span>
+                <span style="font-family:'Ubuntu Mono',monospace;text-align:right">{{ s.dur }}</span>
+                <span style="justify-self:end;display:inline-flex;align-items:center;gap:5px;height:20px;padding:0 8px;border-radius:999px;font-size:11px;font-weight:500;color:{{ s.st.c }};background:{{ s.st.bg }};border:1px solid {{ s.st.bd }}"><span style="width:6px;height:6px;border-radius:50%;background:currentColor"></span>{{ s.stL }}</span>
+              </div>
+            </sc-for>
+            <sc-if value="{{ ac.noSess }}"><div style="padding:8px 0;border-top:1px solid var(--sep);font-size:12px;color:var(--muted-foreground)">Sin sesiones activas.</div></sc-if>
+          </div>
+        </div>
+      </sc-for>
+    </section>
+  </sc-for>
+  <sc-if value="{{ hasAvail }}">
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="font-size:12px;color:var(--muted-foreground)">Disponibles para instalar</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <sc-for list="{{ availClis }}" as="c" hint-placeholder-count="2">
+          <button onClick="{{ c.on }}" style="height:44px;padding:0 14px 0 8px;border-radius:14px;border:1px dashed var(--input);background:transparent;display:flex;align-items:center;gap:10px" style-hover="border-color:var(--ring)"><span style="width:28px;height:28px;border-radius:9px;border:1px solid var(--border);display:grid;place-items:center;font-family:'Ubuntu Mono',monospace;font-weight:700;font-size:11px">{{ c.tag }}</span><span style="text-align:left"><span style="display:block;font-weight:500">{{ c.name }}</span><span style="display:block;font-size:11px;color:var(--muted-foreground)">{{ c.by }}</span></span></button>
+        </sc-for>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</sc-if>
+
+<!-- ================= PROYECTOS ================= -->
+<sc-if value="{{ is.proyectos }}">
+<div data-screen-label="Proyectos" style="animation:riseIn .55s 0s both cubic-bezier(.2,.8,.2,1);padding:32px 32px 56px;max-width:1240px;margin:0 auto;display:flex;flex-direction:column;gap:24px">
+  <div style="display:flex;align-items:flex-end;gap:16px">
+    <div style="flex:1"><h1 style="margin:0;font-size:30px;font-weight:700;letter-spacing:-.028em;line-height:1.15">Proyectos</h1><div style="margin-top:4px;color:var(--muted-foreground)">Carpetas o repositorios donde trabajan tus agentes.</div></div>
+    <button onClick="{{ openNewProject }}" style="height:34px;padding:0 14px;border-radius:999px;border:0;background:var(--primary-action);background-image:linear-gradient(180deg,rgba(255,255,255,.16),rgba(255,255,255,0));box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 8px 18px -8px var(--primary-action);color:#fff;font-weight:500;display:flex;align-items:center;gap:7px" style-hover="background:var(--primary-action-hover)"><span style="width:15px;height:15px;background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/plus.svg) center/contain no-repeat"></span>Nuevo proyecto</button>
+  </div>
+  <div role="table" style="border:1px solid var(--sep);border-radius:18px;background:var(--card-grad);box-shadow:var(--shadow-card);overflow:hidden">
+    <div role="row" style="display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1.6fr) 130px 110px 80px 240px;gap:12px;padding:10px 16px;border-bottom:1px solid var(--sep);font-size:11.5px;color:var(--muted-foreground);background:var(--subtle)"><span>Proyecto</span><span>Ubicación</span><span>Pipeline</span><span>Agentes</span><span>Abiertas</span><span></span></div>
+    <sc-for list="{{ projRows }}" as="p" hint-placeholder-count="3">
+      <div role="row" style="display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1.6fr) 130px 110px 80px 240px;gap:12px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--sep)">
+        <span style="display:flex;align-items:center;gap:10px;min-width:0"><span style="width:10px;height:10px;flex:none;border-radius:3px;background:{{ p.color }}"></span><span style="min-width:0"><span style="display:block;font-weight:500">{{ p.name }}</span><span style="display:block;font-size:11.5px;color:var(--muted-foreground)">{{ p.last }}</span></span></span>
+        <span style="min-width:0"><span style="display:block;font-family:'Ubuntu Mono',monospace;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ p.path }}</span><span style="display:block;font-size:11.5px;color:var(--muted-foreground)">{{ p.branchL }}</span></span>
+        <span style="font-size:12.5px">{{ p.pipeline }}</span>
+        <span style="display:flex;gap:3px"><sc-for list="{{ p.agents }}" as="a" hint-placeholder-count="1"><span title="{{ a.name }}" style="width:22px;height:22px;border-radius:9px;background:{{ a.color }};color:#0A1A33;font-weight:700;font-size:11px;display:grid;place-items:center">{{ a.initial }}</span></sc-for><sc-if value="{{ p.noAgents }}"><span style="font-size:12px;color:var(--muted-foreground)">—</span></sc-if></span>
+        <span style="font-family:'Ubuntu Mono',monospace">{{ p.open }}</span>
+        <span style="display:flex;gap:6px;justify-content:flex-end">
+          <sc-if value="{{ p.idle }}" hint-placeholder-val="{{ true }}">
+            <a href="{{ p.tasksHref }}" style="height:28px;padding:0 10px;border-radius:9px;border:1px solid var(--border);font-size:12px;display:flex;align-items:center;gap:5px;color:var(--foreground)" style-hover="border-color:var(--ring);text-decoration:none"><span style="width:13px;height:13px;flex:none;background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/square-kanban.svg) center/contain no-repeat"></span>Tareas</a>
+            <button onClick="{{ p.edit }}" style="height:28px;padding:0 10px;border-radius:9px;border:1px solid var(--border);background:transparent;font-size:12px;display:flex;align-items:center;gap:5px" style-hover="border-color:var(--ring)"><span style="width:13px;height:13px;background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/pencil.svg) center/contain no-repeat"></span>Editar</button>
+            <button onClick="{{ p.askDel }}" aria-label="Eliminar {{ p.name }}" title="Eliminar" style="width:28px;height:28px;border-radius:9px;border:1px solid var(--border);background:transparent;color:var(--st-failed);display:grid;place-items:center" style-hover="background:color-mix(in oklch,var(--st-failed) 12%,transparent)"><span style="width:13px;height:13px;background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/trash-2.svg) center/contain no-repeat"></span></button>
+          </sc-if>
+        </span>
+        <sc-if value="{{ p.confirming }}">
+          <div style="grid-column:1/-1;display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:9px;background:color-mix(in oklch,var(--st-failed) 10%,var(--card));border:1px solid color-mix(in oklch,var(--st-failed) 40%,transparent)">
+            <span style="flex:1;font-size:12.5px;text-wrap:pretty">¿Eliminar <strong style="font-weight:500">{{ p.name }}</strong>? Sus {{ p.open }} tareas abiertas se archivarán. La carpeta del disco no se toca.</span>
+            <button onClick="{{ p.cancelDel }}" style="height:28px;padding:0 10px;border-radius:9px;border:1px solid var(--border);background:var(--card);font-size:12px">Cancelar</button>
+            <button onClick="{{ p.del }}" style="height:28px;padding:0 10px;border-radius:9px;border:0;background:var(--destructive);color:#fff;font-weight:500;font-size:12px">Eliminar proyecto</button>
+          </div>
+        </sc-if>
+      </div>
+    </sc-for>
+    <sc-if value="{{ noProjects }}"><div style="padding:22px 16px;color:var(--muted-foreground)">No hay proyectos.</div></sc-if>
+  </div>
+</div>
+</sc-if>
+
+<!-- ================= CONOCIMIENTO ================= -->
+<sc-if value="{{ is.conocimiento }}">
+<div data-screen-label="Conocimiento y skills" style="animation:riseIn .55s 0s both cubic-bezier(.2,.8,.2,1);padding:32px 32px 56px;max-width:1240px;margin:0 auto;display:flex;flex-direction:column;gap:24px">
+  <div style="display:flex;align-items:flex-end;gap:16px">
+    <div style="flex:1"><h1 style="margin:0;font-size:30px;font-weight:700;letter-spacing:-.028em;line-height:1.15">Conocimiento y skills</h1><div style="margin-top:4px;color:var(--muted-foreground)">Lo que tus agentes saben y saben hacer. Lo global lo comparten todos los equipos.</div></div>
+    <button onClick="{{ addKnow }}" style="height:34px;padding:0 14px;border-radius:999px;border:0;background:var(--primary-action);background-image:linear-gradient(180deg,rgba(255,255,255,.16),rgba(255,255,255,0));box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 8px 18px -8px var(--primary-action);color:#fff;font-weight:500;display:flex;align-items:center;gap:7px" style-hover="background:var(--primary-action-hover)"><span style="width:15px;height:15px;background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/plus.svg) center/contain no-repeat"></span>{{ addKnowL }}</button>
+  </div>
+  <div role="tablist" style="align-self:flex-start;display:flex;padding:3px;border-radius:10px;background:var(--muted);border:1px solid var(--border)">
+    <sc-for list="{{ kTabs }}" as="t" hint-placeholder-count="2"><button role="tab" aria-selected="{{ t.sel }}" onClick="{{ t.on }}" style="height:28px;padding:0 12px;border:0;border-radius:8px;background:{{ t.bg }};font-weight:500;font-size:12.5px">{{ t.label }}</button></sc-for>
+  </div>
+  <sc-if value="{{ kIsKnow }}" hint-placeholder-val="{{ true }}">
+    <div style="border:1px solid var(--sep);border-radius:18px;background:var(--card-grad);box-shadow:var(--shadow-card);overflow:hidden">
+      <sc-for list="{{ know }}" as="k" hint-placeholder-count="5">
+        <div style="display:grid;grid-template-columns:30px minmax(0,1fr) 220px 110px;gap:12px;align-items:center;padding:11px 16px;border-bottom:1px solid var(--sep)">
+          <span style="width:30px;height:30px;border-radius:10px;background:var(--subtle);border:1px solid var(--border);display:grid;place-items:center"><span style="width:15px;height:15px;background:currentColor;mask:url({{ k.icon }}) center/contain no-repeat"></span></span>
+          <span style="min-width:0"><span style="display:block;font-weight:500">{{ k.t }}</span><span style="display:block;font-size:11.5px;color:var(--muted-foreground);font-family:'Ubuntu Mono',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ k.src }}</span></span>
+          <span style="font-size:12px;color:var(--muted-foreground)">{{ k.type }} · {{ k.scope }}</span>
+          <span style="font-size:12px;color:var(--muted-foreground);text-align:right">{{ k.upd }}</span>
+        </div>
+      </sc-for>
+    </div>
+  </sc-if>
+  <sc-if value="{{ kIsSkills }}">
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px">
+      <sc-for list="{{ skills }}" as="s" hint-placeholder-count="6">
+        <div style="border:1px solid var(--sep);border-radius:18px;background:var(--card-grad);box-shadow:var(--shadow-card);padding:14px;display:flex;flex-direction:column;gap:10px;opacity:{{ s.op }}">
+          <div style="display:flex;align-items:center;gap:10px"><span style="flex:1;font-weight:500">{{ s.n }}</span>
+            <button role="switch" aria-checked="{{ s.on }}" aria-label="Activar {{ s.n }}" onClick="{{ s.toggle }}" style="width:34px;height:20px;border-radius:999px;border:0;padding:2px;background:{{ s.tbg }};display:flex;justify-content:{{ s.tj }}"><span style="width:16px;height:16px;border-radius:50%;background:#fff"></span></button>
+          </div>
+          <div style="font-size:12.5px;color:var(--muted-foreground);text-wrap:pretty">{{ s.d }}</div>
+          <div style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--muted-foreground)">Lo usan<sc-for list="{{ s.agents }}" as="a" hint-placeholder-count="1"><span title="{{ a.name }}" style="width:20px;height:20px;border-radius:8px;background:{{ a.color }};color:#0A1A33;font-weight:700;font-size:10px;display:grid;place-items:center">{{ a.initial }}</span></sc-for><span style="margin-left:auto">{{ s.scope }}</span></div>
+        </div>
+      </sc-for>
+    </div>
+  </sc-if>
+</div>
+</sc-if>
+
+<!-- ================= AGENTE ================= -->
+<sc-if value="{{ is.agente }}">
+<div data-screen-label="Agente" style="animation:riseIn .55s 0s both cubic-bezier(.2,.8,.2,1);padding:32px 32px 56px;max-width:1240px;margin:0 auto;display:flex;flex-direction:column;gap:24px">
+  <div style="display:flex;align-items:center;gap:14px">
+    <div style="width:52px;height:52px;flex:none;border-radius:13px;background:{{ ag.color }};color:#0A1A33;font-weight:700;font-size:22px;display:grid;place-items:center">{{ ag.initial }}</div>
+    <div style="flex:1;min-width:0">
+      <div style="display:flex;align-items:center;gap:10px"><h1 style="margin:0;font-size:30px;font-weight:700;letter-spacing:-.028em;line-height:1.15">{{ ag.name }}</h1><span style="color:var(--muted-foreground);font-size:15px">{{ ag.role }}</span><span style="display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 8px;border-radius:999px;font-size:11px;font-weight:500;color:{{ ag.st.c }};background:{{ ag.st.bg }};border:1px solid {{ ag.st.bd }}"><span style="width:6px;height:6px;border-radius:50%;background:currentColor;animation:{{ ag.pulse }}"></span>{{ ag.stL }}</span></div>
+      <div style="margin-top:3px;color:var(--muted-foreground);text-wrap:pretty">{{ ag.desc }}</div>
+    </div>
+    <div style="display:flex;gap:6px">
+      <button onClick="{{ ag.assign }}" style="height:32px;padding:0 12px;border-radius:999px;border:0;background:var(--primary-action);background-image:linear-gradient(180deg,rgba(255,255,255,.16),rgba(255,255,255,0));box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 8px 18px -8px var(--primary-action);color:#fff;font-weight:500;display:flex;align-items:center;gap:6px" style-hover="background:var(--primary-action-hover)"><span style="width:14px;height:14px;background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/plus.svg) center/contain no-repeat"></span>Asignar tarea</button>
+      <sc-if value="{{ ag.isDraft }}"><button onClick="{{ ag.activate }}" style="height:32px;padding:0 12px;border-radius:10px;border:1px solid var(--border);background:transparent;display:flex;align-items:center;gap:6px;border-color:var(--st-done);color:var(--st-done)" style-hover="background:color-mix(in oklch,var(--st-done) 12%,transparent)"><span style="width:14px;height:14px;flex:none;background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/power.svg) center/contain no-repeat"></span>Activar</button></sc-if>
+      <button onClick="{{ ag.edit }}" style="height:32px;padding:0 12px;border-radius:10px;border:1px solid var(--border);background:transparent;display:flex;align-items:center;gap:6px" style-hover="border-color:var(--ring)"><span style="width:14px;height:14px;background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/pencil.svg) center/contain no-repeat"></span>Editar</button>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:16px;align-items:start">
+    <div style="display:flex;flex-direction:column;gap:16px;min-width:0">
+      <sc-for list="{{ ag.reqs }}" as="it" hint-placeholder-count="0">
+        <article style="border:1px solid color-mix(in oklch,var(--st-waiting) 50%,var(--border));border-radius:18px;background:var(--card);padding:12px 14px;display:flex;flex-direction:column;gap:8px">
+          <div style="display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--muted-foreground)"><span style="display:inline-flex;align-items:center;gap:5px;height:20px;padding:0 8px;border-radius:999px;background:{{ it.tmBg }};color:{{ it.tm.c }};font-weight:500"><span style="width:12px;height:12px;background:currentColor;mask:url({{ it.tm.icon }}) center/contain no-repeat"></span>{{ it.tm.l }}</span>{{ it.taskL }}<span style="margin-left:auto">{{ it.when }}</span></div>
+          <div style="font-weight:500">{{ it.title }}</div>
+          <sc-if value="{{ it.cmd }}"><code style="align-self:flex-start;font-family:'Ubuntu Mono',monospace;font-size:12px;padding:3px 8px;border-radius:8px;background:var(--term-bg);color:#E6EDF7;border:1px solid var(--border)">{{ it.cmd }}</code></sc-if>
+          <div style="font-size:12.5px;color:var(--muted-foreground)">{{ it.ctx }}</div>
+          <dc-import name="RequestActions" item="{{ it }}" hint-size="100%,28px"></dc-import>
+        </article>
+      </sc-for>
+      <section style="border:1px solid var(--sep);border-radius:18px;background:var(--card-grad);box-shadow:var(--shadow-card);overflow:hidden">
+        <div style="padding:12px 14px;border-bottom:1px solid var(--sep);display:flex;align-items:center"><h2 style="margin:0;font-size:14px;font-weight:500;flex:1">Tareas</h2><span style="font-size:12px;color:var(--muted-foreground)">{{ ag.queueL }}</span></div>
+        <sc-for list="{{ ag.tasks }}" as="t" hint-placeholder-count="3">
+          <a href="{{ t.href }}" style="display:grid;grid-template-columns:56px minmax(0,1fr) 130px 110px;gap:10px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--sep);color:var(--foreground)" style-hover="background:var(--subtle);text-decoration:none">
+            <span style="font-family:'Ubuntu Mono',monospace;font-size:12px;color:var(--muted-foreground)">{{ t.code }}</span>
+            <span style="font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ t.title }}</span>
+            <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted-foreground)"><span style="width:8px;height:8px;border-radius:2px;background:{{ t.pcolor }}"></span>{{ t.pname }}</span>
+            <span style="justify-self:end;display:inline-flex;align-items:center;gap:5px;height:20px;padding:0 8px;border-radius:999px;font-size:11px;font-weight:500;color:{{ t.st.c }};background:{{ t.st.bg }};border:1px solid {{ t.st.bd }}">{{ t.stL }}</span>
+          </a>
+        </sc-for>
+        <sc-if value="{{ ag.noTasks }}"><div style="padding:16px 14px;color:var(--muted-foreground)">Sin tareas asignadas.</div></sc-if>
+      </section>
+    </div>
+    <section style="border:1px solid var(--sep);border-radius:18px;background:var(--card-grad);box-shadow:var(--shadow-card);padding:14px 16px;display:flex;flex-direction:column;gap:12px">
+      <h2 style="margin:0;font-size:14px;font-weight:500">Consumo</h2>
+      <dc-import name="UsageBreakdown" u="{{ ag.u }}" hint-size="100%,460px"></dc-import>
+    </section>
+  </div>
+  <details style="border-top:1px solid var(--sep)">
+    <summary style="cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;padding:14px 0;color:var(--muted-foreground)"><span data-chev="" style="display:flex;transition:transform .2s"><span style="width:14px;height:14px;flex:none;background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/chevron-right.svg) center/contain no-repeat"></span></span><span style="font-weight:500;color:var(--foreground)">Configuración</span><span style="font-size:12px">Equipo, CLI, cuenta, modelo y permisos</span></summary>
+    <div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:16px;padding:4px 0 8px 22px">
+      <sc-for list="{{ ag.facts }}" as="f" hint-placeholder-count="5"><div style="min-width:0"><div style="font-size:12px;color:var(--muted-foreground)">{{ f.l }}</div><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ f.v }}</div></div></sc-for>
+    </div>
+  </details>
+</div>
+</sc-if>
+
+<!-- ================= TAREA ================= -->
+<sc-if value="{{ is.tarea }}">
+<div data-screen-label="Detalle de tarea" style="animation:riseIn .55s 0s both cubic-bezier(.2,.8,.2,1);padding:32px 32px 56px;max-width:1400px;margin:0 auto;display:flex;flex-direction:column;gap:24px">
+  <div style="display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap">
+    <div style="flex:1;min-width:320px">
+      <div style="font-size:12px;color:var(--muted-foreground)"><span style="font-family:'Ubuntu Mono',monospace">{{ tk.code }}</span> · {{ tk.stage }}</div>
+      <h1 style="margin:4px 0 8px;font-size:30px;font-weight:700;letter-spacing:-.028em;line-height:1.15">{{ tk.title }}</h1>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 8px;border-radius:999px;font-size:11px;font-weight:500;color:{{ tk.st.c }};background:{{ tk.st.bg }};border:1px solid {{ tk.st.bd }}"><span style="width:6px;height:6px;border-radius:50%;background:currentColor"></span>{{ tk.stL }}</span>
+        <a href="{{ tk.projHref }}" style="display:inline-flex;align-items:center;gap:6px;height:22px;padding:0 8px;border-radius:8px;background:var(--muted);font-size:12px;color:var(--foreground)"><span style="width:7px;height:7px;border-radius:2px;background:{{ tk.pcolor }}"></span>{{ tk.pname }}</a>
+        <a href="{{ tk.agHref }}" style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--foreground)"><span style="width:20px;height:20px;border-radius:8px;background:{{ tk.ag.color }};color:#0A1A33;font-weight:700;font-size:10.5px;display:grid;place-items:center">{{ tk.ag.initial }}</span>{{ tk.ag.name }} · {{ tk.ag.role }}</a>
+      </div>
+    </div>
+    <div style="display:flex;gap:6px">
+      <button onClick="{{ tk.pause }}" style="height:32px;padding:0 12px;border-radius:10px;border:1px solid var(--border);background:transparent;display:flex;align-items:center;gap:6px" style-hover="background:var(--accent)"><span style="width:14px;height:14px;background:currentColor;mask:url({{ tk.pauseIcon }}) center/contain no-repeat"></span>{{ tk.pauseL }}</button>
+      <button onClick="{{ tk.retry }}" style="height:32px;padding:0 12px;border-radius:10px;border:1px solid var(--border);background:transparent;display:flex;align-items:center;gap:6px" style-hover="background:var(--accent)"><span style="width:14px;height:14px;flex:none;background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/rotate-ccw.svg) center/contain no-repeat"></span>Reintentar</button>
+      <sc-if value="{{ tk.hasSess }}"><button onClick="{{ tk.openDock }}" style="height:32px;padding:0 12px;border-radius:10px;border:1px solid var(--border);background:transparent;display:flex;align-items:center;gap:6px" style-hover="background:var(--accent)"><span style="width:14px;height:14px;flex:none;background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/square-terminal.svg) center/contain no-repeat"></span>Abrir en terminal</button></sc-if>
+      <button onClick="{{ tk.cancel }}" style="height:32px;padding:0 12px;border-radius:10px;border:1px solid var(--border);background:transparent;display:flex;align-items:center;gap:6px;border-color:color-mix(in oklch,var(--st-failed) 50%,transparent);color:var(--st-failed)" style-hover="background:color-mix(in oklch,var(--st-failed) 12%,transparent)"><span style="width:14px;height:14px;flex:none;background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/square.svg) center/contain no-repeat"></span>Cancelar</button>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:minmax(0,380px) minmax(0,1fr);gap:16px;align-items:start">
+    <div style="display:flex;flex-direction:column;gap:16px;min-width:0">
+      <section style="border:1px solid var(--sep);border-radius:18px;background:var(--card-grad);box-shadow:var(--shadow-card);padding:14px 16px"><h2 style="margin:0 0 6px;font-size:13px;font-weight:500;color:var(--muted-foreground)">Descripción</h2><p style="margin:0;text-wrap:pretty">{{ tk.desc }}</p></section>
+      <section style="border:1px solid var(--sep);border-radius:18px;background:var(--card-grad);box-shadow:var(--shadow-card);padding:14px 16px">
+        <h2 style="margin:0 0 8px;font-size:13px;font-weight:500;color:var(--muted-foreground)">{{ tk.subL }}</h2>
+        <sc-for list="{{ tk.subs }}" as="x" hint-placeholder-count="4">
+          <label style="display:flex;align-items:flex-start;gap:8px;padding:5px 6px;border-radius:8px;cursor:pointer" style-hover="background:var(--accent)"><input type="checkbox" checked="{{ x.done }}" onChange="{{ x.toggle }}" style="margin:2px 0 0;accent-color:#2E5BD6;width:14px;height:14px"><span style="flex:1;color:{{ x.fg }};text-decoration:{{ x.dec }}">{{ x.t }}</span></label>
+        </sc-for>
+        <sc-if value="{{ tk.noSubs }}"><div style="font-size:12px;color:var(--muted-foreground)">El agente creará las subtareas al empezar.</div></sc-if>
+      </section>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:16px;min-width:0">
+      <sc-for list="{{ tk.reqs }}" as="it" hint-placeholder-count="0">
+        <article style="border:1px solid color-mix(in oklch,var(--st-waiting) 50%,var(--border));border-radius:18px;background:var(--card);padding:12px 14px;display:flex;flex-direction:column;gap:8px">
+          <div style="display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--muted-foreground)"><span style="display:inline-flex;align-items:center;gap:5px;height:20px;padding:0 8px;border-radius:999px;background:{{ it.tmBg }};color:{{ it.tm.c }};font-weight:500"><span style="width:12px;height:12px;background:currentColor;mask:url({{ it.tm.icon }}) center/contain no-repeat"></span>{{ it.tm.l }}</span>{{ it.ag.name }} te pregunta<span style="margin-left:auto">{{ it.when }}</span></div>
+          <div style="font-weight:500">{{ it.title }}</div>
+          <sc-if value="{{ it.cmd }}"><code style="align-self:flex-start;font-family:'Ubuntu Mono',monospace;font-size:12px;padding:3px 8px;border-radius:8px;background:var(--term-bg);color:#E6EDF7;border:1px solid var(--border)">{{ it.cmd }}</code></sc-if>
+          <div style="font-size:12.5px;color:var(--muted-foreground)">{{ it.ctx }}</div>
+          <dc-import name="RequestActions" item="{{ it }}" hint-size="100%,28px"></dc-import>
+        </article>
+      </sc-for>
+      <section style="border:1px solid var(--border);border-radius:18px;overflow:hidden;background:var(--term-bg);color:#E6EDF7">
+        <div style="height:40px;display:flex;align-items:center;gap:8px;padding:0 14px;border-bottom:1px solid #1E3A66;font-size:12px"><span style="width:7px;height:7px;border-radius:50%;background:#4CC9F0"></span><span>Salida en directo</span><span style="font-family:'Ubuntu Mono',monospace;color:#7F8DAA">{{ tk.sessId }}</span></div>
+        <sc-if value="{{ tk.hasSess }}"><div ref="{{ tRef }}" style="height:420px;overflow:auto;padding:10px 14px;font-family:'Ubuntu Mono',monospace;font-size:12.5px;line-height:1.55"><sc-for list="{{ tk.lines }}" as="l" hint-placeholder-count="6"><div style="color:{{ l.c }};font-weight:{{ l.fw }};white-space:pre-wrap">{{ l.t }}</div></sc-for></div></sc-if>
+        <sc-if value="{{ tk.noSess }}"><div style="padding:28px 14px;color:#9AA9C4;font-size:12.5px">Esta tarea no tiene una sesión activa. Su historial está en Ejecuciones.</div></sc-if>
+      </section>
+      <sc-if value="{{ tk.hasSess }}"><div style="display:flex;flex-wrap:wrap;gap:4px 20px;padding:0 4px;font-size:12px;color:var(--muted-foreground)"><sc-for list="{{ tk.sessFacts }}" as="f" hint-placeholder-count="4"><span style="white-space:nowrap">{{ f.l }} <span style="font-family:'Ubuntu Mono',monospace">{{ f.v }}</span></span></sc-for></div></sc-if>
+    </div>
+  </div>
+</div>
+</sc-if>
+
+<!-- ================= TABLERO ================= -->
+<sc-if value="{{ is.tablero }}">
+<div data-screen-label="Tablero" style="display:flex;flex-direction:column;min-height:100%">
+<div style="flex:none;display:flex;align-items:center;gap:6px;padding:14px 20px 0;flex-wrap:wrap">
+  <span style="font-size:12px;color:var(--muted-foreground);margin-right:4px">Proyecto</span>
+  <sc-for list="{{ boardChips }}" as="f" hint-placeholder-count="4"><a href="{{ f.href }}" aria-current="{{ f.sel }}" style="height:28px;padding:0 11px;border-radius:999px;border:1px solid {{ f.bd }};background:{{ f.bg }};display:flex;align-items:center;gap:6px;font-size:12px;color:var(--foreground)" style-hover="border-color:var(--ring);text-decoration:none"><sc-if value="{{ f.color }}"><span style="width:8px;height:8px;border-radius:2px;background:{{ f.color }}"></span></sc-if>{{ f.label }}</a></sc-for>
+</div>
+<div style="flex:1;padding:14px 20px 24px;display:flex;gap:12px;overflow-x:auto">
+  <sc-for list="{{ cols }}" as="col" hint-placeholder-count="6">
+    <div style="width:270px;flex:none;display:flex;flex-direction:column;border-radius:18px;background:var(--subtle);border:1px solid var(--border)">
+      <div style="display:flex;align-items:center;gap:8px;padding:11px 12px 8px"><span style="width:8px;height:8px;border-radius:50%;background:{{ col.c }}"></span><span style="font-weight:500">{{ col.title }}</span><span style="font-size:12px;color:var(--muted-foreground);font-family:'Ubuntu Mono',monospace">{{ col.count }}</span></div>
+      <div style="display:flex;flex-direction:column;gap:8px;padding:0 8px 10px">
+        <sc-for list="{{ col.items }}" as="t" hint-placeholder-count="2">
+          <a href="{{ t.href }}" style="background:var(--card);border:1px solid var(--border);border-radius:9px;padding:10px 11px;display:flex;flex-direction:column;gap:7px;color:var(--foreground)" style-hover="border-color:var(--ring);text-decoration:none">
+            <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted-foreground)"><span style="width:7px;height:7px;border-radius:2px;background:{{ t.pcolor }}"></span>{{ t.pname }}<span style="margin-left:auto;font-family:'Ubuntu Mono',monospace">{{ t.code }}</span></div>
+            <div style="font-weight:500;line-height:1.35;text-wrap:pretty">{{ t.title }}</div>
+            <span style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--muted-foreground)"><span style="width:20px;height:20px;border-radius:8px;background:{{ t.ag.color }};color:#0A1A33;font-weight:700;font-size:10.5px;display:grid;place-items:center">{{ t.ag.initial }}</span>{{ t.ag.name }} · {{ t.stage }}</span>
+          </a>
+        </sc-for>
+      </div>
+    </div>
+  </sc-for>
+</div></div>
+</sc-if>
+
+<!-- ================= EJECUCIONES ================= -->
+<sc-if value="{{ is.ejecuciones }}">
+<div data-screen-label="Ejecuciones" style="animation:riseIn .55s 0s both cubic-bezier(.2,.8,.2,1);padding:32px 32px 56px;max-width:1240px;margin:0 auto;display:flex;flex-direction:column;gap:24px">
+  <div><h1 style="margin:0;font-size:30px;font-weight:700;letter-spacing:-.028em;line-height:1.15">Ejecuciones</h1><div style="margin-top:4px;color:var(--muted-foreground)">Historial de sesiones de todos los CLIs y cuentas.</div></div>
+  <div style="border:1px solid var(--sep);border-radius:18px;background:var(--card-grad);box-shadow:var(--shadow-card);overflow:hidden">
+    <sc-for list="{{ runs }}" as="s" hint-placeholder-count="6">
+      <div style="display:grid;grid-template-columns:100px 120px minmax(0,1fr) 150px 90px 80px 120px;gap:12px;align-items:center;padding:10px 16px;border-bottom:1px solid var(--sep);font-size:12.5px">
+        <span style="font-family:'Ubuntu Mono',monospace;color:var(--muted-foreground)">{{ s.id }}</span>
+        <a href="{{ s.agHref }}" style="display:flex;align-items:center;gap:7px;color:var(--foreground)"><span style="width:20px;height:20px;border-radius:8px;background:{{ s.ag.color }};color:#0A1A33;font-weight:700;font-size:10px;display:grid;place-items:center">{{ s.ag.initial }}</span>{{ s.ag.name }}</a>
+        <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ s.task }}</span>
+        <span style="font-size:12px;color:var(--muted-foreground);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ s.acc }}</span>
+        <span style="color:var(--muted-foreground)">{{ s.when }}</span>
+        <span style="font-family:'Ubuntu Mono',monospace;text-align:right">{{ s.cost }}</span>
+        <span style="justify-self:end;display:inline-flex;align-items:center;gap:5px;height:20px;padding:0 8px;border-radius:999px;font-size:11px;font-weight:500;color:{{ s.st.c }};background:{{ s.st.bg }};border:1px solid {{ s.st.bd }}">{{ s.stL }}</span>
+      </div>
+    </sc-for>
+  </div>
+</div>
+</sc-if>
+
+<!-- ================= AJUSTES ================= -->
+<sc-if value="{{ is.ajustes }}">
+<div data-screen-label="Ajustes" style="animation:riseIn .55s 0s both cubic-bezier(.2,.8,.2,1);padding:32px 32px 56px;max-width:820px;margin:0 auto;display:flex;flex-direction:column;gap:24px">
+  <h1 style="margin:0;font-size:30px;font-weight:700;letter-spacing:-.028em;line-height:1.15">Ajustes</h1>
+  <section style="border:1px solid var(--sep);border-radius:18px;background:var(--card-grad);box-shadow:var(--shadow-card)">
+    <div style="display:flex;align-items:center;gap:16px;padding:14px 16px;border-bottom:1px solid var(--sep)"><div style="flex:1"><div style="font-weight:500">Límite de gasto diario</div><div style="font-size:12px;color:var(--muted-foreground)">Al alcanzarlo, las tareas nuevas esperan en cola hasta medianoche.</div></div><span style="font-family:'Ubuntu Mono',monospace;padding:6px 10px;border-radius:9px;border:1px solid var(--input)">25,00 €</span></div>
+    <div style="display:flex;align-items:center;gap:16px;padding:14px 16px;border-bottom:1px solid var(--sep)"><div style="flex:1"><div style="font-weight:500">Aviso de cuota</div><div style="font-size:12px;color:var(--muted-foreground)">Marca en ámbar cualquier cuenta o límite que lo supere.</div></div><span style="font-family:'Ubuntu Mono',monospace;padding:6px 10px;border-radius:9px;border:1px solid var(--input)">80 %</span></div>
+    <div style="display:flex;align-items:center;gap:16px;padding:14px 16px"><div style="flex:1"><div style="font-weight:500">Atajos de una tecla</div><div style="font-size:12px;color:var(--muted-foreground)">N para nueva tarea, ? para la ayuda. Desactívalos si usas lector de pantalla.</div></div><button role="switch" aria-checked="{{ oneKey }}" aria-label="Atajos de una tecla" onClick="{{ toggleOneKey }}" style="width:38px;height:22px;border-radius:999px;border:0;padding:2px;background:{{ okBg }};display:flex;justify-content:{{ okJ }}"><span style="width:18px;height:18px;border-radius:50%;background:#fff"></span></button></div>
+  </section>
+</div>
+</sc-if>
+
+</div>
+
+<sc-if value="{{ dock }}">
+  <section aria-label="Terminal" style="height:280px;flex:none;display:flex;flex-direction:column;border-top:1px solid var(--sep);background:var(--term-bg);color:#E6EDF7">
+    <div style="height:38px;flex:none;display:flex;align-items:center;gap:4px;padding:0 8px;border-bottom:1px solid #1E3A66;overflow-x:auto">
+      <sc-for list="{{ dockTabs }}" as="d" hint-placeholder-count="3"><button onClick="{{ d.on }}" style="height:28px;flex:none;padding:0 10px;border-radius:8px;border:0;background:{{ d.bg }};color:{{ d.fg }};display:flex;align-items:center;gap:7px;font-size:12px"><span style="width:7px;height:7px;border-radius:50%;background:{{ d.c }}"></span><span style="font-family:'Ubuntu Mono',monospace">{{ d.label }}</span></button></sc-for>
+      <span style="margin-left:auto;font-size:11.5px;color:#7F8DAA;white-space:nowrap">Ctrl+`</span>
+      <button onClick="{{ toggleDock }}" aria-label="Cerrar terminal" style="width:28px;height:28px;flex:none;border:0;border-radius:8px;background:transparent;color:#9AA9C4;display:grid;place-items:center" style-hover="background:#13284D;color:#fff"><span style="width:15px;height:15px;flex:none;background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/x.svg) center/contain no-repeat"></span></button>
+    </div>
+    <div ref="{{ dRef }}" style="flex:1;overflow:auto;padding:10px 14px;font-family:'Ubuntu Mono',monospace;font-size:12.5px;line-height:1.55"><sc-for list="{{ dockLines }}" as="l" hint-placeholder-count="6"><div style="color:{{ l.c }};font-weight:{{ l.fw }};white-space:pre-wrap">{{ l.t }}</div></sc-for></div>
+    <div style="flex:none;display:flex;align-items:center;gap:8px;padding:8px 14px;border-top:1px solid #1E3A66"><span style="color:#F5B547;font-family:'Ubuntu Mono',monospace">›</span><input value="{{ dockIn }}" onChange="{{ dockInCh }}" onKeyDown="{{ dockInKey }}" placeholder="{{ dockPh }}" aria-label="Mensaje al agente" style="flex:1;background:transparent;border:0;outline:none;color:#E6EDF7;font-family:'Ubuntu Mono',monospace;font-size:12.5px"></div>
+  </section>
+</sc-if>
+
+<!-- ============ DRAWER CONSUMO ============ -->
+<sc-if value="{{ drawerOpen }}">
+  <div onClick="{{ closeDrawer }}" style="position:fixed;inset:0;background:rgba(3,10,22,.35);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);animation:fadeIn .2s ease-out;z-index:40"></div>
+  <aside role="dialog" aria-label="Desglose de consumo" style="position:fixed;top:0;right:0;bottom:0;width:440px;background:var(--glass-pop);backdrop-filter:saturate(180%) blur(28px);-webkit-backdrop-filter:saturate(180%) blur(28px);border-left:1px solid var(--border);z-index:41;display:flex;flex-direction:column;box-shadow:-20px 0 50px rgba(0,0,0,.35)">
+    <div style="height:56px;flex:none;display:flex;align-items:center;gap:10px;padding:0 16px;border-bottom:1px solid var(--sep)">
+      <span style="width:28px;height:28px;border-radius:10px;background:{{ du.color }};color:#0A1A33;font-weight:700;display:grid;place-items:center">{{ du.initial }}</span>
+      <div style="flex:1"><div style="font-weight:500">Consumo de {{ du.name }}</div><div style="font-size:11.5px;color:var(--muted-foreground)">{{ du.accL }}</div></div>
+      <button onClick="{{ closeDrawer }}" aria-label="Cerrar" style="width:30px;height:30px;border:0;border-radius:9px;background:transparent;display:grid;place-items:center" style-hover="background:var(--accent)"><span style="width:16px;height:16px;background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/x.svg) center/contain no-repeat"></span></button>
+    </div>
+    <div style="flex:1;overflow:auto;padding:18px 16px">
+      <dc-import name="UsageBreakdown" u="{{ du }}" hint-size="100%,460px"></dc-import>
+    </div>
+    <div style="padding:12px 16px;border-top:1px solid var(--sep)"><a href="{{ du.href }}" style="font-size:12.5px">Abrir la ficha de {{ du.name }} →</a></div>
+  </aside>
+</sc-if>
+
+<!-- ============ MODALES ============ -->
+<sc-if value="{{ modalOpen }}">
+  <div onClick="{{ closeModal }}" style="position:fixed;inset:0;background:rgba(3,10,22,.4);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);animation:fadeIn .2s ease-out;z-index:50;display:grid;place-items:center">
+    <div onClick="{{ stop }}" role="dialog" aria-modal="true" aria-label="{{ modalTitle }}" style="animation:sheetIn .28s cubic-bezier(.2,.8,.2,1);width:{{ modalW }};max-width:calc(100vw - 40px);max-height:calc(100vh - 60px);overflow:auto;border-radius:20px;background:var(--glass-pop);backdrop-filter:saturate(180%) blur(28px);-webkit-backdrop-filter:saturate(180%) blur(28px);border:1px solid var(--border);box-shadow:var(--shadow-pop);display:flex;flex-direction:column">
+      <div style="display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--sep)">
+        <sc-if value="{{ cliBack }}"><button onClick="{{ cliPickAgain }}" aria-label="Atrás" style="width:28px;height:28px;border:0;border-radius:8px;background:transparent;display:grid;place-items:center" style-hover="background:var(--accent)"><span style="width:15px;height:15px;background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/arrow-left.svg) center/contain no-repeat"></span></button></sc-if>
+        <h2 style="margin:0;font-size:15px;font-weight:500;flex:1">{{ modalTitle }}</h2>
+        <button onClick="{{ closeModal }}" aria-label="Cerrar" style="width:28px;height:28px;border:0;border-radius:8px;background:transparent;display:grid;place-items:center" style-hover="background:var(--accent)"><span style="width:15px;height:15px;background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/x.svg) center/contain no-repeat"></span></button>
+      </div>
+
+      <sc-if value="{{ m.task }}">
+        <div style="padding:16px;display:flex;flex-direction:column;gap:12px">
+          <label style="display:flex;flex-direction:column;gap:5px"><span style="font-size:12px;color:var(--muted-foreground)">Qué hay que hacer</span><input value="{{ tf.title }}" onChange="{{ tfTitle }}" placeholder="p. ej. Añadir filtro por precio en categorías" style="height:36px;padding:0 10px;border-radius:10px;border:1px solid var(--input);background:var(--card)"></label>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <label style="display:flex;flex-direction:column;gap:5px"><span style="font-size:12px;color:var(--muted-foreground)">Proyecto</span><select value="{{ tf.p }}" onChange="{{ tfP }}" style="height:36px;padding:0 8px;border-radius:10px;border:1px solid var(--input);background:var(--card)"><sc-for list="{{ projOpts }}" as="o" hint-placeholder-count="3"><option value="{{ o.id }}">{{ o.name }}</option></sc-for></select></label>
+            <label style="display:flex;flex-direction:column;gap:5px"><span style="font-size:12px;color:var(--muted-foreground)">Agente</span><select value="{{ tf.a }}" onChange="{{ tfA }}" style="height:36px;padding:0 8px;border-radius:10px;border:1px solid var(--input);background:var(--card)"><sc-for list="{{ agOpts }}" as="o" hint-placeholder-count="4"><option value="{{ o.id }}">{{ o.name }}</option></sc-for></select></label>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:8px;padding:12px 16px;border-top:1px solid var(--sep)">
+          <button onClick="{{ closeModal }}" style="height:32px;padding:0 12px;border-radius:10px;border:1px solid var(--border);background:transparent">Cancelar</button>
+          <button onClick="{{ createTask }}" style="height:32px;padding:0 14px;border-radius:999px;border:0;background:var(--primary-action);background-image:linear-gradient(180deg,rgba(255,255,255,.16),rgba(255,255,255,0));box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 8px 18px -8px var(--primary-action);color:#fff;font-weight:500" style-hover="background:var(--primary-action-hover)">Crear y encolar</button>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ m.project }}">
+        <div style="padding:16px;display:flex;flex-direction:column;gap:12px">
+          <label style="display:flex;flex-direction:column;gap:5px"><span style="font-size:12px;color:var(--muted-foreground)">Nombre</span><input value="{{ pf.name }}" onChange="{{ pfName }}" placeholder="p. ej. App de fidelización" style="height:36px;padding:0 10px;border-radius:10px;border:1px solid var(--input);background:var(--card)"></label>
+          <label style="display:flex;flex-direction:column;gap:5px"><span style="font-size:12px;color:var(--muted-foreground)">Carpeta</span><input value="{{ pf.path }}" onChange="{{ pfPath }}" placeholder="D:\proyectos\mi-proyecto" style="height:36px;padding:0 10px;border-radius:10px;border:1px solid var(--input);background:var(--card);font-family:'Ubuntu Mono',monospace;font-size:12.5px"></label>
+          <div style="display:grid;grid-template-columns:1fr auto;gap:12px;align-items:end">
+            <label style="display:flex;flex-direction:column;gap:5px"><span style="font-size:12px;color:var(--muted-foreground)">Pipeline</span><select value="{{ pf.pipeline }}" onChange="{{ pfPipe }}" style="height:36px;padding:0 8px;border-radius:10px;border:1px solid var(--input);background:var(--card)"><option value="Desarrollo web">Desarrollo web</option><option value="Contenidos">Contenidos</option><option value="Sin pipeline">Sin pipeline</option></select></label>
+            <div style="display:flex;flex-direction:column;gap:5px"><span style="font-size:12px;color:var(--muted-foreground)">Color</span><div style="display:flex;gap:6px;height:36px;align-items:center"><sc-for list="{{ swatches }}" as="c" hint-placeholder-count="6"><button onClick="{{ c.on }}" aria-label="Color {{ c.c }}" style="width:24px;height:24px;border-radius:9px;border:2px solid {{ c.bd }};background:{{ c.c }};padding:0"></button></sc-for></div></div>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:8px;padding:12px 16px;border-top:1px solid var(--sep)">
+          <button onClick="{{ closeModal }}" style="height:32px;padding:0 12px;border-radius:10px;border:1px solid var(--border);background:transparent">Cancelar</button>
+          <button onClick="{{ saveProject }}" style="height:32px;padding:0 14px;border-radius:999px;border:0;background:var(--primary-action);background-image:linear-gradient(180deg,rgba(255,255,255,.16),rgba(255,255,255,0));box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 8px 18px -8px var(--primary-action);color:#fff;font-weight:500" style-hover="background:var(--primary-action-hover)">{{ pfSaveL }}</button>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ m.agent }}">
+        <div style="padding:16px;display:flex;flex-direction:column;gap:12px">
+          <sc-if value="{{ afIsNew }}"><div style="display:flex;flex-direction:column;gap:6px"><span style="font-size:12px;color:var(--muted-foreground)">Plantilla</span><div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px"><sc-for list="{{ tplChips }}" as="tp" hint-placeholder-count="7"><button onClick="{{ tp.on }}" style="height:38px;padding:0 8px;border-radius:10px;border:1px solid {{ tp.bd }};background:{{ tp.bg }};display:flex;align-items:center;gap:7px;font-size:12px;text-align:left;min-width:0"><span style="width:20px;height:20px;flex:none;border-radius:8px;background:{{ tp.c }};color:#0A1A33;display:grid;place-items:center"><span style="width:12px;height:12px;background:currentColor;mask:url({{ tp.icon }}) center/contain no-repeat"></span></span><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ tp.l }}</span></button></sc-for></div></div></sc-if>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><label style="display:flex;flex-direction:column;gap:5px;min-width:0"><span style="font-size:12px;color:var(--muted-foreground)">Nombre</span><input value="{{ af.name }}" onChange="{{ afName }}" placeholder="p. ej. Diego" style="height:36px;padding:0 10px;border-radius:10px;border:1px solid var(--input);background:var(--card)"></label><label style="display:flex;flex-direction:column;gap:5px;min-width:0"><span style="font-size:12px;color:var(--muted-foreground)">Rol</span><input value="{{ af.role }}" onChange="{{ afRole }}" placeholder="p. ej. Desarrollador" style="height:36px;padding:0 10px;border-radius:10px;border:1px solid var(--input);background:var(--card)"></label></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><label style="display:flex;flex-direction:column;gap:5px;min-width:0"><span style="font-size:12px;color:var(--muted-foreground)">Equipo</span><select value="{{ af.team }}" onChange="{{ afTeam }}" style="height:36px;padding:0 8px;border-radius:10px;border:1px solid var(--input);background:var(--card)"><sc-for list="{{ teamOpts }}" as="o" hint-placeholder-count="3"><option value="{{ o.id }}">{{ o.name }}</option></sc-for></select></label><label style="display:flex;flex-direction:column;gap:5px;min-width:0"><span style="font-size:12px;color:var(--muted-foreground)">Cuenta de CLI</span><select value="{{ af.acc }}" onChange="{{ afAcc }}" style="height:36px;padding:0 8px;border-radius:10px;border:1px solid var(--input);background:var(--card)"><sc-for list="{{ accOpts }}" as="o" hint-placeholder-count="3"><option value="{{ o.id }}">{{ o.name }}</option></sc-for></select></label></div>
+          <div style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end"><label style="display:flex;flex-direction:column;gap:5px;min-width:0"><span style="font-size:12px;color:var(--muted-foreground)">Modelo</span><select value="{{ afModel }}" onChange="{{ afModelCh }}" style="height:36px;padding:0 8px;border-radius:10px;border:1px solid var(--input);background:var(--card)"><sc-for list="{{ afModels }}" as="o" hint-placeholder-count="3"><option value="{{ o.id }}">{{ o.name }}</option></sc-for></select></label><div style="display:flex;flex-direction:column;gap:5px"><span style="font-size:12px;color:var(--muted-foreground)">Permisos</span><div style="display:flex;padding:3px;border-radius:10px;background:var(--muted);border:1px solid var(--border);align-self:flex-start"><sc-for list="{{ permOpts }}" as="o" hint-placeholder-count="3"><button onClick="{{ o.on }}" style="height:28px;padding:0 11px;border:0;border-radius:8px;background:{{ o.bg }};font-size:12.5px;font-weight:500">{{ o.l }}</button></sc-for></div></div></div>
+          <label style="display:flex;flex-direction:column;gap:5px;min-width:0"><span style="font-size:12px;color:var(--muted-foreground)">Instrucciones</span><textarea value="{{ af.instr }}" onChange="{{ afInstr }}" rows="4" placeholder="Qué hace, cómo trabaja y qué no debe hacer nunca." style="padding:8px 10px;border-radius:10px;border:1px solid var(--input);background:var(--card);resize:vertical;line-height:1.45"></textarea></label>
+          <sc-if value="{{ afIsNew }}"><div style="font-size:12px;color:var(--muted-foreground)">Se crea como borrador. Actívalo desde su ficha cuando las instrucciones te encajen.</div></sc-if>
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:8px;padding:12px 16px;border-top:1px solid var(--sep)"><button onClick="{{ closeModal }}" style="height:32px;padding:0 12px;border-radius:10px;border:1px solid var(--border);background:transparent">Cancelar</button><button onClick="{{ saveAgent }}" style="height:32px;padding:0 14px;border-radius:999px;border:0;background:var(--primary-action);background-image:linear-gradient(180deg,rgba(255,255,255,.16),rgba(255,255,255,0));box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 8px 18px -8px var(--primary-action);color:#fff;font-weight:500" style-hover="background:var(--primary-action-hover)">{{ afSaveL }}</button></div>
+      </sc-if>
+
+      <sc-if value="{{ m.team }}">
+        <div style="padding:16px;display:flex;flex-direction:column;gap:12px">
+          <label style="display:flex;flex-direction:column;gap:5px;min-width:0"><span style="font-size:12px;color:var(--muted-foreground)">Nombre del equipo</span><input value="{{ tmf.name }}" onChange="{{ tmName }}" placeholder="p. ej. Personal" style="height:36px;padding:0 10px;border-radius:10px;border:1px solid var(--input);background:var(--card)"></label>
+          <label style="display:flex;flex-direction:column;gap:5px;min-width:0"><span style="font-size:12px;color:var(--muted-foreground)">Para qué sirve</span><input value="{{ tmf.desc }}" onChange="{{ tmDesc }}" placeholder="p. ej. Agenda, correo y recordatorios" style="height:36px;padding:0 10px;border-radius:10px;border:1px solid var(--input);background:var(--card)"></label>
+          <div style="display:flex;flex-direction:column;gap:6px"><span style="font-size:12px;color:var(--muted-foreground)">Mover agentes a este equipo</span><div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{ tmAgents }}" as="a" hint-placeholder-count="4"><button onClick="{{ a.on }}" aria-pressed="{{ a.sel }}" style="height:34px;padding:0 10px 0 6px;border-radius:9px;border:1px solid {{ a.bd }};background:{{ a.bg }};display:flex;align-items:center;gap:7px;font-size:12.5px"><span style="width:22px;height:22px;border-radius:8px;background:{{ a.color }};color:#0A1A33;font-weight:700;font-size:11px;display:grid;place-items:center">{{ a.initial }}</span>{{ a.name }}<span style="font-size:11px;color:var(--muted-foreground)">{{ a.sub }}</span></button></sc-for></div></div>
+          <div style="font-size:12px;color:var(--muted-foreground)">Cada agente pertenece a un solo equipo. También puedes crear agentes nuevos directamente en el equipo.</div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:8px;padding:12px 16px;border-top:1px solid var(--sep)"><button onClick="{{ closeModal }}" style="height:32px;padding:0 12px;border-radius:10px;border:1px solid var(--border);background:transparent">Cancelar</button><button onClick="{{ saveTeam }}" style="height:32px;padding:0 14px;border-radius:999px;border:0;background:var(--primary-action);background-image:linear-gradient(180deg,rgba(255,255,255,.16),rgba(255,255,255,0));box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 8px 18px -8px var(--primary-action);color:#fff;font-weight:500" style-hover="background:var(--primary-action-hover)">{{ tmSaveL }}</button></div>
+      </sc-if>
+
+      <sc-if value="{{ m.know }}">
+        <div style="padding:16px;display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;flex-direction:column;gap:5px"><span style="font-size:12px;color:var(--muted-foreground)">Tipo</span><div style="display:flex;padding:3px;border-radius:10px;background:var(--muted);border:1px solid var(--border);align-self:flex-start"><sc-for list="{{ kTypes }}" as="o" hint-placeholder-count="3"><button onClick="{{ o.on }}" style="height:28px;padding:0 11px;border:0;border-radius:8px;background:{{ o.bg }};font-size:12.5px;font-weight:500">{{ o.l }}</button></sc-for></div></div>
+          <label style="display:flex;flex-direction:column;gap:5px;min-width:0"><span style="font-size:12px;color:var(--muted-foreground)">Título</span><input value="{{ kf.t }}" onChange="{{ kfT }}" placeholder="p. ej. Tarifas 2026" style="height:36px;padding:0 10px;border-radius:10px;border:1px solid var(--input);background:var(--card)"></label>
+          <label style="display:flex;flex-direction:column;gap:5px;min-width:0"><span style="font-size:12px;color:var(--muted-foreground)">Ruta, URL o servidor MCP</span><input value="{{ kf.src }}" onChange="{{ kfSrc }}" placeholder="docs/tarifas.md" style="height:36px;padding:0 10px;border-radius:10px;border:1px solid var(--input);background:var(--card);font-family:'Ubuntu Mono',monospace;font-size:12.5px"></label>
+          <label style="display:flex;flex-direction:column;gap:5px;min-width:0"><span style="font-size:12px;color:var(--muted-foreground)">Disponible para</span><select value="{{ kf.scope }}" onChange="{{ kfScope }}" style="height:36px;padding:0 8px;border-radius:10px;border:1px solid var(--input);background:var(--card)"><sc-for list="{{ scopeOpts }}" as="o" hint-placeholder-count="3"><option value="{{ o.id }}">{{ o.name }}</option></sc-for></select></label>
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:8px;padding:12px 16px;border-top:1px solid var(--sep)"><button onClick="{{ closeModal }}" style="height:32px;padding:0 12px;border-radius:10px;border:1px solid var(--border);background:transparent">Cancelar</button><button onClick="{{ saveKnow }}" style="height:32px;padding:0 14px;border-radius:999px;border:0;background:var(--primary-action);background-image:linear-gradient(180deg,rgba(255,255,255,.16),rgba(255,255,255,0));box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 8px 18px -8px var(--primary-action);color:#fff;font-weight:500" style-hover="background:var(--primary-action-hover)">Añadir</button></div>
+      </sc-if>
+
+      <sc-if value="{{ m.skill }}">
+        <div style="padding:16px;display:flex;flex-direction:column;gap:12px">
+          <label style="display:flex;flex-direction:column;gap:5px;min-width:0"><span style="font-size:12px;color:var(--muted-foreground)">Nombre</span><input value="{{ sf.n }}" onChange="{{ sfN }}" placeholder="p. ej. Resumen de reuniones" style="height:36px;padding:0 10px;border-radius:10px;border:1px solid var(--input);background:var(--card)"></label>
+          <label style="display:flex;flex-direction:column;gap:5px;min-width:0"><span style="font-size:12px;color:var(--muted-foreground)">Qué sabe hacer</span><textarea value="{{ sf.d }}" onChange="{{ sfD }}" rows="3" placeholder="Instrucciones del skill" style="padding:8px 10px;border-radius:10px;border:1px solid var(--input);background:var(--card);resize:vertical"></textarea></label>
+          <div style="display:flex;flex-direction:column;gap:6px"><span style="font-size:12px;color:var(--muted-foreground)">Agentes que lo usan</span><div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{ skAgents }}" as="a" hint-placeholder-count="4"><button onClick="{{ a.on }}" aria-pressed="{{ a.sel }}" style="height:34px;padding:0 10px 0 6px;border-radius:9px;border:1px solid {{ a.bd }};background:{{ a.bg }};display:flex;align-items:center;gap:7px;font-size:12.5px"><span style="width:22px;height:22px;border-radius:8px;background:{{ a.color }};color:#0A1A33;font-weight:700;font-size:11px;display:grid;place-items:center">{{ a.initial }}</span>{{ a.name }}<span style="font-size:11px;color:var(--muted-foreground)">{{ a.sub }}</span></button></sc-for></div></div>
+          <label style="display:flex;flex-direction:column;gap:5px;min-width:0"><span style="font-size:12px;color:var(--muted-foreground)">Ámbito</span><select value="{{ sf.scope }}" onChange="{{ sfScope }}" style="height:36px;padding:0 8px;border-radius:10px;border:1px solid var(--input);background:var(--card)"><sc-for list="{{ scopeOpts }}" as="o" hint-placeholder-count="3"><option value="{{ o.id }}">{{ o.name }}</option></sc-for></select></label>
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:8px;padding:12px 16px;border-top:1px solid var(--sep)"><button onClick="{{ closeModal }}" style="height:32px;padding:0 12px;border-radius:10px;border:1px solid var(--border);background:transparent">Cancelar</button><button onClick="{{ saveSkill }}" style="height:32px;padding:0 14px;border-radius:999px;border:0;background:var(--primary-action);background-image:linear-gradient(180deg,rgba(255,255,255,.16),rgba(255,255,255,0));box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 8px 18px -8px var(--primary-action);color:#fff;font-weight:500" style-hover="background:var(--primary-action-hover)">Crear skill</button></div>
+      </sc-if>
+
+      <sc-if value="{{ m.help }}">
+        <div style="padding:8px 16px 16px;display:grid;grid-template-columns:1fr 1fr;gap:6px 24px">
+          <sc-for list="{{ helpGroups }}" as="g" hint-placeholder-count="3">
+            <div style="display:flex;flex-direction:column;gap:2px;padding-top:8px"><div style="font-size:11.5px;color:var(--muted-foreground);margin-bottom:4px">{{ g.g }}</div>
+              <sc-for list="{{ g.rows }}" as="r" hint-placeholder-count="2"><div style="display:flex;align-items:center;gap:8px;height:28px"><span style="flex:1">{{ r.l }}</span><span style="display:flex;gap:3px"><sc-for list="{{ r.keys }}" as="k" hint-placeholder-count="1"><span style="font-family:'Ubuntu Mono',monospace;font-size:11px;min-width:18px;height:18px;padding:0 5px;border-radius:4px;border:1px solid var(--border);background:var(--card);color:var(--muted-foreground);display:inline-grid;place-items:center">{{ k.k }}</span></sc-for></span></div></sc-for>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ m.cliPick }}">
+        <div style="padding:12px;display:flex;flex-direction:column;gap:6px">
+          <sc-for list="{{ cliCatalog }}" as="c" hint-placeholder-count="4">
+            <button onClick="{{ c.on }}" style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:14px;border:1px solid var(--border);background:var(--card);text-align:left" style-hover="border-color:var(--ring)">
+              <span style="width:32px;height:32px;border-radius:10px;border:1px solid var(--border);background:var(--subtle);display:grid;place-items:center;font-family:'Ubuntu Mono',monospace;font-weight:700;font-size:12px">{{ c.tag }}</span>
+              <span style="flex:1"><span style="display:block;font-weight:500">{{ c.name }}</span><span style="display:block;font-size:12px;color:var(--muted-foreground)">{{ c.meta }}</span></span>
+              <span style="font-size:12px;color:var(--ring)">{{ c.action }}</span>
+            </button>
+          </sc-for>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ m.cliLogin }}">
+        <div style="padding:16px;display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;align-items:center;gap:10px"><span style="width:32px;height:32px;border-radius:10px;border:1px solid var(--border);background:var(--subtle);display:grid;place-items:center;font-family:'Ubuntu Mono',monospace;font-weight:700;font-size:12px">{{ cf.tag }}</span><div><div style="font-weight:500">{{ cf.name }}</div><div style="font-size:12px;color:var(--muted-foreground)">{{ cf.note }}</div></div></div>
+          <label style="display:flex;flex-direction:column;gap:5px"><span style="font-size:12px;color:var(--muted-foreground)">Email de la cuenta</span><input value="{{ cf.email }}" onChange="{{ cfEmail }}" placeholder="tu@empresa.com" style="height:36px;padding:0 10px;border-radius:10px;border:1px solid var(--input);background:var(--card)"></label>
+          <div style="font-size:12px;color:var(--muted-foreground);text-wrap:pretty">Se abrirá el navegador para iniciar sesión. La nueva cuenta tendrá su propia cuota y podrás asignarla a cualquier agente.</div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:8px;padding:12px 16px;border-top:1px solid var(--sep)">
+          <button onClick="{{ closeModal }}" style="height:32px;padding:0 12px;border-radius:10px;border:1px solid var(--border);background:transparent">Cancelar</button>
+          <button onClick="{{ connectCli }}" style="height:32px;padding:0 14px;border-radius:999px;border:0;background:var(--primary-action);background-image:linear-gradient(180deg,rgba(255,255,255,.16),rgba(255,255,255,0));box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 8px 18px -8px var(--primary-action);color:#fff;font-weight:500;display:flex;align-items:center;gap:7px" style-hover="background:var(--primary-action-hover)"><span style="width:14px;height:14px;background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/external-link.svg) center/contain no-repeat"></span>{{ cf.cta }}</button>
+        </div>
+      </sc-if>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ pal }}">
+  <div onClick="{{ closePal }}" style="position:fixed;inset:0;background:rgba(3,10,22,.35);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);animation:fadeIn .2s ease-out;z-index:70;display:flex;justify-content:center;align-items:flex-start;padding-top:12vh">
+    <div onClick="{{ stop }}" role="dialog" aria-label="Paleta de comandos" style="animation:sheetIn .24s cubic-bezier(.2,.8,.2,1);width:600px;max-width:calc(100vw - 40px);max-height:470px;display:flex;flex-direction:column;border-radius:20px;background:var(--glass-pop);backdrop-filter:saturate(180%) blur(28px);-webkit-backdrop-filter:saturate(180%) blur(28px);border:1px solid var(--border);box-shadow:var(--shadow-pop);overflow:hidden">
+      <div style="height:50px;flex:none;display:flex;align-items:center;gap:10px;padding:0 14px;border-bottom:1px solid var(--sep);color:var(--muted-foreground)"><span style="width:16px;height:16px;flex:none;background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/search.svg) center/contain no-repeat"></span><input ref="{{ palRef }}" value="{{ q }}" onChange="{{ palQ }}" onKeyDown="{{ palKey }}" placeholder="Busca agentes, tareas, proyectos o acciones…" aria-label="Buscar" style="flex:1;height:100%;border:0;outline:none;background:transparent;color:var(--foreground);font-size:14px"><span style="font-family:'Ubuntu Mono',monospace;font-size:11px;min-width:18px;height:18px;padding:0 5px;border-radius:4px;border:1px solid var(--border);background:var(--card);color:var(--muted-foreground);display:inline-grid;place-items:center">Esc</span></div>
+      <div style="flex:1;overflow:auto;padding:6px">
+        <sc-for list="{{ palItems }}" as="x" hint-placeholder-count="6">
+          <sc-if value="{{ x.showG }}"><div style="padding:8px 10px 4px;font-size:11px;color:var(--muted-foreground)">{{ x.g }}</div></sc-if>
+          <button onClick="{{ x.on }}" onMouseEnter="{{ x.enter }}" style="width:100%;height:36px;display:flex;align-items:center;gap:10px;padding:0 10px;border:0;border-radius:10px;background:{{ x.bg }};text-align:left"><span style="width:15px;height:15px;flex:none;color:var(--muted-foreground);background:currentColor;mask:url({{ x.icon }}) center/contain no-repeat"></span><span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ x.l }}</span><sc-if value="{{ x.hasK }}"><span style="font-family:'Ubuntu Mono',monospace;font-size:11px;min-width:18px;height:18px;padding:0 5px;border-radius:4px;border:1px solid var(--border);background:var(--card);color:var(--muted-foreground);display:inline-grid;place-items:center">{{ x.k }}</span></sc-if></button>
+        </sc-for>
+        <sc-if value="{{ palEmpty }}"><div style="padding:18px 10px;color:var(--muted-foreground)">Sin resultados.</div></sc-if>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ toast }}">
+  <div role="status" style="position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:60;padding:10px 16px;border-radius:14px;background:var(--glass-pop);backdrop-filter:saturate(180%) blur(28px);-webkit-backdrop-filter:saturate(180%) blur(28px);border:1px solid var(--border);box-shadow:var(--shadow-pop);display:flex;align-items:center;gap:8px;animation:toastIn .2s ease-out"><span style="width:15px;height:15px;color:var(--st-done);background:currentColor;mask:url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/circle-check.svg) center/contain no-repeat"></span>{{ toast }}</div>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;oscuro&quot;,&quot;claro&quot;],&quot;default&quot;:&quot;oscuro&quot;,&quot;tsType&quot;:&quot;'oscuro'|'claro'&quot;}}">
+const IC = n => 'https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/' + n + '.svg';
+const pill = c => ({ c, bg: `color-mix(in oklch, ${c} 14%, transparent)`, bd: `color-mix(in oklch, ${c} 36%, transparent)` });
+const PULSE = 'pulse 1.6s ease-out infinite';
+const ASTAT = {running:['Trabajando','var(--st-running)'],waiting:['Te espera','var(--st-waiting)'],interrupted:['Interrumpida','var(--st-failed)'],idle:['Disponible','var(--st-done)'],draft:['Borrador','var(--st-cancelled)']};
+const TST = {backlog:['Backlog','var(--st-cancelled)'],queued:['En cola','var(--st-queued)'],running:['Ejecutando','var(--st-running)'],waiting:['Esperando','var(--st-waiting)'],review:['En revisión','var(--st-review)'],done:['Hecho','var(--st-done)']};
+const SST = {running:['En ejecución','var(--st-running)'],starting:['Iniciando','var(--st-queued)'],waiting:['Esperando','var(--st-waiting)'],interrupted:['Interrumpida','var(--st-failed)'],completed:['Completada','var(--st-done)'],failed:['Fallida','var(--st-failed)']};
+const LIVE = ['running','starting','waiting','interrupted'];
+const AG = {
+  ana:{name:'Ana',role:'Analista',color:'#F27FB2',team:'tec',acc:'cc1',model:'claude-sonnet-4-5',perm:'Preguntar',status:'running',cur:'t2',since:754,conc:'1/1',desc:'Convierte ideas en requisitos claros, historias de usuario y criterios de aceptación.'},
+  dev:{name:'Dev',role:'Desarrollador',color:'#4FD1C5',team:'tec',acc:'cc1',model:'claude-opus-4-1',perm:'Autónomo',status:'running',cur:'t1',since:2471,conc:'2/2',desc:'Implementa funcionalidades full-stack siguiendo los requisitos y las convenciones de cada proyecto.'},
+  quique:{name:'Quique',role:'QA',color:'#B5E061',team:'tec',acc:'ag1',model:'gemini-2.5-pro',perm:'Restringido',status:'waiting',cur:'t3',since:0,conc:'1/1',desc:'Prueba cada entrega, escribe tests E2E y devuelve a Desarrollo lo que no cumple los criterios.'},
+  rita:{name:'Rita',role:'Redactora',color:'#FFA06B',team:'red',acc:'ag1',model:'gemini-2.5-flash',perm:'Preguntar',status:'interrupted',cur:'t15',since:0,conc:'0/1',desc:'Escribe artículos, fichas de producto y textos de marketing con el tono de la marca.'},
+  carla:{name:'Carla',role:'Comercial',color:'#8FB4FF',team:'com',acc:'cc2',model:'claude-sonnet-4-5',perm:'Restringido',status:'draft',cur:null,since:0,conc:'0/1',desc:'Prepara propuestas comerciales para clientes a partir del catálogo de productos.'}
+};
+Object.entries(AG).forEach(([id, a]) => { a.id = id; a.initial = a.name[0]; });
+const USE = {
+  ana:{today:.62,tin:212000,tout:18300,cache:140000,week:[1.1,.8,1.6,.4,0,.9,.62],proj:{tienda:.62},month:48.2},
+  dev:{today:3.58,tin:1620000,tout:112000,cache:1200000,week:[5.2,6.8,4.1,7.3,.6,4.4,3.58],proj:{reservas:2.84,tienda:.74},month:131.75},
+  quique:{today:1.9,tin:640000,tout:41000,cache:520000,week:[2.1,1.4,3,.9,0,1.48,1.9],proj:{tienda:1.9},month:22.1},
+  rita:{today:.41,tin:190000,tout:14000,cache:90000,week:[.6,.3,.9,.2,0,.74,.41],proj:{blog:.41},month:9.85},
+  carla:{today:0,tin:0,tout:0,cache:0,week:[0,0,0,0,0,0,0],proj:{},month:0}
+};
+const DAYS = ['mié','jue','vie','sáb','dom','lun','hoy'];
+const TEAMS = [
+  {id:'tec',name:'Equipo técnico',desc:'Requisitos, desarrollo y QA de producto',agents:['ana','dev','quique']},
+  {id:'red',name:'Redacción',desc:'Artículos, fichas y tono de marca',agents:['rita']},
+  {id:'com',name:'Comercial',desc:'Propuestas y relación con clientes',agents:['carla']}
+];
+const PR0 = [
+  {id:'tienda',name:'Tienda online',color:'#7C9CFF',path:'D:\\proyectos\\tienda-online',branch:'main',pipeline:'Desarrollo web',last:'Actividad hace 2 min'},
+  {id:'reservas',name:'App reservas',color:'#E58AF0',path:'D:\\proyectos\\app-reservas',branch:'feature/login-google',pipeline:'Desarrollo web',last:'Actividad hace 40 s'},
+  {id:'blog',name:'Blog corporativo',color:'#F2C94C',path:'D:\\contenido\\blog-corporativo',branch:'',pipeline:'Contenidos',last:'Actividad hace 26 min'}
+];
+const TASKS0 = [
+  {id:'t1',code:'T-142',title:'Login con Google',p:'reservas',stage:'Desarrollo',a:'dev',s:'running'},
+  {id:'t2',code:'T-151',title:'Requisitos del checkout',p:'tienda',stage:'Requisitos',a:'ana',s:'running'},
+  {id:'t3',code:'T-138',title:'QA carrito de compra',p:'tienda',stage:'QA',a:'quique',s:'waiting'},
+  {id:'t4',code:'T-160',title:'Artículo: tendencias eCommerce 2026',p:'blog',stage:'Redacción',a:'rita',s:'backlog'},
+  {id:'t5',code:'T-147',title:'API de disponibilidad',p:'reservas',stage:'Desarrollo',a:'dev',s:'queued'},
+  {id:'t6',code:'T-149',title:'Pasarela de pago con Stripe',p:'tienda',stage:'Desarrollo',a:'dev',s:'queued'},
+  {id:'t7',code:'T-131',title:'Calendario de reservas',p:'reservas',stage:'QA',a:'quique',s:'review'},
+  {id:'t8',code:'T-120',title:'Página de categorías',p:'tienda',stage:'QA',a:'quique',s:'done'},
+  {id:'t9',code:'T-118',title:'Guía de estilo editorial',p:'blog',stage:'Revisión',a:'rita',s:'done'},
+  {id:'t10',code:'T-155',title:'Notificaciones por email',p:'reservas',stage:'Requisitos',a:'ana',s:'backlog'},
+  {id:'t12',code:'T-153',title:'Política de devoluciones',p:'tienda',stage:'Requisitos',a:'ana',s:'queued'},
+  {id:'t14',code:'T-150',title:'QA reservas recurrentes',p:'reservas',stage:'QA',a:'quique',s:'queued'},
+  {id:'t15',code:'T-144',title:'Revisión SEO de la home',p:'blog',stage:'Revisión',a:'rita',s:'review'}
+];
+const INBOX0 = [
+  {id:'i1',type:'approval',a:'quique',p:'tienda',task:'QA carrito de compra',title:'¿Puedo ejecutar este comando?',cmd:'npm install -D @playwright/test',ctx:'Necesito Playwright para los tests E2E del carrito. Se añadirá solo a devDependencies.',when:'hace 4 min'},
+  {id:'i2',type:'question',a:'dev',p:'reservas',task:'API de disponibilidad',title:'¿Usamos Postgres o SQLite para las reservas?',ctx:'Prevemos ~2.000 reservas al día con acceso concurrente desde el panel de administración.',options:['Postgres','SQLite'],when:'hace 9 min'},
+  {id:'i3',type:'blocked',a:'ana',p:'tienda',task:'Requisitos del checkout',title:'Me falta la clave de test de Stripe',ctx:'No puedo validar los métodos de pago disponibles sin acceso a la cuenta de pruebas.',when:'hace 18 min'},
+  {id:'i4',type:'approval',a:'dev',p:'reservas',task:'Login con Google',title:'¿Puedo hacer push de la rama?',cmd:'git push origin feature/login-google',ctx:'Los 14 tests de autenticación pasan. Abriré un PR hacia develop.',when:'hace 22 min'},
+  {id:'i8',type:'interrupted',a:'rita',p:'blog',task:'Revisión SEO de la home',title:'La sesión se cortó a mitad de la tarea',ctx:'Antigravity se cerró a los 24 min. La sesión ag-3e6f21 conserva su contexto y puede reanudarse donde lo dejó.',when:'hace 26 min'},
+  {id:'i5',type:'done',a:'rita',p:'blog',task:'Guía de estilo editorial',title:'Tarea completada',ctx:'Documento de 6 páginas con tono, vocabulario y ejemplos. Guardado en docs/estilo.md.',when:'hace 31 min'}
+];
+const TYPES = {approval:{l:'Aprobación',c:'var(--st-waiting)',icon:IC('shield-check')},question:{l:'Pregunta',c:'var(--st-running)',icon:IC('message-circle-question')},blocked:{l:'Bloqueo',c:'var(--st-failed)',icon:IC('octagon-alert')},done:{l:'Completada',c:'var(--st-done)',icon:IC('circle-check')},interrupted:{l:'Sesión interrumpida',c:'var(--st-failed)',icon:IC('unplug')}};
+const ORD = {approval:0,question:1,blocked:2,interrupted:3,done:4};
+const SESS = [
+  {id:'cc-c41e88',a:'dev',p:'tienda',task:'Pasarela de pago con Stripe',acc:'cc1',st:'starting',dur:4,cost:0,when:'hoy 10:43'},
+  {id:'cc-7f3a91',a:'dev',p:'reservas',task:'Login con Google',acc:'cc1',st:'running',dur:2471,cost:2.84,when:'hoy 10:01'},
+  {id:'cc-2b81e0',a:'ana',p:'tienda',task:'Requisitos del checkout',acc:'cc1',st:'running',dur:754,cost:.62,when:'hoy 10:30'},
+  {id:'ag-3e6f21',a:'rita',p:'blog',task:'Revisión SEO de la home',acc:'ag1',st:'interrupted',dur:1440,cost:.41,when:'hoy 09:51'},
+  {id:'ag-91c4d2',a:'quique',p:'tienda',task:'QA carrito de compra',acc:'ag1',st:'waiting',dur:3900,cost:1.9,when:'hoy 09:38'},
+  {id:'cc-5d0a17',a:'dev',p:'tienda',task:'Revisión de dependencias',acc:'cc1',st:'completed',dur:1310,cost:.74,when:'hoy 08:12'},
+  {id:'cc-a12f90',a:'dev',p:'reservas',task:'Calendario de reservas',acc:'cc1',st:'completed',dur:7800,cost:4.12,when:'ayer 16:20'},
+  {id:'ag-0c55b3',a:'rita',p:'blog',task:'Guía de estilo editorial',acc:'ag1',st:'completed',dur:2280,cost:.74,when:'ayer 12:05'},
+  {id:'ag-77f0aa',a:'quique',p:'tienda',task:'Página de categorías',acc:'ag1',st:'failed',dur:2650,cost:1.48,when:'06/10 12:44'}
+];
+const CATALOG = [
+  {id:'cc',name:'Claude Code',tag:'CC',by:'Anthropic'},
+  {id:'ag',name:'Antigravity',tag:'AG',by:'Google'},
+  {id:'cx',name:'Codex CLI',tag:'CX',by:'OpenAI'},
+  {id:'gm',name:'Gemini CLI',tag:'GM',by:'Google'}
+];
+const CLIS0 = [
+  {id:'cc',ver:'v2.0.14',accounts:[
+    {id:'cc1',email:'marta@estudio.es',plan:'Max 20×',def:true,quotas:[{l:'Ventana de 5 h',v:64,meta:'Se reinicia en 1 h 52 min'},{l:'Semanal',v:38,meta:'Se reinicia el lunes'}]},
+    {id:'cc2',email:'marta.personal@gmail.com',plan:'Pro',def:false,quotas:[{l:'Ventana de 5 h',v:12,meta:'Se reinicia en 4 h 10 min'},{l:'Semanal',v:9,meta:'Se reinicia el lunes'}]}
+  ]},
+  {id:'ag',ver:'1.8.2',accounts:[
+    {id:'ag1',email:'marta@estudio.es',plan:'Workspace',def:true,quotas:[{l:'Peticiones hoy',v:96,meta:'960 / 1.000 · se reinicia a medianoche'}]}
+  ]}
+];
+const KNOW = [
+  {t:'Guía de estilo editorial',src:'docs/estilo.md',type:'Documento',scope:'Global',upd:'hace 31 min',icon:IC('file-text')},
+  {t:'Convenciones de código',src:'docs/convenciones.md',type:'Documento',scope:'Tienda, Reservas',upd:'hace 3 días',icon:IC('file-code-2')},
+  {t:'El callback valida state + PKCE',src:'memoria · Dev',type:'Memoria',scope:'App reservas',upd:'hoy 09:58',icon:IC('brain')},
+  {t:'Catálogo de productos y tarifas',src:'mcp://catalogo',type:'Fuente MCP',scope:'Tienda online',upd:'sincronizado hoy',icon:IC('database')},
+  {t:'Tuteamos al lector',src:'memoria · Rita',type:'Memoria',scope:'Blog corporativo',upd:'ayer 11:40',icon:IC('brain')},
+  {t:'Arquitectura de la tienda',src:'docs/arquitectura.md',type:'Documento',scope:'Tienda online',upd:'hace 1 semana',icon:IC('file-text')}
+];
+const SKILLS0 = [
+  {n:'Tests E2E con Playwright',d:'Escribe y ejecuta pruebas de extremo a extremo con capturas en cada fallo.',agents:['quique'],scope:'Equipo técnico',on:true},
+  {n:'Revisión de código',d:'Revisa diffs con una lista de comprobación de seguridad, rendimiento y estilo.',agents:['dev','quique'],scope:'Equipo técnico',on:true},
+  {n:'Historias de usuario',d:'Formato «Como… quiero… para…» con criterios de aceptación verificables.',agents:['ana'],scope:'Global',on:true},
+  {n:'Commits convencionales',d:'Mensajes feat/fix/chore y ramas por tarea.',agents:['dev'],scope:'Equipo técnico',on:true},
+  {n:'SEO on-page',d:'Títulos, metadescripciones, encabezados y enlazado interno.',agents:['rita'],scope:'Redacción',on:true},
+  {n:'Propuestas comerciales',d:'Estructura de propuesta con precios del catálogo vigente.',agents:['carla'],scope:'Comercial',on:false}
+];
+const SW = ['#7C9CFF','#E58AF0','#F2C94C','#4FD1C5','#FFA06B','#B5E061'];
+const MODELS = {cc:['claude-opus-4-1','claude-sonnet-4-5'],ag:['gemini-2.5-pro','gemini-2.5-flash'],cx:['gpt-5-codex','gpt-5'],gm:['gemini-2.5-pro','gemini-2.5-flash']};
+const TPLS = [
+  {id:'ana',l:'Analista',c:'#F27FB2',icon:'clipboard-list',sugg:'Alba',d:'Convierte ideas en requisitos claros, historias de usuario y criterios de aceptación.'},
+  {id:'dev',l:'Desarrollador',c:'#4FD1C5',icon:'code-xml',sugg:'Diego',d:'Implementa funcionalidades y corrige errores siguiendo las convenciones del proyecto.'},
+  {id:'qa',l:'QA',c:'#B5E061',icon:'bug',sugg:'Olga',d:'Prueba cada entrega, escribe tests E2E y devuelve lo que no cumple los criterios.'},
+  {id:'red',l:'Redactor',c:'#FFA06B',icon:'pen-line',sugg:'Raúl',d:'Escribe artículos y textos de marketing con el tono de la marca.'},
+  {id:'com',l:'Comercial',c:'#8FB4FF',icon:'briefcase',sugg:'Celia',d:'Prepara propuestas para clientes a partir del catálogo y las tarifas vigentes.'},
+  {id:'per',l:'Asistente personal',c:'#E58AF0',icon:'calendar-check',sugg:'Paula',d:'Organiza tu agenda, resume correos y prepara recordatorios.'},
+  {id:'blank',l:'En blanco',c:'#9DB0D0',icon:'plus',sugg:'',d:''}
+];
+const PERMS = ['Restringido','Preguntar','Autónomo'];
+const KTYPES = {'Documento':'file-text','Carpeta':'folder','Fuente MCP':'database','Memoria':'brain'};
+const DESC = {t1:'Permitir que los clientes inicien sesión con su cuenta de Google (OAuth 2.0 + PKCE). Si el email ya existe, vincular la cuenta. Redirigir al panel tras el login.',t2:'Definir el flujo de checkout: métodos de pago, envío, cupones y confirmación del pedido.',t3:'Probar el carrito completo antes de la salida a producción, incluidos cupones, stock y persistencia.',t15:'Revisar el SEO on-page de la home del blog y aplicar las mejoras.'};
+const SUBS0 = {t1:[['Configurar credenciales OAuth',1],['Flujo de autorización con PKCE',1],['Vincular cuentas por email',1],['Botón de Google en móvil',0],['Documentar variables de entorno',0]],t2:[['Revisar el checkout actual',1],['Métodos de pago',0],['Gastos de envío',0],['Criterios de aceptación',0]],t3:[['Añadir y quitar productos',1],['Cupones',1],['Stock agotado',1],['Persistencia entre sesiones',1],['Tests E2E con Playwright',0],['Informe de QA',0]],t15:[['Títulos y metadescripciones',1],['Encabezados',1],['Enlazado interno',0]]};
+const L = (k, t) => [k, t];
+const LC = {cmd:['#FFFFFF',700],info:['#8FB4FF',400],ok:['#43D392',400],err:['#FF6B6F',400],edit:['#F5B547',400],mcp:['#B39CFF',400],dim:['#7F8DAA',400],sub:['#4CC9F0',400],user:['#F5B547',700]};
+const LOGS = {
+  'cc-7f3a91':[L('dim','PS D:\\proyectos\\app-reservas.wt\\T-142> agentic run --agent dev --task T-142'),L('info','▸ Sesión cc-7f3a91 · claude-opus-4-1 · permisos: autónomo'),L('info','● Leyendo src/auth/google.ts'),L('edit','✎ Editando src/auth/callback.ts (+31 −8)'),L('cmd','▶ npm run test -- auth'),L('ok','  PASS  tests/auth/google.test.ts (6 tests)'),L('sub','↳ subagente tests-auth: 14/14 tests pasan'),L('mcp','● mcp · update_status("corrigiendo el redirect tras el login")')],
+  'cc-2b81e0':[L('dim','PS D:\\proyectos\\tienda-online> agentic run --agent ana --task T-151'),L('info','▸ Sesión cc-2b81e0 · claude-sonnet-4-5 · permisos: preguntar'),L('info','● Leyendo docs/checkout-actual.md'),L('mcp','● mcp · create_subtask("Métodos de pago")'),L('err','✖ Falta STRIPE_TEST_KEY: no puedo listar los métodos de pago'),L('mcp','● mcp · request_help("Me falta la clave de test de Stripe")')],
+  'ag-91c4d2':[L('dim','PS D:\\proyectos\\tienda-online.wt\\T-138> agentic run --agent quique --task T-138'),L('info','▸ Sesión ag-91c4d2 · gemini-2.5-pro · permisos: restringido'),L('ok','✓ 4/6 subtareas completadas'),L('cmd','▶ npm install -D @playwright/test'),L('user','⏸ Esperando tu aprobación para ejecutar el comando')],
+  'ag-3e6f21':[L('dim','PS D:\\contenido\\blog-corporativo> agentic run --agent rita --task T-144'),L('info','▸ Sesión ag-3e6f21 · gemini-2.5-flash'),L('edit','✎ Editando content/home.md (+14 −6)'),L('err','✖ Antigravity terminó inesperadamente (código 3221225477)'),L('dim','  El contexto de la sesión se ha conservado. Puedes reanudarla.')],
+  'cc-c41e88':[L('dim','PS D:\\proyectos\\tienda-online> agentic run --agent dev --task T-149'),L('info','▸ Sesión cc-c41e88 · claude-opus-4-1'),L('info','● Preparando el worktree T-149…')]
+};
+const POOL = [L('info','● Leyendo src/components/LoginForm.tsx'),L('edit','✎ Editando src/components/GoogleButton.tsx (+48)'),L('cmd','▶ npm run lint'),L('ok','  ✓ 0 errores, 0 avisos'),L('mcp','● mcp · update_status("botón de Google adaptado a móvil")'),L('cmd','▶ npx tsc --noEmit'),L('ok','  ✓ tipos correctos'),L('edit','✎ Editando README.md (+12)'),L('sub','↳ subagente tests-auth: 16/16 tests pasan'),L('info','● Revisando criterios de aceptación')];
+const HELP = [['General',[['Paleta de comandos',['Ctrl','K']],['Atajos de teclado',['?']],['Abrir / cerrar la terminal',['Ctrl','`']],['Cerrar diálogo o panel',['Esc']]]],['Crear',[['Nueva tarea',['N']]]],['En la paleta',[['Moverse',['↑','↓']],['Ejecutar',['Enter']]]]];
+const fmt = s => { s = Math.max(0, Math.floor(s)); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60, p = n => String(n).padStart(2, '0'); return h ? h + ':' + p(m) + ':' + p(x) : p(m) + ':' + p(x); };
+const dur = s => { const h = Math.floor(s / 3600), m = Math.round(s % 3600 / 60); return h ? h + ' h ' + String(m).padStart(2, '0') : m + ' min'; };
+const eur = v => v.toFixed(2).replace('.', ',') + ' €';
+const tok = n => n >= 1e6 ? (n / 1e6).toFixed(1).replace('.', ',') + ' M' : n >= 1e3 ? Math.round(n / 1e3) + ' k' : String(n);
+const LIMIT = 25;
+
+class Component extends DCLogic {
+  cRef = React.createRef(); tRef = React.createRef(); dRef = React.createRef(); palRef = React.createRef();
+  state = {
+    route: this.parse(), theme: this.props.theme === 'claro' ? 'light' : 'dark', tick: 0,
+    inbox: INBOX0.map(i => ({ ...i })), replies: {}, reqFilter: 'all', hoverA: null, usageA: null,
+    projects: PR0.map(p => ({ ...p })), tasks: TASKS0.map(t => ({ ...t })), clis: JSON.parse(JSON.stringify(CLIS0)),
+    skills: SKILLS0.map(s => ({ ...s })), kTab: 'know', delP: null, oneKey: true,
+    rev: 0, know: KNOW.map(k => ({ ...k })), subs: JSON.parse(JSON.stringify(SUBS0)), logs: JSON.parse(JSON.stringify(LOGS)),
+    reqIdx: 0, reqMenu: false, cliOpen: null, dock: false, dockS: 'cc-7f3a91', dockIn: '', pal: false, q: '', pi: 0, af: {}, tmf: {}, kf: {}, sf: {},
+    modal: null, tf: {}, pf: {}, cf: {}, toast: '', cliDismiss: []
+  };
+  parse() { const h = (window.location.hash || '').replace(/^#\/?/, ''); const [r, id] = h.split('/'); return { r: r || 'inicio', id }; }
+  componentDidMount() {
+    this.onHash = () => { this.setState({ route: this.parse(), usageA: null, modal: null, pal: false }); if (this.cRef.current) this.cRef.current.scrollTop = 0; };
+    this.onKey = e => {
+      const tag = (e.target.tagName || '').toLowerCase(), typing = tag === 'input' || tag === 'textarea' || tag === 'select', mod = e.ctrlKey || e.metaKey;
+      if (mod && e.key.toLowerCase() === 'k') { e.preventDefault(); this.setState(s => ({ pal: !s.pal, q: '', pi: 0 })); return; }
+      if (mod && e.key === '`') { e.preventDefault(); this.setState(s => ({ dock: !s.dock })); return; }
+      if (e.key === 'Escape') { this.setState({ modal: null, usageA: null, pal: false }); return; }
+      if (typing || !this.state.oneKey || this.state.modal || this.state.pal || mod || e.altKey) return;
+      if (e.key === 'n' || e.key === 'N') { e.preventDefault(); this.openTaskFor(); }
+      else if (e.key === '?') this.setState({ modal: 'help' });
+    };
+    window.addEventListener('hashchange', this.onHash);
+    window.addEventListener('keydown', this.onKey);
+    this.iv = setInterval(() => this.setState(s => { const n = s.tick + 1; if (n % 2) return { tick: n }; return { tick: n, logs: { ...s.logs, 'cc-7f3a91': [...s.logs['cc-7f3a91'], POOL[(n / 2) % POOL.length]].slice(-150) } }; }), 1000);
+  }
+  componentWillUnmount() { window.removeEventListener('hashchange', this.onHash); window.removeEventListener('keydown', this.onKey); clearInterval(this.iv); clearTimeout(this.tt); }
+  componentDidUpdate(pp, ps) {
+    if (this.state.logs !== ps.logs || this.state.dockS !== ps.dockS || this.state.dock !== ps.dock || this.state.route !== ps.route) [this.tRef, this.dRef].forEach(r => { if (r.current) r.current.scrollTop = r.current.scrollHeight; });
+    if (this.state.pal && !ps.pal && this.palRef.current) this.palRef.current.focus();
+  }
+  firstAcc() { for (const c of this.state.clis) if (c.accounts[0]) return c.accounts[0].id; return ''; }
+  modelsFor(accId) { const a = this.acc(accId); return a ? MODELS[a.cli] : ['predeterminado']; }
+  moveToTeam(id, tid) { TEAMS.forEach(t => { t.agents = t.agents.filter(x => x !== id); }); const t = TEAMS.find(x => x.id === tid); if (t) t.agents.push(id); AG[id].team = tid; }
+  openAgent(team, id) {
+    if (id) { const a = AG[id]; this.setState({ modal: 'agent', af: { id, name: a.name, role: a.role, team: this.team(id).id, acc: a.acc || this.firstAcc(), model: a.model, perm: a.perm, instr: a.instr || a.desc, color: a.color } }); }
+    else { const t = TPLS[0]; this.setState({ modal: 'agent', af: { tpl: t.id, name: t.sugg, role: t.l, team: team || TEAMS[0].id, acc: this.firstAcc(), model: '', perm: 'Preguntar', instr: t.d, color: t.c } }); }
+  }
+  saveAgent() {
+    const f = this.state.af; if (!f.name || !f.name.trim()) return;
+    const models = this.modelsFor(f.acc), model = models.includes(f.model) ? f.model : models[0], name = f.name.trim();
+    if (f.id) { Object.assign(AG[f.id], { name, initial: name[0].toUpperCase(), role: f.role, acc: f.acc, model, perm: f.perm, instr: f.instr }); this.moveToTeam(f.id, f.team); }
+    else {
+      let id = name.toLowerCase().normalize('NFD').replace(/[^a-z0-9]/g, '') || 'agente'; while (AG[id]) id += '2';
+      AG[id] = { id, name, initial: name[0].toUpperCase(), role: f.role || 'Agente', color: f.color, team: f.team, acc: f.acc, model, perm: f.perm, status: 'draft', cur: null, since: 0, conc: '0/1', desc: (f.instr || 'Agente sin instrucciones todavía.').split('. ')[0], instr: f.instr };
+      USE[id] = { today: 0, tin: 0, tout: 0, cache: 0, week: [0, 0, 0, 0, 0, 0, 0], proj: {}, month: 0 };
+      TEAMS.find(t => t.id === f.team).agents.push(id);
+    }
+    this.setState(s => ({ modal: null, rev: s.rev + 1 }), () => this.say(f.id ? 'Cambios guardados' : `${name} creado como borrador en ${TEAMS.find(t => t.id === f.team).name}`));
+  }
+  openTeam(id) { const t = id && TEAMS.find(x => x.id === id); this.setState({ modal: 'team', tmf: t ? { id, name: t.name, desc: t.desc, agents: [...t.agents] } : { name: '', desc: '', agents: [] } }); }
+  saveTeam() {
+    const f = this.state.tmf; if (!f.name || !f.name.trim()) return; let t;
+    if (f.id) { t = TEAMS.find(x => x.id === f.id); t.name = f.name; t.desc = f.desc; } else { t = { id: 'tm' + Date.now(), name: f.name, desc: f.desc, agents: [] }; TEAMS.push(t); }
+    f.agents.forEach(a => { if (!t.agents.includes(a)) this.moveToTeam(a, t.id); });
+    this.setState(s => ({ modal: null, rev: s.rev + 1 }), () => this.say(f.id ? 'Equipo actualizado' : `Equipo «${f.name}» creado`));
+  }
+  sortedReqs() { return [...this.state.inbox].sort((a, b) => ORD[a.type] - ORD[b.type]); }
+  focusIdx() { return Math.max(0, Math.min(this.state.reqIdx, this.state.inbox.length - 1)); }
+  say(msg) { clearTimeout(this.tt); this.setState({ toast: msg }); this.tt = setTimeout(() => this.setState({ toast: '' }), 2600); }
+  proj(id) { return this.state.projects.find(p => p.id === id) || { name: '—', color: '#8492AE' }; }
+  acc(id) { for (const c of this.state.clis) { const a = c.accounts.find(x => x.id === id); if (a) return { ...a, cli: c.id, cliName: CATALOG.find(k => k.id === c.id).name, tag: CATALOG.find(k => k.id === c.id).tag }; } return null; }
+  team(aid) { return TEAMS.find(t => t.agents.includes(aid)); }
+  stop = e => e.stopPropagation();
+
+  usage(id) {
+    const a = AG[id], u = USE[id], max = Math.max(...u.week, .01), pa = Object.entries(u.proj), pmax = Math.max(...pa.map(x => x[1]), .01), ac = this.acc(a.acc);
+    const pct = Math.round(u.today / LIMIT * 100);
+    return {
+      name: a.name, initial: a.initial, color: a.color, href: '#/agente/' + id, accL: ac ? ac.cliName + ' · ' + ac.email : '',
+      today: eur(u.today), pctL: pct + ' %', pctW: Math.max(pct, 1) + '%', tin: tok(u.tin), tout: tok(u.tout), cache: tok(u.cache), month: eur(u.month),
+      week: u.week.map((v, i) => ({ l: DAYS[i], v: eur(v), h: Math.round(v / max * 78) + 'px', c: i === 6 ? a.color : `color-mix(in oklch, ${a.color} 45%, var(--muted))` })),
+      proj: pa.map(([p, v]) => ({ name: this.proj(p).name, color: this.proj(p).color, w: Math.round(v / pmax * 100) + '%', cost: eur(v) })), noProj: !pa.length,
+      sess: SESS.filter(s => s.a === id && s.when.startsWith('hoy')).map(s => ({ id: s.id, task: s.task, dur: dur(s.dur + (s.st === 'running' ? this.state.tick : 0)), cost: eur(s.cost), c: SST[s.st][1], stL: SST[s.st][0] })),
+      get noSess() { return !this.sess.length; }
+    };
+  }
+
+  reqVM(i) {
+    const ag = AG[i.a], tm = TYPES[i.type], pr = this.proj(i.p);
+    const resolve = msg => this.setState(s => ({ inbox: s.inbox.filter(x => x.id !== i.id), hoverA: null }), () => this.say(msg));
+    const reply = this.state.replies[i.id] || '';
+    const send = () => reply.trim() && resolve(`Respuesta enviada a ${ag.name}`);
+    return {
+      ...i, ag, tm, teamName: this.team(i.a).name, taskL: i.task + ' · ' + pr.name, agHref: '#/agente/' + i.a, taskHref: '#/tarea/' + ((this.state.tasks.find(t => t.title === i.task) || {}).id || ''),
+      tmBg: `color-mix(in oklch, ${tm.c} 15%, transparent)`,
+      bd: this.state.hoverA === i.a ? 'var(--st-waiting)' : 'var(--border)',
+      isApproval: i.type === 'approval', isQuestion: i.type === 'question', needsReply: i.type === 'question' || i.type === 'blocked',
+      isInterrupted: i.type === 'interrupted', isDone: i.type === 'done',
+      opts: (i.options || []).map(o => ({ label: o, on: () => resolve(`${ag.name} usará ${o}`) })),
+      approve: () => resolve(`Aprobado · ${ag.name} continúa`), reject: () => resolve(`Rechazado · ${ag.name} buscará otra vía`),
+      reply, replyPh: i.type === 'question' ? 'O escribe otra respuesta…' : 'Responde a ' + ag.name + '…',
+      onReply: e => { const v = e.target.value; this.setState(s => ({ replies: { ...s.replies, [i.id]: v } })); },
+      onReplyKey: e => { if (e.key === 'Enter') send(); }, send,
+      resume: () => resolve(`Sesión reanudada · ${ag.name} retoma la tarea`), discard: () => resolve('Tarea reencolada'), ack: () => resolve('Marcada como revisada'),
+      hover: () => this.setState({ hoverA: i.a })
+    };
+  }
+
+  agentVM(id) {
+    const a = AG[id], s = this.state, t = a.cur && s.tasks.find(x => x.id === a.cur), u = USE[id], ac = this.acc(a.acc);
+    const fr = this.sortedReqs()[this.focusIdx()], pend = s.inbox.filter(x => x.a === id).length, hl = !!fr && fr.a === id;
+    const [stL, stc] = ASTAT[a.status], pct = Math.round(u.today / LIMIT * 100);
+    const queued = s.tasks.filter(x => x.a === id && x.s === 'queued').length;
+    const verb = { running: 'Trabajando en', waiting: 'Pausado en', interrupted: 'Se cortó en' }[a.status];
+    const IORD = { running: 0, starting: 1, waiting: 2, interrupted: 3 };
+    const inst = SESS.filter(x => x.a === id && LIVE.includes(x.st)).sort((p, q) => IORD[p.st] - IORD[q.st]).map(x => {
+      const tt = s.tasks.find(y => y.title === x.task) || {}, pr = this.proj(x.p);
+      return { code: tt.code || '', task: x.task, title: `${x.task} · ${pr.name} · sesión ${x.id}`, href: tt.id ? '#/tarea/' + tt.id : '#/agente/' + id, pcolor: pr.color, c: SST[x.st][1], pulse: x.st === 'running' ? PULSE : 'none',
+        elapsed: x.st === 'running' ? fmt(x.dur + s.tick) : x.st === 'starting' ? 'iniciando' : x.st === 'waiting' ? 'esperándote' : 'reanudable' };
+    });
+    return {
+      ...a, inst, st: pill(stc), stL: stL + (inst.length > 1 ? ' ×' + inst.length : ''), pulse: a.status === 'running' ? PULSE : 'none',
+      cliTag: ac ? ac.tag : '—', acc: ac ? ac.cliName + ' · ' + ac.email : 'Sin cuenta asignada',
+      aria: `${a.name}, ${a.role}. ${stL}`,
+      border: hl ? 'var(--st-waiting)' : pend ? 'color-mix(in oklch, var(--st-waiting) 55%, var(--border))' : 'var(--border)',
+      shadow: hl ? '0 0 0 3px color-mix(in oklch, var(--st-waiting) 30%, transparent)' : 'none',
+      hasReq: pend > 0, reqL: pend === 1 ? '1 petición' : pend + ' peticiones',
+      hasTask: !!t, noTask: !inst.length, verb, tcode: t && t.code, task: t && t.title, pname: t && this.proj(t.p).name, pcolor: t && this.proj(t.p).color,
+      elapsed: !t ? '' : a.status === 'running' ? fmt(a.since + s.tick) : a.status === 'waiting' ? 'esperándote' : 'reanudable',
+      idleText: a.status === 'draft' ? 'Borrador: revisa sus instrucciones y actívalo para que empiece a recibir tareas.' : 'Disponible. Asígnale una tarea para empezar.',
+      cost: eur(u.today), tok: tok(u.tin + u.tout), pctW: Math.max(pct, 1) + '%',
+      queueL: queued ? queued + ' en cola' : 'cola vacía',
+      open: () => { window.location.hash = '#/agente/' + id; },
+      key: e => { if (e.key === 'Enter') window.location.hash = '#/agente/' + id; },
+      showUsage: e => { e.stopPropagation(); this.setState({ usageA: id }); },
+      assign: e => { e && e.stopPropagation && e.stopPropagation(); this.openTaskFor(id); },
+      filterReq: e => { e.stopPropagation(); const k = this.sortedReqs().findIndex(x => x.a === id); if (k >= 0) this.setState({ reqIdx: k, reqMenu: false }); },
+      runBar: a.status === 'running' ? 'block' : 'none', idleShort: a.status === 'draft' ? 'Borrador · actívalo desde su ficha' : 'Disponible · sin tareas en curso'
+    };
+  }
+  openTaskFor(a) { this.setState({ modal: 'task', tf: { title: '', p: this.state.projects[0] ? this.state.projects[0].id : '', a: a || 'dev' } }); }
+  openCli(cid) {
+    if (cid) { const k = CATALOG.find(x => x.id === cid), inst = this.state.clis.some(c => c.id === cid); this.setState({ modal: 'cliLogin', cf: { cli: cid, name: k.name, tag: k.tag, email: '', inst, note: inst ? 'Añadir otra cuenta' : 'Se instalará y conectará', cta: inst ? 'Iniciar sesión' : 'Instalar e iniciar sesión' } }); }
+    else this.setState({ modal: 'cliPick', cf: {} });
+  }
+
+  renderVals() {
+    const s = this.state, r = s.route.r;
+    const routes = ['inicio','clis','proyectos','conocimiento','agente','tarea','tablero','ejecuciones','ajustes'];
+    const cur = routes.includes(r) && (r !== 'agente' || AG[s.route.id]) && (r !== 'tarea' || s.tasks.some(t => t.id === s.route.id)) ? r : 'inicio';
+    const is = {}; routes.forEach(k => is[k] = k === cur);
+    const TITLES = { clis: 'CLIs y cuentas', proyectos: 'Proyectos', conocimiento: 'Conocimiento y skills', tablero: 'Tablero', ejecuciones: 'Ejecuciones', ajustes: 'Ajustes' };
+    let trail = [{ label: 'Inicio', href: '#/' }];
+    if (cur === 'agente') { const a = AG[s.route.id]; trail.push({ label: this.team(a.id).name, href: '#/' }, { label: a.name }); }
+    else if (cur === 'tarea') { const t = s.tasks.find(x => x.id === s.route.id); trail.push({ label: this.proj(t.p).name, href: '#/tablero/' + t.p }, { label: t.code + ' · ' + t.title }); }
+    else if (cur === 'tablero' && s.route.id && s.projects.some(p => p.id === s.route.id)) trail.push({ label: 'Tablero', href: '#/tablero' }, { label: this.proj(s.route.id).name });
+    else if (cur !== 'inicio') trail.push({ label: TITLES[cur] });
+    const crumbs = trail.map((c, i) => ({ ...c, sep: i > 0, last: i === trail.length - 1, link: i < trail.length - 1 }));
+
+    const pendBy = id => s.inbox.filter(x => x.a === id).length;
+    const sorted = [...s.inbox].sort((a, b) => ORD[a.type] - ORD[b.type]);
+    const filt = s.reqFilter === 'all' ? sorted : sorted.filter(x => x.a === s.reqFilter);
+    const reqAgents = [...new Set(sorted.map(x => x.a))];
+    const chip = (sel) => ({ sel, bd: sel ? 'var(--ring)' : 'var(--border)', bg: sel ? 'var(--accent)' : 'transparent' });
+    const reqChips = [{ label: 'Todas', n: s.inbox.length, isAll: true, on: () => this.setState({ reqFilter: 'all' }), ...chip(s.reqFilter === 'all') }]
+      .concat(reqAgents.map(id => ({ label: AG[id].name, n: pendBy(id), isAg: true, initial: AG[id].initial, color: AG[id].color, on: () => this.setState({ reqFilter: id }), ...chip(s.reqFilter === id) })));
+
+    const projAgents = pid => Object.values(AG).filter(a => { const t = a.cur && s.tasks.find(x => x.id === a.cur); return t && t.p === pid && a.status !== 'draft'; });
+    const openN = pid => s.tasks.filter(t => t.p === pid && t.s !== 'done').length;
+    const projSummary = s.projects.map(p => {
+      const ags = projAgents(p.id), first = ags[0], t = first && s.tasks.find(x => x.id === first.cur);
+      return { ...p, href: '#/tablero/' + p.id, agents: ags.map(a => ({ name: a.name, initial: a.initial, color: a.color })), open: openN(p.id) + ' abiertas',
+        activity: first ? `${first.name} · ${t.title}` + (ags.length > 1 ? ` y ${ags.length - 1} más` : '') : 'Sin agentes trabajando ahora' };
+    });
+    const projRows = s.projects.map(p => {
+      const ags = projAgents(p.id), confirming = s.delP === p.id;
+      return { ...p, agents: ags.map(a => ({ name: a.name, initial: a.initial, color: a.color })), noAgents: !ags.length, open: openN(p.id),
+        branchL: p.branch ? 'rama ' + p.branch : 'sin Git', confirming, idle: !confirming, tasksHref: '#/tablero/' + p.id,
+        edit: () => this.setState({ modal: 'project', pf: { ...p } }), askDel: () => this.setState({ delP: p.id }), cancelDel: () => this.setState({ delP: null }),
+        del: () => this.setState(st => ({ projects: st.projects.filter(x => x.id !== p.id), delP: null }), () => this.say(`Proyecto «${p.name}» eliminado`)) };
+    });
+
+    const accSess = id => SESS.filter(x => x.acc === id && LIVE.includes(x.st));
+    const qColor = v => v >= 80 ? 'var(--st-waiting)' : 'var(--primary-action)';
+    const cliSummary = s.clis.map(c => {
+      const k = CATALOG.find(x => x.id === c.id), n = c.accounts.reduce((m, a) => m + accSess(a.id).length, 0);
+      const wq = Math.max(0, ...c.accounts.flatMap(a => a.quotas.map(q => q.v))), open = s.cliOpen === c.id;
+      return { ...k, open, rot: open ? 'rotate(180deg)' : 'none', toggle: () => this.setState(st => ({ cliOpen: st.cliOpen === c.id ? null : c.id })),
+        meta: `${c.accounts.length} ${c.accounts.length === 1 ? 'cuenta' : 'cuentas'} · ${n} ${n === 1 ? 'sesión' : 'sesiones'}`, qw: wq + '%', qc: wq >= 80 ? 'var(--st-waiting)' : 'var(--muted-foreground)', qtc: wq >= 80 ? 'var(--st-waiting)' : 'var(--muted-foreground)', qTitle: 'Cuota más alta entre sus cuentas: ' + wq + ' %',
+        sessL: n === 1 ? '1 sesión activa' : n + ' sesiones activas', accounts: c.accounts.map(a => {
+        const q = a.quotas.reduce((m, x) => x.v > m.v ? x : m, a.quotas[0] || { v: 0, l: '' }), ns = accSess(a.id).length;
+        return { email: a.email, plan: a.plan, qw: q.v + '%', qc: q.v >= 80 ? 'var(--st-waiting)' : 'var(--muted-foreground)', qtc: q.v >= 80 ? 'var(--st-waiting)' : 'var(--muted-foreground)', qTitle: q.l + ': ' + q.v + ' %', sessL: ns ? ns + (ns === 1 ? ' sesión' : ' sesiones') : 'libre' };
+      }) };
+    });
+    const nAcc = s.clis.reduce((m, c) => m + c.accounts.length, 0), nLive = SESS.filter(x => LIVE.includes(x.st)).length;
+    const cliFull = s.clis.map(c => {
+      const k = CATALOG.find(x => x.id === c.id), n = c.accounts.reduce((m, a) => m + accSess(a.id).length, 0);
+      return { ...k, ver: c.ver, sessL: n + (n === 1 ? ' sesión activa' : ' sesiones activas'), addAcc: () => this.openCli(c.id),
+        accounts: c.accounts.map(a => {
+          const ags = Object.values(AG).filter(g => g.acc === a.id), ss = accSess(a.id);
+          return { ...a, initial: a.email[0].toUpperCase(), notDef: !a.def, agents: ags.map(g => ({ name: g.name, initial: g.initial, color: g.color })), noAgents: !ags.length,
+            quotas: a.quotas.map(q => ({ l: q.l, meta: q.meta, p: q.v + '%', c: qColor(q.v), tc: q.v >= 80 ? 'var(--st-waiting)' : 'var(--foreground)', bd: q.v >= 80 ? 'color-mix(in oklch, var(--st-waiting) 45%, var(--border))' : 'var(--border)' })),
+            sessions: ss.map(x => ({ id: x.id, ag: AG[x.a], agHref: '#/agente/' + x.a, task: x.task, pname: this.proj(x.p).name, pcolor: this.proj(x.p).color, dur: dur(x.dur + (x.st === 'running' ? s.tick : 0)), st: pill(SST[x.st][1]), stL: SST[x.st][0] })), noSess: !ss.length,
+            makeDef: () => this.setState(st => ({ clis: st.clis.map(cc => cc.id !== c.id ? cc : { ...cc, accounts: cc.accounts.map(x => ({ ...x, def: x.id === a.id })) }) }), () => this.say(`${a.email} es ahora la cuenta predeterminada`)),
+            logout: () => this.setState(st => ({ clis: st.clis.map(cc => cc.id !== c.id ? cc : { ...cc, accounts: cc.accounts.filter(x => x.id !== a.id) }) }), () => this.say(`Sesión cerrada en ${a.email}`)) };
+        }) };
+    });
+    const availClis = CATALOG.filter(k => !s.clis.some(c => c.id === k.id)).map(k => ({ ...k, on: () => this.openCli(k.id) }));
+    const cliCatalog = CATALOG.map(k => { const c = s.clis.find(x => x.id === k.id); return { ...k, meta: c ? `Instalado · ${c.accounts.length} ${c.accounts.length === 1 ? 'cuenta' : 'cuentas'}` : k.by + ' · no instalado', action: c ? 'Añadir cuenta' : 'Instalar', on: () => this.openCli(k.id) }; });
+
+    const teams = TEAMS.map(t => {
+      const act = t.agents.filter(id => ['running', 'waiting'].includes(AG[id].status)).length;
+      return { ...t, meta: `${t.agents.length} ${t.agents.length === 1 ? 'agente' : 'agentes'} · ${act} activos`, agents: t.agents.map(id => this.agentVM(id)), empty: !t.agents.length, addAgent: () => this.openAgent(t.id), edit: () => this.openTeam(t.id) };
+    });
+    const todayV = Object.values(USE).reduce((m, u) => m + u.today, 0);
+    const ri = this.focusIdx(), rqRaw = sorted[ri];
+    const rq = rqRaw ? this.reqVM(rqRaw) : null, nR = sorted.length;
+    const reqList = sorted.map((i, k) => ({ ag: AG[i.a], tm: TYPES[i.type], title: i.title, when: i.when, sel: k === ri, bg: k === ri ? 'var(--accent)' : 'transparent', on: () => this.setState({ reqIdx: k, reqMenu: false }) }));
+    const nAg = Object.keys(AG).length;
+    const cliAlerts = s.clis.flatMap(c => { const k = CATALOG.find(x => x.id === c.id); return c.accounts.filter(a => !s.cliDismiss.includes(a.id)).flatMap(a => {
+      const q = a.quotas.reduce((m, x) => x.v > m.v ? x : m, a.quotas[0] || { v: 0, l: '', meta: '' }), down = !!a.down;
+      if (!down && q.v < 95) return [];
+      return [{ id: a.id, title: down ? `${k.name}: sesión caída en ${a.email}` : `${k.name} casi sin cuota · ${q.v} %`,
+        ctx: down ? 'Los agentes que usan esta cuenta están en pausa hasta que vuelvas a iniciar sesión.' : `${a.email} · ${q.l}: ${q.meta}. Cambia sus agentes a otra cuenta o espera al reinicio.`,
+        cta: down ? 'Reconectar' : 'Revisar cuentas', manage: () => { window.location.hash = '#/clis'; },
+        snooze: () => this.setState(st => ({ cliDismiss: [...st.cliDismiss, a.id] }), () => this.say('Aviso pospuesto')) }];
+    }); });
+    const reqShow = (s.reqMenu ? sorted : sorted.slice(0, 3)).map(i => this.reqVM(i));
+    const nOpen = s.tasks.filter(t => t.s !== 'done').length, spendPct = todayV / LIMIT * 100;
+    const topNav = [['tablero', 'Tablero', nOpen], ['ejecuciones', 'Ejecuciones', nLive], ['conocimiento', 'Conocimiento', ''], ['ajustes', 'Ajustes', '']].map(([k, label, n]) => ({ href: '#/' + k, label, n: n === '' ? '' : String(n), cur: cur === k ? 'page' : undefined, bg: cur === k ? 'var(--accent)' : 'transparent', fg: cur === k ? 'var(--foreground)' : 'var(--muted-foreground)' }));
+
+    let ag = null;
+    if (cur === 'agente') {
+      const id = s.route.id, vm = this.agentVM(id), a = AG[id], ac = this.acc(a.acc), ts = s.tasks.filter(t => t.a === id && t.s !== 'done');
+      ag = { ...vm, u: this.usage(id), reqs: s.inbox.filter(x => x.a === id).map(i => this.reqVM(i)),
+        facts: [{ l: 'Equipo', v: this.team(id).name }, { l: 'CLI', v: ac ? ac.cliName : '—' }, { l: 'Cuenta', v: ac ? ac.email : 'Sin asignar' }, { l: 'Modelo', v: a.model }, { l: 'Permisos · concurrencia', v: a.perm + ' · ' + a.conc }],
+        tasks: ts.map(t => ({ ...t, href: '#/tarea/' + t.id, pname: this.proj(t.p).name, pcolor: this.proj(t.p).color, st: pill(TST[t.s][1]), stL: TST[t.s][0] })), noTasks: !ts.length,
+        queueL: ts.length + ' abiertas', assign: () => this.openTaskFor(id), edit: () => this.openAgent(null, id), isDraft: a.status === 'draft',
+        activate: () => { AG[id].status = 'idle'; this.setState(st => ({ rev: st.rev + 1 }), () => this.say(`${a.name} activado: ya puede recibir tareas`)); } };
+    }
+
+    const bf = cur === 'tablero' ? s.route.id : null;
+    const boardChips = [{ label: 'Todos', href: '#/tablero', ...chip(!bf) }].concat(s.projects.map(p => ({ label: p.name, color: p.color, href: '#/tablero/' + p.id, ...chip(bf === p.id) })));
+    const cols = ['backlog','queued','running','waiting','review','done'].map(k => { const items = s.tasks.filter(t => t.s === k && (!bf || t.p === bf)); return { title: TST[k][0], c: TST[k][1], count: items.length, items: items.map(t => ({ ...t, href: '#/tarea/' + t.id, ag: AG[t.a], agHref: '#/agente/' + t.a, pname: this.proj(t.p).name, pcolor: this.proj(t.p).color })) }; });
+    const runs = SESS.map(x => { const ac = this.acc(x.acc); return { id: x.id, ag: AG[x.a], agHref: '#/agente/' + x.a, task: x.task, acc: ac ? ac.tag + ' · ' + ac.email : '—', when: x.when, cost: eur(x.cost), st: pill(SST[x.st][1]), stL: SST[x.st][0] }; });
+
+    const m = { task: s.modal === 'task', project: s.modal === 'project', cliPick: s.modal === 'cliPick', cliLogin: s.modal === 'cliLogin', agent: s.modal === 'agent', team: s.modal === 'team', know: s.modal === 'know', skill: s.modal === 'skill', help: s.modal === 'help' };
+    const modalTitle = m.agent ? (s.af.id ? 'Editar agente' : 'Nuevo agente') : m.team ? (s.tmf.id ? 'Editar equipo' : 'Nuevo equipo') : m.know ? 'Añadir conocimiento' : m.skill ? 'Nuevo skill' : m.help ? 'Atajos de teclado' : m.task ? 'Nueva tarea' : m.project ? (s.pf.id ? 'Editar proyecto' : 'Nuevo proyecto') : m.cliPick ? 'Añadir CLI o cuenta' : m.cliLogin ? 'Conectar cuenta' : '';
+    const kTabs = [['know', 'Conocimiento'], ['skills', 'Skills']].map(([k, l]) => ({ label: l + ' · ' + (k === 'know' ? s.know.length : s.skills.length), sel: s.kTab === k, bg: s.kTab === k ? 'var(--card)' : 'transparent', on: () => this.setState({ kTab: k }) }));
+
+    const setF = (k, fl) => e => { const v = e.target.value; this.setState(st => ({ [k]: { ...st[k], [fl]: v } })); };
+    const lines = id => (s.logs[id] || []).map(l => ({ t: l[1], c: LC[l[0]][0], fw: LC[l[0]][1] }));
+    let tk = null;
+    if (cur === 'tarea') {
+      const t = s.tasks.find(x => x.id === s.route.id), a = AG[t.a], sess = SESS.find(x => x.task === t.title && LIVE.includes(x.st)), ac = sess && this.acc(sess.acc), subs = s.subs[t.id] || [], done = subs.filter(x => x[1]).length;
+      const setT = (patch, msg) => this.setState(st => ({ tasks: st.tasks.map(x => x.id === t.id ? { ...x, ...patch } : x) }), () => this.say(msg));
+      tk = { ...t, st: pill(t.paused ? 'var(--st-cancelled)' : TST[t.s][1]), stL: t.paused ? 'En pausa' : TST[t.s][0], ag: a, agHref: '#/agente/' + t.a, pname: this.proj(t.p).name, pcolor: this.proj(t.p).color, projHref: '#/tablero/' + t.p,
+        desc: DESC[t.id] || 'Sin descripción todavía. El agente la completará al analizar la tarea.',
+        subs: subs.map((x, i) => ({ t: x[0], done: !!x[1], fg: x[1] ? 'var(--muted-foreground)' : 'var(--foreground)', dec: x[1] ? 'line-through' : 'none', toggle: () => this.setState(st => ({ subs: { ...st.subs, [t.id]: st.subs[t.id].map((y, j) => j === i ? [y[0], y[1] ? 0 : 1] : y) } })) })),
+        subL: subs.length ? `Subtareas · ${done}/${subs.length}` : 'Subtareas', noSubs: !subs.length,
+        hasSess: !!sess, noSess: !sess, sessId: sess ? sess.id : '',
+        sessFacts: sess ? [{ l: 'Sesión', v: sess.id }, { l: 'Cuenta', v: ac ? ac.tag + ' · ' + ac.email : '—' }, { l: 'Duración', v: dur(sess.dur + (sess.st === 'running' ? s.tick : 0)) }, { l: 'Coste', v: eur(sess.cost) }] : [],
+        lines: sess ? lines(sess.id) : [], openDock: () => sess && this.setState({ dock: true, dockS: sess.id }),
+        reqs: s.inbox.filter(x => x.task === t.title).map(i => this.reqVM(i)),
+        pauseL: t.paused ? 'Reanudar' : 'Pausar', pauseIcon: IC(t.paused ? 'play' : 'pause'),
+        pause: () => setT({ paused: !t.paused }, t.paused ? 'Tarea reanudada' : 'En pausa: el agente terminará el paso actual'),
+        retry: () => setT({ s: 'queued', paused: false }, `${t.code} vuelve a la cola de ${a.name}`),
+        cancel: () => setT({ s: 'backlog', paused: false }, `${t.code} cancelada y movida al backlog`) };
+    }
+    const liveS = SESS.filter(x => LIVE.includes(x.st));
+    const dockTabs = liveS.map(x => ({ label: AG[x.a].name + ' · ' + x.id, c: SST[x.st][1], bg: s.dockS === x.id ? '#13284D' : 'transparent', fg: s.dockS === x.id ? '#FFFFFF' : '#9AA9C4', on: () => this.setState({ dockS: x.id }) }));
+    const dockSend = () => { const v = s.dockIn.trim(); if (!v) return; this.setState(st => ({ dockIn: '', logs: { ...st.logs, [st.dockS]: [...(st.logs[st.dockS] || []), L('user', '› ' + v), L('dim', '  mensaje entregado al agente')] } })); };
+    const dockAg = AG[(SESS.find(x => x.id === s.dockS) || {}).a];
+    const toggleTheme = () => this.setState(st => ({ theme: st.theme === 'dark' ? 'light' : 'dark' }));
+    const openNewProject = () => this.setState({ modal: 'project', pf: { name: '', path: '', pipeline: 'Desarrollo web', color: SW[3] } });
+    const go = h => () => { window.location.hash = '#/' + h; };
+    const palAll = [
+      ...[['Nueva tarea', 'plus', () => this.openTaskFor(), 'N'], ['Nuevo agente', 'bot', () => this.openAgent()], ['Nuevo equipo', 'users-round', () => this.openTeam()], ['Nuevo proyecto', 'folder-plus', openNewProject], ['Añadir CLI o cuenta', 'square-terminal', () => this.openCli()], ['Abrir terminal', 'terminal', () => this.setState({ dock: true })], ['Cambiar tema', 'sun-moon', toggleTheme], ['Atajos de teclado', 'keyboard', () => this.setState({ modal: 'help' }), '?']].map(([l, i, fn, k]) => ({ g: 'Acciones', l, icon: IC(i), fn, k })),
+      ...[['Inicio', ''], ['CLIs y cuentas', 'clis'], ['Proyectos', 'proyectos'], ['Conocimiento y skills', 'conocimiento'], ['Tablero', 'tablero'], ['Ejecuciones', 'ejecuciones'], ['Ajustes', 'ajustes']].map(([l, h]) => ({ g: 'Ir a', l, icon: IC('arrow-right'), fn: go(h) })),
+      ...Object.values(AG).map(a => ({ g: 'Agentes', l: a.name + ' · ' + a.role, icon: IC('bot'), fn: go('agente/' + a.id) })),
+      ...s.projects.map(p => ({ g: 'Proyectos', l: p.name, icon: IC('folder'), fn: go('tablero/' + p.id) })),
+      ...s.tasks.map(t => ({ g: 'Tareas', l: t.code + ' · ' + t.title, icon: IC('circle-dot'), fn: go('tarea/' + t.id) }))
+    ];
+    const qq = s.q.trim().toLowerCase();
+    const palF = (qq ? palAll.filter(x => x.l.toLowerCase().includes(qq)) : palAll.filter(x => x.g !== 'Tareas' && x.g !== 'Proyectos')).slice(0, 14);
+    const runP = x => { this.setState({ pal: false, q: '' }); x.fn(); };
+    const palItems = palF.map((x, i) => ({ ...x, showG: i === 0 || palF[i - 1].g !== x.g, bg: i === s.pi ? 'var(--accent)' : 'transparent', hasK: !!x.k, on: () => runP(x), enter: () => this.setState({ pi: i }) }));
+    const palKey = e => { if (e.key === 'ArrowDown') { e.preventDefault(); this.setState(st => ({ pi: Math.min(st.pi + 1, palF.length - 1) })); } else if (e.key === 'ArrowUp') { e.preventDefault(); this.setState(st => ({ pi: Math.max(st.pi - 1, 0) })); } else if (e.key === 'Enter' && palF[s.pi]) { e.preventDefault(); runP(palF[s.pi]); } };
+    const af = s.af || {}, afMods = this.modelsFor(af.acc);
+    const pickAg = (k) => Object.values(AG).map(a => { const on = (s[k].agents || []).includes(a.id), t = this.team(a.id); return { name: a.name, initial: a.initial, color: a.color, sub: k === 'tmf' ? (t ? t.name : '') : '', sel: on, bd: on ? 'var(--ring)' : 'var(--border)', bg: on ? 'var(--accent)' : 'transparent', on: () => this.setState(st => ({ [k]: { ...st[k], agents: on ? st[k].agents.filter(x => x !== a.id) : [...(st[k].agents || []), a.id] } })) }; });
+    const segBg = on => on ? 'var(--card)' : 'transparent';
+    return {
+      tRef: this.tRef, dRef: this.dRef, palRef: this.palRef, tk, boardChips,
+      openPal: () => this.setState({ pal: true, q: '', pi: 0 }), toggleDock: () => this.setState(st => ({ dock: !st.dock })), dock: s.dock, dockBtnBg: s.dock ? 'var(--accent)' : 'transparent',
+      dockTabs, dockLines: lines(s.dockS), dockIn: s.dockIn, dockInCh: e => this.setState({ dockIn: e.target.value }), dockInKey: e => { if (e.key === 'Enter') dockSend(); }, dockPh: 'Escribe a ' + (dockAg ? dockAg.name : 'el agente') + ' y pulsa Enter…',
+      pal: s.pal, q: s.q, palQ: e => this.setState({ q: e.target.value, pi: 0 }), palKey, palItems, palEmpty: !palItems.length, closePal: () => this.setState({ pal: false }),
+      afIsNew: !af.id, af, teamOpts: TEAMS.map(t => ({ id: t.id, name: t.name })),
+      accOpts: s.clis.flatMap(c => c.accounts.map(a => ({ id: a.id, name: CATALOG.find(k => k.id === c.id).tag + ' · ' + a.email }))),
+      afModels: afMods.map(x => ({ id: x, name: x })), afModel: afMods.includes(af.model) ? af.model : afMods[0],
+      tplChips: TPLS.map(t => ({ ...t, icon: IC(t.icon), bd: af.tpl === t.id ? 'var(--ring)' : 'var(--border)', bg: af.tpl === t.id ? 'var(--accent)' : 'var(--card)', on: () => this.setState(st => ({ af: { ...st.af, tpl: t.id, name: t.sugg, role: t.id === 'blank' ? '' : t.l, instr: t.d, color: t.c } })) })),
+      permOpts: PERMS.map(p => ({ l: p, bg: segBg(af.perm === p), on: () => this.setState(st => ({ af: { ...st.af, perm: p } })) })),
+      afName: setF('af', 'name'), afRole: setF('af', 'role'), afTeam: setF('af', 'team'), afAcc: setF('af', 'acc'), afModelCh: setF('af', 'model'), afInstr: setF('af', 'instr'),
+      afSaveL: af.id ? 'Guardar cambios' : 'Crear borrador', saveAgent: () => this.saveAgent(),
+      tmf: s.tmf, tmName: setF('tmf', 'name'), tmDesc: setF('tmf', 'desc'), tmAgents: pickAg('tmf'), saveTeam: () => this.saveTeam(), tmSaveL: s.tmf.id ? 'Guardar cambios' : 'Crear equipo',
+      kf: s.kf, kfT: setF('kf', 't'), kfSrc: setF('kf', 'src'), kfScope: setF('kf', 'scope'),
+      kTypes: Object.keys(KTYPES).map(k => ({ l: k, bg: segBg(s.kf.type === k), on: () => this.setState(st => ({ kf: { ...st.kf, type: k } })) })),
+      scopeOpts: ['Global', ...TEAMS.map(t => t.name), ...s.projects.map(p => p.name)].map(x => ({ id: x, name: x })),
+      saveKnow: () => { const k = s.kf; if (!k.t || !k.t.trim()) return; this.setState(st => ({ modal: null, kTab: 'know', know: [{ t: k.t, src: k.src || '—', type: k.type, scope: k.scope, upd: 'ahora', icon: IC(KTYPES[k.type]) }, ...st.know] }), () => this.say('Añadido al conocimiento')); },
+      sf: s.sf, sfN: setF('sf', 'n'), sfD: setF('sf', 'd'), sfScope: setF('sf', 'scope'), skAgents: pickAg('sf'),
+      saveSkill: () => { const k = s.sf; if (!k.n || !k.n.trim()) return; this.setState(st => ({ modal: null, kTab: 'skills', skills: [...st.skills, { n: k.n, d: k.d, agents: k.agents, scope: k.scope, on: true }] }), () => this.say(`Skill «${k.n}» creado`)); },
+      helpGroups: HELP.map(([g, rows]) => ({ g, rows: rows.map(([l, k]) => ({ l, keys: k.map(x => ({ k: x })) })) })),
+      modalW: s.modal === 'agent' ? '660px' : '520px',
+      rq: rq || { tm: {}, ag: {} }, hasReq: !!rq, reqPos: nR ? (ri + 1) + ' / ' + nR : '', reqList, reqMenu: s.reqMenu,
+      rqBd: rq ? 'color-mix(in oklch, var(--st-waiting) 50%, var(--border))' : 'var(--border)',
+      reqPrev: () => this.setState({ reqIdx: (ri - 1 + nR) % Math.max(nR, 1), reqMenu: false }), reqNext: () => this.setState({ reqIdx: (ri + 1) % Math.max(nR, 1), reqMenu: false }),
+      toggleReqMenu: () => this.setState(st => ({ reqMenu: !st.reqMenu })), closeReqMenu: () => this.setState({ reqMenu: false }),
+      teamsMeta: `${TEAMS.length} equipos · ${nAg} agentes`,
+      theme: s.theme, themeIcon: IC(s.theme === 'dark' ? 'sun' : 'moon'), toggleTheme,
+      cRef: this.cRef, is, crumbs, notHome: cur !== 'inicio', stop: this.stop,
+      nWorking: Object.values(AG).filter(a => a.status === 'running').length, nReq: s.inbox.length, noReq: !s.inbox.length && !cliAlerts.length, hasAny: s.inbox.length > 0 || cliAlerts.length > 0, nReqAll: s.inbox.length + cliAlerts.length,
+      todayL: new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' }) + ' · ' + nLive + ' sesiones en vivo', cliAlerts, reqShow, hasMore: nR > 3, reqMoreL: s.reqMenu ? 'Ver menos' : 'Ver todas · ' + nR, topNav, spendC: spendPct >= 80 ? 'var(--st-waiting)' : 'var(--muted-foreground)',
+      todayTotal: eur(todayV), todayPct: Math.round(todayV / LIMIT * 100) + '%', nTasks: s.tasks.filter(t => t.s !== 'done').length, nLive,
+      projSummary, projRows, noProjects: !s.projects.length, projMeta: s.projects.length + ' activos',
+      cliSummary, cliFull, availClis, hasAvail: availClis.length > 0, cliCatalog,
+      cliMeta: `${nAcc} cuentas · ${nLive} sesiones`, knowMeta: `${s.know.length} fuentes · ${s.skills.filter(x => x.on).length} skills activos · 2 memorias nuevas hoy`,
+      reqChips, requests: filt.map(i => this.reqVM(i)), unhover: () => this.setState({ hoverA: null }),
+      reqCols: this.props.requestsLayout === 'lista' ? 'minmax(0,1fr)' : 'repeat(auto-fill,minmax(360px,1fr))',
+      teams, addTeam: () => this.openTeam(),
+      openTask: () => this.openTaskFor(), openNewProject,
+      openAddCli: () => this.openCli(), soon: () => this.say('La edición del agente se mantiene igual que en v1.1'),
+      ag, cols, runs,
+      know: s.know, kTabs, kIsKnow: s.kTab === 'know', kIsSkills: s.kTab === 'skills', addKnowL: s.kTab === 'know' ? 'Añadir fuente' : 'Nuevo skill',
+      addKnow: () => s.kTab === 'know' ? this.setState({ modal: 'know', kf: { type: 'Documento', t: '', src: '', scope: 'Global' } }) : this.setState({ modal: 'skill', sf: { n: '', d: '', agents: [], scope: 'Global' } }),
+      skills: s.skills.map((k, i) => ({ ...k, agents: k.agents.map(a => AG[a]), op: k.on ? 1 : .6, tbg: k.on ? 'var(--primary-action)' : 'var(--input)', tj: k.on ? 'flex-end' : 'flex-start', toggle: () => this.setState(st => ({ skills: st.skills.map((x, j) => j === i ? { ...x, on: !x.on } : x) })) })),
+      oneKey: s.oneKey, okBg: s.oneKey ? 'var(--primary-action)' : 'var(--input)', okJ: s.oneKey ? 'flex-end' : 'flex-start', toggleOneKey: () => this.setState(st => ({ oneKey: !st.oneKey })),
+      drawerOpen: !!s.usageA, du: s.usageA ? this.usage(s.usageA) : {}, closeDrawer: () => this.setState({ usageA: null }),
+      modalOpen: !!s.modal, modalTitle, m, closeModal: () => this.setState({ modal: null }),
+      tf: s.tf, tfTitle: e => { const v = e.target.value; this.setState(st => ({ tf: { ...st.tf, title: v } })); }, tfP: e => { const v = e.target.value; this.setState(st => ({ tf: { ...st.tf, p: v } })); }, tfA: e => { const v = e.target.value; this.setState(st => ({ tf: { ...st.tf, a: v } })); },
+      projOpts: s.projects, agOpts: Object.values(AG).filter(a => a.status !== 'draft').map(a => ({ id: a.id, name: a.name + ' · ' + a.role })),
+      createTask: () => { const t = s.tf; if (!t.title.trim()) return; const code = 'T-' + (161 + s.tasks.length - 13); this.setState(st => ({ modal: null, tasks: [...st.tasks, { id: 'n' + Date.now(), code, title: t.title, p: t.p, a: t.a, s: 'queued', stage: 'Desarrollo' }] }), () => this.say(`${code} en la cola de ${AG[t.a].name}`)); },
+      pf: s.pf, pfSaveL: s.pf.id ? 'Guardar cambios' : 'Crear proyecto',
+      pfName: e => { const v = e.target.value; this.setState(st => ({ pf: { ...st.pf, name: v } })); }, pfPath: e => { const v = e.target.value; this.setState(st => ({ pf: { ...st.pf, path: v } })); }, pfPipe: e => { const v = e.target.value; this.setState(st => ({ pf: { ...st.pf, pipeline: v } })); },
+      swatches: SW.map(c => ({ c, bd: s.pf.color === c ? 'var(--foreground)' : 'transparent', on: () => this.setState(st => ({ pf: { ...st.pf, color: c } })) })),
+      saveProject: () => { const p = s.pf; if (!p.name || !p.name.trim()) return; if (p.id) this.setState(st => ({ modal: null, projects: st.projects.map(x => x.id === p.id ? { ...p } : x) }), () => this.say('Proyecto actualizado')); else this.setState(st => ({ modal: null, projects: [...st.projects, { ...p, id: 'p' + Date.now(), branch: '', last: 'Creado ahora' }] }), () => this.say(`Proyecto «${p.name}» creado`)); },
+      cf: s.cf, cliBack: s.modal === 'cliLogin', cliPickAgain: () => this.setState({ modal: 'cliPick' }),
+      cfEmail: e => { const v = e.target.value; this.setState(st => ({ cf: { ...st.cf, email: v } })); },
+      connectCli: () => { const c = s.cf, email = (c.email || '').trim() || 'nueva.cuenta@estudio.es', acc = { id: c.cli + Date.now(), email, plan: 'Nueva', def: false, quotas: [{ l: 'Uso actual', v: 0, meta: 'Sin consumo todavía' }] };
+        this.setState(st => ({ modal: null, clis: st.clis.some(x => x.id === c.cli) ? st.clis.map(x => x.id === c.cli ? { ...x, accounts: [...x.accounts, acc] } : x) : [...st.clis, { id: c.cli, ver: 'recién instalado', accounts: [{ ...acc, def: true }] }] }), () => this.say(`${c.name} conectado con ${email}`)); },
+      toast: s.toast
+    };
+  }
+}
+</script>
+</body>
+</html>

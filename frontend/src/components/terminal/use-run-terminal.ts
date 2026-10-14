@@ -83,6 +83,15 @@ export function useRunTerminal(
     term.loadAddon(new WebLinksAddon())
     term.open(container)
     termRef.current = term
+    // The log and the scrollback mark the PTY size at the start and at each resize (OSC 7770).
+    // A passive view replays at those sizes, as the TUI drew them; a fitted one keeps its own.
+    const sizeMark = term.parser.registerOscHandler(7770, (data) => {
+      const [kind, cols, rows] = data.split(';')
+      if (!fit && kind === 'size' && Number(cols) > 0 && Number(rows) > 0) {
+        term.resize(Number(cols), Number(rows))
+      }
+      return true
+    })
 
     const socket = new TerminalSocket(runId, viewerId, {
       onSnapshot: (data) => {
@@ -138,6 +147,7 @@ export function useRunTerminal(
     return () => {
       clearTimeout(resizeTimer)
       observer.disconnect()
+      sizeMark.dispose()
       inputSub.dispose()
       socket.close()
       term.dispose()

@@ -1,4 +1,4 @@
-import { FolderGit2, GitBranch, TriangleAlert } from 'lucide-react'
+import { FolderGit2, GitBranch, Plus, TriangleAlert } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
 import { useProjects } from '@/api/projects'
@@ -6,6 +6,7 @@ import type { Project } from '@/api/types'
 import { EmptyState } from '@/components/EmptyState'
 import { PageContainer, PageHeader } from '@/components/page'
 import { Button } from '@/components/ui/button'
+import { useDialogs } from '@/stores/dialogs'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   Table,
@@ -19,12 +20,24 @@ import { relativeTime } from '@/lib/time'
 
 export default function ProjectsPage() {
   const { t } = useTranslation()
-  const navigate = useNavigate()
+  const openNewProject = useDialogs((s) => s.openNewProject)
   const { data: projects, isPending } = useProjects()
 
   return (
     <PageContainer>
-      <PageHeader title={t('projects.title')} subtitle={t('projects.subtitle')} />
+      <PageHeader
+        title={t('projects.title')}
+        subtitle={t('projects.subtitle')}
+        actions={
+          <Button
+            onClick={() => openNewProject()}
+            className="bg-primary-action text-white hover:bg-primary-action-hover"
+          >
+            <Plus />
+            {t('header.primary.newProject')}
+          </Button>
+        }
+      />
       {isPending ? (
         <div aria-busy className="flex flex-col gap-2">
           {[0, 1, 2].map((i) => (
@@ -40,7 +53,7 @@ export default function ProjectsPage() {
           description={t('pages.projects.emptyDescription')}
         >
           <Button
-            onClick={() => navigate('/proyectos/nuevo')}
+            onClick={() => openNewProject()}
             className="bg-primary-action text-white hover:bg-primary-action-hover"
           >
             {t('header.primary.newProject')}
@@ -86,7 +99,7 @@ function ProjectsTable({ projects }: { projects: Project[] }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   return (
-    <div className="overflow-hidden rounded-lg border bg-card">
+    <div className="overflow-hidden rounded-xl border border-sep shadow-card bg-card-grad">
       <Table>
         <TableHeader className="bg-subtle">
           <TableRow className="hover:bg-transparent">

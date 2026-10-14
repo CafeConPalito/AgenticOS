@@ -58,14 +58,12 @@ describe('Inbox', () => {
     expect(screen.getByText('Respondido: «SQLite»')).toBeVisible()
   })
 
-  it('shows the pending count in the sidebar and notifies each new item once', async () => {
+  it('notifies each new item once', async () => {
     const fresh = makeInboxItem({ kind: 'blocker', title: 'Me falta la clave de Stripe' })
     const delivery = makeInboxItem({ kind: 'delivery', title: 'T-3 · Guía de estilo' })
     const backend = createFakeBackend({ inbox: [fresh, delivery] })
     renderApp('/')
 
-    const sidebar = await screen.findByRole('navigation', { name: /navegación/i })
-    expect(await within(sidebar).findByText('2')).toBeVisible()
     await waitFor(() => expect(notify).toHaveBeenCalledTimes(1))
     // Deliveries do not notify by default; both are marked so no window notifies them again.
     expect(notify).toHaveBeenCalledWith(

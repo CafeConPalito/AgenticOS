@@ -145,6 +145,25 @@ def test_agy_command_dialog_from_a_real_screen():
     assert (dialog.kind, dialog.subject) == ("command", "git --version")
 
 
+def test_agy_file_edit_dialog():
+    """agy 1.3.5 asks «Accept this file edit?» (captured from a stuck QA run)."""
+    screen = ScreenState(Cli.AGY, 120, 40)
+    screen.feed(
+        "F:\\test-front\\src\\Pages.test.tsx  +36 -1\r\n"
+        "   4 +  import { Layout } from '../components/Layout';\r\n"
+        "  … 12 more lines (f for full diff)\r\n"
+        "shift+tab to auto-approve file edits\r\n"
+        "Accept this file edit?\r\n"
+        "> 1. Yes, accept this change\r\n"
+        "  2. No, reject this change\r\n"
+        "↑/↓ Navigate · tab Amend · f full diff\r\n"
+        "esc to cancel\r\n"
+    )
+    assert screen.permission_dialog() == PermissionDialog(
+        "edit", "F:\\test-front\\src\\Pages.test.tsx"
+    )
+
+
 def test_agy_dialogs_for_our_own_tools_are_not_permission_requests():
     screen = ScreenState(Cli.AGY, 100, 30)
     screen.feed(

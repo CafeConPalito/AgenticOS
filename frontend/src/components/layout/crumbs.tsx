@@ -20,8 +20,9 @@ export function TextCrumb({
     | 'nav.projects'
     | 'nav.runs'
     | 'nav.board'
-    | 'agents.new.title'
-    | 'projects.new.title'
+    | 'nav.inbox'
+    | 'nav.usage'
+    | 'nav.settings'
 }) {
   const { t } = useTranslation()
   return <>{t(i18nKey)}</>

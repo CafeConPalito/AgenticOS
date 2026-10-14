@@ -26,62 +26,6 @@ describe('Projects list', () => {
     const old = screen.getByRole('row', { name: 'Abrir Viejo' })
     expect(within(old).getByText(es.projects.folderMissing)).toBeVisible()
   })
-
-  it('empty state leads to the new project form', async () => {
-    createFakeBackend()
-    const user = userEvent.setup()
-    const { router } = renderApp('/proyectos')
-    expect(await screen.findByText(es.pages.projects.emptyTitle)).toBeVisible()
-    await user.click(screen.getAllByRole('button', { name: es.header.primary.newProject })[0])
-    expect(router.state.location.pathname).toBe('/proyectos/nuevo')
-  })
-})
-
-describe('New project', () => {
-  it('offers to create a missing folder and then creates the project', async () => {
-    const backend = createFakeBackend()
-    const user = userEvent.setup()
-    const { router } = renderApp('/proyectos/nuevo')
-    await user.type(await screen.findByLabelText(es.projects.fields.name), 'Web')
-    await user.type(screen.getByLabelText(es.projects.fields.path), 'D:\\missing\\web')
-    await user.click(screen.getByRole('button', { name: es.common.create }))
-
-    expect(await screen.findByText(es.errors.folder_not_found)).toBeVisible()
-    await user.click(screen.getByRole('button', { name: es.projects.new.createFolder }))
-    await waitFor(() =>
-      expect(router.state.location.pathname).toMatch(/^\/proyectos\/project-\d+\/summary$/),
-    )
-    const posts = backend.callsTo('POST', '/api/projects')
-    expect(posts).toHaveLength(2)
-    expect(posts[1].body).toMatchObject({
-      name: 'Web',
-      path: 'D:\\missing\\web',
-      create_folder: true,
-    })
-  })
-
-  it('shows the duplicate-folder error on the path field', async () => {
-    createFakeBackend({ projects: [makeProject({ path: 'D:\\tienda' })] })
-    const user = userEvent.setup()
-    renderApp('/proyectos/nuevo')
-    await user.type(await screen.findByLabelText(es.projects.fields.name), 'Otra')
-    await user.type(screen.getByLabelText(es.projects.fields.path), 'd:\\TIENDA')
-    await user.click(screen.getByRole('button', { name: es.common.create }))
-    expect(await screen.findByText(es.errors.project_exists)).toBeVisible()
-    expect(
-      screen.queryByRole('button', { name: es.projects.new.createFolder }),
-    ).not.toBeInTheDocument()
-  })
-
-  it('requires name and folder', async () => {
-    const backend = createFakeBackend()
-    const user = userEvent.setup()
-    renderApp('/proyectos/nuevo')
-    await user.click(await screen.findByRole('button', { name: es.common.create }))
-    expect(await screen.findByText(es.errors.name_required)).toBeVisible()
-    expect(screen.getByText(es.common.required)).toBeVisible()
-    expect(backend.callsTo('POST', '/api/projects')).toHaveLength(0)
-  })
 })
 
 describe('Project detail', () => {

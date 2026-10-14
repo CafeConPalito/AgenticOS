@@ -3,24 +3,41 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
 import { toast } from 'sonner'
 import { useAgentTemplates, useCreateAgent } from '@/api/agents'
+import type { AgentTemplate } from '@/api/types'
 import { AgentAvatar, CliTag } from '@/components/agentic/primitives'
 import { errorMessage } from '@/lib/form-errors'
 import { cn } from '@/lib/utils'
 
-/** Template cards (+ blank). Clicking one creates the agent and opens its editor. */
-export function TemplatePicker({ compact = false }: { compact?: boolean }) {
+/**
+ * Template cards (+ blank). By default clicking one creates the agent and opens its editor;
+ * with `onPick` it only chooses (the new-agent dialog then lets the person adjust it).
+ */
+export function TemplatePicker({
+  compact = false,
+  onPick,
+  selected,
+}: {
+  compact?: boolean
+  onPick?: (template: AgentTemplate | null) => void
+  /** With `onPick`: the chosen template id, or `null` for the blank one. */
+  selected?: string | null
+}) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { data: templates } = useAgentTemplates()
   const create = useCreateAgent()
 
   async function pick(template: string | null) {
+    if (onPick) {
+      onPick(templates?.find((item) => item.id === template) ?? null)
+      return
+    }
     try {
       const agent = await create.mutateAsync(
         template ? { template } : { name: t('agents.new.blankName') },
       )
       toast.success(t('agents.new.created', { name: agent.name }))
-      navigate(`/agentes/${agent.id}/general`)
+      navigate(`/agentes/${agent.id}`)
     } catch (error) {
       toast.error(errorMessage(error))
     }
@@ -30,7 +47,7 @@ export function TemplatePicker({ compact = false }: { compact?: boolean }) {
     <div
       className={cn(
         'grid w-full gap-3',
-        compact ? 'max-w-[900px] grid-cols-3' : 'grid-cols-[repeat(auto-fill,minmax(260px,1fr))]',
+        compact ? 'grid-cols-4' : 'grid-cols-[repeat(auto-fill,minmax(260px,1fr))]',
       )}
     >
       {templates?.map((template) => (
@@ -39,7 +56,11 @@ export function TemplatePicker({ compact = false }: { compact?: boolean }) {
           type="button"
           disabled={create.isPending}
           onClick={() => void pick(template.id)}
-          className="flex flex-col gap-2 rounded-lg border bg-card p-3.5 text-left hover:border-ring disabled:opacity-60"
+          aria-pressed={onPick ? selected === template.id : undefined}
+          className={cn(
+            'flex flex-col gap-2 rounded-lg border bg-card p-3.5 text-left hover:border-ring disabled:opacity-60',
+            selected === template.id && 'border-ring bg-accent',
+          )}
         >
           <div className="flex items-center gap-2.5">
             <AgentAvatar name={template.name} color={template.color} size={30} />
@@ -58,7 +79,11 @@ export function TemplatePicker({ compact = false }: { compact?: boolean }) {
         type="button"
         disabled={create.isPending}
         onClick={() => void pick(null)}
-        className="flex items-center gap-2.5 rounded-lg border border-dashed border-input p-3.5 text-left hover:border-ring disabled:opacity-60"
+        aria-pressed={onPick ? selected === null : undefined}
+        className={cn(
+          'flex items-center gap-2.5 rounded-lg border border-dashed border-input p-3.5 text-left hover:border-ring disabled:opacity-60',
+          selected === null && 'border-ring bg-accent',
+        )}
       >
         <span className="grid size-[30px] place-items-center rounded-lg bg-accent">
           <Plus className="size-4" />

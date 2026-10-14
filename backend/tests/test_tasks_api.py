@@ -175,3 +175,27 @@ def test_busy_agents_and_projects_cannot_be_deleted(api: TestClient, tmp_path: P
 def test_pause_switch(api: TestClient):
     assert api.post("/api/scheduler/resume").json()["paused"] is False
     assert api.get("/api/scheduler").json()["paused"] is False
+
+
+def test_search_by_title_accents_number_and_limit(api: TestClient, tmp_path: Path):
+    agent_id, project_id = seed(api, tmp_path)
+    for title in ["Diseño del login", "Pagos", "Revisar DISEÑO móvil", "Tests"]:
+        create(api, project_id, agent_id, title)
+
+    def titles(**params) -> list[str]:
+        response = api.get("/api/tasks", params=params)
+        assert response.status_code == 200
+        return [t["title"] for t in response.json()]
+
+    # Case and accents do not matter; the newest first.
+    assert titles(q="diseno") == ["Revisar DISEÑO móvil", "Diseño del login"]
+    assert titles(q="DISEÑO", limit=1) == ["Revisar DISEÑO móvil"]
+    # `T-n` and `n` find the task by number.
+    assert titles(q="T-2") == ["Pagos"]
+    assert titles(q="t-2") == ["Pagos"]
+    assert titles(q="4") == ["Tests"]
+    assert titles(q="nada") == []
+    assert api.get("/api/tasks", params={"q": "x", "limit": 51}).status_code == 422
+    # Without `q`, the other filters work as before; `limit` just cuts.
+    assert len(titles()) == 4
+    assert len(titles(limit=2)) == 2

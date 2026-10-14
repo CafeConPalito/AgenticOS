@@ -3,7 +3,6 @@
     "name": "Agentic OS"
   },
   "nav": {
-    "dashboard": "Dashboard",
     "agents": "Agentes",
     "projects": "Proyectos",
     "runs": "Ejecuciones",
@@ -11,21 +10,20 @@
     "inbox": "Inbox",
     "usage": "Consumo",
     "settings": "Ajustes",
-    "collapse": "Colapsar barra lateral",
-    "main": "Navegación principal"
+    "main": "Secciones",
+    "home": "Inicio"
   },
   "header": {
-    "search": "Buscar o ejecutar un comando…",
-    "searchShortcut": "Ctrl K",
-    "terminal": "Terminal",
-    "comingSoon": "Disponible en próximas fases",
+    "search": "Buscar agentes, tareas o acciones…",
     "primary": {
       "newTask": "Nueva tarea",
       "newAgent": "Nuevo agente",
       "newProject": "Nuevo proyecto",
       "exportCsv": "Exportar CSV",
       "launchRun": "Lanzar agente"
-    }
+    },
+    "home": "Agentic OS · Inicio",
+    "back": "Volver"
   },
   "theme": {
     "toLight": "Tema claro",
@@ -49,44 +47,26 @@
     "openLogs": "Abrir logs"
   },
   "pages": {
-    "dashboard": {
-      "title": "Dashboard",
-      "emptyTitle": "Tus agentes, de un vistazo",
-      "emptyDescription": "Aquí verás qué hace cada agente, las aprobaciones pendientes y la actividad reciente."
-    },
     "agents": {
-      "title": "Agentes",
       "emptyTitle": "Aún no tienes agentes",
       "emptyDescription": "Crea tu primer agente o usa una plantilla: Analista, Desarrollador, QA, Redactor, Comercial."
     },
     "projects": {
-      "title": "Proyectos",
       "emptyTitle": "Aún no tienes proyectos",
       "emptyDescription": "Un proyecto es una carpeta en la que trabajan tus agentes, con su pipeline y su memoria."
     },
     "board": {
-      "title": "Tablero",
       "emptyTitle": "No hay tareas",
       "emptyDescription": "Las tareas de todos tus proyectos aparecerán aquí, por estado, por etapa o por agente."
-    },
-    "inbox": {
-      "title": "Inbox",
-      "emptyTitle": "Todo al día",
-      "emptyDescription": "Las aprobaciones, preguntas y bloqueos de tus agentes llegarán aquí."
     },
     "usage": {
       "title": "Consumo",
       "emptyTitle": "Sin datos de consumo",
       "emptyDescription": "Cuando tus agentes trabajen, aquí verás sus tokens, su coste y sus horas."
-    },
-    "settings": {
-      "title": "Ajustes",
-      "emptyTitle": "Ajustes",
-      "emptyDescription": "CLIs detectados, carpeta de datos, notificaciones, idioma y tema."
-    },
-    "comingSoon": "Disponible en próximas fases"
+    }
   },
   "common": {
+    "tokensUnit": "{{value}} tok",
     "cancel": "Cancelar",
     "save": "Guardar cambios",
     "saving": "Guardando…",
@@ -204,9 +184,12 @@
       "blank": "En blanco",
       "blankDescription": "Un agente vacío para configurar desde cero.",
       "blankName": "Nuevo agente",
-      "created": "Agente «{{name}}» creado"
+      "created": "Agente «{{name}}» creado",
+      "submit": "Crear agente",
+      "draftNote": "Se crea como borrador: actívalo desde su ficha cuando esté listo."
     },
     "tabs": {
+      "resumen": "Resumen",
       "general": "General",
       "instructions": "Instrucciones",
       "execution": "Ejecución",
@@ -262,7 +245,23 @@
     },
     "duplicated": "Agente duplicado como «{{name}}»",
     "notFound": "Este agente no existe o se ha borrado.",
-    "copyName": "{{name}} (copia)"
+    "copyName": "{{name}} (copia)",
+    "assignTask": "Asignar tarea",
+    "activate": "Activar",
+    "activated": "Agente «{{name}}» activado",
+    "edit": "Editar",
+    "summary": {
+      "requests": "Peticiones de este agente",
+      "tasks": "Tareas",
+      "noTasks": "No tiene tareas abiertas.",
+      "moreTasks": "Ver {{count}} más en el tablero",
+      "usage": "Consumo",
+      "noUsage": "Todavía no ha consumido nada.",
+      "sessions": "Sesiones",
+      "period": "Últimos 30 días.",
+      "config": "Configuración",
+      "configHint": "CLI, modelo, permisos y concurrencia"
+    }
   },
   "projects": {
     "title": "Proyectos",
@@ -287,9 +286,16 @@
     },
     "new": {
       "title": "Nuevo proyecto",
-      "subtitle": "Registra una carpeta existente o crea una nueva. Agentic OS no mueve ni borra tus archivos.",
+      "subtitle": "Elige la carpeta donde trabajarán tus agentes. Agentic OS no mueve ni borra tus archivos.",
       "createFolder": "Crear la carpeta",
-      "created": "Proyecto «{{name}}» creado"
+      "created": "Proyecto «{{name}}» creado",
+      "pipeline": "Pipeline",
+      "noPipeline": "Sin pipeline",
+      "noPipelineHelp": "Las tareas van directas al agente que elijas.",
+      "webPipeline": "Desarrollo web",
+      "webPipelineHelp": "Requisitos → Desarrollo → QA",
+      "pipelineFailed": "Proyecto «{{name}}» creado, pero no se pudo añadir el pipeline: {{error}}",
+      "submit": "Crear proyecto"
     },
     "tabs": {
       "summary": "Resumen",
@@ -483,7 +489,8 @@
     "errorText": {
       "session_missing": "El CLI ya no tiene esta conversación, así que no se puede reanudar. Reintenta la tarea desde el principio."
     },
-    "logPurged": "El log de esta ejecución se borró por la retención de logs (Ajustes › Limpieza)."
+    "logPurged": "El log de esta ejecución se borró por la retención de logs (Ajustes › Limpieza).",
+    "task": "Ver la tarea"
   },
   "dock": {
     "label": "Terminal",
@@ -547,11 +554,10 @@
     "empty": "Este proyecto todavía no tiene tareas.",
     "new": {
       "title": "Nueva tarea",
-      "description": "Se pondrá en la cola del agente de la primera etapa, o del agente que elijas si el proyecto no tiene pipeline.",
+      "description": "Crea una tarea y ponla en la cola de un agente.",
       "project": "Proyecto",
       "pickProject": "Elige un proyecto",
-      "titleField": "Título",
-      "titlePlaceholder": "Login con Google",
+      "titlePlaceholder": "p. ej. Añadir filtro por precio en categorías",
       "descriptionField": "Descripción",
       "descriptionPlaceholder": "Qué hay que hacer, criterios de aceptación…",
       "priority": "Prioridad",
@@ -559,11 +565,16 @@
       "pickAgent": "Elige un agente",
       "pipelineNote": "Empieza en «{{stage}}» con {{agent}}.",
       "pipelineNoAgent": "Empieza en «{{stage}}», que todavía no tiene agente.",
-      "backlog": "Dejar en el backlog",
-      "submit": "Crear tarea",
+      "agentOverridden": "El pipeline decide el agente: esta tarea no irá a {{agent}}.",
+      "submit": "Crear y encolar",
       "submitting": "Creando…",
-      "created": "{{code}} creada",
-      "hint": "Ctrl+Enter para crear"
+      "what": "Qué hay que hacer",
+      "addDescription": "Añadir descripción",
+      "saveBacklog": "Guardar en backlog",
+      "queued": "{{code}} en la cola de {{agent}}",
+      "backlogged": "{{code}} guardada en el backlog",
+      "view": "Ver tarea",
+      "pipelineHint": "En un proyecto con pipeline, la tarea empieza en su primera etapa."
     },
     "detail": {
       "description": "Descripción",
@@ -572,9 +583,9 @@
       "history": "Historial",
       "runs": "Ejecuciones",
       "noRuns": "Todavía no se ha ejecutado.",
-      "waiting": "Necesita tu atención",
       "branch": "Rama",
       "worktree": "Worktree",
+      "waiting": "Necesita tu atención",
       "noRun": "La terminal aparecerá cuando un agente empiece a trabajar en la tarea.",
       "lastSummary": "Resumen del agente",
       "rejections": "Rechazos: {{count}}",
@@ -623,6 +634,14 @@
       "reason": "Motivo",
       "reasonPlaceholder": "Qué hay que corregir…",
       "target": "Vuelve a"
+    },
+    "facts": {
+      "label": "Datos de la sesión",
+      "session": "Sesión",
+      "duration": "Duración",
+      "cost": "Coste",
+      "branch": "Rama",
+      "folder": "Carpeta"
     }
   },
   "board": {
@@ -809,7 +828,9 @@
       "themes": {
         "dark": "Oscuro",
         "light": "Claro"
-      }
+      },
+      "singleKey": "Atajos de una tecla",
+      "singleKeyHelp": "N para una tarea nueva y ? para la ayuda, sin pulsar Ctrl. Se ignoran al escribir, en la terminal y con un diálogo abierto. Ctrl+K siempre funciona."
     },
     "cleanup": {
       "title": "Limpieza",
@@ -842,6 +863,15 @@
       "dataDir": "Carpeta de datos",
       "backend": "Backend",
       "logsHint": "Los logs del backend están en la carpeta «logs» de la carpeta de datos."
+    },
+    "index": "Secciones de Ajustes",
+    "sections": {
+      "clis": "CLIs detectados",
+      "general": "General",
+      "notifications": "Notificaciones",
+      "limits": "Límites diarios",
+      "cleanup": "Limpieza",
+      "about": "Acerca de"
     }
   },
   "usage": {
@@ -900,22 +930,6 @@
     "noCost": "—",
     "unavailable": "Consumo no disponible",
     "partialHint": "Cifra en vivo: la definitiva llega al cerrar la sesión.",
-    "today": {
-      "title": "Consumo de hoy",
-      "tokens": "Tokens",
-      "cached": "{{value}} en caché",
-      "cost": "Coste",
-      "costNote": "Equivalente API",
-      "noLimit": "Sin límite diario",
-      "limitOf": "Límite diario {{value}}",
-      "byAgent": "Por agente",
-      "limitBar": "{{cli}} · {{percent}} del límite diario",
-      "near": "Cerca del límite diario de {{cli}}",
-      "reached": "Límite diario de {{cli}} alcanzado: no se lanzan tareas nuevas",
-      "quota": "{{cli}} sin cuota: no se lanzan tareas nuevas",
-      "detail": "Ver detalle →",
-      "empty": "Tus agentes no han consumido nada hoy."
-    },
     "session": {
       "title": "Consumo de la sesión",
       "input": "Tokens entrada",
@@ -939,9 +953,142 @@
   },
   "cliReadiness": {
     "missingTitle": "No hay ningún CLI de agentes instalado.",
-    "missing": "Agentic OS trabaja con Claude Code y Antigravity CLI: instala al menos uno e inicia sesión para que tus agentes puedan trabajar.",
-    "loggedOutTitle": "Ningún CLI tiene sesión iniciada.",
-    "loggedOut": "Abre el CLI en una terminal e inicia sesión para que tus agentes puedan trabajar.",
-    "open": "Ver CLIs detectados"
+    "missing": "Agentic OS trabaja con Claude Code y Antigravity CLI: instala al menos uno e inicia sesión para que tus agentes puedan trabajar."
+  },
+  "home": {
+    "title": "Inicio",
+    "live_one": "{{count}} sesión en vivo",
+    "live_other": "{{count}} sesiones en vivo",
+    "greeting": {
+      "morning": "Buenos días",
+      "afternoon": "Buenas tardes",
+      "evening": "Buenas noches"
+    },
+    "chips": {
+      "working": "trabajando",
+      "waiting": "esperan respuesta",
+      "spent": "gastados hoy"
+    },
+    "needs": {
+      "title": "Te necesitan",
+      "all": "Ver todas · {{count}}",
+      "less": "Ver menos",
+      "resolved": "Resueltas",
+      "empty": "Nada pendiente. Tus agentes no necesitan nada de ti ahora mismo."
+    },
+    "alerts": {
+      "kind": "Aviso del sistema · CLIs",
+      "now": "ahora",
+      "review": "Revisar CLIs",
+      "snooze": "Posponer",
+      "snoozed": "Aviso pospuesto",
+      "loggedOut": {
+        "title": "{{cli}}: sin sesión iniciada",
+        "context": "Abre el CLI en una terminal e inicia sesión para que sus agentes puedan trabajar."
+      },
+      "nearLimit": {
+        "title": "{{cli}} casi sin límite diario · {{percent}}",
+        "context": "Cuando llegue al 100 % sus tareas esperarán. Sube el límite en Ajustes o espera al reinicio de mañana."
+      }
+    },
+    "agents": {
+      "title": "Agentes",
+      "count_one": "{{count}} agente",
+      "count_other": "{{count}} agentes",
+      "new": "Nuevo agente",
+      "draft": "Borrador · actívalo desde su ficha",
+      "free": "Disponible · sin tareas en curso",
+      "states": {
+        "running": "Trabajando",
+        "waiting": "Te espera",
+        "idle": "Libre",
+        "draft": "Borrador"
+      },
+      "requests_one": "{{count}} petición",
+      "requests_other": "{{count}} peticiones",
+      "queued": "{{count}} en cola",
+      "queueEmpty": "cola vacía",
+      "assign": "Asignar tarea a {{name}}",
+      "usage": "Ver desglose de consumo",
+      "tokens": "{{value}} tok",
+      "session": {
+        "waiting": "esperándote",
+        "resumable": "reanudable",
+        "starting": "iniciando"
+      },
+      "empty": {
+        "title": "Aún no tienes agentes",
+        "description": "Crea tu primer agente o parte de una plantilla: Analista, Desarrollador, QA, Redactor, Comercial."
+      }
+    },
+    "summary": {
+      "label": "Resumen",
+      "projects": "Proyectos",
+      "projectsMeta": "{{count}} en total",
+      "openTasks": "{{count}} abiertas",
+      "idle": "Sin actividad",
+      "allProjects": "Ver todos",
+      "newProject": "Nuevo proyecto",
+      "noProjects": "Aún no hay proyectos.",
+      "spend": "Gasto de hoy",
+      "ofLimit": "{{percent}} del límite diario",
+      "noLimit": "Sin límite diario",
+      "warnAt": "Aviso al 80 %",
+      "clis": "CLIs",
+      "manage": "Gestionar",
+      "cliSession": {
+        "ok": "sesión iniciada",
+        "down": "sin sesión",
+        "missing": "no detectado",
+        "unknown": "sesión sin comprobar"
+      }
+    }
+  },
+  "shortcuts": {
+    "title": "Atajos de teclado",
+    "description": "Lista de atajos de teclado",
+    "groups": {
+      "general": "General",
+      "create": "Crear"
+    },
+    "palette": "Paleta de comandos",
+    "newTask": "Nueva tarea",
+    "shortcuts": "Atajos de teclado",
+    "dock": "Abrir / cerrar la terminal",
+    "close": "Cerrar diálogo o panel"
+  },
+  "palette": {
+    "title": "Paleta de comandos",
+    "placeholder": "Busca agentes, tareas, proyectos o acciones…",
+    "empty": "Sin resultados.",
+    "groups": {
+      "actions": "Acciones",
+      "goto": "Ir a",
+      "agents": "Agentes",
+      "projects": "Proyectos",
+      "tasks": "Tareas"
+    },
+    "actions": {
+      "newTask": "Nueva tarea",
+      "newAgent": "Nuevo agente",
+      "newProject": "Nuevo proyecto",
+      "openTerminal": "Abrir terminal",
+      "toggleTheme": "Cambiar tema",
+      "pauseScheduler": "Pausar el scheduler",
+      "resumeScheduler": "Reanudar el scheduler",
+      "shortcuts": "Atajos de teclado"
+    },
+    "goto": {
+      "home": "Inicio",
+      "projects": "Proyectos",
+      "agents": "Agentes",
+      "board": "Tablero",
+      "runs": "Ejecuciones",
+      "usage": "Consumo",
+      "inbox": "Peticiones",
+      "settings": "Ajustes"
+    },
+    "schedulerPaused": "Scheduler en pausa",
+    "schedulerResumed": "Scheduler en marcha"
   }
 }

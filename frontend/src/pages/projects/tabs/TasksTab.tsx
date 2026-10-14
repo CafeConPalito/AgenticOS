@@ -1,5 +1,4 @@
 import { ListChecks, Plus } from 'lucide-react'
-import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { formatTokens, formatUsd, totalTokens } from '@/lib/format'
 import { useNavigate } from 'react-router'
@@ -15,20 +14,20 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { NewTaskDialog } from '@/pages/tasks/NewTaskDialog'
+import { useDialogs } from '@/stores/dialogs'
 import { PriorityLabel, TaskAgent, TaskStatusBadge } from '@/pages/tasks/TaskBits'
 
 export function TasksTab({ project }: { project: Project }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const tasks = useTasks({ projectId: project.id })
-  const [creating, setCreating] = useState(false)
+  const openNewTask = useDialogs((s) => s.openNewTask)
 
   return (
     <div className="flex flex-col gap-3 px-6 pt-5 pb-8">
       <div className="flex justify-end">
         <Button
-          onClick={() => setCreating(true)}
+          onClick={() => openNewTask({ projectId: project.id })}
           className="bg-primary-action text-white hover:bg-primary-action-hover"
         >
           <Plus />
@@ -38,7 +37,7 @@ export function TasksTab({ project }: { project: Project }) {
       {tasks.data && tasks.data.length === 0 ? (
         <EmptyState icon={ListChecks} title={t('tasks.empty')} />
       ) : (
-        <div className="overflow-hidden rounded-lg border bg-card">
+        <div className="overflow-hidden rounded-xl border border-sep shadow-card bg-card-grad">
           <Table>
             <TableHeader className="bg-subtle">
               <TableRow className="hover:bg-transparent">
@@ -98,7 +97,6 @@ export function TasksTab({ project }: { project: Project }) {
           </Table>
         </div>
       )}
-      <NewTaskDialog open={creating} onOpenChange={setCreating} projectId={project.id} />
     </div>
   )
 }

@@ -15,12 +15,13 @@ Flujo de cada fase: ver `CLAUDE.md` (Spec → Plan → Desarrollo → Validació
 | 06 | Subagentes y human-in-the-loop | cerrada (`v0.7`) | `spawn_subagent`, `create_subtask`, árbol de ejecuciones, Inbox, `request_human`, notificaciones de Windows | La aprobación llega a la Inbox y a la notificación, y la respuesta desbloquea al agente | [spec](phases/06-subagentes-hitl/spec.md) · [plan](phases/06-subagentes-hitl/plan.md) · [validación](phases/06-subagentes-hitl/validacion.md) |
 | 07 | Consumo | cerrada (`v0.8`) | Parsers de transcripts por CLI (ADR 0005; prototipo en `spikes/usage_probe.py`), coste equivalente API en Claude y solo tokens en `agy`, límite diario, panel por agente, proyecto y sesión | Las cifras coinciden con las del propio CLI | [spec](phases/07-consumo/spec.md) · [plan](phases/07-consumo/plan.md) · [validación](phases/07-consumo/validacion.md) |
 | 08 | Empaquetado v1.0 (MVP) | cerrada (`v1.0`) | Instalador, ajustes, robustez (reinicios, ejecuciones huérfanas, reanudar sesiones) | El instalador funciona en una máquina limpia; los e2e completos pasan | [spec](phases/08-empaquetado/spec.md) · [plan](phases/08-empaquetado/plan.md) · [validación](phases/08-empaquetado/validacion.md) |
-| 09 | Mejora de UX/UI | pendiente | Revisar la navegación y simplificar la interfaz tras la v1.0: menú y flujos principales, menos elementos por pantalla, jerarquía visual más clara y coherente | Las tareas habituales se hacen en menos pasos y cada pantalla se entiende de un vistazo (revisión con el usuario) | |
-| 10 | Conocimiento | pendiente | Subida en 3 niveles, conversión, URLs, imágenes, RAG local, MCP `search_knowledge` | Un agente usa un PDF del proyecto para responder | |
-| 11 | Skills | pendiente | Biblioteca SKILL.md en 3 niveles, autoselección, `propose_skill` | La skill relevante se carga sola; se registra una skill creada por un agente | |
-| 12 | Meta-agentes | pendiente | Agente Arquitecto, propuestas en borrador, plantillas | Se crea un "Redactor" desde una conversación y ejecuta una tarea | |
-| 13 | Avisos externos | pendiente | Telegram, email, Slack | Los avisos llegan al móvil | |
-| 14 | Modo servidor | pendiente | Docker, autenticación, Postgres, WS autenticado | La app funciona desplegada en un servidor | |
+| 09 | Mejora de UX/UI | cerrada (`v0.9`) | Revisar la navegación y simplificar la interfaz tras la v1.0: menú y flujos principales, menos elementos por pantalla, jerarquía visual más clara y coherente | Las tareas habituales se hacen en menos pasos y cada pantalla se entiende de un vistazo (revisión con el usuario) | [spec](phases/09-ux-ui/spec.md) · [plan](phases/09-ux-ui/plan.md) · [validación](phases/09-ux-ui/validacion.md) |
+| 10 | Equipos y cuentas de CLI | pendiente | Agrupar agentes en equipos y usar varias cuentas por CLI (cada agente con su cuenta; sesiones y avisos por cuenta), según el diseño v7 (`docs/design/v2/`) | Dos agentes del mismo CLI trabajan con cuentas distintas; Inicio los muestra por equipo | |
+| 11 | Conocimiento | pendiente | Subida en 3 niveles, conversión, URLs, imágenes, RAG local, MCP `search_knowledge` | Un agente usa un PDF del proyecto para responder | |
+| 12 | Skills | pendiente | Biblioteca SKILL.md en 3 niveles, autoselección, `propose_skill` | La skill relevante se carga sola; se registra una skill creada por un agente | |
+| 13 | Meta-agentes | pendiente | Agente Arquitecto, propuestas en borrador, plantillas | Se crea un "Redactor" desde una conversación y ejecuta una tarea | |
+| 14 | Avisos externos | pendiente | Telegram, email, Slack | Los avisos llegan al móvil | |
+| 15 | Modo servidor | pendiente | Docker, autenticación, Postgres, WS autenticado | La app funciona desplegada en un servidor | |
 
 ## Historial
 | Fecha | Cambio |
@@ -50,3 +51,9 @@ Flujo de cada fase: ver `CLAUDE.md` (Spec → Plan → Desarrollo → Validació
 | 2026-10-12 | Plan de la fase 08 aprobado. Fase 08 en dev. |
 | 2026-10-12 | Fase 08 en validación: ADR 0012 (empaquetado y reanudación de sesiones). |
 | 2026-10-12 | Fase 08 cerrada (`v1.0`, MVP). La fase 09 queda pendiente hasta que el usuario decida empezarla. |
+| 2026-10-13 | Fase 09 en spec. |
+| 2026-10-13 | Fase 09 basada en el diseño v7 de Claude Design (`docs/design/v2/`). Nueva fase 10 (Equipos y cuentas de CLI); las fases 10–14 pasan a ser 11–15. |
+| 2026-10-13 | Spec de la fase 09 aprobada. Fase 09 en plan. |
+| 2026-10-14 | Plan de la fase 09 aprobado. Fase 09 en dev. |
+| 2026-10-14 | Fase 09 en validación: ADR 0013 (navegación, Inicio y atajos). |
+| 2026-10-14 | Fase 09 cerrada (`v0.9`). La fase 10 queda pendiente hasta que el usuario decida empezarla. |

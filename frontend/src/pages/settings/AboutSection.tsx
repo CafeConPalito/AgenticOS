@@ -23,7 +23,7 @@ export function AboutSection() {
   return (
     <section
       aria-labelledby="about-title"
-      className="flex flex-col gap-3 rounded-xl border bg-card p-4"
+      className="flex flex-col gap-3 rounded-xl border border-sep p-4 shadow-card bg-card-grad"
     >
       <h2 id="about-title" className="flex items-center gap-2 text-[15px] font-medium">
         <Info className="size-4" />

@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { agentKeys } from './agents'
 import type {
@@ -47,6 +47,17 @@ export function useTasks(filters: TaskFilters = {}) {
     queryKey: taskKeys.list(filters),
     queryFn: () => api.get<Task[]>(`/api/tasks${query(filters)}`),
     refetchInterval: (q) => (q.state.data?.some(isMoving) ? POLL_MS : false),
+  })
+}
+
+/** Ctrl+K: tasks whose title contains `q`, or with that `T-n` number. Nothing for an empty `q`. */
+export function useTaskSearch(q: string) {
+  const text = q.trim()
+  return useQuery({
+    queryKey: ['tasks', 'search', text] as const,
+    queryFn: () => api.get<Task[]>(`/api/tasks?q=${encodeURIComponent(text)}&limit=14`),
+    enabled: text.length > 0,
+    placeholderData: keepPreviousData,
   })
 }
 

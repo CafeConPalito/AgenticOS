@@ -31,21 +31,10 @@ describe('Agents list', () => {
 
     await user.click(await screen.findByRole('button', { name: /Desarrollador/ }))
     await waitFor(() =>
-      expect(router.state.location.pathname).toBe('/agentes/agent-from-developer/general'),
+      expect(router.state.location.pathname).toBe('/agentes/agent-from-developer/resumen'),
     )
     expect(backend.callsTo('POST', '/api/agents')[0].body).toEqual({ template: 'developer' })
     expect(await screen.findByRole('heading', { name: /Desarrollador/ })).toBeVisible()
-  })
-
-  it('header button opens the template picker', async () => {
-    createFakeBackend()
-    const user = userEvent.setup()
-    const { router } = renderApp('/agentes')
-    await user.click(await screen.findByRole('button', { name: es.header.primary.newAgent }))
-    expect(router.state.location.pathname).toBe('/agentes/nuevo')
-    expect(
-      await screen.findByRole('button', { name: new RegExp(es.agents.new.blank) }),
-    ).toBeVisible()
   })
 })
 
@@ -98,12 +87,12 @@ describe('Agent editor', () => {
     await user.type(await screen.findByLabelText(es.agents.fields.role), ' senior')
 
     const nav = screen.getByRole('navigation', { name: es.nav.main })
-    await user.click(within(nav).getByRole('link', { name: es.nav.projects }))
+    await user.click(within(nav).getByRole('link', { name: new RegExp(es.nav.board) }))
     expect(await screen.findByText(es.unsaved.title)).toBeVisible()
     expect(router.state.location.pathname).toBe(`/agentes/${agent.id}/general`)
 
     await user.click(screen.getByRole('button', { name: es.unsaved.discard }))
-    await waitFor(() => expect(router.state.location.pathname).toBe('/proyectos'))
+    await waitFor(() => expect(router.state.location.pathname).toBe('/tablero'))
   })
 
   it('switching tabs keeps the edits (one form for all tabs)', async () => {
@@ -153,7 +142,7 @@ describe('Agent editor edge cases', () => {
     await user.click(await screen.findByRole('button', { name: es.common.more }))
     await user.click(await screen.findByRole('menuitem', { name: es.common.duplicate }))
     await waitFor(() =>
-      expect(router.state.location.pathname).toBe(`/agentes/${agent.id}-copy/general`),
+      expect(router.state.location.pathname).toBe(`/agentes/${agent.id}-copy/resumen`),
     )
     expect(backend.callsTo('POST', `/api/agents/${agent.id}/duplicate`)[0].body).toEqual({
       name: 'Rita (copia)',

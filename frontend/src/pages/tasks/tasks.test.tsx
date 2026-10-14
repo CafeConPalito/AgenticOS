@@ -1,7 +1,14 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import es from '@/i18n/es.json'
-import { createFakeBackend, makeAgent, makeProject, makeRun, makeTask } from '@/test/fake-backend'
+import {
+  createFakeBackend,
+  makeAgent,
+  makeInboxItem,
+  makeProject,
+  makeRun,
+  makeTask,
+} from '@/test/fake-backend'
 import { renderApp } from '@/test/render'
 
 function seed() {
@@ -160,6 +167,58 @@ describe('Task page', () => {
     )
   })
 
+  it('shows the session facts under the live output, not in the side column', async () => {
+    const { dev, tienda } = seed()
+    const task = makeTask({
+      status: 'running',
+      agent_id: dev.id,
+      project_id: tienda.id,
+      branch: 'agentic/T-7',
+      worktree_path: 'C:/code/web-wt',
+    })
+    const run = makeRun({
+      task_id: task.id,
+      agent_id: dev.id,
+      cli_session_id: 'cc-7f3a91',
+      cwd: 'C:/code/web',
+      usage: { ...makeRun().usage, cost_usd: 2.84, status: 'final' },
+    })
+    task.active_run_id = run.id
+    task.last_run_id = run.id
+    createFakeBackend({ agents: [dev], projects: [tienda], tasks: [task], runs: [run] })
+    renderApp(`/tablero/tareas/${task.id}`)
+
+    const facts = await screen.findByRole('group', { name: es.tasks.facts.label }).catch(() => null)
+    const line = facts ?? (await screen.findByLabelText(es.tasks.facts.label))
+    expect(within(line).getByText('cc-7f3a91')).toBeVisible()
+    expect(within(line).getByText('agentic/T-7')).toBeVisible()
+    expect(within(line).getByText('C:/code/web')).toBeVisible()
+    expect(within(line).getByText(/2,84/)).toBeVisible()
+    expect(within(line).getByText(es.tasks.facts.duration)).toBeVisible()
+  })
+
+  it('answers the task requests right there', async () => {
+    const { dev, tienda } = seed()
+    const task = makeTask({ status: 'waiting_human', agent_id: dev.id, project_id: tienda.id })
+    const backend = createFakeBackend({
+      agents: [dev],
+      projects: [tienda],
+      tasks: [task],
+      inbox: [
+        makeInboxItem({
+          kind: 'approval',
+          command: 'npm test',
+          task_id: task.id,
+          agent_id: dev.id,
+        }),
+      ],
+    })
+    const user = userEvent.setup()
+    renderApp(`/tablero/tareas/${task.id}`)
+    await user.click(await screen.findByRole('button', { name: es.inbox.approve }))
+    await waitFor(() => expect(backend.calls.some((c) => c.path.endsWith('/approve'))).toBe(true))
+  })
+
   it('resumes the session of an interrupted task', async () => {
     const { dev, tienda } = seed()
     const task = makeTask({
@@ -242,7 +301,7 @@ describe('New task', () => {
 
     await user.click(await screen.findByRole('button', { name: es.tasks.new.title }))
     const dialog = await screen.findByRole('dialog')
-    await user.type(within(dialog).getByLabelText(es.tasks.new.titleField), 'Carrito')
+    await user.type(within(dialog).getByLabelText(es.tasks.new.what), 'Carrito')
     await user.click(within(dialog).getByRole('button', { name: es.tasks.new.submit }))
     await waitFor(() => expect(backend.callsTo('POST', '/api/tasks')).toHaveLength(1))
     expect(backend.callsTo('POST', '/api/tasks')[0].body).toEqual({

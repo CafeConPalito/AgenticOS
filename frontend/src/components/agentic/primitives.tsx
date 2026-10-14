@@ -126,7 +126,8 @@ export function ProjectChip({
   )
 }
 
-const CLI_TAG: Record<CliId, string> = { claude: 'CC', agy: 'AG' }
+/** The two-letter tag of a CLI («CC», «AG»). */
+export const CLI_TAG: Record<CliId, string> = { claude: 'CC', agy: 'AG' }
 
 /** CLI marker («CC», «AG»). To be replaced by official logos following each brand's guidelines. */
 export function CliTag({ cli, label, size = 22 }: { cli: CliId; label: string; size?: number }) {

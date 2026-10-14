@@ -52,7 +52,11 @@ CLAUDE_QUESTION = re.compile(r"(?:Do )?you want to [^?]*\?")
 # The «No» option is the third one: «3. No» (sometimes drawn as «No   3.»).
 CLAUDE_NO_OPTION = re.compile(r"\b3\.\s*No\b|\bNo\s+3\.")
 AGY_COMMAND_REQUEST = "Requesting permission for:"
-AGY_DENY_OPTION = re.compile(r"No, (cancel|deny)")
+AGY_DENY_OPTION = re.compile(r"No, (cancel|deny|reject)")
+# agy 1.3.5 asks before editing a file: «Accept this file edit? / 1. Yes, accept this change /
+# 2. No, reject this change», under a diff headed «<path>  +36 -1».
+AGY_EDIT_REQUEST = "Accept this file edit?"
+AGY_EDIT_HEADER = re.compile(r"^(\S.*?)\s+\+\d+\s+-\d+$")
 PERMISSION_LINES = 24  # the dialog must be at the bottom of the screen
 
 # Out of quota (phase 07). No real screen has been seen yet: the texts come from the CLIs'
@@ -83,7 +87,7 @@ SESSION_MISSING_LINES = 4
 
 @dataclass(frozen=True)
 class PermissionDialog:
-    kind: str  # "command" (agy), "tool" (agy, not ours) or "claude"
+    kind: str  # "command", "edit" or "tool" (agy, not ours) or "claude"
     subject: str  # the command, the tool or Claude's question
 
     @property
@@ -179,6 +183,11 @@ class ScreenState:
             return PermissionDialog("claude", question)
         if not any(AGY_DENY_OPTION.search(line) for line in tail):
             return None
+        if AGY_EDIT_REQUEST in tail:
+            header = next(
+                (m.group(1) for line in reversed(lines) if (m := AGY_EDIT_HEADER.match(line))), ""
+            )
+            return PermissionDialog("edit", header)
         if AGY_COMMAND_REQUEST in tail:
             at = tail.index(AGY_COMMAND_REQUEST)
             command = tail[at + 1] if at + 1 < len(tail) else ""

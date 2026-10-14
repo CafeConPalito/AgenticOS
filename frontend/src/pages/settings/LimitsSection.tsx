@@ -48,7 +48,7 @@ function LimitsForm({ initial }: { initial: UsageLimits }) {
   return (
     <section
       aria-labelledby="limits-title"
-      className="flex flex-col gap-1 rounded-xl border bg-card p-4"
+      className="flex flex-col gap-1 rounded-xl border border-sep p-4 shadow-card bg-card-grad"
     >
       <h2 id="limits-title" className="flex items-center gap-2 text-[15px] font-medium">
         <Gauge className="size-4" />

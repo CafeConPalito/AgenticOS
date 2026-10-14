@@ -33,6 +33,10 @@ log = structlog.get_logger(__name__)
 SCROLLBACK_LIMIT = 2 * 1024 * 1024  # characters kept in memory per run
 VIEWER_BACKLOG_LIMIT = 4096  # queued messages before a slow viewer is dropped
 BUSY_GRACE = 1.5  # seconds of recent output that still count as "busy"
+# Private OSC the log and the scrollback carry at the start and at every resize: «size;cols;rows».
+# A TUI draws for the size it has, so replaying the log at one size garbles it. xterm.js ignores
+# unknown OSCs; the frontend's replay reads this one (phase 09).
+SIZE_MARK = "\x1b]7770;size;{cols};{rows}\x07"
 TRUST_WINDOW = 90.0  # seconds after start during which the trust dialog is handled
 STOP_TIMEOUT = 15.0  # to get the CLI to accept the exit
 EXIT_GRACE = 10.0  # once accepted, time it gets to close by itself (agy/Claude need ~6 s)
@@ -161,6 +165,7 @@ class RunSession:
         except Exception:
             self._log.close()
             raise
+        self._mark_size()
         self.started_at = time.monotonic()
         self._set(status=RunStatus.RUNNING)
         threading.Thread(
@@ -416,6 +421,7 @@ class RunSession:
         self.cols, self.rows = cols, rows
         self._pty.resize(cols, rows)
         self._screen.resize(cols, rows)
+        self._mark_size()
         self.on_change({"cols": cols, "rows": rows})
         # Passive viewers (the dock) adopt the PTY size instead of imposing theirs.
         self._publish(self.state_message())
@@ -464,6 +470,15 @@ class RunSession:
                 pty.write(ENTER)
 
         threading.Thread(target=run, daemon=True).start()
+
+    def _mark_size(self) -> None:
+        """Records the PTY size in the log and the scrollback (not sent to live viewers)."""
+        mark = SIZE_MARK.format(cols=self.cols, rows=self.rows)
+        with self._lock:
+            self._log.write(mark)
+            self._log.flush()
+            self._scrollback.append(mark)
+            self._scrollback_size += len(mark)
 
     # ------------------------------------------------------------------ threads
     def _read_loop(self) -> None:

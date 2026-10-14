@@ -1,9 +1,9 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { BookOpen, Copy, MoreHorizontal, Puzzle, Trash2 } from 'lucide-react'
+import { BookOpen, Copy, MoreHorizontal, Pencil, Plus, Puzzle, Trash2 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { FormProvider, useForm, useWatch } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
-import { Navigate, useNavigate, useParams } from 'react-router'
+import { Link, Navigate, useNavigate, useParams } from 'react-router'
 import { toast } from 'sonner'
 import { useAgent, useDeleteAgent, useDuplicateAgent, useUpdateAgent } from '@/api/agents'
 import type { Agent } from '@/api/types'
@@ -22,14 +22,24 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { applyApiError, errorMessage } from '@/lib/form-errors'
 import { LaunchRunButton } from '@/pages/runs/LaunchRunDialog'
+import { useDialogs } from '@/stores/dialogs'
 import { AGENT_FIELDS, agentSchema, changedFields, toFormValues } from './agent-form'
 import type { AgentFormValues } from './agent-form'
 import { ExecutionTab } from './tabs/ExecutionTab'
 import { HistoryTab } from './tabs/HistoryTab'
 import { GeneralTab } from './tabs/GeneralTab'
+import { SummaryTab } from './tabs/SummaryTab'
 import { InstructionsTab } from './tabs/InstructionsTab'
 
-const TABS = ['general', 'instructions', 'execution', 'knowledge', 'skills', 'history'] as const
+const TABS = [
+  'resumen',
+  'general',
+  'instructions',
+  'execution',
+  'knowledge',
+  'skills',
+  'history',
+] as const
 type Tab = (typeof TABS)[number]
 
 export default function AgentEditorPage() {
@@ -37,7 +47,7 @@ export default function AgentEditorPage() {
   const { t } = useTranslation()
   const { data: agent, isPending, isError } = useAgent(agentId)
 
-  if (!TABS.includes(tab as Tab)) return <Navigate to={`/agentes/${agentId}/general`} replace />
+  if (!TABS.includes(tab as Tab)) return <Navigate to={`/agentes/${agentId}/resumen`} replace />
   if (isPending)
     return (
       <PageContainer>
@@ -60,6 +70,7 @@ function AgentEditor({ agent, tab }: { agent: Agent; tab: Tab }) {
   const duplicate = useDuplicateAgent()
   const remove = useDeleteAgent()
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const openNewTask = useDialogs((s) => s.openNewTask)
   const leaving = useRef(false)
 
   const schema = useMemo(() => agentSchema(), [])
@@ -89,6 +100,17 @@ function AgentEditor({ agent, tab }: { agent: Agent; tab: Tab }) {
     }
   })
 
+  async function onActivate() {
+    try {
+      const saved = await update.mutateAsync({ status: 'active' })
+      // Keep what the person is editing; only the status is settled.
+      form.reset(toFormValues(saved), { keepDirtyValues: true })
+      toast.success(t('agents.activated', { name: saved.name }))
+    } catch (error) {
+      toast.error(errorMessage(error))
+    }
+  }
+
   async function onDuplicate() {
     try {
       const copy = await duplicate.mutateAsync({
@@ -97,7 +119,7 @@ function AgentEditor({ agent, tab }: { agent: Agent; tab: Tab }) {
       })
       leaving.current = !form.formState.isDirty
       toast.success(t('agents.duplicated', { name: copy.name }))
-      navigate(`/agentes/${copy.id}/general`)
+      navigate(`/agentes/${copy.id}`)
     } catch (error) {
       toast.error(errorMessage(error))
     }
@@ -121,9 +143,9 @@ function AgentEditor({ agent, tab }: { agent: Agent; tab: Tab }) {
       <form onSubmit={save} noValidate className="flex min-h-full flex-col">
         <UnsavedChangesGuard when={isDirty} allowRef={leaving} scope={`/agentes/${agent.id}`} />
         <header className="flex items-center gap-4 px-6 pt-[22px] pb-4">
-          <AgentAvatar name={name || '?'} color={color} size={48} />
+          <AgentAvatar name={name || '?'} color={color} size={52} />
           <div className="min-w-0 flex-1">
-            <h1 className="truncate text-[20px] leading-[1.3] font-medium">
+            <h1 className="truncate text-[26px] leading-[1.2] font-bold tracking-[-0.028em]">
               {name}
               {role && <span className="font-normal text-muted-foreground"> · {role}</span>}
             </h1>
@@ -138,6 +160,26 @@ function AgentEditor({ agent, tab }: { agent: Agent; tab: Tab }) {
               <span className="font-mono">{model || t('cli.defaultModel')}</span>
             </div>
           </div>
+          <Button
+            type="button"
+            onClick={() => openNewTask({ agentId: agent.id })}
+            disabled={status === 'draft'}
+            className="rounded-full bg-primary-action text-white hover:bg-primary-action-hover"
+          >
+            <Plus />
+            {t('agents.assignTask')}
+          </Button>
+          {status === 'draft' && (
+            <Button
+              type="button"
+              variant="outline"
+              className="rounded-full"
+              disabled={update.isPending}
+              onClick={() => void onActivate()}
+            >
+              {t('agents.activate')}
+            </Button>
+          )}
           <LaunchRunButton agentId={agent.id} disabled={agent.status === 'draft'} />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -156,15 +198,25 @@ function AgentEditor({ agent, tab }: { agent: Agent; tab: Tab }) {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button
-            type="submit"
-            disabled={!isDirty || update.isPending}
-            className="bg-primary-action text-white hover:bg-primary-action-hover"
-          >
-            {update.isPending ? t('common.saving') : t('common.save')}
-          </Button>
+          {tab === 'resumen' ? (
+            <Button type="button" variant="outline" asChild>
+              <Link to={`/agentes/${agent.id}/general`}>
+                <Pencil />
+                {t('agents.edit')}
+              </Link>
+            </Button>
+          ) : (
+            <Button
+              type="submit"
+              disabled={!isDirty || update.isPending}
+              className="bg-primary-action text-white hover:bg-primary-action-hover"
+            >
+              {update.isPending ? t('common.saving') : t('common.save')}
+            </Button>
+          )}
         </header>
         <RouteTabs base={`/agentes/${agent.id}`} tabs={tabs} label={t('agents.title')} />
+        {tab === 'resumen' && <SummaryTab agent={agent} />}
         {tab === 'general' && <GeneralTab />}
         {tab === 'instructions' && <InstructionsTab />}
         {tab === 'execution' && <ExecutionTab />}

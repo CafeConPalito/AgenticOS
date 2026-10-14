@@ -1,9 +1,8 @@
-import { Download, Plus, Search, SquareTerminal } from 'lucide-react'
-import { Fragment, useState } from 'react'
+import { ArrowLeft, ChevronRight, Moon, Search, SquareTerminal, Sun } from 'lucide-react'
+import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link, useMatches, useNavigate, useSearchParams } from 'react-router'
-import { toast } from 'sonner'
-import { downloadSessionsCsv, periodFromParam } from '@/api/usage'
+import { Link, useLocation, useMatches, useNavigate } from 'react-router'
+import { useHome } from '@/api/home'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -12,19 +11,21 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb'
+import { Kbd } from '@/components/palette/Kbd'
 import { useDock } from '@/components/terminal/dock-store'
-import { Button } from '@/components/ui/button'
+import type { BackendState } from '@/hooks/useHealth'
+import { SHORTCUTS } from '@/lib/shortcuts'
 import { cn } from '@/lib/utils'
-import { LaunchRunDialog } from '@/pages/runs/LaunchRunDialog'
-import { NewTaskDialog } from '@/pages/tasks/NewTaskDialog'
+import { useDialogs } from '@/stores/dialogs'
+import { useTheme } from '@/theme/ThemeProvider'
+import { BackendStatus } from './BackendStatus'
 import type { CrumbHandle } from './crumbs'
-import type { NavItem, PrimaryAction } from './nav'
+import { Logo } from './Logo'
+import { type Section } from './nav'
+import { TopNav } from './TopNav'
 
-/** Where each primary header action goes; actions without a route are not available yet. */
-const PRIMARY_ROUTES: Partial<Record<PrimaryAction, string>> = {
-  newAgent: '/agentes/nuevo',
-  newProject: '/proyectos/nuevo',
-}
+const ICON_BUTTON =
+  'grid size-8 shrink-0 place-items-center rounded-full text-foreground hover:bg-accent'
 
 function useCrumbs() {
   return useMatches()
@@ -32,60 +33,89 @@ function useCrumbs() {
     .map((m) => ({ id: m.id, path: m.pathname, node: (m.handle as CrumbHandle).crumb(m.params) }))
 }
 
-export function AppHeader({ section }: { section: NavItem }) {
+const PALETTE_KEYS = SHORTCUTS.find((s) => s.id === 'palette')!.keys
+
+/** Glass bar over the content: logo, back, breadcrumb, top navigation and the global tools. */
+export function AppHeader({
+  section,
+  backendState,
+  backendVersion,
+  endpoint,
+}: {
+  section: Section
+  backendState: BackendState
+  backendVersion?: string
+  endpoint?: string
+}) {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const comingSoon = t('header.comingSoon')
+  const location = useLocation()
   const crumbs = useCrumbs()
-  const primaryRoute = section.primary ? PRIMARY_ROUTES[section.primary] : undefined
-  const [launching, setLaunching] = useState(false)
-  const [creatingTask, setCreatingTask] = useState(false)
+  const counts = useHome().data?.counts
   const dockOpen = useDock((s) => s.open)
   const toggleDock = useDock((s) => s.toggle)
-  const [params] = useSearchParams()
-  const primaryAvailable =
-    Boolean(primaryRoute) ||
-    section.primary === 'launchRun' ||
-    section.primary === 'newTask' ||
-    section.primary === 'exportCsv'
+  const openPalette = useDialogs((s) => s.openPalette)
+  const { theme, toggleTheme } = useTheme()
 
-  function onPrimary() {
-    if (section.primary === 'launchRun') setLaunching(true)
-    else if (section.primary === 'newTask') setCreatingTask(true)
-    else if (section.primary === 'exportCsv')
-      // The period the Consumo page shows (kept in its URL).
-      downloadSessionsCsv({ days: periodFromParam(params.get('periodo')) }).then(
-        () => toast.success(t('usage.exported')),
-        (error: unknown) => toast.error(String(error)),
-      )
-    else if (primaryRoute) navigate(primaryRoute)
+  const atHome = location.pathname === '/'
+  // `key` is «default» for the first page of the session: nothing to go back to.
+  const hasHistory = location.key !== 'default'
+  const parent = crumbs.length > 1 ? crumbs[crumbs.length - 2].path : '/'
+  function goBack() {
+    if (hasHistory) void navigate(-1)
+    else void navigate(parent)
   }
-  const PrimaryIcon = section.primary === 'exportCsv' ? Download : Plus
 
   return (
-    <header className="flex h-[52px] shrink-0 items-center gap-3 border-b bg-background px-[18px]">
+    <header className="absolute inset-x-0 top-0 z-20 flex h-14 items-center gap-3 border-b border-sep px-[22px] glass">
+      <Link
+        to="/"
+        aria-label={t('header.home')}
+        className="flex items-center gap-2.5 text-foreground"
+      >
+        <Logo />
+        <span className="text-[15px] font-bold tracking-[-0.01em] whitespace-nowrap">
+          {t('app.name')}
+        </span>
+      </Link>
+      <span aria-hidden className="mx-1 h-[22px] w-px bg-border" />
+      {!atHome && (
+        <button
+          type="button"
+          onClick={goBack}
+          aria-label={t('header.back')}
+          className="grid size-7 shrink-0 place-items-center rounded-full bg-muted hover:bg-accent"
+        >
+          <ArrowLeft className="size-[15px]" />
+        </button>
+      )}
+
       <Breadcrumb className="min-w-0 flex-1">
-        <BreadcrumbList className="flex-nowrap gap-1.5 text-[13px]">
+        <BreadcrumbList className="flex-nowrap gap-1 text-[13px]">
           {crumbs.length === 0 ? (
             <BreadcrumbItem>
-              <BreadcrumbPage className="font-medium whitespace-nowrap">
-                {t(`nav.${section.id}`)}
+              <BreadcrumbPage className="px-1.5 font-medium whitespace-nowrap">
+                {t(`nav.${section}`)}
               </BreadcrumbPage>
             </BreadcrumbItem>
           ) : (
             crumbs.map((crumb, i) => (
               <Fragment key={crumb.id}>
-                {i > 0 && <BreadcrumbSeparator>/</BreadcrumbSeparator>}
-                <BreadcrumbItem>
+                {i > 0 && (
+                  <BreadcrumbSeparator>
+                    <ChevronRight className="size-[13px]" />
+                  </BreadcrumbSeparator>
+                )}
+                <BreadcrumbItem className="min-w-0">
                   {i === crumbs.length - 1 ? (
-                    <BreadcrumbPage className="truncate font-medium whitespace-nowrap">
+                    <BreadcrumbPage className="truncate px-1.5 font-medium whitespace-nowrap">
                       {crumb.node}
                     </BreadcrumbPage>
                   ) : (
                     <BreadcrumbLink asChild>
                       <Link
                         to={crumb.path}
-                        className="rounded-[5px] px-1.5 py-0.5 whitespace-nowrap hover:bg-accent"
+                        className="rounded-[5px] px-1.5 py-0.5 whitespace-nowrap text-muted-foreground hover:bg-accent hover:text-foreground"
                       >
                         {crumb.node}
                       </Link>
@@ -97,41 +127,40 @@ export function AppHeader({ section }: { section: NavItem }) {
           )}
         </BreadcrumbList>
       </Breadcrumb>
+
+      <TopNav active={section} counts={{ board: counts?.open_tasks, runs: counts?.active_runs }} />
+
       <button
         type="button"
-        disabled
-        title={comingSoon}
-        className="flex h-8 w-[300px] items-center gap-2 rounded-lg border bg-subtle pr-2 pl-2.5 text-[12.5px] text-muted-foreground disabled:cursor-not-allowed"
+        onClick={openPalette}
+        className="flex h-8 w-[220px] items-center gap-2 rounded-full bg-muted/80 pr-1.5 pl-3 text-[12.5px] text-muted-foreground hover:bg-accent"
       >
-        <Search className="size-3.5" />
-        <span className="flex-1 text-left">{t('header.search')}</span>
-        <kbd className="rounded border bg-card px-1.5 py-px font-mono text-[11px]">
-          {t('header.searchShortcut')}
-        </kbd>
+        <Search className="size-3.5 shrink-0" />
+        <span className="flex-1 truncate text-left">{t('header.search')}</span>
+        <Kbd keys={PALETTE_KEYS} />
       </button>
-      <Button
-        variant="outline"
+      <button
+        type="button"
         aria-pressed={dockOpen}
+        aria-label={t('dock.toggle')}
         title={t('dock.toggle')}
         onClick={toggleDock}
-        className={cn('h-8 gap-[7px]', dockOpen ? 'bg-accent' : 'bg-transparent')}
+        className={cn(ICON_BUTTON, dockOpen && 'bg-accent')}
       >
         <SquareTerminal className="size-[15px]" />
-        {t('header.terminal')}
-      </Button>
-      {section.primary && (
-        <Button
-          disabled={!primaryAvailable}
-          title={primaryAvailable ? undefined : comingSoon}
-          onClick={onPrimary}
-          className="h-8 gap-1.5 bg-primary-action font-medium text-white hover:bg-primary-action-hover"
-        >
-          <PrimaryIcon className="size-[15px]" />
-          {t(`header.primary.${section.primary}`)}
-        </Button>
-      )}
-      <LaunchRunDialog open={launching} onOpenChange={setLaunching} />
-      <NewTaskDialog open={creatingTask} onOpenChange={setCreatingTask} />
+      </button>
+      <span title={endpoint}>
+        <BackendStatus state={backendState} version={backendVersion} />
+      </span>
+      <button
+        type="button"
+        onClick={toggleTheme}
+        aria-label={theme === 'dark' ? t('theme.toLight') : t('theme.toDark')}
+        title={t('theme.toggle')}
+        className={ICON_BUTTON}
+      >
+        {theme === 'dark' ? <Sun className="size-[15px]" /> : <Moon className="size-[15px]" />}
+      </button>
     </header>
   )
 }

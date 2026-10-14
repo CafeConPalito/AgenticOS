@@ -108,6 +108,22 @@ describe('TerminalPanel', () => {
     expect(screen.getByRole('button', { name: es.terminal.take })).toBeDisabled()
   })
 
+  it('replays a finished run at the sizes recorded in its log', async () => {
+    const ESC = String.fromCharCode(27)
+    const BEL = String.fromCharCode(7)
+    const mark = (cols: number, rows: number) => `${ESC}]7770;size;${cols};${rows}${BEL}`
+    const { ws, term } = await setup(makeRun({ status: 'completed', cols: 186, rows: 47 }))
+    const sizes: string[] = []
+    const resize = term.resize.bind(term)
+    term.resize = (cols, rows) => {
+      resize(cols, rows)
+      sizes.push(`${cols}x${rows}`)
+    }
+    act(() => ws.open({ type: 'snapshot', data: `${mark(120, 32)}a${mark(186, 47)}b` }))
+    expect(term.output).toBe('ab') // the marks never reach the screen
+    expect(sizes).toEqual(['120x32', '186x47'])
+  })
+
   it('reconnects after a dropped connection and stops after exit', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     try {

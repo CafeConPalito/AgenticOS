@@ -82,6 +82,14 @@ function RunDetail({ run }: { run: Run }) {
         </h1>
         <RunStatusBadge run={run} />
         <ProjectChip name={run.project_name} color={projectColor(run.project_id)} />
+        {run.task_id && (
+          <Link
+            to={`/tablero/tareas/${run.task_id}`}
+            className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-0.5 font-mono text-xs hover:bg-accent"
+          >
+            {run.task_code ?? t('runs.task')}
+          </Link>
+        )}
         <span className="inline-flex items-center gap-2 text-[12.5px] text-muted-foreground">
           <AgentAvatar name={run.agent_name} color={run.agent_color} size={18} />
           {run.agent_name}
@@ -121,9 +129,9 @@ function RunDetail({ run }: { run: Run }) {
             <span className="truncate">{run.cwd}</span>
           </div>
         </div>
-        <aside className="flex min-h-0 flex-col overflow-auto border-l p-4">
-          <RunEventsPanel runId={run.id} />
+        <aside className="flex min-h-0 flex-col overflow-auto border-l p-4 [&>*]:shrink-0">
           <SessionUsage run={run} />
+          <RunEventsPanel runId={run.id} />
         </aside>
       </div>
       <ConfirmDialog
