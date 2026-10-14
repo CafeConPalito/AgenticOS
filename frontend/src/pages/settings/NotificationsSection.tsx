@@ -43,7 +43,7 @@ export function NotificationsSection() {
   return (
     <section
       aria-labelledby="notifications-title"
-      className="flex flex-col gap-1 rounded-xl border bg-card p-4"
+      className="flex flex-col gap-1 rounded-xl border border-sep p-4 shadow-card bg-card-grad"
     >
       <h2 id="notifications-title" className="flex items-center gap-2 text-[15px] font-medium">
         <Bell className="size-4" />

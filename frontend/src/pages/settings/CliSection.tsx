@@ -56,7 +56,10 @@ export function CliSection() {
       {!clis ? (
         <Skeleton className="h-32 rounded-xl" />
       ) : (
-        <ul aria-labelledby="clis-title" className="divide-y rounded-xl border bg-card">
+        <ul
+          aria-labelledby="clis-title"
+          className="divide-y rounded-xl border border-sep shadow-card bg-card-grad"
+        >
           {clis.map((cli) => {
             const status = statusOf(cli)
             const hint =

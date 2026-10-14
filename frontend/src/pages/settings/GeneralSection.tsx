@@ -42,7 +42,7 @@ export function GeneralSection() {
   return (
     <section
       aria-labelledby="general-title"
-      className="flex flex-col gap-4 rounded-xl border bg-card p-4"
+      className="flex flex-col gap-4 rounded-xl border border-sep p-4 shadow-card bg-card-grad"
     >
       <h2 id="general-title" className="text-[15px] font-medium">
         {t('settings.general.title')}

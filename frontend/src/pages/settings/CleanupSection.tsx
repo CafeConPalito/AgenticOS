@@ -35,7 +35,7 @@ export function CleanupSection() {
   return (
     <section
       aria-labelledby="cleanup-title"
-      className="flex flex-col gap-4 rounded-xl border bg-card p-4"
+      className="flex flex-col gap-4 rounded-xl border border-sep p-4 shadow-card bg-card-grad"
     >
       <h2 id="cleanup-title" className="flex items-center gap-2 text-[15px] font-medium">
         <Trash2 className="size-4" />

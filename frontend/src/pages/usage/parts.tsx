@@ -45,7 +45,7 @@ export function KpiCard({
   note?: string
 }) {
   return (
-    <div className="rounded-xl border bg-card px-4 py-3.5">
+    <div className="rounded-xl border border-sep px-4 py-3.5 shadow-card bg-card-grad">
       <div className="flex items-baseline justify-between gap-2">
         <span className="text-[12.5px] text-muted-foreground">{label}</span>
         {note && <span className="text-[11px] text-muted-foreground">{note}</span>}

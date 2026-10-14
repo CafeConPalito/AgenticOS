@@ -79,7 +79,7 @@ function AgentsTable({ agents }: { agents: Agent[] }) {
     return row.cost_usd > 0 ? formatUsd(row.cost_usd) : formatTokens(row.tokens)
   }
   return (
-    <div className="overflow-hidden rounded-lg border bg-card">
+    <div className="overflow-hidden rounded-xl border border-sep shadow-card bg-card-grad">
       <Table>
         <TableHeader className="bg-subtle">
           <TableRow className="hover:bg-transparent">

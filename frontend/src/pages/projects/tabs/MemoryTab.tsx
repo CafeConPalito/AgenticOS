@@ -83,7 +83,10 @@ function NoteCard({
   }
 
   return (
-    <article className="rounded-lg border bg-card px-4 py-3" aria-label={author}>
+    <article
+      className="rounded-xl border border-sep px-4 py-3 shadow-card bg-card-grad"
+      aria-label={author}
+    >
       <div className="flex items-center gap-2.5">
         <AgentAvatar name={author} color={color} size={26} />
         <span className="text-[13px] font-medium">{author}</span>
@@ -179,7 +182,7 @@ export function MemoryTab({ project }: { project: Project }) {
       )}
 
       {adding && (
-        <div className="rounded-lg border bg-card px-4 py-3">
+        <div className="rounded-xl border border-sep px-4 py-3 shadow-card bg-card-grad">
           <NoteEditor
             initial=""
             saving={add.isPending}

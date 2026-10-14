@@ -99,7 +99,7 @@ function ProjectsTable({ projects }: { projects: Project[] }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   return (
-    <div className="overflow-hidden rounded-lg border bg-card">
+    <div className="overflow-hidden rounded-xl border border-sep shadow-card bg-card-grad">
       <Table>
         <TableHeader className="bg-subtle">
           <TableRow className="hover:bg-transparent">

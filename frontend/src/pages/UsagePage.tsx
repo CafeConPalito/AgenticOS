@@ -132,7 +132,10 @@ export default function UsagePage() {
       </section>
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,2.2fr)_minmax(260px,1fr)]">
-        <section className="rounded-xl border bg-card px-4 py-3.5" aria-label={chartTitle}>
+        <section
+          className="rounded-xl border border-sep px-4 py-3.5 shadow-card bg-card-grad"
+          aria-label={chartTitle}
+        >
           <div className="mb-3 flex items-center justify-between gap-3">
             <h2 className="text-[14px] font-medium">{chartTitle}</h2>
             <Segmented
@@ -152,7 +155,7 @@ export default function UsagePage() {
           )}
         </section>
 
-        <section className="rounded-xl border bg-card px-4 py-3.5">
+        <section className="rounded-xl border border-sep px-4 py-3.5 shadow-card bg-card-grad">
           <h2 className="mb-3 text-[14px] font-medium">{t('usage.breakdown.title')}</h2>
           {breakdown.data && breakdown.data.rows.length === 0 && (
             <p className="text-[13px] text-muted-foreground">{t('usage.breakdown.empty')}</p>
@@ -185,7 +188,7 @@ export default function UsagePage() {
         </section>
       </div>
 
-      <section className="overflow-hidden rounded-xl border bg-card">
+      <section className="overflow-hidden rounded-xl border border-sep shadow-card bg-card-grad">
         <h2 className="border-b px-4 py-3 text-[14px] font-medium">{t('usage.sessions.title')}</h2>
         {sessions.data && sessions.data.length === 0 ? (
           <EmptyState

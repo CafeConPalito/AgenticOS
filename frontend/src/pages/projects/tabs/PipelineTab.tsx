@@ -226,7 +226,7 @@ function PipelineEditor({ project, pipeline }: { project: Project; pipeline: Pip
               )}
               <article
                 aria-label={t('pipeline.stage', { n: index + 1 })}
-                className="flex w-[300px] flex-col gap-2.5 rounded-xl border bg-card p-3"
+                className="flex w-[300px] flex-col gap-2.5 rounded-xl border border-sep p-3 shadow-card bg-card-grad"
               >
                 <div className="flex items-center gap-1">
                   <span className="font-mono text-[11px] text-muted-foreground">

@@ -25,7 +25,12 @@ export function MarkdownEditor({
   const [mode, setMode] = useState<'edit' | 'preview'>('edit')
 
   return (
-    <div className={cn('flex flex-col overflow-hidden rounded-lg border bg-card', className)}>
+    <div
+      className={cn(
+        'flex flex-col overflow-hidden rounded-xl border border-sep shadow-card bg-card-grad',
+        className,
+      )}
+    >
       <div role="tablist" className="flex gap-1 border-b bg-subtle px-2 py-1.5">
         {(['edit', 'preview'] as const).map((m) => (
           <button

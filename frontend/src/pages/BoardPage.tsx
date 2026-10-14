@@ -407,7 +407,7 @@ function AgentQueueRow({
   return (
     <section
       aria-label={agent.name}
-      className="grid grid-cols-[190px_minmax(0,1fr)] gap-4 rounded-xl border bg-card p-3.5"
+      className="grid grid-cols-[190px_minmax(0,1fr)] gap-4 rounded-xl border border-sep p-3.5 shadow-card bg-card-grad"
     >
       <div className="flex flex-col gap-1.5 border-r pr-3">
         <div className="flex items-center gap-2.5">

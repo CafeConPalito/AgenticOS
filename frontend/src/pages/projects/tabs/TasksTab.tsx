@@ -37,7 +37,7 @@ export function TasksTab({ project }: { project: Project }) {
       {tasks.data && tasks.data.length === 0 ? (
         <EmptyState icon={ListChecks} title={t('tasks.empty')} />
       ) : (
-        <div className="overflow-hidden rounded-lg border bg-card">
+        <div className="overflow-hidden rounded-xl border border-sep shadow-card bg-card-grad">
           <Table>
             <TableHeader className="bg-subtle">
               <TableRow className="hover:bg-transparent">

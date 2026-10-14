@@ -8,7 +8,7 @@ import { TaskCard } from '@/pages/tasks/TaskBits'
 function Kpi({ label, value }: { label: string; value?: number | string }) {
   const { t } = useTranslation()
   return (
-    <div className="rounded-lg border bg-card px-4 py-3">
+    <div className="rounded-xl border border-sep px-4 py-3 shadow-card bg-card-grad">
       <div className="text-xs text-muted-foreground">{label}</div>
       <div className="mt-1 font-mono text-[22px] font-medium">{value ?? t('common.none')}</div>
     </div>
@@ -50,7 +50,7 @@ export function SummaryTab({ project }: { project: Project }) {
         <Kpi label={t('projects.summary.waiting')} value={count(['waiting_human', 'review'])} />
         <Kpi label={t('projects.summary.cost')} value={monthCost} />
       </div>
-      <section className="rounded-lg border bg-card px-4 py-3.5">
+      <section className="shadow-card.5 rounded-xl border border-sep px-4 py-3 bg-card-grad">
         <h2 className="mb-2 text-[14px] font-medium">{t('projects.summary.now')}</h2>
         {now.length === 0 ? (
           <p className="text-muted-foreground">{t('projects.summary.nobody')}</p>
@@ -63,7 +63,7 @@ export function SummaryTab({ project }: { project: Project }) {
         )}
       </section>
       <div className="grid grid-cols-2 gap-4">
-        <section className="rounded-lg border bg-card px-4 py-3.5">
+        <section className="shadow-card.5 rounded-xl border border-sep px-4 py-3 bg-card-grad">
           <h2 className="mb-2 text-[14px] font-medium">{t('projects.summary.folder')}</h2>
           <Row
             label={t('projects.fields.path')}
@@ -98,7 +98,7 @@ export function SummaryTab({ project }: { project: Project }) {
             value={t(`projects.mode.${project.workspace_mode}`)}
           />
         </section>
-        <section className="rounded-lg border bg-card px-4 py-3.5">
+        <section className="shadow-card.5 rounded-xl border border-sep px-4 py-3 bg-card-grad">
           <h2 className="mb-2 text-[14px] font-medium">{t('projects.summary.description')}</h2>
           <p className="text-pretty whitespace-pre-wrap text-muted-foreground">
             {project.description || t('projects.summary.noDescription')}
