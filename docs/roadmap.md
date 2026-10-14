@@ -21,7 +21,8 @@ Flujo de cada fase: ver `CLAUDE.md` (Spec → Plan → Desarrollo → Validació
 | 12 | Skills | pendiente | Biblioteca SKILL.md en 3 niveles, autoselección, `propose_skill` | La skill relevante se carga sola; se registra una skill creada por un agente | |
 | 13 | Meta-agentes | pendiente | Agente Arquitecto, propuestas en borrador, plantillas | Se crea un "Redactor" desde una conversación y ejecuta una tarea | |
 | 14 | Avisos externos | pendiente | Telegram, email, Slack | Los avisos llegan al móvil | |
-| 15 | Modo servidor | pendiente | Docker, autenticación, Postgres, WS autenticado | La app funciona desplegada en un servidor | |
+| 15 | Instaladores firmados | pendiente | Instaladores multiplataforma y firmados: Windows (NSIS/MSI con firma Authenticode, sin aviso de SmartScreen), macOS (`.dmg` firmado con Developer ID y notarizado, Intel y Apple Silicon) y Linux (AppImage, `.deb` y `.rpm` con firma GPG); sidecar del backend construido y firmado para cada plataforma; actualizaciones automáticas firmadas (updater de Tauri); builds y firma en CI | En una máquina limpia de cada sistema la app se instala sin avisos de seguridad, arranca con su backend y se actualiza sola a una versión nueva | |
+| 16 | Modo servidor | pendiente | Docker, autenticación, Postgres, WS autenticado | La app funciona desplegada en un servidor | |
 
 ## Historial
 | Fecha | Cambio |
@@ -57,3 +58,4 @@ Flujo de cada fase: ver `CLAUDE.md` (Spec → Plan → Desarrollo → Validació
 | 2026-10-14 | Plan de la fase 09 aprobado. Fase 09 en dev. |
 | 2026-10-14 | Fase 09 en validación: ADR 0013 (navegación, Inicio y atajos). |
 | 2026-10-14 | Fase 09 cerrada (`v1.1`). La fase 10 queda pendiente hasta que el usuario decida empezarla. |
+| 2026-10-14 | Nueva fase 15 (Instaladores firmados para Windows, macOS y Linux); Modo servidor pasa a ser la 16. |
