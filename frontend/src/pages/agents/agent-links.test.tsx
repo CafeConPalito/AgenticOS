@@ -174,3 +174,49 @@ describe('Ficha del agente · equipo y cuenta', () => {
     expect(await within(details).findByText('Trabajo')).toBeInTheDocument()
   })
 })
+
+describe('Lista de agentes · equipo', () => {
+  it('shows the team of each agent and filters by team once there are teams', async () => {
+    const { claude, agy, product } = world()
+    const ana = makeAgent({ name: 'Ana', team_id: product.id })
+    const dev = makeAgent({ name: 'Dev' })
+    createFakeBackend({
+      agents: [ana, dev],
+      accounts: [claude, agy],
+      teams: [{ ...product, agent_ids: [ana.id] }],
+    })
+    const user = userEvent.setup()
+    const { router } = renderApp('/agentes')
+
+    expect(await screen.findByRole('columnheader', { name: es.agents.columns.team })).toBeVisible()
+    const rows = () => screen.getAllByRole('row').slice(1)
+    expect(rows()).toHaveLength(2)
+    expect(within(rows()[0]).getByText('Producto')).toBeVisible()
+    expect(within(rows()[1]).getByText(es.teams.none)).toBeVisible()
+
+    await choose(user, screen.getByRole('combobox', { name: es.agents.fields.team }), 'Producto')
+    expect(rows()).toHaveLength(1)
+    expect(router.state.location.search).toBe(`?equipo=${product.id}`)
+
+    await choose(user, screen.getByRole('combobox', { name: es.agents.fields.team }), es.teams.none)
+    expect(rows()).toHaveLength(1)
+    expect(within(rows()[0]).getByText('Dev')).toBeVisible()
+    expect(router.state.location.search).toBe('?equipo=sin')
+
+    await choose(
+      user,
+      screen.getByRole('combobox', { name: es.agents.fields.team }),
+      es.agents.allTeams,
+    )
+    expect(rows()).toHaveLength(2)
+    expect(router.state.location.search).toBe('')
+  })
+
+  it('without teams there is neither the column nor the filter', async () => {
+    createFakeBackend({ agents: [makeAgent()] })
+    renderApp('/agentes')
+    await screen.findByRole('columnheader', { name: es.agents.columns.agent })
+    expect(screen.queryByRole('columnheader', { name: es.agents.columns.team })).toBeNull()
+    expect(screen.queryByRole('combobox', { name: es.agents.fields.team })).toBeNull()
+  })
+})

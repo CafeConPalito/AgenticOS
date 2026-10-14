@@ -1,7 +1,7 @@
 # Fase 10: Equipos y cuentas de CLI · Plan técnico
 
 - **Spec**: [spec.md](spec.md)
-- **Estado**: aprobado (2026-10-14)
+- **Estado**: aprobado (2026-10-14) · en desarrollo
 
 ## Lo que ya se sabe (revisado al escribir el plan)
 - **Claude Code**:
@@ -202,3 +202,19 @@
   - no se consulta la cuota sin sesión;
   - no hay tope global de gasto.
 - Los equipos son solo organizativos (ver spec, «Fuera»): no necesitan ADR.
+
+## Desarrollo: resultado del spike y desviaciones del plan
+Resultado del spike ([evidencias](evidencias/s1-s2-captura.md)):
+- **S1 Claude**: la cuota llega en `rate_limits` y coincide con `/usage`; `CLAUDE_CONFIG_DIR` aísla el login sin tocar `~/.claude`. El login completo en una carpeta aislada necesita una segunda cuenta real y queda para la prueba manual.
+- **S2 agy**: la cuota llega en `quota` y coincide con `/usage`, pero la status line **solo se lee del `settings.json` global**; el login vive en el almacén de credenciales del sistema, así que **agy tiene una sola cuenta** (CA11, rama «no»).
+- **S3 agy**: la lectura de su cuota es una opción activable y reversible, comprobada de punta a punta con el agy real.
+
+Desviaciones:
+- La **cuota de agy** es un interruptor explícito en «CLIs y cuentas» (el plan dejaba la decisión abierta), con un script que no hace nada fuera de la app. Ver ADR 0014.
+- Los **avisos de cuota ≥ 95 %** se derivan en el cliente (como los avisos de CLI de la fase 09), no en `/api/home`: `/api/home` solo añade `team_id` y `account_id` a cada agente. El de **sesión caída** sí es una petición de la Inbox (`account`).
+- `services/teams.py` no existe: la lógica de equipos vive en `api/teams.py` (no hay reglas de negocio que compartir).
+- El login corre en un PTY propio (`services/accounts_login.py`, `LoginSession`) con el mismo protocolo de WebSocket que el terminal de una ejecución, extraído a `api/terminal.py`.
+- El diálogo de login arranca el login al abrirse (`POST /accounts/{id}/login`) y no antes; `?reconectar=<cuenta>` y `?nueva=1` abren los diálogos desde la URL.
+- No hizo falta tocar `resume.py`, `maintenance.py` ni `housekeeping.py`: la reanudación elige la cuenta en `RunManager._account_for` y la limpieza de confianza se amplió en `TrustCleaner`.
+- Los dos tests que fallaban en `test_usage_stats.py` no eran del código: fijaban `DAY = 2026-10-12` pero los avisos llevan la hora real.
+- Dos defectos encontrados por los tests y corregidos: el `PATCH` de un agente validaba equipo/cuenta después de asignarlos (un id erróneo daba un error de clave foránea en vez de 422) y los selectores de equipo y cuenta propagaban el valor vacío que Radix emite al montar.

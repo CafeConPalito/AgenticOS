@@ -182,7 +182,8 @@
       "model": "Modelo",
       "status": "Estado",
       "queue": "En cola",
-      "usage": "Consumo del mes"
+      "usage": "Consumo del mes",
+      "team": "Equipo"
     },
     "status": {
       "active": "Activo",
@@ -277,7 +278,8 @@
       "period": "Últimos 30 días.",
       "config": "Configuración",
       "configHint": "Equipo, CLI, cuenta, modelo, permisos y concurrencia"
-    }
+    },
+    "allTeams": "Todos los equipos"
   },
   "projects": {
     "title": "Proyectos",
