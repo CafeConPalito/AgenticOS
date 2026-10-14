@@ -18,11 +18,12 @@ Flujo de cada fase: ver `CLAUDE.md` (Spec → Plan → Desarrollo → Validació
 | 09 | Mejora de UX/UI | cerrada (`v1.1`) | Revisar la navegación y simplificar la interfaz tras la v1.0: menú y flujos principales, menos elementos por pantalla, jerarquía visual más clara y coherente | Las tareas habituales se hacen en menos pasos y cada pantalla se entiende de un vistazo (revisión con el usuario) | [spec](phases/09-ux-ui/spec.md) · [plan](phases/09-ux-ui/plan.md) · [validación](phases/09-ux-ui/validacion.md) |
 | 10 | Equipos y cuentas de CLI | pendiente | Agrupar agentes en equipos y usar varias cuentas por CLI (cada agente con su cuenta; sesiones y avisos por cuenta), según el diseño v7 (`docs/design/v2/`) | Dos agentes del mismo CLI trabajan con cuentas distintas; Inicio los muestra por equipo | |
 | 11 | Conocimiento | pendiente | Subida en 3 niveles, conversión, URLs, imágenes, RAG local, MCP `search_knowledge` | Un agente usa un PDF del proyecto para responder | |
-| 12 | Skills | pendiente | Biblioteca SKILL.md en 3 niveles, autoselección, `propose_skill` | La skill relevante se carga sola; se registra una skill creada por un agente | |
-| 13 | Meta-agentes | pendiente | Agente Arquitecto, propuestas en borrador, plantillas | Se crea un "Redactor" desde una conversación y ejecuta una tarea | |
-| 14 | Avisos externos | pendiente | Telegram, email, Slack | Los avisos llegan al móvil | |
-| 15 | Instaladores firmados | pendiente | Instaladores multiplataforma y firmados: Windows (NSIS/MSI con firma Authenticode, sin aviso de SmartScreen), macOS (`.dmg` firmado con Developer ID y notarizado, Intel y Apple Silicon) y Linux (AppImage, `.deb` y `.rpm` con firma GPG); sidecar del backend construido y firmado para cada plataforma; actualizaciones automáticas firmadas (updater de Tauri); builds y firma en CI | En una máquina limpia de cada sistema la app se instala sin avisos de seguridad, arranca con su backend y se actualiza sola a una versión nueva | |
-| 16 | Modo servidor | pendiente | Docker, autenticación, Postgres, WS autenticado | La app funciona desplegada en un servidor | |
+| 12 | Dictado por voz | pendiente | Voz a texto local en los campos donde se escribe mucho (descripción de tarea, instrucciones del agente, motivo de un rechazo, conversación con el Arquitecto): transcripción con Whisper en el backend sin enviar audio fuera, modelo elegible y descargable desde Ajustes (reutiliza la gestión de modelos locales de la fase 11), botón de micrófono y atajo de mantener pulsado, texto insertado en el cursor; validar pronto el permiso de micrófono en WebView2 | Se dicta en español una descripción de tarea de un par de párrafos sin conexión a internet y llega al campo en pocos segundos | |
+| 13 | Skills | pendiente | Biblioteca SKILL.md en 3 niveles, autoselección, `propose_skill` | La skill relevante se carga sola; se registra una skill creada por un agente | |
+| 14 | Meta-agentes | pendiente | Agente Arquitecto, propuestas en borrador, plantillas | Se crea un "Redactor" desde una conversación y ejecuta una tarea | |
+| 15 | Avisos externos | pendiente | Telegram, email, Slack | Los avisos llegan al móvil | |
+| 16 | Instaladores firmados | pendiente | Instaladores multiplataforma y firmados: Windows (NSIS/MSI con firma Authenticode, sin aviso de SmartScreen), macOS (`.dmg` firmado con Developer ID y notarizado, Intel y Apple Silicon) y Linux (AppImage, `.deb` y `.rpm` con firma GPG); sidecar del backend construido y firmado para cada plataforma; actualizaciones automáticas firmadas (updater de Tauri); builds y firma en CI | En una máquina limpia de cada sistema la app se instala sin avisos de seguridad, arranca con su backend y se actualiza sola a una versión nueva | |
+| 17 | Modo servidor | pendiente | Docker, autenticación, Postgres, WS autenticado; el dictado por voz transcribe en el servidor o en el cliente | La app funciona desplegada en un servidor | |
 
 ## Historial
 | Fecha | Cambio |
@@ -59,3 +60,4 @@ Flujo de cada fase: ver `CLAUDE.md` (Spec → Plan → Desarrollo → Validació
 | 2026-10-14 | Fase 09 en validación: ADR 0013 (navegación, Inicio y atajos). |
 | 2026-10-14 | Fase 09 cerrada (`v1.1`). La fase 10 queda pendiente hasta que el usuario decida empezarla. |
 | 2026-10-14 | Nueva fase 15 (Instaladores firmados para Windows, macOS y Linux); Modo servidor pasa a ser la 16. |
+| 2026-10-14 | Nueva fase 12 (Dictado por voz, local); las fases 12–16 pasan a ser 13–17. |
