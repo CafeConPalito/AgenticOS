@@ -1,5 +1,8 @@
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocation } from 'react-router'
 import { PageContainer, PageHeader } from '@/components/page'
+import { cn } from '@/lib/utils'
 import { AboutSection } from './AboutSection'
 import { CleanupSection } from './CleanupSection'
 import { CliSection } from './CliSection'
@@ -7,20 +10,101 @@ import { GeneralSection } from './GeneralSection'
 import { LimitsSection } from './LimitsSection'
 import { NotificationsSection } from './NotificationsSection'
 
-/** Ajustes (design `12-ajustes`): CLIs, general, notifications, limits, cleanup and about. */
+/** The six sections, in order; each one is reachable as `/ajustes#<id>`. */
+export const SECTIONS = ['clis', 'general', 'notifications', 'limits', 'cleanup', 'about'] as const
+type SectionId = (typeof SECTIONS)[number]
+
+/** The id of the section that shows at the top of the scroll area. */
+function useVisibleSection(): [SectionId, (id: SectionId) => void] {
+  const [visible, setVisible] = useState<SectionId>(SECTIONS[0])
+  useEffect(() => {
+    if (typeof IntersectionObserver === 'undefined') return
+    const seen = new Map<string, boolean>()
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) seen.set(entry.target.id, entry.isIntersecting)
+        const first = SECTIONS.find((id) => seen.get(id))
+        if (first) setVisible(first)
+      },
+      // The band just under the header counts as «the top».
+      { rootMargin: '-72px 0px -60% 0px' },
+    )
+    for (const id of SECTIONS) {
+      const el = document.getElementById(id)
+      if (el) observer.observe(el)
+    }
+    return () => observer.disconnect()
+  }, [])
+  return [visible, setVisible]
+}
+
+/** Ajustes: an index on the left and the six sections on the right. */
 export default function SettingsPage() {
   const { t } = useTranslation()
+  const { hash } = useLocation()
+  const [visible, setVisible] = useVisibleSection()
+
+  // `/ajustes#clis` (from Inicio, the CLI notices…) scrolls to its section.
+  useEffect(() => {
+    const id = hash.slice(1)
+    if (!id) return
+    document.getElementById(id)?.scrollIntoView({ block: 'start' })
+    if ((SECTIONS as readonly string[]).includes(id)) setVisible(id as SectionId)
+  }, [hash, setVisible])
+
+  function go(id: SectionId) {
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    history.replaceState(null, '', `#${id}`)
+    setVisible(id)
+  }
+
   return (
-    <PageContainer narrow>
+    <PageContainer>
       <PageHeader title={t('settings.title')} subtitle={t('settings.subtitle')} />
-      <CliSection />
-      <div className="grid items-start gap-[22px] lg:grid-cols-2">
-        <GeneralSection />
-        <NotificationsSection />
+      <div className="grid grid-cols-[180px_minmax(0,1fr)] items-start gap-8 max-lg:grid-cols-1">
+        <nav
+          aria-label={t('settings.index')}
+          className="sticky top-4 flex flex-col gap-0.5 max-lg:static max-lg:flex-row max-lg:flex-wrap"
+        >
+          {SECTIONS.map((id) => (
+            <a
+              key={id}
+              href={`#${id}`}
+              aria-current={visible === id ? 'true' : undefined}
+              onClick={(e) => {
+                e.preventDefault()
+                go(id)
+              }}
+              className={cn(
+                'rounded-full px-3 py-1.5 text-[13px] text-muted-foreground hover:bg-accent hover:text-foreground',
+                visible === id && 'bg-accent font-medium text-foreground',
+              )}
+            >
+              {t(`settings.sections.${id}`)}
+            </a>
+          ))}
+        </nav>
+        <div className="mx-auto flex w-full max-w-[1000px] flex-col gap-5">
+          <div id="clis" className="scroll-mt-4">
+            <CliSection />
+          </div>
+          <div id="general" className="scroll-mt-4">
+            <GeneralSection />
+          </div>
+          <div id="notifications" className="scroll-mt-4">
+            <NotificationsSection />
+          </div>
+          <div id="limits" className="scroll-mt-4">
+            <LimitsSection />
+          </div>
+          <div id="cleanup" className="scroll-mt-4">
+            <CleanupSection />
+          </div>
+          <div id="about" className="scroll-mt-4">
+            <AboutSection />
+          </div>
+        </div>
       </div>
-      <LimitsSection />
-      <CleanupSection />
-      <AboutSection />
     </PageContainer>
   )
 }

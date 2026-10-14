@@ -23,10 +23,12 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Switch } from '@/components/ui/switch'
 import { resources } from '@/i18n'
 import { errorMessage } from '@/lib/form-errors'
 import { formatBytes } from '@/lib/format'
 import { Segmented } from '@/pages/usage/parts'
+import { useUiPrefs } from '@/stores/ui-prefs'
 import { type Theme, useTheme } from '@/theme/ThemeProvider'
 
 const LANGUAGES = Object.keys(resources) as (keyof typeof resources)[]
@@ -35,6 +37,8 @@ const LANGUAGES = Object.keys(resources) as (keyof typeof resources)[]
 export function GeneralSection() {
   const { t, i18n } = useTranslation()
   const { theme, setTheme } = useTheme()
+  const singleKey = useUiPrefs((s) => s.singleKeyShortcuts)
+  const setSingleKey = useUiPrefs((s) => s.setSingleKeyShortcuts)
   return (
     <section
       aria-labelledby="general-title"
@@ -75,6 +79,18 @@ export function GeneralSection() {
             }))}
           />
         </div>
+      </div>
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-col gap-0.5">
+          <Label htmlFor="single-key-shortcuts">{t('settings.general.singleKey')}</Label>
+          <p className="text-xs text-muted-foreground">{t('settings.general.singleKeyHelp')}</p>
+        </div>
+        <Switch
+          id="single-key-shortcuts"
+          checked={singleKey}
+          onCheckedChange={setSingleKey}
+          aria-label={t('settings.general.singleKey')}
+        />
       </div>
     </section>
   )

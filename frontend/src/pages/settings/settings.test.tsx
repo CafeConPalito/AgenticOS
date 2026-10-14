@@ -165,3 +165,68 @@ describe('Settings · Acerca de', () => {
     expect(about).toHaveTextContent(es.settings.about.logsHint)
   })
 })
+
+describe('Settings · índice y atajos', () => {
+  it('has an index with the six sections, linked to their anchors', async () => {
+    createFakeBackend()
+    renderApp('/ajustes')
+    const index = await screen.findByRole('navigation', { name: es.settings.index })
+    const links = within(index).getAllByRole('link')
+    expect(links.map((l) => l.textContent)).toEqual(Object.values(es.settings.sections))
+    expect(links.map((l) => l.getAttribute('href'))).toEqual([
+      '#clis',
+      '#general',
+      '#notifications',
+      '#limits',
+      '#cleanup',
+      '#about',
+    ])
+    for (const link of links) {
+      const id = link.getAttribute('href')!.slice(1)
+      expect(document.getElementById(id)).not.toBeNull()
+    }
+    expect(links[0]).toHaveAttribute('aria-current', 'true')
+  })
+
+  it('clicking an entry scrolls to its section and marks it', async () => {
+    createFakeBackend()
+    const user = userEvent.setup()
+    renderApp('/ajustes')
+    const scroll = vi.spyOn(Element.prototype, 'scrollIntoView')
+    const index = await screen.findByRole('navigation', { name: es.settings.index })
+    await user.click(within(index).getByRole('link', { name: es.settings.sections.limits }))
+    expect(scroll).toHaveBeenCalled()
+    expect(scroll.mock.contexts.at(-1)).toBe(document.getElementById('limits'))
+    expect(within(index).getByRole('link', { name: es.settings.sections.limits })).toHaveAttribute(
+      'aria-current',
+      'true',
+    )
+  })
+
+  it('/ajustes#clis lands on the CLIs section', async () => {
+    createFakeBackend()
+    const scroll = vi.spyOn(Element.prototype, 'scrollIntoView')
+    renderApp('/ajustes#notifications')
+    await screen.findByRole('navigation', { name: es.settings.index })
+    await waitFor(() =>
+      expect(scroll.mock.contexts.at(-1)).toBe(document.getElementById('notifications')),
+    )
+  })
+
+  it('the «Atajos de una tecla» switch turns N and ? off and on', async () => {
+    createFakeBackend()
+    const user = userEvent.setup()
+    renderApp('/ajustes')
+    const toggle = await screen.findByRole('switch', { name: es.settings.general.singleKey })
+    expect(toggle).toBeChecked()
+
+    await user.click(toggle)
+    expect(toggle).not.toBeChecked()
+    await user.keyboard('?')
+    expect(screen.queryByRole('dialog')).toBeNull()
+
+    await user.click(toggle)
+    await user.keyboard('?')
+    expect(await screen.findByRole('dialog', { name: es.shortcuts.title })).toBeVisible()
+  })
+})

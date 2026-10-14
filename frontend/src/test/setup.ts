@@ -29,6 +29,14 @@ Object.defineProperty(window, 'matchMedia', {
 Element.prototype.hasPointerCapture ??= () => false
 Element.prototype.releasePointerCapture ??= () => {}
 Element.prototype.scrollIntoView ??= () => {}
+globalThis.IntersectionObserver ??= class {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+  takeRecords() {
+    return []
+  }
+} as unknown as typeof IntersectionObserver
 globalThis.ResizeObserver ??= class {
   observe() {}
   unobserve() {}

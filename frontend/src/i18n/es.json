@@ -841,7 +841,9 @@
       "themes": {
         "dark": "Oscuro",
         "light": "Claro"
-      }
+      },
+      "singleKey": "Atajos de una tecla",
+      "singleKeyHelp": "N para una tarea nueva y ? para la ayuda, sin pulsar Ctrl. Se ignoran al escribir, en la terminal y con un diálogo abierto. Ctrl+K siempre funciona."
     },
     "cleanup": {
       "title": "Limpieza",
@@ -874,6 +876,15 @@
       "dataDir": "Carpeta de datos",
       "backend": "Backend",
       "logsHint": "Los logs del backend están en la carpeta «logs» de la carpeta de datos."
+    },
+    "index": "Secciones de Ajustes",
+    "sections": {
+      "clis": "CLIs detectados",
+      "general": "General",
+      "notifications": "Notificaciones",
+      "limits": "Límites diarios",
+      "cleanup": "Limpieza",
+      "about": "Acerca de"
     }
   },
   "usage": {
