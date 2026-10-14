@@ -20,6 +20,9 @@ export function TextCrumb({
     | 'nav.projects'
     | 'nav.runs'
     | 'nav.board'
+    | 'nav.inbox'
+    | 'nav.usage'
+    | 'nav.settings'
     | 'agents.new.title'
     | 'projects.new.title'
 }) {

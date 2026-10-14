@@ -15,7 +15,15 @@ import {
   useSortable,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { ChevronLeft, ChevronRight, GripVertical, Pause, Play, SquareKanban } from 'lucide-react'
+import {
+  ChevronLeft,
+  ChevronRight,
+  GripVertical,
+  Pause,
+  Play,
+  Plus,
+  SquareKanban,
+} from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useSearchParams } from 'react-router'
@@ -28,8 +36,8 @@ import { AgentAvatar, CliTag } from '@/components/agentic/primitives'
 import { EmptyState } from '@/components/EmptyState'
 import { Button } from '@/components/ui/button'
 import { errorMessage } from '@/lib/form-errors'
+import { useDialogs } from '@/stores/dialogs'
 import { cn } from '@/lib/utils'
-import { NewTaskDialog } from '@/pages/tasks/NewTaskDialog'
 import { PriorityLabel, TASK_TONE, TaskCard, TaskStatusBadge } from '@/pages/tasks/TaskBits'
 
 type View = 'status' | 'stage' | 'queues'
@@ -60,7 +68,7 @@ export default function BoardPage() {
     : 'status'
   const [projectId, setProjectId] = useState<string | null>(null)
   const [agentId, setAgentId] = useState<string | null>(null)
-  const [creating, setCreating] = useState(false)
+  const openNewTask = useDialogs((s) => s.openNewTask)
   const tasks = useTasks()
   const projects = useProjects().data ?? []
   const agents = (useAgents().data ?? []).filter((a) => a.status !== 'draft')
@@ -85,13 +93,12 @@ export default function BoardPage() {
           description={t('pages.board.emptyDescription')}
         >
           <Button
-            onClick={() => setCreating(true)}
+            onClick={() => openNewTask()}
             className="bg-primary-action text-white hover:bg-primary-action-hover"
           >
             {t('tasks.new.title')}
           </Button>
         </EmptyState>
-        <NewTaskDialog open={creating} onOpenChange={setCreating} />
       </div>
     )
 
@@ -161,6 +168,13 @@ export default function BoardPage() {
             </button>
           ))}
           <SchedulerSwitch />
+          <Button
+            onClick={() => openNewTask()}
+            className="h-8 gap-1.5 bg-primary-action text-white hover:bg-primary-action-hover"
+          >
+            <Plus className="size-[15px]" />
+            {t('header.primary.newTask')}
+          </Button>
         </div>
       </div>
       <div className="min-h-0 flex-1 overflow-auto p-5">

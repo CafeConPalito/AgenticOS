@@ -17,6 +17,7 @@ export function BackendStatus({
 }: {
   state: BackendState
   version?: string
+  /** Dot only (the label stays for screen readers and as a tooltip). */
   compact?: boolean
 }) {
   const { t } = useTranslation()
@@ -30,9 +31,9 @@ export function BackendStatus({
       role="status"
       title={label}
       data-state={state}
-      className="flex h-8 items-center gap-[9px] px-2.5 text-xs whitespace-nowrap text-sidebar-muted"
+      className="flex items-center gap-1.5 text-xs whitespace-nowrap text-muted-foreground"
     >
-      <span className={cn('size-2 shrink-0 rounded-full', DOT_CLASS[state])} />
+      <span className={cn('size-[7px] shrink-0 rounded-full', DOT_CLASS[state])} />
       {compact ? <span className="sr-only">{label}</span> : <span>{label}</span>}
     </div>
   )

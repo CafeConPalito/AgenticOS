@@ -1,25 +1,28 @@
 import type { ProjectBranches } from '@/api/maintenance'
-import type {
-  Agent,
-  AgentTemplate,
-  CliInfo,
-  MemoryNote,
-  Pipeline,
-  Project,
-  Run,
-  RunEvent,
-  RunUsage,
-  InboxItem,
-  Breakdown,
-  DailySeries,
-  SessionRow,
-  UsageLimits,
-  UsageSummary,
-  UsageToday,
-  NotificationSettings,
-  Task,
-  TaskEvent,
-  TreeNode,
+import {
+  ACTIVE_RUN_STATUSES,
+  type Agent,
+  type AgentTemplate,
+  type CliInfo,
+  type MemoryNote,
+  type Pipeline,
+  type Project,
+  type Run,
+  type RunEvent,
+  type RunUsage,
+  type InboxItem,
+  type Breakdown,
+  type DailySeries,
+  type SessionRow,
+  type UsageLimits,
+  type UsageSummary,
+  type UsageToday,
+  type NotificationSettings,
+  type Task,
+  type TaskEvent,
+  type TreeNode,
+  type Home,
+  type HomeAgent,
 } from '@/api/types'
 
 /** In-memory stand-in for the backend API, plugged into `fetch` for page tests. */
@@ -368,6 +371,11 @@ export function emptyUsage(): FakeUsage {
   }
 }
 
+/** Lower case without accents, like the backend's task search. */
+function fold(text: string): string {
+  return text.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().trim()
+}
+
 export function createFakeBackend(
   seed: {
     agents?: Agent[]
@@ -386,6 +394,8 @@ export function createFakeBackend(
     usage?: Partial<FakeUsage>
     branches?: ProjectBranches[]
     clis?: CliInfo[]
+    /** Overrides parts of GET /api/home; by default it is derived from the rest of the seed. */
+    home?: Partial<Home>
   } = {},
 ) {
   const usage: FakeUsage = { ...emptyUsage(), ...(seed.usage ?? {}) }
@@ -508,6 +518,71 @@ export function createFakeBackend(
   const agents = [...(seed.agents ?? [])]
   const projects = [...(seed.projects ?? [])]
   const runs = [...(seed.runs ?? [])]
+
+  /** GET /api/home, derived from the seed the way the backend derives it. */
+  function homeFor(): Home {
+    const live = runs.filter((r) => ACTIVE_RUN_STATUSES.includes(r.status) && !r.parent_run_id)
+    const pending = inbox.filter((i) => i.status === 'pending')
+    const agentsHome: HomeAgent[] = agents.map((agent) => {
+      const own = tasks.filter((t) => t.agent_id === agent.id)
+      const running = live.some((r) => r.agent_id === agent.id)
+      const requests = pending.filter((i) => i.agent_id === agent.id).length
+      const waiting = requests > 0 || own.some((t) => t.status === 'waiting_human')
+      return {
+        id: agent.id,
+        name: agent.name,
+        role: agent.role,
+        color: agent.color,
+        cli: agent.cli,
+        status: agent.status,
+        state:
+          agent.status === 'draft' ? 'draft' : waiting ? 'waiting' : running ? 'running' : 'idle',
+        queued: own.filter((t) => t.status === 'queued').length,
+        pending_requests: requests,
+        sessions: [
+          ...live.filter((r) => r.agent_id === agent.id),
+          ...runs.filter((r) => r.agent_id === agent.id && r.resumable),
+        ].map((r) => ({
+          run_id: r.id,
+          task_id: r.task_id,
+          task_code: r.task_code,
+          task_title: tasks.find((t) => t.id === r.task_id)?.title ?? null,
+          project_id: r.project_id,
+          project_name: r.project_name,
+          project_color: projects.find((p) => p.id === r.project_id)?.color ?? null,
+          status: r.status,
+          resumable: r.resumable,
+          started_at: r.started_at,
+          created_at: r.created_at,
+        })),
+      }
+    })
+    const open = tasks.filter((t) => t.status !== 'done' && t.status !== 'cancelled')
+    return {
+      agents: agentsHome,
+      projects: projects.map((p) => ({
+        id: p.id,
+        name: p.name,
+        color: p.color,
+        open_tasks: open.filter((t) => t.project_id === p.id).length,
+        workers: tasks
+          .filter((t) => t.project_id === p.id && t.status === 'running' && t.agent_id)
+          .map((t) => ({
+            agent_id: t.agent_id!,
+            agent_name: t.agent_name ?? '',
+            task_code: t.code,
+            task_title: t.title,
+          })),
+      })),
+      counts: {
+        sessions: live.length,
+        agents_working: new Set(live.map((r) => r.agent_id)).size,
+        open_tasks: open.length,
+        active_runs: runs.filter((r) => ACTIVE_RUN_STATUSES.includes(r.status)).length,
+      },
+      ...(seed.home ?? {}),
+    }
+  }
   const events = [...(seed.events ?? [])]
   const notes: Record<string, MemoryNote[]> = Object.fromEntries(
     Object.entries(seed.notes ?? {}).map(([id, list]) => [id, [...list]]),
@@ -593,18 +668,30 @@ export function createFakeBackend(
       pipelines[projectId] = pipeline
       return json(pipelineMatch[2] ? 201 : 200, pipeline)
     }
+    if (path === '/api/home') return json(200, homeFor())
     if (path === '/api/tasks') {
       if (method === 'GET') {
         const statuses = query.getAll('status')
+        const q = fold(query.get('q') ?? '')
+        const found = tasks.filter(
+          (t) =>
+            !q ||
+            fold(t.title).includes(q) ||
+            fold(t.code) === q ||
+            String(t.number) === q.replace(/^t-/, ''),
+        )
         return json(
           200,
-          tasks.filter(
-            (t) =>
-              (!query.get('project_id') || t.project_id === query.get('project_id')) &&
-              (!query.get('agent_id') || t.agent_id === query.get('agent_id')) &&
-              (!query.get('parent_task_id') || t.parent_task_id === query.get('parent_task_id')) &&
-              (statuses.length === 0 || statuses.includes(t.status)),
-          ),
+          found
+            .filter(
+              (t) =>
+                (!query.get('project_id') || t.project_id === query.get('project_id')) &&
+                (!query.get('agent_id') || t.agent_id === query.get('agent_id')) &&
+                (!query.get('parent_task_id') ||
+                  t.parent_task_id === query.get('parent_task_id')) &&
+                (statuses.length === 0 || statuses.includes(t.status)),
+            )
+            .slice(0, Number(query.get('limit')) || undefined),
         )
       }
       const project = projects.find((p) => p.id === body.project_id)

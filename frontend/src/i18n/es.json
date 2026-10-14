@@ -3,7 +3,6 @@
     "name": "Agentic OS"
   },
   "nav": {
-    "dashboard": "Dashboard",
     "agents": "Agentes",
     "projects": "Proyectos",
     "runs": "Ejecuciones",
@@ -11,21 +10,21 @@
     "inbox": "Inbox",
     "usage": "Consumo",
     "settings": "Ajustes",
-    "collapse": "Colapsar barra lateral",
-    "main": "Navegación principal"
+    "main": "Secciones",
+    "home": "Inicio"
   },
   "header": {
-    "search": "Buscar o ejecutar un comando…",
-    "searchShortcut": "Ctrl K",
+    "search": "Buscar agentes, tareas o acciones…",
     "terminal": "Terminal",
-    "comingSoon": "Disponible en próximas fases",
     "primary": {
       "newTask": "Nueva tarea",
       "newAgent": "Nuevo agente",
       "newProject": "Nuevo proyecto",
       "exportCsv": "Exportar CSV",
       "launchRun": "Lanzar agente"
-    }
+    },
+    "home": "Agentic OS · Inicio",
+    "back": "Volver"
   },
   "theme": {
     "toLight": "Tema claro",
@@ -483,7 +482,8 @@
     "errorText": {
       "session_missing": "El CLI ya no tiene esta conversación, así que no se puede reanudar. Reintenta la tarea desde el principio."
     },
-    "logPurged": "El log de esta ejecución se borró por la retención de logs (Ajustes › Limpieza)."
+    "logPurged": "El log de esta ejecución se borró por la retención de logs (Ajustes › Limpieza).",
+    "task": "Ver la tarea"
   },
   "dock": {
     "label": "Terminal",

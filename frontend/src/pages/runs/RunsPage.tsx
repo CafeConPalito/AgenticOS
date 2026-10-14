@@ -1,4 +1,4 @@
-import { SquareTerminal } from 'lucide-react'
+import { Plus, SquareTerminal } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router'
@@ -54,7 +54,19 @@ export default function RunsPage() {
 
   return (
     <PageContainer>
-      <PageHeader title={t('runs.title')} subtitle={t('runs.subtitle')} />
+      <PageHeader
+        title={t('runs.title')}
+        subtitle={t('runs.subtitle')}
+        actions={
+          <Button
+            onClick={() => setLaunching(true)}
+            className="bg-primary-action text-white hover:bg-primary-action-hover"
+          >
+            <Plus />
+            {t('header.primary.launchRun')}
+          </Button>
+        }
+      />
       <div className="flex flex-wrap items-center gap-3">
         <Select
           value={agentId ?? ALL}

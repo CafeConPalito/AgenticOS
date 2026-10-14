@@ -98,12 +98,12 @@ describe('Agent editor', () => {
     await user.type(await screen.findByLabelText(es.agents.fields.role), ' senior')
 
     const nav = screen.getByRole('navigation', { name: es.nav.main })
-    await user.click(within(nav).getByRole('link', { name: es.nav.projects }))
+    await user.click(within(nav).getByRole('link', { name: new RegExp(es.nav.board) }))
     expect(await screen.findByText(es.unsaved.title)).toBeVisible()
     expect(router.state.location.pathname).toBe(`/agentes/${agent.id}/general`)
 
     await user.click(screen.getByRole('button', { name: es.unsaved.discard }))
-    await waitFor(() => expect(router.state.location.pathname).toBe('/proyectos'))
+    await waitFor(() => expect(router.state.location.pathname).toBe('/tablero'))
   })
 
   it('switching tabs keeps the edits (one form for all tabs)', async () => {

@@ -1,4 +1,4 @@
-import { FolderGit2, GitBranch, TriangleAlert } from 'lucide-react'
+import { FolderGit2, GitBranch, Plus, TriangleAlert } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
 import { useProjects } from '@/api/projects'
@@ -24,7 +24,19 @@ export default function ProjectsPage() {
 
   return (
     <PageContainer>
-      <PageHeader title={t('projects.title')} subtitle={t('projects.subtitle')} />
+      <PageHeader
+        title={t('projects.title')}
+        subtitle={t('projects.subtitle')}
+        actions={
+          <Button
+            onClick={() => navigate('/proyectos/nuevo')}
+            className="bg-primary-action text-white hover:bg-primary-action-hover"
+          >
+            <Plus />
+            {t('header.primary.newProject')}
+          </Button>
+        }
+      />
       {isPending ? (
         <div aria-busy className="flex flex-col gap-2">
           {[0, 1, 2].map((i) => (

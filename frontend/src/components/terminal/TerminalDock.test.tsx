@@ -27,7 +27,7 @@ describe('TerminalDock', () => {
     installFakeWebSocket()
     const user = userEvent.setup()
     renderApp('/agentes')
-    const button = await screen.findByRole('button', { name: es.header.terminal })
+    const button = await screen.findByRole('button', { name: es.dock.toggle })
     expect(button).toHaveAttribute('aria-pressed', 'false')
     expect(dock()).not.toBeInTheDocument()
 

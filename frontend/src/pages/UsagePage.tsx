@@ -1,7 +1,8 @@
-import { ChartColumn } from 'lucide-react'
+import { ChartColumn, Download } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router'
+import { toast } from 'sonner'
 import {
   PERIODS,
   periodFromParam,
@@ -9,10 +10,12 @@ import {
   useUsageBreakdown,
   useUsageDaily,
   useUsageSessions,
+  downloadSessionsCsv,
   useUsageSummary,
 } from '@/api/usage'
 import { EmptyState } from '@/components/EmptyState'
 import { PageContainer, PageHeader } from '@/components/page'
+import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatPercent, formatTokens, formatUsd } from '@/lib/format'
 import { DailyChart, type Metric } from './usage/DailyChart'
@@ -45,6 +48,13 @@ export default function UsagePage() {
     setParams(next, { replace: true })
   }
 
+  function exportCsv() {
+    downloadSessionsCsv({ days }).then(
+      () => toast.success(t('usage.exported')),
+      (error: unknown) => toast.error(String(error)),
+    )
+  }
+
   const kpis = summary.data?.kpis
   // With only agy (no cost) the chart shows tokens instead of an empty cost chart.
   const metric: Metric = kpis && kpis.cost_usd === 0 && kpis.tokens > 0 ? 'tokens' : 'cost'
@@ -61,12 +71,18 @@ export default function UsagePage() {
         title={t('pages.usage.title')}
         subtitle={t('usage.subtitle')}
         actions={
-          <Segmented
-            label={t('usage.period.30')}
-            value={days}
-            options={PERIODS.map((p) => ({ value: p, label: t(`usage.period.${p}`) }))}
-            onChange={(value) => update('periodo', value === 30 ? null : String(value))}
-          />
+          <>
+            <Segmented
+              label={t('usage.period.30')}
+              value={days}
+              options={PERIODS.map((p) => ({ value: p, label: t(`usage.period.${p}`) }))}
+              onChange={(value) => update('periodo', value === 30 ? null : String(value))}
+            />
+            <Button variant="outline" onClick={exportCsv}>
+              <Download />
+              {t('header.primary.exportCsv')}
+            </Button>
+          </>
         }
       />
 

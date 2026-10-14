@@ -505,3 +505,60 @@ export interface UsageToday {
   agents: TodayAgent[]
   limits: LimitState[]
 }
+
+export type AgentState = 'running' | 'waiting' | 'idle' | 'draft'
+
+export interface HomeSession {
+  run_id: string
+  task_id: string | null
+  task_code: string | null
+  task_title: string | null
+  project_id: string | null
+  project_name: string
+  project_color: string | null
+  status: RunStatus
+  resumable: boolean
+  started_at: string | null
+  created_at: string
+}
+
+export interface HomeAgent {
+  id: string
+  name: string
+  role: string
+  color: string
+  cli: CliId
+  status: AgentStatus
+  state: AgentState
+  queued: number
+  pending_requests: number
+  sessions: HomeSession[]
+}
+
+export interface HomeWorker {
+  agent_id: string
+  agent_name: string
+  task_code: string
+  task_title: string
+}
+
+export interface HomeProject {
+  id: string
+  name: string
+  color: string
+  open_tasks: number
+  workers: HomeWorker[]
+}
+
+export interface HomeCounts {
+  sessions: number
+  agents_working: number
+  open_tasks: number
+  active_runs: number
+}
+
+export interface Home {
+  agents: HomeAgent[]
+  projects: HomeProject[]
+  counts: HomeCounts
+}

@@ -8,7 +8,7 @@ describe('theme', () => {
   it('defaults to the navy dark theme', async () => {
     mockHealth('ok')
     renderApp('/')
-    expect(await screen.findByText(es.theme.toLight)).toBeVisible()
+    expect(await screen.findByRole('button', { name: es.theme.toLight })).toBeVisible()
     expect(document.documentElement).toHaveClass('dark')
   })
 
@@ -16,17 +16,17 @@ describe('theme', () => {
     mockHealth('ok')
     const user = userEvent.setup()
     renderApp('/')
-    await user.click(await screen.findByText(es.theme.toLight))
+    await user.click(await screen.findByRole('button', { name: es.theme.toLight }))
     expect(document.documentElement).not.toHaveClass('dark')
     expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe('light')
-    expect(screen.getByText(es.theme.toDark)).toBeVisible()
+    expect(screen.getByRole('button', { name: es.theme.toDark })).toBeVisible()
   })
 
   it('restores a stored light theme on start', async () => {
     localStorage.setItem(THEME_STORAGE_KEY, 'light')
     mockHealth('ok')
     renderApp('/')
-    expect(await screen.findByText(es.theme.toDark)).toBeVisible()
+    expect(await screen.findByRole('button', { name: es.theme.toDark })).toBeVisible()
     expect(document.documentElement).not.toHaveClass('dark')
   })
 })

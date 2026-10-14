@@ -1,4 +1,4 @@
-import { Bot, ChevronRight, Sparkles } from 'lucide-react'
+import { Bot, ChevronRight, Plus, Sparkles } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
 import { useAgents } from '@/api/agents'
@@ -23,6 +23,7 @@ import { TemplatePicker } from './TemplatePicker'
 export default function AgentsPage() {
   const { t } = useTranslation()
   const { data: agents, isPending } = useAgents()
+  const navigate = useNavigate()
 
   return (
     <PageContainer>
@@ -30,10 +31,19 @@ export default function AgentsPage() {
         title={t('agents.title')}
         subtitle={t('agents.subtitle')}
         actions={
-          <Button variant="outline" disabled title={t('common.comingSoonPhase')}>
-            <Sparkles className="text-status-review" />
-            {t('agents.architect')}
-          </Button>
+          <>
+            <Button variant="outline" disabled title={t('common.comingSoonPhase')}>
+              <Sparkles className="text-status-review" />
+              {t('agents.architect')}
+            </Button>
+            <Button
+              onClick={() => navigate('/agentes/nuevo')}
+              className="bg-primary-action text-white hover:bg-primary-action-hover"
+            >
+              <Plus />
+              {t('header.primary.newAgent')}
+            </Button>
+          </>
         }
       />
       {isPending ? (
