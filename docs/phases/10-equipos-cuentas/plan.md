@@ -1,7 +1,7 @@
 # Fase 10: Equipos y cuentas de CLI · Plan técnico
 
 - **Spec**: [spec.md](spec.md)
-- **Estado**: borrador
+- **Estado**: aprobado (2026-10-14)
 
 ## Lo que ya se sabe (revisado al escribir el plan)
 - **Claude Code**:
