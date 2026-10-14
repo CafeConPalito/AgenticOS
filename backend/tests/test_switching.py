@@ -176,6 +176,8 @@ def test_expired_switch_is_cleared_by_the_housekeeping(client):
 
 def test_blocked_decision_in_the_task_api(client):
     agent, claude, _ = agent_with_secondary(client)
+    set_quota(client, claude["id"], 95)
+    sync(client)
     project = client.post(
         "/api/projects", json={"name": "P", "path": str(client.app.state.settings.data_dir)}
     )
@@ -189,8 +191,6 @@ def test_blocked_decision_in_the_task_api(client):
         },
     )
     assert task.status_code == 201, task.text
-    set_quota(client, claude["id"], 95)
-    sync(client)
     tasks = client.get("/api/tasks").json()
     tasks = tasks["items"] if isinstance(tasks, dict) else tasks
     assert [t["blocked"] for t in tasks if t["id"] == task.json()["id"]] == ["decision"]
