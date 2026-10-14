@@ -40,6 +40,14 @@ agy solo ejecuta una status line declarada en `~/.gemini/antigravity-cli/setting
 - desactivarlo quita solo esa clave; el resto del fichero queda byte a byte como estaba;
 - el nombre cabe en 8.3 (`agyquota.cmd`): la ruta corta con la que agy lo ejecuta acorta también el nombre del fichero y de otro modo no se reconocería como propio.
 
+### CLI secundario por agente y alerta de cambio (ampliación)
+Un agente puede declarar un **secundario**: una cuenta (que fija el CLI) y un modelo; no puede ser la misma cuenta que la principal. Cuando la ventana de suscripción más llena de la cuenta con la que trabaja alcanza el **umbral** (90 % por defecto, ajustable en Ajustes › Límites; `app_state.switch_threshold`, 50–100), la Inbox recibe una petición `switch` por agente con «Cambiar a …» y «Seguir con …».
+- **Cambiar** fija `agents.using_fallback_until` en el reinicio de esa ventana; **seguir** fija `switch_decided_until` en el mismo instante, para no repetir la pregunta. Pasado ese instante el agente vuelve solo al principal (se calcula, no hace falta ningún trabajo): `fallback_active(agent, now)`. También se puede volver antes con `POST /api/agents/{id}/fallback/clear`.
+- **Una sola fuente de verdad**: `services/agent_target.py::target_for` devuelve CLI, cuenta y modelo con los que corre el agente *ahora*; `accounts.of_agent` y `AccountIndex.of` la siguen, así que el lanzador, el scheduler, los límites, Inicio y la API de tareas ven lo mismo. Una **reanudación** usa el CLI, la cuenta y el modelo de la ejecución original (la conversación vive allí).
+- **Una ejecución en marcha termina con el CLI que tiene**; cambian las tareas en cola y las siguientes. No se cambia de CLI dentro de una conversación.
+- **Mientras la petición está pendiente**, las tareas en cola del agente esperan (`blocked = "decision"`, el scheduler no las arranca). Si el secundario no es utilizable (sesión cerrada, retenido por límite o cuota, o también por encima del umbral) la petición **no ofrece el cambio y lo explica**, y entonces no retiene la cola: no hay nada que decidir.
+- La detección corre tras registrar la cuota (callback del `RunManager`) y en el housekeeping (`sync_switch_items`), y se resuelve sola si la ventana baja o el agente pierde su secundario.
+
 ### Equipos
 `teams` (nombre, descripción, posición); `agents.team_id` (un equipo como máximo, `SET NULL` al borrarlo). Solo organizan: Inicio agrupa por equipo, con «Sin equipo» al final, y vuelve a la rejilla única si no hay ninguno.
 
@@ -51,6 +59,9 @@ agy solo ejecuta una status line declarada en `~/.gemini/antigravity-cli/setting
 - **Bloquear el scheduler por % de cuota** (p. ej. 90 %): se avisa, no se bloquea, hasta ver lo fiable que es el dato en uso real.
 - **Un tope global de gasto**: los límites por cuenta lo cubren.
 - **Guardar el histórico de cuota**: solo el último valor; el consumo histórico ya está en las ejecuciones.
+- **Cambiar de CLI automáticamente al llegar al umbral**: gasta la cuota de otra cuenta sin que la persona lo sepa; se pregunta siempre.
+- **Cambiar de CLI dentro de una conversación en marcha**: los CLIs no comparten historial; se deja terminar la ejecución y cambia lo que viene después.
+- **Más de un secundario por agente**: complica la decisión sin un caso de uso claro.
 
 ## Consecuencias
 - Cada ejecución guarda su cuenta (`runs.account_id` + copia del nombre), visible en Ejecuciones, el detalle de tarea y Consumo, que filtra y agrupa por cuenta.
