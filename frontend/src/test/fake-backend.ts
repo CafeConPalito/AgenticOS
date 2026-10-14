@@ -2,6 +2,7 @@ import type { ProjectBranches } from '@/api/maintenance'
 import {
   ACTIVE_RUN_STATUSES,
   type Account,
+  type AgyQuotaState,
   type Agent,
   type AgentTemplate,
   type CliInfo,
@@ -444,11 +445,20 @@ export function createFakeBackend(
     /** The CLI accounts (default: the two system ones). */
     accounts?: Account[]
     teams?: Team[]
+    /** agy's opt-in quota line (default: available, off). */
+    agyQuota?: AgyQuotaState
   } = {},
 ) {
   const usage: FakeUsage = { ...emptyUsage(), ...(seed.usage ?? {}) }
   const accounts: Account[] = structuredClone(seed.accounts ?? systemAccounts())
   const teams: Team[] = structuredClone(seed.teams ?? [])
+  const agyQuota: AgyQuotaState = {
+    available: true,
+    enabled: false,
+    taken: false,
+    running: false,
+    ...(seed.agyQuota ?? {}),
+  }
 
   /** The daily limits, derived from the accounts the way the backend derives them. */
   function limitStates(): LimitState[] {
@@ -475,6 +485,15 @@ export function createFakeBackend(
     path: string,
     body: Record<string, unknown>,
   ): Response | null {
+    if (path === '/api/clis/agy/quota') {
+      if (method === 'PUT') {
+        if (!agyQuota.available) return apiError(409, 'agy_not_set_up')
+        if (agyQuota.running) return apiError(409, 'agy_running')
+        if (agyQuota.taken) return apiError(409, 'status_line_taken')
+        agyQuota.enabled = Boolean(body.enabled)
+      }
+      return json(200, agyQuota)
+    }
     if (path === '/api/accounts') {
       if (method === 'GET') return json(200, accounts)
       if (body.cli === 'agy') return apiError(409, 'accounts_unsupported', 'cli')
@@ -1123,6 +1142,7 @@ export function createFakeBackend(
     agents,
     accounts,
     teams,
+    agyQuota,
     projects,
     runs,
     notes,

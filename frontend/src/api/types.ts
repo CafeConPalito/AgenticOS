@@ -635,3 +635,14 @@ export interface Team {
   created_at: string
   updated_at: string
 }
+
+/** Whether Agentic OS reads agy's subscription quota (an opt-in status line in agy's settings). */
+export interface AgyQuotaState {
+  /** agy was run once: its settings file exists. */
+  available: boolean
+  enabled: boolean
+  /** The person has a status line of their own: it is left alone. */
+  taken: boolean
+  /** An agy process is open: its settings cannot be changed now. */
+  running: boolean
+}

@@ -4,12 +4,13 @@ import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router'
 import { toast } from 'sonner'
 import { useAccounts, useProbeAccount } from '@/api/accounts'
-import { useClis, useRefreshClis } from '@/api/clis'
+import { useAgyQuota, useClis, useRefreshClis, useSetAgyQuota } from '@/api/clis'
 import type { Account, CliId, CliInfo } from '@/api/types'
 import { CliTag } from '@/components/agentic/primitives'
 import { PageContainer, PageHeader } from '@/components/page'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Switch } from '@/components/ui/switch'
 import { errorMessage } from '@/lib/form-errors'
 import { cn } from '@/lib/utils'
 import { AccountCard } from './AccountCard'
@@ -165,12 +166,56 @@ function CliSection({
             ))}
           </ul>
           {cli.id === 'agy' && (
-            <p className="border-t border-sep px-4 py-2.5 text-xs text-muted-foreground">
-              {t('clis.single.agy')}
-            </p>
+            <>
+              <p className="border-t border-sep px-4 py-2.5 text-xs text-muted-foreground">
+                {t('clis.single.agy')}
+              </p>
+              <AgyQuotaSwitch />
+            </>
           )}
         </>
       )}
     </section>
+  )
+}
+
+/**
+ * agy only tells its subscription quota to a status line, which it reads from its own settings
+ * file. Reading it is therefore an explicit choice (and undoable), not something done silently.
+ */
+function AgyQuotaSwitch() {
+  const { t } = useTranslation()
+  const quota = useAgyQuota().data
+  const set = useSetAgyQuota()
+  if (!quota) return null
+  const blocked = !quota.available
+    ? 'notAvailable'
+    : quota.taken && !quota.enabled
+      ? 'taken'
+      : quota.running
+        ? 'running'
+        : null
+  return (
+    <div className="flex items-center gap-4 border-t border-sep px-4 py-3">
+      <div className="min-w-0 flex-1">
+        <div id="agy-quota-label" className="text-[13px] font-medium">
+          {t('clis.agyQuota.label')}
+        </div>
+        <p className="text-xs text-muted-foreground">
+          {blocked ? t(`clis.agyQuota.${blocked}`) : t('clis.agyQuota.help')}
+        </p>
+      </div>
+      <Switch
+        aria-labelledby="agy-quota-label"
+        checked={quota.enabled}
+        disabled={blocked !== null || set.isPending}
+        onCheckedChange={(enabled) =>
+          set.mutate(enabled, {
+            onSuccess: () => toast.success(t(enabled ? 'clis.agyQuota.on' : 'clis.agyQuota.off')),
+            onError: (error) => toast.error(errorMessage(error)),
+          })
+        }
+      />
+    </div>
   )
 }

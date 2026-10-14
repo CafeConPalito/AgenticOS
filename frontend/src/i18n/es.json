@@ -143,7 +143,17 @@
     "branch_not_found": "Esa rama ya no existe.",
     "branch_in_use": "La rama está en uso: su tarea sigue abierta o tiene un worktree.",
     "branch_not_merged": "La rama tiene trabajo sin fusionar.",
-    "git_failed": "git ha fallado en ese proyecto."
+    "git_failed": "git ha fallado en ese proyecto.",
+    "agy_running": "Cierra Antigravity antes de cambiar sus ajustes.",
+    "agy_not_set_up": "Abre Antigravity una vez para que cree sus ajustes.",
+    "status_line_taken": "Antigravity ya tiene una línea de estado propia: no se toca.",
+    "accounts_unsupported": "Este CLI guarda un único inicio de sesión: no admite más cuentas.",
+    "system_account": "La cuenta del sistema no se puede quitar.",
+    "account_in_use": "Hay agentes que usan esta cuenta: cámbialos de cuenta primero.",
+    "account_busy": "La cuenta tiene una ejecución o un inicio de sesión en marcha.",
+    "account_not_found": "Esa cuenta ya no existe.",
+    "team_not_found": "Ese equipo ya no existe.",
+    "account_cli_mismatch": "Esa cuenta es de otro CLI."
   },
   "cli": {
     "claude": "Claude Code",
@@ -1126,6 +1136,15 @@
     },
     "single": {
       "agy": "Antigravity guarda su sesión en el almacén de credenciales del sistema, así que solo admite una cuenta: la que tengas iniciada en tu usuario."
+    },
+    "agyQuota": {
+      "label": "Leer la cuota de Antigravity",
+      "help": "Antigravity solo cuenta su cuota (ventanas de 5 h y semanal) a una línea de estado, y la lee de su fichero de ajustes. Al activarlo se añade esa línea; no hace nada fuera de Agentic OS y no cambia lo que ves en agy. Puedes quitarla cuando quieras.",
+      "notAvailable": "Abre Antigravity una vez para que cree sus ajustes y podamos añadir la línea.",
+      "taken": "Ya tienes una línea de estado propia en Antigravity: no la tocamos, así que no se puede leer la cuota.",
+      "running": "Cierra Antigravity para cambiar sus ajustes (los reescribe mientras está abierto).",
+      "on": "Leyendo la cuota de Antigravity",
+      "off": "Línea de estado de Antigravity quitada"
     }
   },
   "accounts": {

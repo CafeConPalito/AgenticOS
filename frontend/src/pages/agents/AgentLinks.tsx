@@ -28,7 +28,8 @@ export function TeamSelect({
   // A team that was deleted meanwhile reads as none.
   const current = value && teams.some((team) => team.id === value) ? value : NONE
   return (
-    <Select value={current} onValueChange={(v) => onChange(v === NONE ? null : v)}>
+    // Radix reports an empty value while its items are not mounted yet: ignore it.
+    <Select value={current} onValueChange={(v) => v && onChange(v === NONE ? null : v)}>
       <SelectTrigger id={id} className="w-full">
         <SelectValue />
       </SelectTrigger>
@@ -66,7 +67,7 @@ export function AccountSelect({
   return (
     <Select
       value={current}
-      onValueChange={(v) => onChange(v === NONE ? null : v)}
+      onValueChange={(v) => v && onChange(v === NONE ? null : v)}
       disabled={accounts.length <= 1}
     >
       <SelectTrigger id={id} className="w-full">

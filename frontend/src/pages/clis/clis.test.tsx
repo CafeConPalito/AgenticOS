@@ -313,3 +313,68 @@ describe('CLIs y cuentas · iniciar sesión', () => {
     ).toBeVisible()
   })
 })
+
+describe('CLIs y cuentas · cuota de Antigravity', () => {
+  const agySection = () => screen.findByRole('region', { name: 'Antigravity CLI' })
+
+  it('is an explicit switch that turns the reading on and off', async () => {
+    const [claude, agy] = systemAccounts()
+    const backend = createFakeBackend({ clis: BOTH_INSTALLED, accounts: [claude, agy] })
+    const user = userEvent.setup()
+    renderApp('/clis')
+    const section = await agySection()
+    expect(await within(section).findByText(es.clis.agyQuota.help)).toBeVisible()
+    const toggle = within(section).getByRole('switch', { name: es.clis.agyQuota.label })
+    expect(toggle).not.toBeChecked()
+
+    await user.click(toggle)
+    await waitFor(() => expect(backend.callsTo('PUT', '/api/clis/agy/quota')).toHaveLength(1))
+    expect(backend.callsTo('PUT', '/api/clis/agy/quota')[0].body).toEqual({ enabled: true })
+    await waitFor(() => expect(toggle).toBeChecked())
+    expect(await screen.findByText(es.clis.agyQuota.on)).toBeVisible()
+
+    await user.click(toggle)
+    await waitFor(() =>
+      expect(backend.callsTo('PUT', '/api/clis/agy/quota')[1].body).toEqual({ enabled: false }),
+    )
+    await waitFor(() => expect(toggle).not.toBeChecked())
+  })
+
+  it.each([
+    ['notAvailable', { available: false }],
+    ['taken', { taken: true }],
+    ['running', { running: true }],
+  ] as const)('is disabled, and says why, when %s', async (reason, state) => {
+    const [claude, agy] = systemAccounts()
+    createFakeBackend({
+      clis: BOTH_INSTALLED,
+      accounts: [claude, agy],
+      agyQuota: { available: true, enabled: false, taken: false, running: false, ...state },
+    })
+    renderApp('/clis')
+    const section = await agySection()
+    expect(await within(section).findByText(es.clis.agyQuota[reason])).toBeVisible()
+    expect(within(section).getByRole('switch', { name: es.clis.agyQuota.label })).toBeDisabled()
+  })
+
+  it('an own status line of the person can not be switched, but ours can be removed', async () => {
+    const [claude, agy] = systemAccounts()
+    createFakeBackend({
+      clis: BOTH_INSTALLED,
+      accounts: [claude, agy],
+      agyQuota: { available: true, enabled: true, taken: false, running: false },
+    })
+    renderApp('/clis')
+    const section = await agySection()
+    const toggle = await within(section).findByRole('switch', { name: es.clis.agyQuota.label })
+    expect(toggle).toBeChecked()
+    expect(toggle).toBeEnabled()
+  })
+
+  it('shows no switch for Claude Code: its status line is per run, no setting involved', async () => {
+    createFakeBackend({ clis: BOTH_INSTALLED })
+    renderApp('/clis')
+    const claudeSection = await screen.findByRole('region', { name: 'Claude Code' })
+    expect(within(claudeSection).queryByRole('switch')).toBeNull()
+  })
+})

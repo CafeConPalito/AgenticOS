@@ -14,6 +14,7 @@ import shutil
 from pathlib import Path
 
 from agentic_os.models import Cli
+from agentic_os.services import agy_status
 from agentic_os.services.adapters.base import (
     CliAdapter,
     LaunchContext,
@@ -137,7 +138,14 @@ class AgyAdapter(CliAdapter):
         if ctx.model:
             argv += ["--model", ctx.model]
         argv += agy_permissions(ctx.permission_mode)
-        return LaunchSpec(argv, {**clean_env(), **ctx.account_env}, ctx.resume_session)
+        # With the opt-in status line installed (agy_status), this is how agy's script knows which
+        # run to report its quota to; without it, nothing reads the variable.
+        env = {
+            **clean_env(),
+            **ctx.account_env,
+            **agy_status.environment(ctx.base_url, ctx.token),
+        }
+        return LaunchSpec(argv, env, ctx.resume_session)
 
     def deferred_prompt(self, ctx: LaunchContext) -> str | None:
         return typed_prompt(ctx.prompt)

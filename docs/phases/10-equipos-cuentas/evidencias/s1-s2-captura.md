@@ -61,3 +61,17 @@ Herramientas: `spikes/quota_probe.py` (lanza el CLI en un PTY con una status lin
 2. **agy**: una cuenta (la del sistema). Su cuota solo llega si hay una status line en el `settings.json` global. Se necesita una decisión: ver la sección siguiente del plan.
 3. Los buckets de agy se muestran como «Gemini · 5 h», «Gemini · semanal», «Claude y GPT · 5 h» y «Claude y GPT · semanal», igual que `/usage`.
 4. `probe` de Claude lee el JSON de `auth status` aunque el código de salida sea 1.
+
+## S3 · La status line de agy como opción activable (2026-10-14)
+`spikes/agy_status_probe.py` instala la línea con `agentic_os.services.agy_status`, lanza el agy real en un PTY con `AGENTIC_OS_STATUS_URL` apuntando a un servidor local y comprueba qué publica el script.
+
+| Comprobación | Resultado |
+|---|---|
+| `settings.json` tras activar | `statusLine = {type: command, command: <ruta corta>\agyquota.cmd, stack_with_default: true}`; el resto de claves intactas |
+| POST recibidos en una sesión corta | **20**, con el JSON completo (`email`, `plan_tier`, `quota` con los 4 buckets) |
+| Pantalla de agy | Su línea de estado normal sigue visible (`? for shortcuts … Gemini 3.8 Flash · high`): el script no imprime nada |
+| `settings.json` tras desactivar | **idéntico byte a byte** al original (hash comprobado) |
+| Fuera de la app (sin la variable) | El script sale sin hacer nada (la comprobación va antes del `curl`) |
+
+- La ruta corta 8.3 acorta también el **nombre** del fichero: `agy-status.cmd` se convertía en `AGY-ST~1.CMD` y no se reconocía como propio. El script se llama `agyquota.cmd`, que ya cabe en 8.3.
+- Se edita el fichero solo si no hay un proceso `agy` abierto (agy lo reescribe mientras corre) y nunca si la persona ya tiene una `statusLine` propia.
