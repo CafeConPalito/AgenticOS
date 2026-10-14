@@ -73,5 +73,5 @@ Al añadir los tests apareció otro fallo: `cmdk` consumía Ctrl+K dentro de la 
 ## Cierre
 - [x] OK del usuario
 - [x] Merge a `main` (`--no-ff`)
-- [x] Tag `v0.9`
+- [x] Tag `v1.1`
 - [x] `docs/roadmap.md` actualizado
