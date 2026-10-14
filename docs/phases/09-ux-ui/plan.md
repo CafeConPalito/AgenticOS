@@ -2,7 +2,7 @@
 
 - **Spec**: [spec.md](spec.md)
 - **Diseño**: [`docs/design/v2/`](../../design/v2/README.md) · [revisión](../../design/v2/revision.md)
-- **Estado**: borrador
+- **Estado**: aprobado (2026-10-14)
 
 ## Diseño
 
