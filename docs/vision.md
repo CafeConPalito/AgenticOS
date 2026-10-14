@@ -39,5 +39,5 @@ Una app de escritorio (que más adelante se podrá desplegar en un servidor) par
 ```
 
 ## Fuera de alcance (por ahora)
-- Multi-usuario y autenticación (fase 19, modo servidor).
+- Multi-usuario y autenticación (fase 20, modo servidor).
 - Registros públicos de skills (solo biblioteca local).
