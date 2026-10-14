@@ -6,21 +6,22 @@ export type ShortcutId = 'palette' | 'newTask' | 'shortcuts' | 'dock' | 'close'
 
 export interface Shortcut {
   id: ShortcutId
+  group: 'general' | 'create'
   /** What the person presses, for the help and the hints (one entry per key cap). */
   keys: string[]
   /** i18n key (under `shortcuts.`) of what it does. */
-  label: string
+  label: ShortcutId
   /** Handled by the global listener here (the dock and Esc have their own). */
   global: boolean
 }
 
 /** The single table of shortcuts: the listener, the help (`?`) and the Ctrl+K hints read it. */
 export const SHORTCUTS: Shortcut[] = [
-  { id: 'palette', keys: ['Ctrl', 'K'], label: 'palette', global: true },
-  { id: 'newTask', keys: ['N'], label: 'newTask', global: true },
-  { id: 'shortcuts', keys: ['?'], label: 'shortcuts', global: true },
-  { id: 'dock', keys: ['Ctrl', '`'], label: 'dock', global: false },
-  { id: 'close', keys: ['Esc'], label: 'close', global: false },
+  { id: 'palette', group: 'general', keys: ['Ctrl', 'K'], label: 'palette', global: true },
+  { id: 'newTask', group: 'create', keys: ['N'], label: 'newTask', global: true },
+  { id: 'shortcuts', group: 'general', keys: ['?'], label: 'shortcuts', global: true },
+  { id: 'dock', group: 'general', keys: ['Ctrl', '`'], label: 'dock', global: false },
+  { id: 'close', group: 'general', keys: ['Esc'], label: 'close', global: false },
 ]
 
 const FIELD = 'input, textarea, select, [contenteditable=""], [contenteditable="true"]'

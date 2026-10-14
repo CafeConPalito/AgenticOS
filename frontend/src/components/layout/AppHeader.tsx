@@ -11,6 +11,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb'
+import { Kbd } from '@/components/palette/Kbd'
 import { useDock } from '@/components/terminal/dock-store'
 import type { BackendState } from '@/hooks/useHealth'
 import { SHORTCUTS } from '@/lib/shortcuts'
@@ -30,21 +31,6 @@ function useCrumbs() {
   return useMatches()
     .filter((m) => (m.handle as CrumbHandle | undefined)?.crumb)
     .map((m) => ({ id: m.id, path: m.pathname, node: (m.handle as CrumbHandle).crumb(m.params) }))
-}
-
-function Kbd({ keys }: { keys: string[] }) {
-  return (
-    <span className="flex gap-0.5">
-      {keys.map((key) => (
-        <kbd
-          key={key}
-          className="rounded-md border border-sep bg-card px-1.5 py-px font-mono text-[11px]"
-        >
-          {key}
-        </kbd>
-      ))}
-    </span>
-  )
 }
 
 const PALETTE_KEYS = SHORTCUTS.find((s) => s.id === 'palette')!.keys

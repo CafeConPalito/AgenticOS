@@ -1039,5 +1039,52 @@
         "unknown": "sesión sin comprobar"
       }
     }
+  },
+  "shortcuts": {
+    "title": "Atajos de teclado",
+    "description": "Lista de atajos de teclado",
+    "groups": {
+      "general": "General",
+      "create": "Crear"
+    },
+    "palette": "Paleta de comandos",
+    "newTask": "Nueva tarea",
+    "shortcuts": "Atajos de teclado",
+    "dock": "Abrir / cerrar la terminal",
+    "close": "Cerrar diálogo o panel"
+  },
+  "palette": {
+    "title": "Paleta de comandos",
+    "placeholder": "Busca agentes, tareas, proyectos o acciones…",
+    "empty": "Sin resultados.",
+    "groups": {
+      "actions": "Acciones",
+      "goto": "Ir a",
+      "agents": "Agentes",
+      "projects": "Proyectos",
+      "tasks": "Tareas"
+    },
+    "actions": {
+      "newTask": "Nueva tarea",
+      "newAgent": "Nuevo agente",
+      "newProject": "Nuevo proyecto",
+      "openTerminal": "Abrir terminal",
+      "toggleTheme": "Cambiar tema",
+      "pauseScheduler": "Pausar el scheduler",
+      "resumeScheduler": "Reanudar el scheduler",
+      "shortcuts": "Atajos de teclado"
+    },
+    "goto": {
+      "home": "Inicio",
+      "projects": "Proyectos",
+      "agents": "Agentes",
+      "board": "Tablero",
+      "runs": "Ejecuciones",
+      "usage": "Consumo",
+      "inbox": "Peticiones",
+      "settings": "Ajustes"
+    },
+    "schedulerPaused": "Scheduler en pausa",
+    "schedulerResumed": "Scheduler en marcha"
   }
 }

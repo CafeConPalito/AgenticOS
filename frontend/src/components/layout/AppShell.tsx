@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
 import { Outlet, useLocation } from 'react-router'
 import { Toaster } from '@/components/ui/sonner'
+import { CommandPalette } from '@/components/palette/CommandPalette'
+import { ShortcutsDialog } from '@/components/palette/ShortcutsDialog'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { useInboxNotifier } from '@/hooks/use-inbox-notifier'
 import { useHealth } from '@/hooks/useHealth'
@@ -32,6 +34,10 @@ export function AppShell() {
   const dockPosition = useDock((s) => s.position)
   const newTask = useDialogs((s) => s.newTask)
   const closeNewTask = useDialogs((s) => s.closeNewTask)
+  const palette = useDialogs((s) => s.palette)
+  const closePalette = useDialogs((s) => s.closePalette)
+  const shortcuts = useDialogs((s) => s.shortcuts)
+  const closeShortcuts = useDialogs((s) => s.closeShortcuts)
   const newAgent = useDialogs((s) => s.newAgent)
   const closeNewAgent = useDialogs((s) => s.closeNewAgent)
   const newProject = useDialogs((s) => s.newProject)
@@ -80,6 +86,8 @@ export function AppShell() {
       />
       <NewAgentDialog open={newAgent} onOpenChange={(open) => !open && closeNewAgent()} />
       <NewProjectDialog open={newProject} onOpenChange={(open) => !open && closeNewProject()} />
+      <CommandPalette open={palette} onOpenChange={(open) => !open && closePalette()} />
+      <ShortcutsDialog open={shortcuts} onOpenChange={(open) => !open && closeShortcuts()} />
       <Toaster theme={theme} />
     </TooltipProvider>
   )
