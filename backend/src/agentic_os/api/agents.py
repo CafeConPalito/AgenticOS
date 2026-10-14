@@ -7,7 +7,15 @@ from sqlalchemy.orm import Session
 from agentic_os.db.base import DEFAULT_WORKSPACE
 from agentic_os.db.session import get_session
 from agentic_os.errors import ApiError, NotFound
-from agentic_os.models import Agent, Task, TaskStatus, WaitingReason
+from agentic_os.models import (
+    Agent,
+    Cli,
+    CliAccount,
+    Task,
+    TaskStatus,
+    Team,
+    WaitingReason,
+)
 from agentic_os.schemas.agent import (
     AgentCreate,
     AgentDuplicate,
@@ -27,6 +35,21 @@ def _get(session: Session, agent_id: str) -> Agent:
     if agent is None or agent.workspace_id != DEFAULT_WORKSPACE:
         raise NotFound("agent")
     return agent
+
+
+def _check_links(session: Session, cli: str, team_id: str | None, account_id: str | None) -> None:
+    """The team and the account an agent points to must exist, and the account must be one of
+    the agent's CLI."""
+    if team_id and session.get(Team, team_id) is None:
+        raise ApiError(422, "team_not_found", "the team does not exist", "team_id")
+    if account_id:
+        account = session.get(CliAccount, account_id)
+        if account is None:
+            raise ApiError(422, "account_not_found", "the account does not exist", "account_id")
+        if account.cli != cli:
+            raise ApiError(
+                422, "account_cli_mismatch", "the account is of another CLI", "account_id"
+            )
 
 
 def _counts(session: Session, agent_ids: list[str]) -> dict[tuple[str, str], int]:
@@ -83,6 +106,8 @@ def create_agent(payload: AgentCreate, session: DbSession) -> AgentRead:
     values.update(payload.model_dump(exclude_unset=True, exclude={"template"}))
     if not values.get("name"):
         raise ApiError(422, "name_required", "name is required", "name")
+    cli = str(values.get("cli") or Cli.CLAUDE)
+    _check_links(session, cli, values.get("team_id"), values.get("account_id"))
     agent = Agent(workspace_id=DEFAULT_WORKSPACE, **values)
     session.add(agent)
     session.commit()
@@ -100,6 +125,16 @@ def update_agent(agent_id: str, payload: AgentUpdate, session: DbSession) -> Age
     changes = payload.model_dump(exclude_unset=True)
     if "name" in changes and not changes["name"]:
         raise ApiError(422, "name_required", "name is required", "name")
+    # Changing the CLI leaves the old CLI's account behind (unless a new one was sent).
+    if changes.get("cli", agent.cli) != agent.cli and "account_id" not in changes:
+        changes["account_id"] = None
+    # Checked before assigning: a wrong id would fail the flush with a foreign key error.
+    _check_links(
+        session,
+        str(changes.get("cli", agent.cli)),
+        changes.get("team_id", agent.team_id),
+        changes.get("account_id", agent.account_id),
+    )
     for field, value in changes.items():
         setattr(agent, field, value)
     session.commit()

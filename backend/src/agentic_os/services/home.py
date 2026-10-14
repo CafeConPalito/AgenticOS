@@ -145,6 +145,8 @@ def build(db: Session) -> HomeRead:
                 color=agent.color,
                 cli=agent.cli,
                 status=agent.status,
+                team_id=agent.team_id,
+                account_id=agent.account_id,
                 state=_state(
                     agent,
                     agent.id in running_agents,

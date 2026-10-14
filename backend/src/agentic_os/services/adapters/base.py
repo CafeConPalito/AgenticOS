@@ -30,6 +30,9 @@ class LaunchContext:
     overrides: Mapping[str, list[str]] = field(default_factory=dict)
     # «Reanudar sesión» (phase 08): the CLI session to continue instead of starting a new one.
     resume_session: str | None = None
+    # The login the run uses (phase 10): the environment that points the CLI to its folder.
+    # Empty for the system account, which is the CLI's own configuration.
+    account_env: Mapping[str, str] = field(default_factory=dict)
 
     @property
     def mcp_url(self) -> str:

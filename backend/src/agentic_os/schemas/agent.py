@@ -41,6 +41,10 @@ class AgentFields(BaseModel):
     can_spawn_subagents: bool | None = None
     can_create_tasks: bool | None = None
     status: AgentStatus | None = None
+    # Phase 10. Unlike the other fields these may be null: no team, or the default account of
+    # its CLI. Omit them to leave them unchanged.
+    team_id: str | None = None
+    account_id: str | None = None
 
     _dedupe_tools = field_validator("allowed_tools")(_unique_tools)
     _no_nulls = field_validator(
@@ -93,6 +97,8 @@ class AgentRead(BaseModel):
     can_create_tasks: bool
     status: AgentStatus
     template: str | None
+    team_id: str | None = None
+    account_id: str | None = None
     created_at: datetime
     updated_at: datetime
     # Its queue (phase 05): tasks waiting for it and tasks it is working on.

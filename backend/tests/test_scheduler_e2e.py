@@ -28,6 +28,7 @@ def settings_for(tmp_path: Path) -> Settings:
         cli_command_overrides={"claude": command, "agy": command},
         claude_config_file=tmp_path / "claude.json",
         agy_settings_file=tmp_path / "agy-settings.json",
+        check_sessions_at_startup=False,  # a test that wants the check turns it on
     )
 
 
@@ -54,6 +55,15 @@ class Api:
 
     def client_put(self, path: str, body: dict):
         response = httpx.put(self.url + path, json=body, timeout=30)
+        assert response.status_code < 300, response.text
+        return response.json()
+
+    def get_status(self, path: str, method: str = "get") -> int:
+        """The status code of a request, whatever it is (for the ones that must be refused)."""
+        return httpx.request(method.upper(), self.url + path, timeout=30).status_code
+
+    def patch(self, path: str, body: dict):
+        response = httpx.patch(self.url + path, json=body, timeout=30)
         assert response.status_code < 300, response.text
         return response.json()
 

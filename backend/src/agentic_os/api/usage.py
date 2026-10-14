@@ -8,16 +8,19 @@ from fastapi import APIRouter, Depends, Query, Request, Response
 from sqlalchemy.orm import Session
 
 from agentic_os.db.session import get_session
-from agentic_os.errors import ApiError
+from agentic_os.errors import ApiError, NotFound
+from agentic_os.models import Cli
 from agentic_os.schemas.usage import (
     Breakdown,
     DailySeries,
+    LimitState,
+    LimitsUpdate,
     SessionRow,
     TodayAgent,
-    UsageLimits,
     UsageSummary,
     UsageToday,
 )
+from agentic_os.services import accounts as account_ops
 from agentic_os.services.usage import limits as usage_limits
 from agentic_os.services.usage import stats
 
@@ -154,14 +157,22 @@ def get_today(db: DbSession) -> UsageToday:
 
 
 @router.get("/settings/usage-limits")
-def get_usage_limits(db: DbSession) -> UsageLimits:
-    return usage_limits.get_limits(db)
+def get_usage_limits(db: DbSession) -> list[LimitState]:
+    """The daily limit of each account, with how far it is today."""
+    return usage_limits.states(db, today())
 
 
 @router.put("/settings/usage-limits")
-def put_usage_limits(payload: UsageLimits, db: DbSession, request: Request) -> UsageLimits:
-    saved = usage_limits.save_limits(db, payload)
+def put_usage_limits(payload: LimitsUpdate, db: DbSession, request: Request) -> list[LimitState]:
+    known = {a.id: a for a in account_ops.list_accounts(db)}
+    for entry in payload.limits:
+        account = known.get(entry.account_id)
+        if account is None:
+            raise NotFound("account")
+        if account.cli == Cli.AGY and entry.daily_limit is not None:
+            entry.daily_limit = float(int(entry.daily_limit))  # whole tokens
+        account.daily_limit = entry.daily_limit
     usage_limits.sync_limit_items(db, today())
     db.commit()
     request.app.state.scheduler.poke()  # a raised limit lets queued tasks start
-    return saved
+    return usage_limits.states(db, today())

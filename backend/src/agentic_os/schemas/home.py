@@ -38,6 +38,8 @@ class HomeAgent(BaseModel):
     cli: Cli
     status: AgentStatus
     state: AgentState
+    team_id: str | None = None  # phase 10: Inicio groups the agents by team
+    account_id: str | None = None  # its own account; null: the default one of its CLI
     queued: int  # tasks waiting in its queue
     pending_requests: int  # pending Inbox items of the agent
     sessions: list[HomeSession]

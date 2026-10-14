@@ -1,6 +1,6 @@
 from enum import StrEnum
 
-from sqlalchemy import JSON, Boolean, CheckConstraint, Integer, String, Text
+from sqlalchemy import JSON, Boolean, CheckConstraint, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from agentic_os.db.base import Base, IdMixin, TimestampMixin, WorkspaceMixin
@@ -65,3 +65,10 @@ class Agent(IdMixin, WorkspaceMixin, TimestampMixin, Base):
     can_create_tasks: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     status: Mapped[str] = mapped_column(String(16), nullable=False, default=AgentStatus.ACTIVE)
     template: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    # Phase 10. No team: shown under «Sin equipo». No account: the default one of its CLI.
+    team_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("teams.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    account_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("cli_accounts.id", ondelete="SET NULL"), nullable=True, index=True
+    )

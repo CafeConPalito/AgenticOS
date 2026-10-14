@@ -18,6 +18,7 @@ from agentic_os.db.session import create_db_engine, database_url, make_sessionma
 from agentic_os.models import (
     Agent,
     Cli,
+    CliAccount,
     InboxItem,
     InboxKind,
     InboxStatus,
@@ -25,12 +26,12 @@ from agentic_os.models import (
     Resolution,
     Run,
     RunStatus,
+    SessionState,
     Task,
     TaskStatus,
     WaitingReason,
 )
-from agentic_os.schemas.usage import UsageLimits
-from agentic_os.services import inbox
+from agentic_os.services import accounts, inbox
 from agentic_os.services import tasks as task_ops
 from agentic_os.services.runs.manager import RunManager
 from agentic_os.services.runs.screen import ScreenState
@@ -52,6 +53,18 @@ def db_factory(tmp_path: Path) -> Iterator[sessionmaker[Session]]:
     engine.dispose()
 
 
+def default(db: Session, cli: Cli):
+    """The default account of a CLI (the system one: a database from v1.1 has just those)."""
+    return accounts.default_for(db, cli)
+
+
+def set_limits(db: Session, claude: float | None = None, agy: float | None = None) -> None:
+    """The daily limit of each CLI's default account (USD for Claude, tokens for agy)."""
+    default(db, Cli.CLAUDE).daily_limit = claude
+    default(db, Cli.AGY).daily_limit = agy
+    db.flush()
+
+
 def local(day: date, hour: int, minute: int = 0) -> datetime:
     return datetime(day.year, day.month, day.day, hour, minute, tzinfo=TZ).astimezone(UTC)
 
@@ -68,8 +81,10 @@ def add_run(
     minutes: int = 10,
     status: RunStatus = RunStatus.COMPLETED,
     task: Task | None = None,
+    account: CliAccount | None = None,
 ) -> Run:
     run = Run(
+        account_id=account.id if account else None,
         workspace_id=DEFAULT_WORKSPACE,
         agent_id=agent.id,
         project_id=project.id,
@@ -169,9 +184,9 @@ def test_daily_breakdown_and_sessions(db_factory, seeded):
 # ---------------------------------------------------------------------- limits
 def test_limits_block_per_cli_and_resolve_by_themselves(db_factory, seeded):
     with db_factory() as db:
-        limits.save_limits(db, UsageLimits(claude_usd=2.0, agy_tokens=5000))
-        assert limits.blocked(db, Cli.CLAUDE, DAY, TZ) == "limit"  # 2.0 of 2.0
-        assert limits.blocked(db, Cli.AGY, DAY, TZ) is None  # 1200 of 5000
+        set_limits(db, claude=2.0, agy=5000)
+        assert limits.blocked(db, default(db, Cli.CLAUDE), DAY, TZ) == "limit"  # 2.0 of 2.0
+        assert limits.blocked(db, default(db, Cli.AGY), DAY, TZ) is None  # 1200 of 5000
         states = {s.cli: s for s in limits.states(db, DAY, TZ)}
         assert states["claude"].reached and states["claude"].near
         assert states["agy"].ratio == pytest.approx(1200 / 5000) and not states["agy"].near
@@ -179,17 +194,17 @@ def test_limits_block_per_cli_and_resolve_by_themselves(db_factory, seeded):
         assert limits.sync_limit_items(db, DAY, TZ) is False
         assert limits.sync_limit_items(db, DAY, TZ) is False  # one item per CLI and day
         items = db.query(InboxItem).filter(InboxItem.kind == InboxKind.LIMIT).all()
-        assert len(items) == 1 and items[0].command == "claude"
+        assert len(items) == 1 and items[0].command == default(db, Cli.CLAUDE).id
         assert "2,00 $ de 2,00 $" in items[0].detail
         db.commit()
 
         # The limit goes up: the item resolves and the CLI is free again.
-        limits.save_limits(db, UsageLimits(claude_usd=10.0, agy_tokens=5000))
+        set_limits(db, claude=10.0, agy=5000)
         assert limits.sync_limit_items(db, DAY, TZ) is True
         assert items[0].status == InboxStatus.RESOLVED
         # Another day: nothing spent yet.
-        limits.save_limits(db, UsageLimits(claude_usd=2.0))
-        assert limits.blocked(db, Cli.CLAUDE, DAY + timedelta(days=1), TZ) is None
+        set_limits(db, claude=2.0)
+        assert limits.blocked(db, default(db, Cli.CLAUDE), DAY + timedelta(days=1), TZ) is None
 
 
 def test_the_scheduler_skips_the_cli_over_its_limit(db_factory):
@@ -202,7 +217,7 @@ def test_the_scheduler_skips_the_cli_over_its_limit(db_factory):
         add_run(db, dev, web, utcnow() - timedelta(minutes=5), cost=3.0)
         add_task(db, web, dev, "Claude task")
         add_task(db, blog, gema, "agy task")
-        limits.save_limits(db, UsageLimits(claude_usd=1.0))
+        set_limits(db, claude=1.0)
         db.commit()
     scheduler.step()
     assert [code for code, _ in launcher.launched] == ["T-2"]  # agy goes on
@@ -210,7 +225,7 @@ def test_the_scheduler_skips_the_cli_over_its_limit(db_factory):
     scheduler.check_limits(force=True)
     with db_factory() as db:
         assert db.query(InboxItem).filter(InboxItem.kind == InboxKind.LIMIT).count() == 1
-        limits.save_limits(db, UsageLimits(claude_usd=50.0))
+        set_limits(db, claude=50.0)
         db.commit()
     scheduler.check_limits(force=True)
     scheduler.step()
@@ -261,23 +276,24 @@ def test_quota_blocks_the_cli_until_resumed(db_factory, tmp_path: Path):
     with db_factory() as db:
         items = db.query(InboxItem).filter(InboxItem.kind == InboxKind.QUOTA).all()
         assert len(items) == 1
-        assert items[0].command == "agy" and items[0].detail.startswith("Quota exhausted")
+        assert items[0].command == default(db, Cli.AGY).id
+        assert items[0].detail.startswith("Quota exhausted")
         assert items[0].title == "Antigravity se ha quedado sin cuota"
         assert status_of(db_factory, "T-1") == (TaskStatus.WAITING_HUMAN, WaitingReason.QUOTA)
-        assert limits.blocked(db, Cli.AGY) == "quota"
-        assert limits.blocked(db, Cli.CLAUDE) is None
+        assert limits.blocked(db, default(db, Cli.AGY)) == "quota"
+        assert limits.blocked(db, default(db, Cli.CLAUDE)) is None
 
         manager.resume_after_quota(db, items[0])
         db.commit()
         assert items[0].status == InboxStatus.RESOLVED
-        assert limits.blocked(db, Cli.AGY) is None
+        assert limits.blocked(db, default(db, Cli.AGY)) is None
     assert status_of(db_factory, "T-1") == (TaskStatus.RUNNING, None)
 
 
 # ---------------------------------------------------------------------- code review
 def test_a_seen_limit_item_is_not_created_again_the_same_day(db_factory, seeded):
     with db_factory() as db:
-        limits.save_limits(db, UsageLimits(claude_usd=2.0))
+        set_limits(db, claude=2.0)
         limits.sync_limit_items(db, DAY, TZ)
         item = db.query(InboxItem).filter(InboxItem.kind == InboxKind.LIMIT).one()
         # «Descartar» in the Inbox marks it as seen (api/inbox.py).
@@ -286,9 +302,9 @@ def test_a_seen_limit_item_is_not_created_again_the_same_day(db_factory, seeded)
         limits.sync_limit_items(db, DAY, TZ)
         assert db.query(InboxItem).filter(InboxItem.kind == InboxKind.LIMIT).count() == 1
         # Moving the limit up and down again the same day: the seen item still holds.
-        limits.save_limits(db, UsageLimits(claude_usd=10.0))
+        set_limits(db, claude=10.0)
         limits.sync_limit_items(db, DAY, TZ)
-        limits.save_limits(db, UsageLimits(claude_usd=1.0))
+        set_limits(db, claude=1.0)
         limits.sync_limit_items(db, DAY, TZ)
         assert db.query(InboxItem).filter(InboxItem.kind == InboxKind.LIMIT).count() == 1
 
@@ -303,10 +319,11 @@ def test_blocked_all_reads_today_once(db_factory, seeded, monkeypatch):
 
     monkeypatch.setattr(limits, "runs_between", counting)
     with db_factory() as db:
-        assert limits.blocked_all(db, DAY, TZ) == {Cli.CLAUDE: None, Cli.AGY: None}
+        claude, agy = default(db, Cli.CLAUDE).id, default(db, Cli.AGY).id
+        assert limits.blocked_all(db, DAY, TZ) == {claude: None, agy: None}
         assert calls == []  # no limit set: no need to read today's runs
-        limits.save_limits(db, UsageLimits(claude_usd=2.0, agy_tokens=5000))
-        assert limits.blocked_all(db, DAY, TZ) == {Cli.CLAUDE: "limit", Cli.AGY: None}
+        set_limits(db, claude=2.0, agy=5000)
+        assert limits.blocked_all(db, DAY, TZ) == {claude: "limit", agy: None}
         assert len(calls) == 1
 
 
@@ -319,7 +336,7 @@ def test_a_throttled_limit_check_runs_once_more_later(db_factory, monkeypatch):
     with db_factory() as db:
         dev, web = make_agent(db, "Dev"), make_project(db, "Web")
         add_run(db, dev, web, utcnow(), cost=3.0)
-        limits.save_limits(db, UsageLimits(claude_usd=1.0))
+        set_limits(db, claude=1.0)
         db.commit()
     scheduler.check_limits()  # throttled: the trailing check creates the item
     with db_factory() as db:
@@ -333,3 +350,150 @@ def test_a_throttled_limit_check_runs_once_more_later(db_factory, monkeypatch):
     with db_factory() as db:
         assert db.query(InboxItem).filter(InboxItem.kind == InboxKind.LIMIT).count() == 1
     scheduler.stop()
+
+
+# ---------------------------------------------------------------------- accounts (phase 10)
+def two_claude_accounts(db: Session, tmp_path: Path):
+    """The system account plus a second one, each with an agent and a project to work on."""
+    system = default(db, Cli.CLAUDE)
+    other = accounts.create(db, tmp_path, Cli.CLAUDE, "Personal")
+    other.email = "marta.personal@gmail.com"
+    ana, beto = make_agent(db, "Ana"), make_agent(db, "Beto")
+    beto.account_id = other.id
+    web, blog = make_project(db, "Web"), make_project(db, "Blog")
+    return system, other, ana, beto, web, blog
+
+
+def test_the_limit_is_per_account_so_another_account_of_the_cli_goes_on(db_factory, tmp_path):
+    launcher = FakeLauncher()
+    scheduler = Scheduler(db_factory, launcher)
+    with db_factory() as db:
+        system, other, ana, beto, web, blog = two_claude_accounts(db, tmp_path)
+        add_run(db, ana, web, utcnow() - timedelta(minutes=5), cost=3.0, account=system)
+        add_task(db, web, ana, "Con la cuenta del sistema")  # T-1
+        add_task(db, blog, beto, "Con la cuenta personal")  # T-2
+        system.daily_limit = 1.0
+        db.commit()
+    scheduler.step()
+    assert [code for code, _ in launcher.launched] == ["T-2"]  # Beto's account is not held
+    assert status_of(db_factory, "T-1")[0] == TaskStatus.QUEUED
+
+    scheduler.check_limits(force=True)
+    with db_factory() as db:
+        item = db.query(InboxItem).filter(InboxItem.kind == InboxKind.LIMIT).one()
+        assert item.command == default(db, Cli.CLAUDE).id
+        # Two accounts of the CLI: the title says which one.
+        assert (
+            item.title
+            == f"Límite diario de Claude Code ({accounts.display_name(system)}) alcanzado"
+        )
+    with db_factory() as db:
+        spent = limits.used_by_account(db, DAY, TZ)
+        assert spent[system.id] == pytest.approx(3.0) and spent[other.id] == 0
+
+
+def test_the_usage_of_a_removed_account_counts_for_the_default_one(db_factory, tmp_path):
+    with db_factory() as db:
+        system, other, _ana, beto, _web, blog = two_claude_accounts(db, tmp_path)
+        run = add_run(db, beto, blog, utcnow(), cost=2.0, account=other)
+        beto.account_id = None
+        db.commit()
+        accounts.delete(db, other)
+        db.commit()
+        db.refresh(run)
+        assert run.account_id is None
+        assert limits.used_by_account(db, DAY, TZ) == {
+            system.id: pytest.approx(2.0),
+            default(db, Cli.AGY).id: 0.0,
+        }
+
+
+def test_quota_exhausted_holds_only_the_account_that_ran_out(db_factory, tmp_path):
+    manager = RunManager(db_factory, Settings(_env_file=None, data_dir=tmp_path / "data"))
+    with db_factory() as db:
+        system, other, _ana, beto, _web, blog = two_claude_accounts(db, tmp_path)
+        task = add_task(db, blog, beto, "Algo")
+        run = add_run(db, beto, blog, utcnow(), status=RunStatus.RUNNING, task=task, account=other)
+        task_ops.mark_running(db, task, run.id)
+        db.commit()
+        run_id, system_id, other_id = run.id, system.id, other.id
+
+    manager.quota_detected(run_id, "You've hit your limit · resets 5pm")
+    with db_factory() as db:
+        item = db.query(InboxItem).filter(InboxItem.kind == InboxKind.QUOTA).one()
+        assert item.command == other_id
+        assert item.title == "Claude Code (marta.personal@gmail.com) se ha quedado sin cuota"
+        gates = limits.blocked_all(db, DAY, TZ)
+        assert gates[other_id] == "quota" and gates[system_id] is None
+
+
+def test_a_logged_out_account_holds_its_agents_and_asks_to_reconnect(db_factory, tmp_path):
+    launcher = FakeLauncher()
+    scheduler = Scheduler(db_factory, launcher)
+    probed: list[str] = []
+
+    def probe(db, account):
+        probed.append(account.id)
+
+    scheduler.probe_account = probe
+    with db_factory() as db:
+        system, other, ana, beto, web, blog = two_claude_accounts(db, tmp_path)
+        add_task(db, web, ana, "Cuenta del sistema")  # T-1
+        add_task(db, blog, beto, "Cuenta personal")  # T-2
+        other.session_state = SessionState.DOWN.value
+        other.session_checked_at = utcnow()  # fresh: the scheduler does not ask again
+        system.session_checked_at = utcnow()
+        db.commit()
+        other_id = other.id
+
+    scheduler.step()
+    assert [code for code, _ in launcher.launched] == ["T-1"]
+    assert probed == []
+    with db_factory() as db:
+        assert limits.blocked_all(db)[other_id] == "session"
+        assert limits.sync_session_items(db) is False
+        assert limits.sync_session_items(db) is False  # one item, however many checks
+        item = db.query(InboxItem).filter(InboxItem.kind == InboxKind.ACCOUNT).one()
+        assert item.command == other_id and "marta.personal@gmail.com" in item.title
+        db.commit()
+
+        # She logs in again: the item resolves and the scheduler is told to look again.
+        db.get(CliAccount, other_id).session_state = SessionState.OK.value  # type: ignore[union-attr]
+        assert limits.sync_session_items(db) is True
+        assert item.status == InboxStatus.RESOLVED
+        db.commit()
+    scheduler.step()
+    assert [code for code, _ in launcher.launched] == ["T-1", "T-2"]
+
+
+def test_only_the_accounts_in_use_are_worth_a_session_notice(db_factory, tmp_path):
+    with db_factory() as db:
+        system, other, *_ = two_claude_accounts(db, tmp_path)
+        unused = accounts.create(db, tmp_path, Cli.CLAUDE)
+        unused.session_state = SessionState.DOWN.value
+        default(db, Cli.AGY).session_state = SessionState.DOWN.value  # agy: no agent uses it
+        db.flush()
+        assert limits.accounts_in_use(db) == {system.id, other.id}
+        limits.sync_session_items(db)
+        assert db.query(InboxItem).filter(InboxItem.kind == InboxKind.ACCOUNT).count() == 0
+
+
+def test_the_scheduler_asks_the_cli_again_when_the_session_check_is_old(db_factory, tmp_path):
+    launcher = FakeLauncher()
+    scheduler = Scheduler(db_factory, launcher)
+
+    def probe(db, account):  # the person logged out since the last check
+        account.session_state = SessionState.DOWN.value
+        account.session_checked_at = utcnow()
+
+    scheduler.probe_account = probe
+    with db_factory() as db:
+        system, _other, ana, _beto, web, _blog = two_claude_accounts(db, tmp_path)
+        add_task(db, web, ana, "Se queda esperando")
+        system.session_state = SessionState.OK.value
+        system.session_checked_at = utcnow() - timedelta(hours=1)  # old: asked again first
+        db.commit()
+    scheduler.step()
+    assert launcher.launched == []
+    with db_factory() as db:
+        assert db.query(InboxItem).filter(InboxItem.kind == InboxKind.ACCOUNT).count() == 1

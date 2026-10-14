@@ -124,6 +124,12 @@ class Run(IdMixin, WorkspaceMixin, TimestampMixin, Base):
     # Its terminal log was deleted by the log retention: the run and its usage stay.
     log_purged: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
+    # The CLI account the run used (phase 10). The label is a copy, like `agent_name`.
+    account_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("cli_accounts.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    account_label: Mapped[str] = mapped_column(String(120), nullable=False, default="")
+
 
 class Verdict(StrEnum):
     APPROVED = "approved"

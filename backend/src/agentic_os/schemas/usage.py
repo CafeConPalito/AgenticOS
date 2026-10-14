@@ -34,15 +34,24 @@ class RunUsage(UsageTotals):
     read_at: datetime | None = None
 
 
-class UsageLimits(BaseModel):
+class AccountLimit(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    # Empty: no limit.
-    claude_usd: Annotated[float, Field(gt=0, le=100000)] | None = None
-    agy_tokens: Annotated[int, Field(gt=0, le=10**12)] | None = None
+    account_id: str
+    # USD for Claude Code, tokens for agy. Null: no limit.
+    daily_limit: Annotated[float, Field(gt=0, le=10**12)] | None = None
+
+
+class LimitsUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    limits: list[AccountLimit]
 
 
 class LimitState(BaseModel):
+    account_id: str
+    account_name: str
+    is_default: bool
     cli: str
     unit: str  # "usd" | "tokens"
     limit: float | None
@@ -50,7 +59,7 @@ class LimitState(BaseModel):
     ratio: float | None  # used / limit
     reached: bool
     near: bool  # ≥ 80 %
-    quota_exhausted: bool  # a «Cuota agotada» is pending for this CLI
+    quota_exhausted: bool  # a «Cuota agotada» is pending for this account
 
 
 class Kpis(BaseModel):

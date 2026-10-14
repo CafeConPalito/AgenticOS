@@ -22,7 +22,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from agentic_os.db.base import utcnow
-from agentic_os.models import ACTIVE_STATUSES, Cli, Run, UsageStatus
+from agentic_os.models import ACTIVE_STATUSES, Cli, CliAccount, Run, UsageStatus
 from agentic_os.services.usage.parsers import (
     COST_STATE,
     AgyReader,
@@ -237,8 +237,18 @@ class UsageService:
         if not run.cli_session_id:
             return None
         if run.cli == Cli.CLAUDE:
-            return claude_transcript(run.cwd, run.cli_session_id, self._claude_config_dir)
+            config = self._account_config_dir(run) or self._claude_config_dir
+            return claude_transcript(run.cwd, run.cli_session_id, config)
         return agy_transcript(run.cli_session_id, self._home)
+
+    def _account_config_dir(self, run: Run) -> Path | None:
+        """The login folder of the run's account (phase 10): Claude keeps its transcripts there.
+        None for the system account, whose folder is the CLI's own."""
+        if not run.account_id:
+            return None
+        with self._db() as db:
+            folder = db.scalar(select(CliAccount.config_dir).where(CliAccount.id == run.account_id))
+        return Path(folder) if folder else None
 
     def refresh(self, run_id: str, final: bool = False, last_try: bool = True) -> bool:
         """Reads the run's transcripts and stores the figures. Returns True when a final read

@@ -55,6 +55,10 @@ class RunRead(BaseModel):
     resumed_by_id: str | None = None
     resumable: bool = False
     log_purged: bool = False
+    # The CLI account it ran with (phase 10): the account's current name while it exists, the
+    # copy taken at launch after it was removed.
+    account_id: str | None = None
+    account_label: str = ""
     task_code: str | None = None
     stage_name: str | None = None
     created_at: datetime
@@ -63,7 +67,8 @@ class RunRead(BaseModel):
     controller: str | None = None
     viewers: int = 0
     usage: RunUsage = Field(default_factory=RunUsage)
-    # Set when a run is launched by hand over its CLI's daily limit ("limit_reached").
+    # Set when a run is launched by hand with an account that is held: "limit_reached" (daily
+    # limit), "quota_reached" or "session_reached" (logged out).
     warning: str | None = None
 
 

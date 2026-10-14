@@ -137,7 +137,7 @@ class AgyAdapter(CliAdapter):
         if ctx.model:
             argv += ["--model", ctx.model]
         argv += agy_permissions(ctx.permission_mode)
-        return LaunchSpec(argv, clean_env(), ctx.resume_session)
+        return LaunchSpec(argv, {**clean_env(), **ctx.account_env}, ctx.resume_session)
 
     def deferred_prompt(self, ctx: LaunchContext) -> str | None:
         return typed_prompt(ctx.prompt)

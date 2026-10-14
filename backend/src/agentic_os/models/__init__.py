@@ -1,3 +1,4 @@
+from agentic_os.models.account import CliAccount, SessionState
 from agentic_os.models.agent import Agent, AgentStatus, Cli, PermissionMode, Tool
 from agentic_os.models.app_state import NOTIFICATIONS, SCHEDULER_PAUSED, USAGE_LIMITS, AppState
 from agentic_os.models.inbox import InboxItem, InboxKind, InboxStatus, Resolution
@@ -24,6 +25,7 @@ from agentic_os.models.task import (
     TaskStatus,
     WaitingReason,
 )
+from agentic_os.models.team import Team
 
 __all__ = [
     "ACTIVE_STATUSES",
@@ -39,6 +41,7 @@ __all__ = [
     "AppState",
     "AuthorKind",
     "Cli",
+    "CliAccount",
     "EventKind",
     "InboxItem",
     "InboxKind",
@@ -52,11 +55,13 @@ __all__ = [
     "Run",
     "RunEvent",
     "RunStatus",
+    "SessionState",
     "Stage",
     "Task",
     "TaskEvent",
     "TaskEventKind",
     "TaskStatus",
+    "Team",
     "Tool",
     "UsageStatus",
     "Verdict",

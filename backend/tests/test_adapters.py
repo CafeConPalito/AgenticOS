@@ -128,6 +128,22 @@ def test_claude_prompt_starting_with_a_dash(tmp_path: Path):
     assert adapter_for(Cli.CLAUDE).prepare(ctx).argv[1] == " --help me con el login"
 
 
+def test_claude_runs_with_the_login_folder_of_its_account(tmp_path: Path, monkeypatch):
+    """Phase 10: the account's folder wins over a CLAUDE_CONFIG_DIR of the person; the system
+    account adds nothing, so the person's own configuration is kept."""
+    monkeypatch.setenv("CLAUDE_CONFIG_DIR", "C:/mine")
+    monkeypatch.setenv("CLAUDE_CODE_CHILD_SESSION", "1")
+    base = context(tmp_path, Cli.CLAUDE)
+    system = adapter_for(Cli.CLAUDE).prepare(base)
+    assert system.env["CLAUDE_CONFIG_DIR"] == "C:/mine"
+    assert "CLAUDE_CODE_CHILD_SESSION" not in system.env  # session markers are still removed
+
+    from dataclasses import replace
+
+    own = replace(base, account_env={"CLAUDE_CONFIG_DIR": "C:/data/accounts/a1"})
+    assert adapter_for(Cli.CLAUDE).prepare(own).env["CLAUDE_CONFIG_DIR"] == "C:/data/accounts/a1"
+
+
 # ---------------------------------------------------------------- agy
 @pytest.mark.parametrize(
     ("mode", "flags"),

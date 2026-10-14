@@ -64,8 +64,11 @@ class TaskRead(BaseModel):
     waiting_detail: str | None
     worktree_path: str | None
     branch: str | None
-    # A queued task that cannot start now even with a free agent ("folder_busy").
+    # A queued task that cannot start now even with a free agent: "folder_busy", or the reason
+    # its agent's account is held: "limit" (daily limit), "quota" or "session" (logged out).
     blocked: str | None
+    # The account behind "limit", "quota" and "session" (its name, for the UI).
+    blocked_by: str | None = None
     active_run_id: str | None
     last_run_id: str | None
     queued_at: datetime | None

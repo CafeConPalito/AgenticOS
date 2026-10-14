@@ -28,7 +28,7 @@ from agentic_os.models import (
     Agent,
     AgentStatus,
     AppState,
-    Cli,
+    CliAccount,
     InboxKind,
     Project,
     Resolution,
@@ -40,6 +40,7 @@ from agentic_os.models import (
     WaitingReason,
     WorkspaceMode,
 )
+from agentic_os.services import accounts as account_ops
 from agentic_os.services import inbox
 from agentic_os.services import tasks as task_ops
 from agentic_os.services.usage import limits as usage_limits
@@ -101,6 +102,9 @@ class Scheduler:
         self.release_workspace: Callable[[Session, Task, Project], None] = (
             lambda db, task, project: None
         )
+        # Asks a CLI whether an account's session is alive (phase 10). Without it (unit tests of
+        # the queues) sessions are never checked before a launch.
+        self.probe_account: Callable[[Session, CliAccount], object] | None = None
         # Slow periodic chores (e.g. pending folder-trust cleanups), every HOUSEKEEPING seconds.
         self.housekeeping: Callable[[], None] | None = None
         self._last_housekeeping = 0.0
@@ -220,11 +224,34 @@ class Scheduler:
                     )
                 )
             )
-            # A CLI over its daily limit, or out of quota, starts nothing (phase 07).
-            gates = usage_limits.blocked_all(db) if agents else {}
+            if not agents:
+                return
+            index = account_ops.AccountIndex(db)
+            self._refresh_sessions(db, {a.id for a in (index.of(g) for g in agents) if a})
+            # An account over its daily limit, out of quota or logged out starts nothing
+            # (phases 07 and 10); the other accounts of its CLI go on.
+            gates = usage_limits.blocked_all(db)
             for agent in agents:
-                if gates[Cli(agent.cli)] is None:
+                account = index.of(agent)
+                if account is None or gates.get(account.id) is None:
                     self._fill(db, agent)
+
+    def _refresh_sessions(self, db: Session, account_ids: set[str]) -> None:
+        """Asks the CLI again about the accounts whose session was last checked a while ago,
+        before a task starts with them: a logout is found here and not as a stuck terminal."""
+        if self.probe_account is None:
+            return
+        changed = False
+        for account in account_ops.list_accounts(db):
+            if account.id in account_ids and not account_ops.session_is_fresh(account):
+                try:
+                    self.probe_account(db, account)
+                    changed = True
+                except Exception:
+                    log.exception("could not check an account's session", account=account.id)
+        if changed:
+            usage_limits.sync_session_items(db)
+            db.commit()
 
     # ------------------------------------------------------------------ daily limits
     def check_limits(self, force: bool = False) -> None:
@@ -243,6 +270,7 @@ class Scheduler:
             self._last_limit_check = now
             with self._db() as db:
                 unblocked = usage_limits.sync_limit_items(db)
+                unblocked = usage_limits.sync_session_items(db) or unblocked
                 db.commit()
         if unblocked:
             self.poke()

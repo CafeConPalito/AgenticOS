@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
 from agentic_os.api import (
+    accounts,
     agents,
     clis,
     health,
@@ -13,12 +14,15 @@ from agentic_os.api import (
     runs,
     settings,
     tasks,
+    teams,
     usage,
 )
 
 api_router = APIRouter(prefix="/api")
 api_router.include_router(health.router)
 api_router.include_router(agents.router)
+api_router.include_router(teams.router)
+api_router.include_router(accounts.router)
 api_router.include_router(projects.router)
 api_router.include_router(memory.router)
 api_router.include_router(pipelines.router)
