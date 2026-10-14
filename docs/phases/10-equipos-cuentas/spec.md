@@ -1,6 +1,6 @@
 # Fase 10: Equipos y cuentas de CLI · Spec
 
-- **Estado**: borrador
+- **Estado**: aprobada (2026-10-14)
 - **Rama**: `phase/10-equipos-cuentas`
 
 ## Objetivo
