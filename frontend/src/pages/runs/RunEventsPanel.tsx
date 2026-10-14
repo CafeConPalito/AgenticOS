@@ -17,7 +17,7 @@ export function RunEventsPanel({ runId }: { runId: string }) {
   const { data: events = [] } = useRunEvents(runId)
 
   return (
-    <section aria-labelledby="run-events-title" className="flex shrink-0 flex-col gap-2.5">
+    <section aria-labelledby="run-events-title" className="mt-5 flex shrink-0 flex-col gap-2.5">
       <h2 id="run-events-title" className="text-[12.5px] text-muted-foreground">
         {t('runs.events.title')}
       </h2>

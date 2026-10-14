@@ -130,8 +130,8 @@ function RunDetail({ run }: { run: Run }) {
           </div>
         </div>
         <aside className="flex min-h-0 flex-col overflow-auto border-l p-4 [&>*]:shrink-0">
-          <RunEventsPanel runId={run.id} />
           <SessionUsage run={run} />
+          <RunEventsPanel runId={run.id} />
         </aside>
       </div>
       <ConfirmDialog

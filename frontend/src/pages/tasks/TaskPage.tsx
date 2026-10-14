@@ -215,8 +215,8 @@ function TaskDetail({ task }: { task: Task }) {
               setPicked(id === (task.active_run_id ?? task.last_run_id) ? null : id)
             }
           />
-          {runId && <RunEventsPanel runId={runId} />}
           {run && <SessionUsage run={run} taskTotal={task.usage} />}
+          {runId && <RunEventsPanel runId={runId} />}
         </aside>
       </div>
 
