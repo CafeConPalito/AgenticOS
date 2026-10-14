@@ -179,7 +179,11 @@ def set_default(db: Session, account: CliAccount) -> None:
 def delete(db: Session, account: CliAccount) -> None:
     if account.config_dir is None:
         raise ApiError(409, "system_account", "the system account cannot be removed")
-    if db.scalar(select(Agent.id).where(Agent.account_id == account.id).limit(1)):
+    if db.scalar(
+        select(Agent.id)
+        .where((Agent.account_id == account.id) | (Agent.fallback_account_id == account.id))
+        .limit(1)
+    ):
         raise ApiError(409, "account_in_use", "agents use this account")
     busy = db.scalar(
         select(Run.id)

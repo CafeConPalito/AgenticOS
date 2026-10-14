@@ -18,6 +18,7 @@ class InboxKind(StrEnum):
     LIMIT = "limit"  # an account reached its daily limit (phase 07; per account since phase 10)
     QUOTA = "quota"  # the account ran out of its subscription quota (phase 07)
     ACCOUNT = "account"  # the session of an account is logged out (phase 10)
+    SWITCH = "switch"  # an agent's account is about to run out: switch CLI or stay (phase 10)
 
 
 class InboxStatus(StrEnum):

@@ -45,6 +45,9 @@ class AgentFields(BaseModel):
     # its CLI. Omit them to leave them unchanged.
     team_id: str | None = None
     account_id: str | None = None
+    # The secondary CLI: an account (it fixes the CLI) and a model. Null/empty: none.
+    fallback_account_id: str | None = None
+    fallback_model: Short | None = None
 
     _dedupe_tools = field_validator("allowed_tools")(_unique_tools)
     _no_nulls = field_validator(
@@ -58,6 +61,7 @@ class AgentFields(BaseModel):
         "permission_mode",
         "allowed_tools",
         "max_concurrency",
+        "fallback_model",
         "can_spawn_subagents",
         "can_create_tasks",
         "status",
@@ -99,6 +103,10 @@ class AgentRead(BaseModel):
     template: str | None
     team_id: str | None = None
     account_id: str | None = None
+    fallback_account_id: str | None = None
+    fallback_model: str = ""
+    # Computed: the agent is running with its secondary CLI right now.
+    using_fallback: bool = False
     created_at: datetime
     updated_at: datetime
     # Its queue (phase 05): tasks waiting for it and tasks it is working on.
