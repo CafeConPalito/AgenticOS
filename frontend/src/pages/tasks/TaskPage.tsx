@@ -14,6 +14,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useParams } from 'react-router'
 import { toast } from 'sonner'
+import { useInbox } from '@/api/inbox'
 import { usePipeline } from '@/api/pipelines'
 import { useRun, useRuns } from '@/api/runs'
 import {
@@ -31,6 +32,7 @@ import { AgentAvatar, ProjectChip } from '@/components/agentic/primitives'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { EmptyState } from '@/components/EmptyState'
 import { Field, PageContainer } from '@/components/page'
+import { RequestItem } from '@/components/requests/RequestItem'
 import { TerminalPanel } from '@/components/terminal/TerminalPanel'
 import { Button } from '@/components/ui/button'
 import {
@@ -420,6 +422,7 @@ function TaskSidePanel({ task, stages }: { task: Task; stages: Stage[] }) {
   const { t } = useTranslation()
   const events = useTaskEvents(task.id, isMoving(task)).data ?? []
   const runs = useRuns({ taskId: task.id }).data ?? []
+  const requests = (useInbox('pending').data ?? []).filter((item) => item.task_id === task.id)
   const lastSummary = [...events]
     .reverse()
     .find((e) => e.kind === 'stage_completed' || e.kind === 'completed_manually')
@@ -441,11 +444,16 @@ function TaskSidePanel({ task, stages }: { task: Task; stages: Stage[] }) {
               {task.waiting_detail}
             </p>
           )}
-          <Link to="/inbox" className="mt-2 inline-block text-xs text-ring hover:underline">
-            {t('tasks.detail.openInbox')}
-          </Link>
+          {requests.length === 0 && (
+            <Link to="/inbox" className="mt-2 inline-block text-xs text-ring hover:underline">
+              {t('tasks.detail.openInbox')}
+            </Link>
+          )}
         </section>
       )}
+      {requests.map((item) => (
+        <RequestItem key={item.id} item={item} />
+      ))}
       {task.parent_task_id && (
         <Link
           to={`/tablero/tareas/${task.parent_task_id}`}
