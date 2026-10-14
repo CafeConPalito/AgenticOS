@@ -6,6 +6,7 @@ import type { Project } from '@/api/types'
 import { EmptyState } from '@/components/EmptyState'
 import { PageContainer, PageHeader } from '@/components/page'
 import { Button } from '@/components/ui/button'
+import { useDialogs } from '@/stores/dialogs'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   Table,
@@ -19,7 +20,7 @@ import { relativeTime } from '@/lib/time'
 
 export default function ProjectsPage() {
   const { t } = useTranslation()
-  const navigate = useNavigate()
+  const openNewProject = useDialogs((s) => s.openNewProject)
   const { data: projects, isPending } = useProjects()
 
   return (
@@ -29,7 +30,7 @@ export default function ProjectsPage() {
         subtitle={t('projects.subtitle')}
         actions={
           <Button
-            onClick={() => navigate('/proyectos/nuevo')}
+            onClick={() => openNewProject()}
             className="bg-primary-action text-white hover:bg-primary-action-hover"
           >
             <Plus />
@@ -52,7 +53,7 @@ export default function ProjectsPage() {
           description={t('pages.projects.emptyDescription')}
         >
           <Button
-            onClick={() => navigate('/proyectos/nuevo')}
+            onClick={() => openNewProject()}
             className="bg-primary-action text-white hover:bg-primary-action-hover"
           >
             {t('header.primary.newProject')}

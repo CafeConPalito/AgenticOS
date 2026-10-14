@@ -198,7 +198,9 @@
       "blank": "En blanco",
       "blankDescription": "Un agente vacío para configurar desde cero.",
       "blankName": "Nuevo agente",
-      "created": "Agente «{{name}}» creado"
+      "created": "Agente «{{name}}» creado",
+      "submit": "Crear agente",
+      "draftNote": "Se crea como borrador: actívalo desde su ficha cuando esté listo."
     },
     "tabs": {
       "general": "General",
@@ -281,9 +283,16 @@
     },
     "new": {
       "title": "Nuevo proyecto",
-      "subtitle": "Registra una carpeta existente o crea una nueva. Agentic OS no mueve ni borra tus archivos.",
+      "subtitle": "Elige la carpeta donde trabajarán tus agentes. Agentic OS no mueve ni borra tus archivos.",
       "createFolder": "Crear la carpeta",
-      "created": "Proyecto «{{name}}» creado"
+      "created": "Proyecto «{{name}}» creado",
+      "pipeline": "Pipeline",
+      "noPipeline": "Sin pipeline",
+      "noPipelineHelp": "Las tareas van directas al agente que elijas.",
+      "webPipeline": "Desarrollo web",
+      "webPipelineHelp": "Requisitos → Desarrollo → QA",
+      "pipelineFailed": "Proyecto «{{name}}» creado, pero no se pudo añadir el pipeline: {{error}}",
+      "submit": "Crear proyecto"
     },
     "tabs": {
       "summary": "Resumen",
@@ -542,11 +551,10 @@
     "empty": "Este proyecto todavía no tiene tareas.",
     "new": {
       "title": "Nueva tarea",
-      "description": "Se pondrá en la cola del agente de la primera etapa, o del agente que elijas si el proyecto no tiene pipeline.",
+      "description": "Crea una tarea y ponla en la cola de un agente.",
       "project": "Proyecto",
       "pickProject": "Elige un proyecto",
-      "titleField": "Título",
-      "titlePlaceholder": "Login con Google",
+      "titlePlaceholder": "p. ej. Añadir filtro por precio en categorías",
       "descriptionField": "Descripción",
       "descriptionPlaceholder": "Qué hay que hacer, criterios de aceptación…",
       "priority": "Prioridad",
@@ -554,11 +562,15 @@
       "pickAgent": "Elige un agente",
       "pipelineNote": "Empieza en «{{stage}}» con {{agent}}.",
       "pipelineNoAgent": "Empieza en «{{stage}}», que todavía no tiene agente.",
-      "backlog": "Dejar en el backlog",
-      "submit": "Crear tarea",
+      "submit": "Crear y encolar",
       "submitting": "Creando…",
-      "created": "{{code}} creada",
-      "hint": "Ctrl+Enter para crear"
+      "what": "Qué hay que hacer",
+      "addDescription": "Añadir descripción",
+      "saveBacklog": "Guardar en backlog",
+      "queued": "{{code}} en la cola de {{agent}}",
+      "backlogged": "{{code}} guardada en el backlog",
+      "view": "Ver tarea",
+      "pipelineHint": "En un proyecto con pipeline, la tarea empieza en su primera etapa."
     },
     "detail": {
       "description": "Descripción",

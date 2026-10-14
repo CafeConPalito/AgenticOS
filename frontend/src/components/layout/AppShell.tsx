@@ -9,6 +9,8 @@ import { useGlobalShortcuts } from '@/lib/shortcuts'
 import { TerminalDock, useDockShortcut } from '@/components/terminal/TerminalDock'
 import { useDock } from '@/components/terminal/dock-store'
 import { cn } from '@/lib/utils'
+import { NewAgentDialog } from '@/pages/agents/NewAgentDialog'
+import { NewProjectDialog } from '@/pages/projects/NewProjectDialog'
 import { NewTaskDialog } from '@/pages/tasks/NewTaskDialog'
 import { useDialogs } from '@/stores/dialogs'
 import { useTheme } from '@/theme/ThemeProvider'
@@ -30,6 +32,10 @@ export function AppShell() {
   const dockPosition = useDock((s) => s.position)
   const newTask = useDialogs((s) => s.newTask)
   const closeNewTask = useDialogs((s) => s.closeNewTask)
+  const newAgent = useDialogs((s) => s.newAgent)
+  const closeNewAgent = useDialogs((s) => s.closeNewAgent)
+  const newProject = useDialogs((s) => s.newProject)
+  const closeNewProject = useDialogs((s) => s.closeNewProject)
   useDockShortcut()
   useGlobalShortcuts()
   useInboxNotifier()
@@ -67,7 +73,13 @@ export function AppShell() {
           </div>
         </div>
       </div>
-      <NewTaskDialog open={newTask !== null} onOpenChange={(open) => !open && closeNewTask()} />
+      <NewTaskDialog
+        open={newTask !== null}
+        init={newTask}
+        onOpenChange={(open) => !open && closeNewTask()}
+      />
+      <NewAgentDialog open={newAgent} onOpenChange={(open) => !open && closeNewAgent()} />
+      <NewProjectDialog open={newProject} onOpenChange={(open) => !open && closeNewProject()} />
       <Toaster theme={theme} />
     </TooltipProvider>
   )

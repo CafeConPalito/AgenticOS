@@ -42,6 +42,19 @@ export function usePipelineFromTemplate(projectId: string) {
   })
 }
 
+/** Applies a template to a project given at call time (a project that was just created). */
+export function useApplyPipelineTemplate() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ projectId, template }: { projectId: string; template: 'web' }) =>
+      api.post<Pipeline>(`/api/projects/${projectId}/pipeline/template`, { template }),
+    onSuccess: (pipeline, { projectId }) => {
+      queryClient.setQueryData(pipelineKeys.project(projectId), pipeline)
+      return queryClient.invalidateQueries({ queryKey: taskKeys.all })
+    },
+  })
+}
+
 export function useDeletePipeline(projectId: string) {
   const set = useSetPipeline(projectId)
   return useMutation({

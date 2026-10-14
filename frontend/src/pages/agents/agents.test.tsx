@@ -36,17 +36,6 @@ describe('Agents list', () => {
     expect(backend.callsTo('POST', '/api/agents')[0].body).toEqual({ template: 'developer' })
     expect(await screen.findByRole('heading', { name: /Desarrollador/ })).toBeVisible()
   })
-
-  it('header button opens the template picker', async () => {
-    createFakeBackend()
-    const user = userEvent.setup()
-    const { router } = renderApp('/agentes')
-    await user.click(await screen.findByRole('button', { name: es.header.primary.newAgent }))
-    expect(router.state.location.pathname).toBe('/agentes/nuevo')
-    expect(
-      await screen.findByRole('button', { name: new RegExp(es.agents.new.blank) }),
-    ).toBeVisible()
-  })
 })
 
 describe('Agent editor', () => {

@@ -9,6 +9,7 @@ import { AgentAvatar, CliTag, StatusBadge } from '@/components/agentic/primitive
 import { EmptyState } from '@/components/EmptyState'
 import { PageContainer, PageHeader } from '@/components/page'
 import { Button } from '@/components/ui/button'
+import { useDialogs } from '@/stores/dialogs'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   Table,
@@ -23,7 +24,7 @@ import { TemplatePicker } from './TemplatePicker'
 export default function AgentsPage() {
   const { t } = useTranslation()
   const { data: agents, isPending } = useAgents()
-  const navigate = useNavigate()
+  const openNewAgent = useDialogs((s) => s.openNewAgent)
 
   return (
     <PageContainer>
@@ -37,7 +38,7 @@ export default function AgentsPage() {
               {t('agents.architect')}
             </Button>
             <Button
-              onClick={() => navigate('/agentes/nuevo')}
+              onClick={() => openNewAgent()}
               className="bg-primary-action text-white hover:bg-primary-action-hover"
             >
               <Plus />

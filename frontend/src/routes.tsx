@@ -1,4 +1,6 @@
+import { useEffect } from 'react'
 import { Navigate, type RouteObject } from 'react-router'
+import { useDialogs } from '@/stores/dialogs'
 import { AppShell } from '@/components/layout/AppShell'
 import {
   AgentCrumb,
@@ -10,11 +12,9 @@ import {
 } from '@/components/layout/crumbs'
 import AgentEditorPage from '@/pages/agents/AgentEditorPage'
 import AgentsPage from '@/pages/agents/AgentsPage'
-import NewAgentPage from '@/pages/agents/NewAgentPage'
 import BoardPage from '@/pages/BoardPage'
 import HomePage from '@/pages/home/HomePage'
 import InboxPage from '@/pages/InboxPage'
-import NewProjectPage from '@/pages/projects/NewProjectPage'
 import ProjectDetailPage from '@/pages/projects/ProjectDetailPage'
 import ProjectsPage from '@/pages/projects/ProjectsPage'
 import RunPage from '@/pages/runs/RunPage'
@@ -22,6 +22,16 @@ import RunsPage from '@/pages/runs/RunsPage'
 import SettingsPage from '@/pages/settings/SettingsPage'
 import TaskPage from '@/pages/tasks/TaskPage'
 import UsagePage from '@/pages/UsagePage'
+
+/** `/agentes/nuevo` and `/proyectos/nuevo` now are dialogs: go to the list and open it. */
+function OpenDialog({ dialog, to }: { dialog: 'newAgent' | 'newProject'; to: string }) {
+  useEffect(() => {
+    const { openNewAgent, openNewProject } = useDialogs.getState()
+    if (dialog === 'newAgent') openNewAgent()
+    else openNewProject()
+  }, [dialog])
+  return <Navigate to={to} replace />
+}
 
 const crumb = (fn: CrumbHandle['crumb']): CrumbHandle => ({ crumb: fn })
 
@@ -36,11 +46,8 @@ export const routes: RouteObject[] = [
         handle: crumb(() => <TextCrumb i18nKey="nav.agents" />),
         children: [
           { index: true, element: <AgentsPage /> },
-          {
-            path: 'nuevo',
-            element: <NewAgentPage />,
-            handle: crumb(() => <TextCrumb i18nKey="agents.new.title" />),
-          },
+          // Old links and shortcuts: the list, with the dialog open.
+          { path: 'nuevo', element: <OpenDialog dialog="newAgent" to="/agentes" /> },
           { path: ':agentId', element: <Navigate to="general" replace /> },
           {
             path: ':agentId/:tab',
@@ -54,11 +61,7 @@ export const routes: RouteObject[] = [
         handle: crumb(() => <TextCrumb i18nKey="nav.projects" />),
         children: [
           { index: true, element: <ProjectsPage /> },
-          {
-            path: 'nuevo',
-            element: <NewProjectPage />,
-            handle: crumb(() => <TextCrumb i18nKey="projects.new.title" />),
-          },
+          { path: 'nuevo', element: <OpenDialog dialog="newProject" to="/proyectos" /> },
           { path: ':projectId', element: <Navigate to="summary" replace /> },
           {
             path: ':projectId/:tab',

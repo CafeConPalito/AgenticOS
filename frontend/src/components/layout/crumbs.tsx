@@ -23,8 +23,6 @@ export function TextCrumb({
     | 'nav.inbox'
     | 'nav.usage'
     | 'nav.settings'
-    | 'agents.new.title'
-    | 'projects.new.title'
 }) {
   const { t } = useTranslation()
   return <>{t(i18nKey)}</>

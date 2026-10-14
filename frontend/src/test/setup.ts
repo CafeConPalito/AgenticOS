@@ -2,6 +2,11 @@ import '@testing-library/jest-dom/vitest'
 import { cleanup, configure } from '@testing-library/react'
 import { afterEach, vi } from 'vitest'
 import '@/i18n'
+import { useDialogs } from '@/stores/dialogs'
+import { useUiPrefs } from '@/stores/ui-prefs'
+
+const DIALOGS_INITIAL = useDialogs.getState()
+const PREFS_INITIAL = useUiPrefs.getState()
 
 // findBy*/waitFor default to 1 s, too short for whole-app renders on a busy machine.
 configure({ asyncUtilTimeout: 3000 })
@@ -35,5 +40,8 @@ afterEach(() => {
   vi.restoreAllMocks()
   vi.unstubAllGlobals()
   localStorage.clear()
+  // Module-level stores outlive each test's render: back to their start.
+  useDialogs.setState(DIALOGS_INITIAL, true)
+  useUiPrefs.setState(PREFS_INITIAL, true)
   document.documentElement.className = ''
 })

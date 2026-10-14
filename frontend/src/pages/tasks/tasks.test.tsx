@@ -242,7 +242,7 @@ describe('New task', () => {
 
     await user.click(await screen.findByRole('button', { name: es.tasks.new.title }))
     const dialog = await screen.findByRole('dialog')
-    await user.type(within(dialog).getByLabelText(es.tasks.new.titleField), 'Carrito')
+    await user.type(within(dialog).getByLabelText(es.tasks.new.what), 'Carrito')
     await user.click(within(dialog).getByRole('button', { name: es.tasks.new.submit }))
     await waitFor(() => expect(backend.callsTo('POST', '/api/tasks')).toHaveLength(1))
     expect(backend.callsTo('POST', '/api/tasks')[0].body).toEqual({
