@@ -66,6 +66,7 @@ PERMISSION_DETAIL = {
     "claude": "Claude Code pide permiso para esta acción.",
     "command": "agy pide permiso para ejecutar este comando.",
     "tool": "agy pide permiso para usar esta herramienta.",
+    "edit": "agy pide permiso para editar este archivo.",
 }
 
 SHUTDOWN_TIMEOUT = 5.0
