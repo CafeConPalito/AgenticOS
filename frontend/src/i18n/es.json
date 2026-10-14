@@ -15,7 +15,6 @@
   },
   "header": {
     "search": "Buscar agentes, tareas o acciones…",
-    "terminal": "Terminal",
     "primary": {
       "newTask": "Nueva tarea",
       "newAgent": "Nuevo agente",
@@ -49,36 +48,22 @@
   },
   "pages": {
     "agents": {
-      "title": "Agentes",
       "emptyTitle": "Aún no tienes agentes",
       "emptyDescription": "Crea tu primer agente o usa una plantilla: Analista, Desarrollador, QA, Redactor, Comercial."
     },
     "projects": {
-      "title": "Proyectos",
       "emptyTitle": "Aún no tienes proyectos",
       "emptyDescription": "Un proyecto es una carpeta en la que trabajan tus agentes, con su pipeline y su memoria."
     },
     "board": {
-      "title": "Tablero",
       "emptyTitle": "No hay tareas",
       "emptyDescription": "Las tareas de todos tus proyectos aparecerán aquí, por estado, por etapa o por agente."
-    },
-    "inbox": {
-      "title": "Inbox",
-      "emptyTitle": "Todo al día",
-      "emptyDescription": "Las aprobaciones, preguntas y bloqueos de tus agentes llegarán aquí."
     },
     "usage": {
       "title": "Consumo",
       "emptyTitle": "Sin datos de consumo",
       "emptyDescription": "Cuando tus agentes trabajen, aquí verás sus tokens, su coste y sus horas."
-    },
-    "settings": {
-      "title": "Ajustes",
-      "emptyTitle": "Ajustes",
-      "emptyDescription": "CLIs detectados, carpeta de datos, notificaciones, idioma y tema."
-    },
-    "comingSoon": "Disponible en próximas fases"
+    }
   },
   "common": {
     "cancel": "Cancelar",
@@ -597,8 +582,6 @@
       "runs": "Ejecuciones",
       "noRuns": "Todavía no se ha ejecutado.",
       "waiting": "Necesita tu atención",
-      "branch": "Rama",
-      "worktree": "Worktree",
       "noRun": "La terminal aparecerá cuando un agente empiece a trabajar en la tarea.",
       "lastSummary": "Resumen del agente",
       "rejections": "Rechazos: {{count}}",
@@ -943,22 +926,6 @@
     "noCost": "—",
     "unavailable": "Consumo no disponible",
     "partialHint": "Cifra en vivo: la definitiva llega al cerrar la sesión.",
-    "today": {
-      "title": "Consumo de hoy",
-      "tokens": "Tokens",
-      "cached": "{{value}} en caché",
-      "cost": "Coste",
-      "costNote": "Equivalente API",
-      "noLimit": "Sin límite diario",
-      "limitOf": "Límite diario {{value}}",
-      "byAgent": "Por agente",
-      "limitBar": "{{cli}} · {{percent}} del límite diario",
-      "near": "Cerca del límite diario de {{cli}}",
-      "reached": "Límite diario de {{cli}} alcanzado: no se lanzan tareas nuevas",
-      "quota": "{{cli}} sin cuota: no se lanzan tareas nuevas",
-      "detail": "Ver detalle →",
-      "empty": "Tus agentes no han consumido nada hoy."
-    },
     "session": {
       "title": "Consumo de la sesión",
       "input": "Tokens entrada",
@@ -982,10 +949,7 @@
   },
   "cliReadiness": {
     "missingTitle": "No hay ningún CLI de agentes instalado.",
-    "missing": "Agentic OS trabaja con Claude Code y Antigravity CLI: instala al menos uno e inicia sesión para que tus agentes puedan trabajar.",
-    "loggedOutTitle": "Ningún CLI tiene sesión iniciada.",
-    "loggedOut": "Abre el CLI en una terminal e inicia sesión para que tus agentes puedan trabajar.",
-    "open": "Ver CLIs detectados"
+    "missing": "Agentic OS trabaja con Claude Code y Antigravity CLI: instala al menos uno e inicia sesión para que tus agentes puedan trabajar."
   },
   "home": {
     "title": "Inicio",
