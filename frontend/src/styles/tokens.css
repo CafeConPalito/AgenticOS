@@ -8,7 +8,7 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --radius: 0.5rem; /* 8px → rounded-md. sm 6 / lg 12 / xl 14 */
+  --radius: 0.625rem; /* v7: 10px → rounded-md. sm 8 / lg 14 / xl 18 / 2xl 20 */
 
   --background: #f4f6fa;
   --foreground: #0a1a33;
@@ -70,6 +70,18 @@
   --status-failed: #c9302c;
   --status-cancelled: #647089;
   --status-intervening: #f5b547; /* borde "Estás interviniendo" (sobre terminal oscura) */
+
+  /* v7 */
+  --sep: color-mix(in oklch, #d6deea 80%, transparent);
+  --glass: color-mix(in oklch, #f4f6fa 72%, transparent);
+  --glass-pop: color-mix(in oklch, #ffffff 84%, transparent);
+  --card-grad: linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%);
+  --shadow-card: 0 1px 2px rgba(10, 26, 51, 0.05), 0 6px 20px rgba(10, 26, 51, 0.06);
+  --shadow-pop: 0 0 0 0.5px rgba(10, 26, 51, 0.08), 0 24px 64px rgba(10, 26, 51, 0.18);
+  --atmos:
+    radial-gradient(900px 520px at 8% -12%, rgba(46, 91, 214, 0.14), transparent 62%),
+    radial-gradient(720px 440px at 96% -4%, rgba(76, 201, 240, 0.1), transparent 60%),
+    radial-gradient(rgba(10, 26, 51, 0.05) 1px, transparent 1.2px) 0 0 / 22px 22px;
 }
 
 .dark {
@@ -127,16 +139,36 @@
   --status-failed: #ff6b6f;
   --status-cancelled: #8492ae;
   --status-intervening: #f5b547;
+
+  /* v7 */
+  --sep: color-mix(in oklch, #1e3a66 65%, transparent);
+  --glass: color-mix(in oklch, #0a1a33 70%, transparent);
+  --glass-pop: color-mix(in oklch, #13284d 82%, transparent);
+  --card-grad: linear-gradient(180deg, #13294b 0%, #0f2242 70%);
+  --shadow-card:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 1px 2px rgba(0, 0, 0, 0.25),
+    0 8px 24px rgba(0, 0, 0, 0.18);
+  --shadow-pop: 0 0 0 0.5px rgba(255, 255, 255, 0.08), 0 24px 64px rgba(0, 0, 0, 0.5);
+  --atmos:
+    radial-gradient(900px 520px at 8% -12%, rgba(46, 91, 214, 0.42), transparent 62%),
+    radial-gradient(720px 440px at 96% -4%, rgba(76, 201, 240, 0.13), transparent 60%),
+    radial-gradient(900px 600px at 70% 115%, rgba(179, 156, 255, 0.09), transparent 60%),
+    radial-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1.2px) 0 0 / 22px 22px;
 }
 
 @theme inline {
   --font-sans: 'Ubuntu', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'Ubuntu Mono', ui-monospace, monospace;
 
-  --radius-sm: calc(var(--radius) - 2px); /* 6px  */
-  --radius-md: var(--radius); /* 8px  */
-  --radius-lg: calc(var(--radius) + 4px); /* 12px */
-  --radius-xl: calc(var(--radius) + 6px); /* 14px */
+  --radius-sm: calc(var(--radius) - 2px); /* 8px  */
+  --radius-md: var(--radius); /* 10px */
+  --radius-lg: calc(var(--radius) + 4px); /* 14px */
+  --radius-xl: calc(var(--radius) + 8px); /* 18px */
+  --radius-2xl: calc(var(--radius) + 10px); /* 20px */
+
+  --color-sep: var(--sep);
+  --shadow-card: var(--shadow-card);
+  --shadow-pop: var(--shadow-pop);
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -195,6 +227,47 @@
   --animate-live-shimmer: live-shimmer 1.6s linear infinite;
   --animate-blink: blink 1s steps(1) infinite;
   --animate-toast-in: toast-in 0.22s ease-out;
+  --animate-rise-in: rise-in 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  --animate-sheet-in: sheet-in 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+  --animate-fade-in: fade-in 0.2s ease-out;
+  --animate-sweep: sweep 2.6s linear infinite;
+
+  @keyframes rise-in {
+    from {
+      opacity: 0;
+      transform: translateY(14px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes sheet-in {
+    from {
+      opacity: 0;
+      transform: translateY(10px) scale(0.985);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  @keyframes sweep {
+    from {
+      background-position: 150% 0;
+    }
+    to {
+      background-position: -50% 0;
+    }
+  }
 
   @keyframes live-pulse {
     0% {
@@ -242,6 +315,26 @@
     outline: 2px solid var(--ring);
     outline-offset: 2px;
   }
+  button,
+  a,
+  [role='link'] {
+    transition:
+      background-color 0.2s cubic-bezier(0.25, 0.1, 0.25, 1),
+      color 0.2s,
+      border-color 0.2s,
+      box-shadow 0.25s,
+      transform 0.18s cubic-bezier(0.25, 0.1, 0.25, 1);
+  }
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: color-mix(in oklch, var(--muted-foreground) 35%, transparent);
+    border-radius: 10px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
   ::selection {
     background: #2e5bd6;
     color: #fff;
@@ -254,4 +347,34 @@
       transition: none !important;
     }
   }
+}
+
+/* v7 · utilidades que Tailwind no expresa directamente */
+@utility bg-atmos {
+  background: var(--atmos);
+}
+@utility bg-card-grad {
+  background: var(--card-grad);
+}
+@utility glass {
+  background: var(--glass);
+  backdrop-filter: saturate(180%) blur(20px);
+}
+@utility glass-pop {
+  background: var(--glass-pop);
+  backdrop-filter: saturate(180%) blur(28px);
+}
+@utility border-sep {
+  border-color: var(--sep);
+}
+@utility eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+@utility rise-delay {
+  animation-delay: var(--rise-delay, 0ms);
 }
