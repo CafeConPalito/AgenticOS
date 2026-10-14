@@ -207,7 +207,7 @@ function TaskDetail({ task }: { task: Task }) {
             </div>
           )}
         </div>
-        <aside className="flex min-h-0 flex-col overflow-auto border-l p-4">
+        <aside className="flex min-h-0 flex-col overflow-auto border-l p-4 [&>*]:shrink-0">
           <ExecutionTree
             task={task}
             selected={runId}

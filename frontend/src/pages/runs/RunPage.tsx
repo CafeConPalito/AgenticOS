@@ -129,7 +129,7 @@ function RunDetail({ run }: { run: Run }) {
             <span className="truncate">{run.cwd}</span>
           </div>
         </div>
-        <aside className="flex min-h-0 flex-col overflow-auto border-l p-4">
+        <aside className="flex min-h-0 flex-col overflow-auto border-l p-4 [&>*]:shrink-0">
           <RunEventsPanel runId={run.id} />
           <SessionUsage run={run} />
         </aside>
