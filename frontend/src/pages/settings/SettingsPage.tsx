@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useLocation } from 'react-router'
+import { useLocation, useNavigate } from 'react-router'
 import { PageContainer, PageHeader } from '@/components/page'
 import { cn } from '@/lib/utils'
 import { AboutSection } from './AboutSection'
@@ -42,19 +42,30 @@ function useVisibleSection(): [SectionId, (id: SectionId) => void] {
 export default function SettingsPage() {
   const { t } = useTranslation()
   const { hash } = useLocation()
+  const navigate = useNavigate()
   const [visible, setVisible] = useVisibleSection()
+  // The index scrolls smoothly by itself: the hash effect below must not jump over it.
+  const fromIndex = useRef(false)
 
   // `/ajustes#clis` (from Inicio, the CLI notices…) scrolls to its section.
   useEffect(() => {
     const id = hash.slice(1)
     if (!id) return
+    if (fromIndex.current) {
+      fromIndex.current = false
+      return
+    }
     document.getElementById(id)?.scrollIntoView({ block: 'start' })
     if ((SECTIONS as readonly string[]).includes(id)) setVisible(id as SectionId)
   }, [hash, setVisible])
 
   function go(id: SectionId) {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    history.replaceState(null, '', `#${id}`)
+    // Through the router, so `location.hash` follows and a later link to a section scrolls.
+    if (hash !== `#${id}`) {
+      fromIndex.current = true
+      void navigate({ hash: id }, { replace: true })
+    }
     setVisible(id)
   }
 

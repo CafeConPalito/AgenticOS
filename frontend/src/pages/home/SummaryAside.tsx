@@ -3,14 +3,13 @@ import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 import type { CliInfo, HomeAgent, HomeProject, LimitState, UsageToday } from '@/api/types'
-import { AgentAvatar } from '@/components/agentic/primitives'
-import { formatPercent, formatTokens, formatUsd } from '@/lib/format'
+import { AgentAvatar, CLI_TAG } from '@/components/agentic/primitives'
+import { formatPercent, formatTokensUnit, formatUsd } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { useDialogs } from '@/stores/dialogs'
 
 /** From here the spend turns amber. */
 export const WARN_AT = 0.8
-const CLI_TAG = { claude: 'CC', agy: 'AG' } as const
 const ROW = '-mx-2 rounded-[9px] px-2 text-foreground hover:bg-subtle'
 
 function AsideSection({
@@ -74,7 +73,7 @@ export function SpendMeter({
   const { t } = useTranslation()
   const usd = limit?.unit === 'usd' && limit.limit ? limit.limit : null
   const ratio = usd ? cost / usd : null
-  const amount = cost > 0 || tokens === 0 ? formatUsd(cost) : `${formatTokens(tokens)} tok`
+  const amount = cost > 0 || tokens === 0 ? formatUsd(cost) : formatTokensUnit(tokens)
   return (
     <Link
       to="/consumo"

@@ -480,6 +480,22 @@ function TaskSidePanel({ task, stages }: { task: Task; stages: Stage[] }) {
         </section>
       )}
       {task.subtasks_total > 0 && <Subtasks task={task} />}
+      {(task.branch || task.worktree_path) && (
+        <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 text-xs">
+          {task.branch && (
+            <>
+              <dt className="text-muted-foreground">{t('tasks.detail.branch')}</dt>
+              <dd className="font-mono break-all">{task.branch}</dd>
+            </>
+          )}
+          {task.worktree_path && (
+            <>
+              <dt className="text-muted-foreground">{t('tasks.detail.worktree')}</dt>
+              <dd className="font-mono break-all">{task.worktree_path}</dd>
+            </>
+          )}
+        </dl>
+      )}
       <section>
         <h2 className="mb-2 text-[12.5px] text-muted-foreground">{t('tasks.detail.history')}</h2>
         <ol className="flex flex-col gap-2.5">

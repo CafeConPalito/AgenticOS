@@ -4,7 +4,7 @@
 
 ## Tests automáticos
 ```
-frontend (vitest):  22 archivos · 160 tests en verde
+frontend (vitest):  22 archivos · 166 tests en verde
 frontend:           eslint, prettier --check y tsc en verde
 backend (pytest):   nuevos test_home_api.py (5) y test_tasks_api.py (+1) en verde
                     2 fallos en tests/test_usage_stats.py (límites diarios) que no tocan código
@@ -39,7 +39,22 @@ backend (pytest):   nuevos test_home_api.py (5) y test_tasks_api.py (+1) en verd
 La medición «antes» no se hizo ejecutando la v1.0; si se quiere, se repite en `main`.
 
 ## Code review
-Pendiente (`/code-review`).
+Revisión de la rama completa: 10 hallazgos, ninguno bloqueante. Resueltos 9; 1 anotado.
+
+| # | Hallazgo | Resolución |
+|---|---|---|
+| 1 | «Nueva tarea» ignoraba el agente del opener con pipeline y recordaba un agente no usado | avisa de que el pipeline decide el agente y recuerda el que se usó (`new-task.test.tsx`) |
+| 2 | El panel de tarea perdió rama y ruta del worktree | restaurados |
+| 3 | `N` y `?` actuaban con un menú, select o popover abierto | guarda `menuOpen` (`shortcuts.test.ts`, `palette.test.tsx`) |
+| 4 | Ctrl+K se apilaba sobre otros diálogos | guarda `dialogOpen`; sigue cerrando la propia paleta |
+| 5 | La paleta mostraba tareas obsoletas y las coincidencias de tarea podían quedar fuera | filtra por lo escrito y reserva hasta 6 huecos para tareas |
+| 6 | Ajustes cambiaba el hash fuera del router | `navigate({ hash }, { replace })` (`settings.test.tsx`) |
+| 7 | `/api/home` hacía decenas de consultas por sondeo | `resume.resumable_among`: 3 consultas por lote, misma lógica |
+| 8 | `GET /api/tasks?q=` carga todas las tareas en cada pulsación | **no se cambia**: con el volumen de una app local no se nota; anotado para una fase futura |
+| 9 | Toast del CSV con `String(error)` | `errorMessage()` |
+| 10 | `CLI_TAG` duplicado y « tok» sin i18n | `CLI_TAG` exportado de `primitives`; `formatTokensUnit` + `common.tokensUnit` |
+
+Al añadir los tests apareció otro fallo: `cmdk` consumía Ctrl+K dentro de la paleta (atajo vim «anterior»), así que no se podía cerrar con la misma tecla. Se desactivó `vimBindings`.
 
 ## Retro
 - **Cambios respecto a la spec**: el plan se dio por aprobado con la orden «ejecuta el plan». La etapa del pipeline en «Nueva tarea» no es seleccionable: la tarea siempre empieza en la primera etapa (lo que ya hacía el backend), así que el campo muestra «Empieza en <etapa> con <agente>». Se retiraron `TodayUsageCard` y `CliReadinessBanner` (sustituidos por el resumen y los avisos de Inicio) y los componentes `sidebar` y `use-mobile`.

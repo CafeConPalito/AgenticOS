@@ -2,7 +2,7 @@ import { Plus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router'
 import type { AgentState, HomeAgent, HomeSession, TodayAgent } from '@/api/types'
-import { AgentAvatar } from '@/components/agentic/primitives'
+import { AgentAvatar, CLI_TAG } from '@/components/agentic/primitives'
 import { useNow } from '@/hooks/use-now'
 import { formatTokens, formatUsd } from '@/lib/format'
 import { formatDuration } from '@/lib/time'
@@ -15,8 +15,6 @@ const STATE_COLOR: Record<AgentState, string> = {
   idle: 'text-status-done',
   draft: 'text-status-review',
 }
-
-const CLI_TAG = { claude: 'CC', agy: 'AG' } as const
 
 function SessionRow({ session, waiting }: { session: HomeSession; waiting: boolean }) {
   const { t } = useTranslation()

@@ -106,7 +106,7 @@ def build(db: Session) -> HomeRead:
         .order_by(Run.created_at.desc())
         .limit(RESUMABLE_CANDIDATES)
     )
-    resumable = [run for run in candidates if resume.resumable(db, run)]
+    resumable = resume.resumable_among(db, list(candidates))
 
     task_ids = {r.task_id for r in [*live, *resumable] if r.task_id}
     tasks = {t.id: t for t in db.scalars(select(Task).where(Task.id.in_(task_ids)))}

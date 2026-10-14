@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from agentic_os.errors import ApiError
@@ -56,6 +56,50 @@ def resumable(db: Session, run: Run) -> bool:
         if newer is not None:
             return False
     return True
+
+
+def resumable_among(db: Session, runs: list[Run]) -> list[Run]:
+    """The runs of `runs` for which `resumable` holds, with three queries instead of a few per
+    run (Inicio asks about up to a hundred of them every few seconds)."""
+    eligible = [
+        run
+        for run in runs
+        if RunStatus(run.status) in RESUMABLE
+        and run.cli_session_id
+        and not run.parent_run_id
+        and run.error != SESSION_MISSING
+        and run.agent_id is not None
+        and run.project_id is not None
+    ]
+    if not eligible:
+        return []
+    resumed = set(
+        db.scalars(
+            select(Run.resumed_from_id).where(Run.resumed_from_id.in_([r.id for r in eligible]))
+        )
+    )
+    task_ids = {r.task_id for r in eligible if r.task_id}
+    tasks = {t.id: t for t in db.scalars(select(Task).where(Task.id.in_(task_ids)))}
+    latest = dict(
+        db.execute(
+            select(Run.task_id, func.max(Run.created_at))
+            .where(Run.task_id.in_(task_ids), Run.parent_run_id.is_(None))
+            .group_by(Run.task_id)
+        ).all()
+    )
+    result = []
+    for run in eligible:
+        if run.id in resumed:
+            continue
+        if run.task_id:
+            task = tasks.get(run.task_id)
+            if task is None or task.status != TaskStatus.WAITING_HUMAN or task_ops.is_live(task):
+                continue
+            newest = latest.get(task.id)
+            if newest is not None and newest > run.created_at:
+                continue
+        result.append(run)
+    return result
 
 
 def check(db: Session, run: Run, transcript: Path | None) -> dict:

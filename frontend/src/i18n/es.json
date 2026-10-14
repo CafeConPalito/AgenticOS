@@ -66,6 +66,7 @@
     }
   },
   "common": {
+    "tokensUnit": "{{value}} tok",
     "cancel": "Cancelar",
     "save": "Guardar cambios",
     "saving": "Guardando…",
@@ -564,6 +565,7 @@
       "pickAgent": "Elige un agente",
       "pipelineNote": "Empieza en «{{stage}}» con {{agent}}.",
       "pipelineNoAgent": "Empieza en «{{stage}}», que todavía no tiene agente.",
+      "agentOverridden": "El pipeline decide el agente: esta tarea no irá a {{agent}}.",
       "submit": "Crear y encolar",
       "submitting": "Creando…",
       "what": "Qué hay que hacer",
@@ -581,6 +583,8 @@
       "history": "Historial",
       "runs": "Ejecuciones",
       "noRuns": "Todavía no se ha ejecutado.",
+      "branch": "Rama",
+      "worktree": "Worktree",
       "waiting": "Necesita tu atención",
       "noRun": "La terminal aparecerá cuando un agente empiece a trabajar en la tarea.",
       "lastSummary": "Resumen del agente",

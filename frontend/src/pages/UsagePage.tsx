@@ -17,6 +17,7 @@ import { EmptyState } from '@/components/EmptyState'
 import { PageContainer, PageHeader } from '@/components/page'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { errorMessage } from '@/lib/form-errors'
 import { formatPercent, formatTokens, formatUsd } from '@/lib/format'
 import { DailyChart, type Metric } from './usage/DailyChart'
 import { KpiCard, Segmented, ShareBar } from './usage/parts'
@@ -51,7 +52,7 @@ export default function UsagePage() {
   function exportCsv() {
     downloadSessionsCsv({ days }).then(
       () => toast.success(t('usage.exported')),
-      (error: unknown) => toast.error(String(error)),
+      (error: unknown) => toast.error(errorMessage(error)),
     )
   }
 

@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import i18n from '@/i18n'
-import { formatTokens, formatUsd } from '@/lib/format'
+import { formatTokensUnit, formatUsd } from '@/lib/format'
 
 function Chip({ children }: { children: React.ReactNode }) {
   return (
@@ -39,7 +39,7 @@ export function Greeting({
     day: 'numeric',
     month: 'long',
   }).format(now)
-  const spent = cost > 0 || tokens === 0 ? formatUsd(cost) : `${formatTokens(tokens)} tok`
+  const spent = cost > 0 || tokens === 0 ? formatUsd(cost) : formatTokensUnit(tokens)
 
   return (
     <div className="flex min-w-0 animate-rise-in flex-col gap-3.5">

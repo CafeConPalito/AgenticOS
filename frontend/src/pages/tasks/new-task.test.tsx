@@ -113,6 +113,49 @@ describe('Nueva tarea dialog', () => {
     expect(backend.callsTo('POST', '/api/tasks')[0].body).toMatchObject({ agent_id: qa.id })
   })
 
+  it('with a pipeline the stage decides the agent: says so and remembers the one used', async () => {
+    const { dev, qa, tienda } = seed()
+    const pipeline = {
+      id: 'pl-1',
+      project_id: tienda.id,
+      name: 'Desarrollo web',
+      max_rejections: 3,
+      stages: [
+        {
+          id: 'st-1',
+          position: 0,
+          name: 'Diseño',
+          agent_id: dev.id,
+          agent_name: 'Dev',
+          agent_color: dev.color,
+          requires_review: false,
+          reject_to_stage_id: null,
+          active_tasks: 0,
+        },
+      ],
+    }
+    const backend = createFakeBackend({
+      agents: [dev, qa],
+      projects: [tienda],
+      pipelines: { [tienda.id]: pipeline },
+    })
+    const user = userEvent.setup({ pointerEventsCheck: 0 })
+    renderApp('/')
+    const card = await screen.findByRole('link', { name: /^QA, Pruebas/ })
+    await user.click(within(card).getByRole('button', { name: 'Asignar tarea a QA' }))
+
+    const dialog = await screen.findByRole('dialog')
+    expect(await within(dialog).findByText(/El pipeline decide el agente/)).toHaveTextContent('QA')
+    await user.type(within(dialog).getByLabelText(es.tasks.new.what), 'Con pipeline')
+    await user.click(within(dialog).getByRole('button', { name: es.tasks.new.submit }))
+    await waitFor(() => expect(backend.callsTo('POST', '/api/tasks')).toHaveLength(1))
+    expect(backend.callsTo('POST', '/api/tasks')[0].body).toMatchObject({ agent_id: null })
+    expect(useUiPrefs.getState().lastTaskTarget).toEqual({
+      projectId: tienda.id,
+      agentId: dev.id,
+    })
+  })
+
   it('remembers the last project and agent for the next one', async () => {
     const { dev, qa, tienda, blog } = seed()
     useUiPrefs.setState({ lastTaskTarget: { projectId: blog.id, agentId: qa.id } })

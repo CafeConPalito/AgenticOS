@@ -207,6 +207,37 @@ describe('Shortcuts help (?)', () => {
     expect(await screen.findByRole('dialog', { name: es.palette.title })).toBeVisible()
   })
 
+  it('Ctrl+K does not stack over another dialog, but closes the palette', async () => {
+    createFakeBackend({ agents: [makeAgent()], projects: [makeProject()] })
+    const user = userEvent.setup()
+    renderApp('/tablero')
+    await screen.findByRole('navigation', { name: es.nav.main })
+    await user.keyboard('?')
+    await screen.findByRole('dialog', { name: es.shortcuts.title })
+    await user.keyboard('{Control>}k{/Control}')
+    expect(screen.queryByRole('dialog', { name: es.palette.title })).toBeNull()
+    await user.keyboard('{Escape}')
+    await user.keyboard('{Control>}k{/Control}')
+    await screen.findByRole('dialog', { name: es.palette.title })
+    await user.keyboard('{Control>}k{/Control}')
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: es.palette.title })).toBeNull())
+  })
+
+  it('single keys do not act while a menu is open', async () => {
+    createFakeBackend({ agents: [makeAgent()], projects: [makeProject()] })
+    const user = userEvent.setup()
+    renderApp('/tablero')
+    await screen.findByRole('navigation', { name: es.nav.main })
+    const menu = document.createElement('div')
+    menu.setAttribute('role', 'menu')
+    document.body.append(menu)
+    await user.keyboard('n')
+    expect(screen.queryByRole('dialog')).toBeNull()
+    menu.remove()
+    await user.keyboard('n')
+    expect(await screen.findByRole('dialog')).toBeVisible()
+  })
+
   it('single keys do not act while a dialog is open', async () => {
     createFakeBackend({ agents: [makeAgent()], projects: [makeProject()] })
     const user = userEvent.setup()

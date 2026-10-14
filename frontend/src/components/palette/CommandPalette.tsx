@@ -38,6 +38,8 @@ import { Kbd } from './Kbd'
 
 /** At most this many results while searching. */
 export const MAX_RESULTS = 14
+/** Slots kept for task matches when searching. */
+const MAX_TASK_RESULTS = 6
 /** Agents suggested before typing anything. */
 const SUGGESTED_AGENTS = 6
 const DEBOUNCE_MS = 150
@@ -210,20 +212,30 @@ function PaletteContent({ onClose }: { onClose: () => void }) {
   const taskItems = useMemo<PaletteItem[]>(
     () =>
       needle
-        ? (tasks ?? []).map((task) => ({
-            id: `task-${task.id}`,
-            group: 'tasks' as const,
-            label: `${task.code} · ${task.title}`,
-            icon: CircleDot,
-            run: () => void navigate(`/tablero/tareas/${task.id}`),
-          }))
+        ? (tasks ?? [])
+            .map((task) => ({
+              id: `task-${task.id}`,
+              group: 'tasks' as const,
+              label: `${task.code} · ${task.title}`,
+              icon: CircleDot,
+              run: () => void navigate(`/tablero/tareas/${task.id}`),
+            }))
+            // The results lag behind the input (debounce): drop the ones it no longer matches.
+            .filter((i) => fold(i.label).includes(needle))
+            .slice(0, MAX_TASK_RESULTS)
         : [],
     [needle, tasks, navigate],
   )
 
   // Without a search: actions, sections and agents. Searching: everything that matches.
   const shown = needle
-    ? [...items.filter((i) => fold(i.label).includes(needle)), ...taskItems].slice(0, MAX_RESULTS)
+    ? [
+        // Tasks keep their slots: the actions and agents that match must not push them out.
+        ...items
+          .filter((i) => fold(i.label).includes(needle))
+          .slice(0, MAX_RESULTS - taskItems.length),
+        ...taskItems,
+      ]
     : [
         ...items.filter((i) => i.group === 'actions' || i.group === 'goto'),
         ...items.filter((i) => i.group === 'agents').slice(0, SUGGESTED_AGENTS),
@@ -239,7 +251,7 @@ function PaletteContent({ onClose }: { onClose: () => void }) {
     >
       <DialogTitle className="sr-only">{t('palette.title')}</DialogTitle>
       <DialogDescription className="sr-only">{t('palette.placeholder')}</DialogDescription>
-      <Command shouldFilter={false} className="bg-transparent" loop>
+      <Command shouldFilter={false} vimBindings={false} className="bg-transparent" loop>
         <CommandSearchBar>
           <CommandInput
             value={query}

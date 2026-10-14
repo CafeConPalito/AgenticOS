@@ -80,6 +80,12 @@ function NewTaskForm({ onClose, init }: { onClose: () => void; init: NewTaskInit
   // With a pipeline the first stage decides the agent; without one the person picks it.
   const needsAgent = Boolean(project) && pipeline.isSuccess && !firstStage
   const agent = known(agents, pickedAgent) || known(agents, last?.agentId) || (agents[0]?.id ?? '')
+  // The opener asked for an agent but the pipeline's first stage belongs to another one.
+  const requested = known(agents, init.agentId)
+  const overridden =
+    firstStage && requested && firstStage.agent_id !== requested
+      ? agents.find((a) => a.id === requested)
+      : undefined
   const ready =
     Boolean(project && title.trim()) &&
     pipeline.isSuccess &&
@@ -105,8 +111,10 @@ function NewTaskForm({ onClose, init }: { onClose: () => void; init: NewTaskInit
         agent_id: needsAgent ? agent : null,
         enqueue,
       })
-      if (agent) remember({ projectId: project, agentId: agent })
-      const owner = task.agent_name ?? agents.find((a) => a.id === agent)?.name ?? ''
+      // Remember only an agent that was really used: with a pipeline the stage decided it.
+      const usedAgent = needsAgent ? agent : (firstStage?.agent_id ?? '')
+      remember({ projectId: project, agentId: usedAgent || last?.agentId || '' })
+      const owner = task.agent_name ?? agents.find((a) => a.id === usedAgent)?.name ?? ''
       toast.success(
         enqueue
           ? t('tasks.new.queued', { code: task.code, agent: owner })
@@ -245,6 +253,11 @@ function NewTaskForm({ onClose, init }: { onClose: () => void; init: NewTaskInit
                 </Select>
               </Field>
             </div>
+          )}
+          {overridden && (
+            <p role="status" className="text-[12.5px] text-status-waiting">
+              {t('tasks.new.agentOverridden', { agent: overridden.name })}
+            </p>
           )}
           {error && (
             <p role="alert" className="text-sm text-status-failed">

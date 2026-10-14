@@ -203,6 +203,19 @@ describe('Settings · índice y atajos', () => {
     )
   })
 
+  it('the index keeps the router hash in step, so a later link to a section still scrolls', async () => {
+    createFakeBackend()
+    const user = userEvent.setup()
+    const { router } = renderApp('/ajustes')
+    const index = await screen.findByRole('navigation', { name: es.settings.index })
+    await user.click(within(index).getByRole('link', { name: es.settings.sections.limits }))
+    expect(router.state.location.hash).toBe('#limits')
+
+    const scroll = vi.spyOn(Element.prototype, 'scrollIntoView')
+    await router.navigate('/ajustes#clis')
+    await waitFor(() => expect(scroll.mock.contexts.at(-1)).toBe(document.getElementById('clis')))
+  })
+
   it('/ajustes#clis lands on the CLIs section', async () => {
     createFakeBackend()
     const scroll = vi.spyOn(Element.prototype, 'scrollIntoView')

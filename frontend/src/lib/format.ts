@@ -13,6 +13,11 @@ export function formatTokens(value: number): string {
   return number(value, 0)
 }
 
+/** «1,33 M tok»: tokens with their unit, when there is no cost to show. */
+export function formatTokensUnit(value: number): string {
+  return i18n.t('common.tokensUnit', { value: formatTokens(value) })
+}
+
 /** «1,8 GB», «230 MB», «12 kB», «0 B»: sizes on disk. */
 export function formatBytes(value: number): string {
   const units = ['B', 'kB', 'MB', 'GB', 'TB']

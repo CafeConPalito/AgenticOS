@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { isActive } from '@/api/runs'
 import type { Run, Task } from '@/api/types'
 import { useNow } from '@/hooks/use-now'
-import { formatTokens, formatUsd, totalTokens } from '@/lib/format'
+import { formatTokensUnit, formatUsd, totalTokens } from '@/lib/format'
 import { formatDuration } from '@/lib/time'
 
 /** One line under the live output: the session, how long it ran and what it cost. */
@@ -14,7 +14,7 @@ export function SessionFactsLine({ run, task }: { run: Run; task: Task }) {
     usage.cost_usd !== null
       ? formatUsd(usage.cost_usd)
       : totalTokens(usage) > 0
-        ? `${formatTokens(totalTokens(usage))} tok`
+        ? formatTokensUnit(totalTokens(usage))
         : '—'
   const facts: [string, string][] = []
   if (run.cli_session_id) facts.push([t('tasks.facts.session'), run.cli_session_id])
