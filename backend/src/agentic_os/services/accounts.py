@@ -94,8 +94,20 @@ def default_for(db: Session, cli: Cli) -> CliAccount:
     return account or _system_account(db, cli)
 
 
-def of_agent(db: Session, agent: Agent) -> CliAccount:
-    """The account an agent runs with: its own, or the default one of its CLI."""
+def fallback_active(agent: Agent, now: datetime | None = None) -> bool:
+    """The person chose to switch and the window has not reset yet: the agent runs with its
+    secondary CLI."""
+    until = agent.using_fallback_until
+    return bool(agent.fallback_account_id and until and until > (now or utcnow()))
+
+
+def of_agent(db: Session, agent: Agent, now: datetime | None = None) -> CliAccount:
+    """The account an agent runs with: the secondary while it is switched, else its own, or the
+    default one of its CLI."""
+    if fallback_active(agent, now):
+        secondary = db.get(CliAccount, agent.fallback_account_id)
+        if secondary is not None:
+            return secondary
     if agent.account_id:
         account = db.get(CliAccount, agent.account_id)
         if account is not None and account.cli == agent.cli:
@@ -110,7 +122,11 @@ class AccountIndex:
         self.accounts = {a.id: a for a in list_accounts(db)}
         self._default = {a.cli: a for a in self.accounts.values() if a.is_default}
 
-    def of(self, agent: Agent) -> CliAccount | None:
+    def of(self, agent: Agent, now: datetime | None = None) -> CliAccount | None:
+        if fallback_active(agent, now):
+            secondary = self.accounts.get(agent.fallback_account_id)
+            if secondary is not None:
+                return secondary
         account = self.accounts.get(agent.account_id) if agent.account_id else None
         if account is not None and account.cli == agent.cli:
             return account

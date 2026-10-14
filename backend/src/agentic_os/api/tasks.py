@@ -45,6 +45,7 @@ from agentic_os.services.proc import open_in_file_manager
 from agentic_os.services.runs.manager import RunManager
 from agentic_os.services.scheduler import Scheduler, blocked_reason
 from agentic_os.services.usage import limits as usage_limits
+from agentic_os.services.usage import switching
 from agentic_os.services.usage.stats import task_usage
 
 router = APIRouter(tags=["tasks"])
@@ -120,9 +121,11 @@ def read_tasks(db: Session, tasks: list[Task]) -> list[TaskRead]:
     # (phases 07 and 10).
     gates: dict[str, str | None] = {}
     index = None
+    deciding: set[str] = set()
     if any(t.status == TaskStatus.QUEUED for t in tasks):
         gates = usage_limits.blocked_all(db)
         index = account_ops.AccountIndex(db)
+        deciding = switching.decisions_pending(db)
     result = []
     for task in tasks:
         project = projects[task.project_id]
@@ -133,7 +136,8 @@ def read_tasks(db: Session, tasks: list[Task]) -> list[TaskRead]:
         if task.status == TaskStatus.QUEUED:
             account = index.of(agent) if agent and index else None
             gate = gates.get(account.id) if account else None
-            blocked = blocked_reason(db, task, project) or gate
+            decision = "decision" if agent is not None and agent.id in deciding else None
+            blocked = blocked_reason(db, task, project) or decision or gate
             if gate is not None and blocked == gate and account is not None:
                 blocked_by = account_ops.display_name(account)
         result.append(

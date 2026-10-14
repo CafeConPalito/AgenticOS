@@ -5,6 +5,7 @@ from datetime import date, datetime, timedelta
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Query, Request, Response
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy.orm import Session
 
 from agentic_os.db.session import get_session
@@ -21,7 +22,7 @@ from agentic_os.schemas.usage import (
 )
 from agentic_os.services import accounts as account_ops
 from agentic_os.services.usage import limits as usage_limits
-from agentic_os.services.usage import stats
+from agentic_os.services.usage import stats, switching
 
 router = APIRouter(tags=["usage"])
 DbSession = Annotated[Session, Depends(get_session)]
@@ -171,6 +172,28 @@ def get_today(db: DbSession) -> UsageToday:
 def get_usage_limits(db: DbSession) -> list[LimitState]:
     """The daily limit of each account, with how far it is today."""
     return usage_limits.states(db, today())
+
+
+class SwitchThreshold(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    threshold: int
+
+
+@router.get("/settings/switch-threshold")
+def get_switch_threshold(db: DbSession) -> SwitchThreshold:
+    """The percent of a subscription window at which an agent with a secondary CLI asks."""
+    return SwitchThreshold(threshold=switching.threshold(db))
+
+
+@router.put("/settings/switch-threshold")
+def put_switch_threshold(
+    payload: SwitchThreshold, db: DbSession, request: Request
+) -> SwitchThreshold:
+    switching.set_threshold(db, payload.threshold)
+    db.commit()
+    request.app.state.scheduler.check_limits(force=True)
+    return SwitchThreshold(threshold=switching.threshold(db))
 
 
 @router.put("/settings/usage-limits")

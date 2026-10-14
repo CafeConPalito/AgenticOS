@@ -30,6 +30,8 @@ from agentic_os.schemas.home import (
     HomeSession,
     HomeWorker,
 )
+from agentic_os.services import accounts as account_ops
+from agentic_os.services.agent_target import target_for
 from agentic_os.services.runs import resume
 
 RESUMABLE_WINDOW = timedelta(days=14)
@@ -135,7 +137,9 @@ def build(db: Session) -> HomeRead:
 
     running_agents = {r.agent_id for r in live if r.agent_id}
     home_agents = []
+    index = account_ops.AccountIndex(db)
     for agent in agents:
+        target = target_for(db, agent, index=index)
         agent_pending = pending.get(agent.id, 0)
         home_agents.append(
             HomeAgent(
@@ -143,10 +147,11 @@ def build(db: Session) -> HomeRead:
                 name=agent.name,
                 role=agent.role,
                 color=agent.color,
-                cli=agent.cli,
+                cli=target.cli,
                 status=agent.status,
                 team_id=agent.team_id,
-                account_id=agent.account_id,
+                account_id=target.account.id if target.using_fallback else agent.account_id,
+                using_fallback=target.using_fallback,
                 state=_state(
                     agent,
                     agent.id in running_agents,

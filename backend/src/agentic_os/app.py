@@ -110,6 +110,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         )
         manager.usage.on_updated = lambda run_id: scheduler.check_limits()
         manager.on_run_ended = scheduler.run_ended
+        manager.on_quota_changed = scheduler.check_limits
         manager.on_tasks_changed = scheduler.poke
         scheduler.recover()
         scheduler.probe_account = manager.probe_account

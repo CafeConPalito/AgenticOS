@@ -45,6 +45,7 @@ SETTING_FOR = {
     InboxKind.LIMIT: "limits",
     InboxKind.QUOTA: "limits",
     InboxKind.ACCOUNT: "limits",
+    InboxKind.SWITCH: "limits",
 }
 
 

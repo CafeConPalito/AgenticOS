@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, StringConstraints
 
@@ -46,6 +46,12 @@ class AnswerRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     text: Answer
+
+
+class SwitchAnswer(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    choice: Literal["switch", "stay"]
 
 
 class InboxReview(BaseModel):

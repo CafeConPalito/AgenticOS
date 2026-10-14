@@ -44,6 +44,7 @@ from agentic_os.services import accounts as account_ops
 from agentic_os.services import inbox
 from agentic_os.services import tasks as task_ops
 from agentic_os.services.usage import limits as usage_limits
+from agentic_os.services.usage import switching
 
 BACKUP_TICK = 5.0
 STALLED_AFTER = timedelta(minutes=10)
@@ -232,7 +233,10 @@ class Scheduler:
             # An account over its daily limit, out of quota or logged out starts nothing
             # (phases 07 and 10); the other accounts of its CLI go on.
             gates = usage_limits.blocked_all(db)
+            deciding = switching.decisions_pending(db)
             for agent in agents:
+                if agent.id in deciding:  # the person is choosing between its CLIs
+                    continue
                 account = index.of(agent)
                 if account is None or gates.get(account.id) is None:
                     self._fill(db, agent)
@@ -294,6 +298,7 @@ class Scheduler:
             with self._db() as db:
                 unblocked = usage_limits.sync_limit_items(db)
                 unblocked = usage_limits.sync_session_items(db) or unblocked
+                unblocked = switching.sync_switch_items(db) or unblocked
                 db.commit()
         if unblocked:
             self.poke()

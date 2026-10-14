@@ -45,6 +45,7 @@ from agentic_os.services import accounts as account_ops
 from agentic_os.services import inbox
 from agentic_os.services import tasks as task_ops
 from agentic_os.services.adapters import CliAdapter, LaunchContext, adapter_for
+from agentic_os.services.agent_target import Target, target_for
 from agentic_os.services.context import build_context, build_instructions
 from agentic_os.services.hooks import (
     HOOK_EVENTS,
@@ -111,6 +112,7 @@ class RunManager:
         self.loop: asyncio.AbstractEventLoop | None = None
         # Called (from the run's thread) once a run has ended and its state is persisted.
         self.on_run_ended: Callable[[str], None] | None = None
+        self.on_quota_changed: Callable[[], None] | None = None
         # Called when tasks change outside an API request (a permission dialog, an answer…).
         self.on_tasks_changed: Callable[[], None] | None = None
         # Usage of the runs (phase 07). Without `start()` it reads synchronously (tests).
@@ -179,7 +181,13 @@ class RunManager:
             raise ApiError(
                 422, "folder_not_found", "the project folder does not exist", "project_id"
             )
-        cli = Cli(agent.cli)
+        if resumed_from is not None:
+            # A resumed conversation lives in the CLI, account and model that started it.
+            account = self._account_of_run(db, resumed_from)
+            target = Target(Cli(resumed_from.cli), account, resumed_from.model, False)
+        else:
+            target = target_for(db, agent, index=None)
+        cli = target.cli
         adapter = adapter_for(cli)
         resolve_executable(cli, self._settings.cli_command_overrides)  # fail before any write
         # Two agy runs in one folder would share the workspace plugin (ADR 0004): the folder is
@@ -193,7 +201,7 @@ class RunManager:
                 prompt,
                 task,
                 cwd,
-                cli,
+                target,
                 adapter,
                 folder,
                 parent,
@@ -258,14 +266,14 @@ class RunManager:
         prompt: str,
         task: Task | None,
         cwd: str,
-        cli: Cli,
+        target: Target,
         adapter: CliAdapter,
         folder: str | None,
         parent: Run | None = None,
         resumed_from: Run | None = None,
         baseline: dict | None = None,
     ) -> Run:
-        account = self._account_for(db, agent, resumed_from)
+        cli, account, model = target.cli, target.account, target.model
         run = Run(
             workspace_id=DEFAULT_WORKSPACE,
             agent_id=agent.id,
@@ -276,7 +284,7 @@ class RunManager:
             account_id=account.id,
             account_label=account_ops.display_name(account),
             cli=cli.value,
-            model=agent.model,
+            model=model,
             prompt=prompt,
             cwd=cwd,
             task_id=task.id if task else None,
@@ -294,7 +302,7 @@ class RunManager:
         ctx = LaunchContext(
             run_id=run.id,
             cli=cli,
-            model=agent.model,
+            model=model,
             prompt=prompt,
             permission_mode=PermissionMode(agent.permission_mode),
             allowed_tools=tuple(agent.allowed_tools),
@@ -361,14 +369,12 @@ class RunManager:
         return account_ops.probe(db, account, self._settings.cli_command_overrides)
 
     @staticmethod
-    def _account_for(db: Session, agent: Agent, resumed_from: Run | None) -> CliAccount:
-        """The login a run uses: a resumed conversation lives in the folder of the account that
-        started it; otherwise the agent's own account, or the default one of its CLI."""
-        if resumed_from is not None and resumed_from.account_id:
-            earlier = db.get(CliAccount, resumed_from.account_id)
-            if earlier is not None and earlier.cli == agent.cli:
-                return earlier
-        return account_ops.of_agent(db, agent)
+    def _account_of_run(db: Session, run: Run) -> CliAccount:
+        """The login an earlier run used (its account may be gone: then the CLI's default)."""
+        earlier = db.get(CliAccount, run.account_id) if run.account_id else None
+        if earlier is not None and earlier.cli == run.cli:
+            return earlier
+        return account_ops.default_for(db, Cli(run.cli))
 
     def _on_end(
         self,
@@ -1030,8 +1036,10 @@ class RunManager:
                 if account is None:
                     return
                 account_ops.record_identity(account, effect.email or "", effect.plan or "")
-                account_ops.record_quota(account, effect.quota)
+                changed = account_ops.record_quota(account, effect.quota)
                 db.commit()
+            if changed and self.on_quota_changed is not None:
+                self.on_quota_changed()
         except Exception:
             log.exception("could not record the account status", account_id=account_id)
 

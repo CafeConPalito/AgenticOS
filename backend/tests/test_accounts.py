@@ -426,11 +426,10 @@ def test_a_resumed_run_keeps_the_account_that_started_the_conversation(db: Sessi
 
     first = accounts.create(db, tmp_path, Cli.CLAUDE)
     second = accounts.create(db, tmp_path, Cli.CLAUDE)
-    agent = add_agent(db, account_id=second.id)  # the person moved the agent to another account
+    add_agent(db, account_id=second.id)  # the person moved the agent to another account
     old = add_run(db, first, RunStatus.INTERRUPTED)
-    assert RunManager._account_for(db, agent, old) is first
-    assert RunManager._account_for(db, agent, None) is second
-    old.account_id = None  # its account was removed: the agent's own
-    assert RunManager._account_for(db, agent, old) is second
+    assert RunManager._account_of_run(db, old) is first
+    old.account_id = None  # its account was removed: the default one of its CLI
+    assert RunManager._account_of_run(db, old) is accounts.default_for(db, Cli.CLAUDE)
     old.account_id = accounts.default_for(db, Cli.AGY).id  # another CLI's account is ignored
-    assert RunManager._account_for(db, agent, old) is second
+    assert RunManager._account_of_run(db, old) is accounts.default_for(db, Cli.CLAUDE)

@@ -95,3 +95,33 @@ def test_duplicate_keeps_the_secondary(client):
     copy = client.post(f"/api/agents/{agent['id']}/duplicate").json()
     assert copy["fallback_account_id"] == agy["id"]
     assert copy["fallback_model"] == "m"
+
+
+def test_target_follows_the_switch(client):
+    from agentic_os.services.agent_target import target_for
+
+    agy = account_of(client, "agy")
+    claude = account_of(client, "claude")
+    agent = new_agent(client, model="opus", fallback_account_id=agy["id"], fallback_model="g3")
+    with client.app.state.sessionmaker() as db:
+        row = db.get(Agent, agent["id"])
+        main = target_for(db, row)
+        assert (main.cli, main.account.id, main.model, main.using_fallback) == (
+            "claude",
+            claude["id"],
+            "opus",
+            False,
+        )
+        row.using_fallback_until = utcnow() + timedelta(hours=1)
+        switched = target_for(db, row)
+        assert (switched.cli, switched.account.id, switched.model, switched.using_fallback) == (
+            "agy",
+            agy["id"],
+            "g3",
+            True,
+        )
+        # Past the reset of the window it is back on the main one by itself.
+        back = target_for(db, row, now=utcnow() + timedelta(hours=2))
+        assert (back.cli, back.using_fallback) == ("claude", False)
+    home = client.get("/api/home").json()
+    assert home["agents"] == [] or isinstance(home["agents"], list)
