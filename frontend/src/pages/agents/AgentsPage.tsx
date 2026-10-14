@@ -94,7 +94,7 @@ function AgentsTable({ agents }: { agents: Agent[] }) {
         </TableHeader>
         <TableBody>
           {agents.map((agent) => {
-            const open = () => navigate(`/agentes/${agent.id}/general`)
+            const open = () => navigate(`/agentes/${agent.id}`)
             return (
               <TableRow
                 key={agent.id}

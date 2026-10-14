@@ -31,7 +31,7 @@ describe('Agents list', () => {
 
     await user.click(await screen.findByRole('button', { name: /Desarrollador/ }))
     await waitFor(() =>
-      expect(router.state.location.pathname).toBe('/agentes/agent-from-developer/general'),
+      expect(router.state.location.pathname).toBe('/agentes/agent-from-developer/resumen'),
     )
     expect(backend.callsTo('POST', '/api/agents')[0].body).toEqual({ template: 'developer' })
     expect(await screen.findByRole('heading', { name: /Desarrollador/ })).toBeVisible()
@@ -142,7 +142,7 @@ describe('Agent editor edge cases', () => {
     await user.click(await screen.findByRole('button', { name: es.common.more }))
     await user.click(await screen.findByRole('menuitem', { name: es.common.duplicate }))
     await waitFor(() =>
-      expect(router.state.location.pathname).toBe(`/agentes/${agent.id}-copy/general`),
+      expect(router.state.location.pathname).toBe(`/agentes/${agent.id}-copy/resumen`),
     )
     expect(backend.callsTo('POST', `/api/agents/${agent.id}/duplicate`)[0].body).toEqual({
       name: 'Rita (copia)',

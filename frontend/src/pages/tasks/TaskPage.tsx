@@ -59,6 +59,7 @@ import { SessionUsage } from '@/components/usage/SessionUsage'
 import { ResumeTaskSession } from '@/pages/runs/ResumeSession'
 import { RunEventsPanel } from '@/pages/runs/RunEventsPanel'
 import { RunStatusBadge } from '@/pages/runs/RunStatusBadge'
+import { SessionFactsLine } from './SessionFactsLine'
 import { PriorityLabel, TaskStatusBadge } from './TaskBits'
 
 export default function TaskPage() {
@@ -198,11 +199,7 @@ function TaskDetail({ task }: { task: Task }) {
           {run ? (
             <>
               <TerminalPanel key={run.id} run={run} />
-              <div className="flex gap-4 px-0.5 font-mono text-[11.5px] text-muted-foreground">
-                <span>{t('runs.terminalInfo', { cols: run.cols, rows: run.rows })}</span>
-                <span className="truncate">{run.cwd}</span>
-                {task.branch && <span className="ml-auto">{task.branch}</span>}
-              </div>
+              <SessionFactsLine run={run} task={task} />
             </>
           ) : (
             <div className="grid flex-1 place-items-center rounded-lg border border-dashed text-sm text-muted-foreground">
@@ -483,22 +480,6 @@ function TaskSidePanel({ task, stages }: { task: Task; stages: Stage[] }) {
         </section>
       )}
       {task.subtasks_total > 0 && <Subtasks task={task} />}
-      {(task.branch || task.worktree_path) && (
-        <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 text-xs">
-          {task.branch && (
-            <>
-              <dt className="text-muted-foreground">{t('tasks.detail.branch')}</dt>
-              <dd className="font-mono break-all">{task.branch}</dd>
-            </>
-          )}
-          {task.worktree_path && (
-            <>
-              <dt className="text-muted-foreground">{t('tasks.detail.worktree')}</dt>
-              <dd className="font-mono break-all">{task.worktree_path}</dd>
-            </>
-          )}
-        </dl>
-      )}
       <section>
         <h2 className="mb-2 text-[12.5px] text-muted-foreground">{t('tasks.detail.history')}</h2>
         <ol className="flex flex-col gap-2.5">

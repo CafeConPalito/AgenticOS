@@ -37,7 +37,7 @@ export function TemplatePicker({
         template ? { template } : { name: t('agents.new.blankName') },
       )
       toast.success(t('agents.new.created', { name: agent.name }))
-      navigate(`/agentes/${agent.id}/general`)
+      navigate(`/agentes/${agent.id}`)
     } catch (error) {
       toast.error(errorMessage(error))
     }

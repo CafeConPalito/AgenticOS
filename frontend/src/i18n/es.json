@@ -203,6 +203,7 @@
       "draftNote": "Se crea como borrador: actívalo desde su ficha cuando esté listo."
     },
     "tabs": {
+      "resumen": "Resumen",
       "general": "General",
       "instructions": "Instrucciones",
       "execution": "Ejecución",
@@ -258,7 +259,23 @@
     },
     "duplicated": "Agente duplicado como «{{name}}»",
     "notFound": "Este agente no existe o se ha borrado.",
-    "copyName": "{{name}} (copia)"
+    "copyName": "{{name}} (copia)",
+    "assignTask": "Asignar tarea",
+    "activate": "Activar",
+    "activated": "Agente «{{name}}» activado",
+    "edit": "Editar",
+    "summary": {
+      "requests": "Peticiones de este agente",
+      "tasks": "Tareas",
+      "noTasks": "No tiene tareas abiertas.",
+      "moreTasks": "Ver {{count}} más en el tablero",
+      "usage": "Consumo",
+      "noUsage": "Todavía no ha consumido nada.",
+      "sessions": "Sesiones",
+      "period": "Últimos 30 días.",
+      "config": "Configuración",
+      "configHint": "CLI, modelo, permisos y concurrencia"
+    }
   },
   "projects": {
     "title": "Proyectos",
@@ -630,6 +647,14 @@
       "reason": "Motivo",
       "reasonPlaceholder": "Qué hay que corregir…",
       "target": "Vuelve a"
+    },
+    "facts": {
+      "label": "Datos de la sesión",
+      "session": "Sesión",
+      "duration": "Duración",
+      "cost": "Coste",
+      "branch": "Rama",
+      "folder": "Carpeta"
     }
   },
   "board": {

@@ -48,7 +48,7 @@ export const routes: RouteObject[] = [
           { index: true, element: <AgentsPage /> },
           // Old links and shortcuts: the list, with the dialog open.
           { path: 'nuevo', element: <OpenDialog dialog="newAgent" to="/agentes" /> },
-          { path: ':agentId', element: <Navigate to="general" replace /> },
+          { path: ':agentId', element: <Navigate to="resumen" replace /> },
           {
             path: ':agentId/:tab',
             element: <AgentEditorPage />,

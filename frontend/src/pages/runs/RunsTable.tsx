@@ -31,7 +31,7 @@ export function RunsTable({ runs, showAgent = true }: { runs: Run[]; showAgent?:
   const now = useNow(runs.some(isActive) ? 1000 : null)
 
   return (
-    <div className="overflow-hidden rounded-lg border bg-card">
+    <div className="overflow-hidden rounded-xl border border-sep shadow-card bg-card-grad">
       <Table>
         <TableHeader className="bg-subtle">
           <TableRow className="hover:bg-transparent">
@@ -93,15 +93,15 @@ export function RunsTable({ runs, showAgent = true }: { runs: Run[]; showAgent?:
                 <TableCell>
                   <RunStatusBadge run={run} size="xs" />
                 </TableCell>
-                <TableCell className="text-right font-mono text-xs whitespace-nowrap">
+                <TableCell className="text-right font-mono text-xs whitespace-nowrap text-muted-foreground">
                   {run.usage.status === 'unavailable' || run.usage.status === 'pending'
                     ? '—'
                     : formatTokens(totalTokens(run.usage, run.cli))}
                 </TableCell>
-                <TableCell className="text-right font-mono text-xs whitespace-nowrap">
+                <TableCell className="text-right font-mono text-xs font-medium whitespace-nowrap">
                   {formatUsd(run.usage.cost_usd)}
                 </TableCell>
-                <TableCell className="pr-4 text-right font-mono text-xs">
+                <TableCell className="pr-4 text-right font-mono text-xs text-muted-foreground">
                   {formatDuration(run.started_at, run.ended_at, now)}
                 </TableCell>
               </TableRow>
