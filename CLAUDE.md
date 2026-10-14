@@ -8,11 +8,12 @@ Cada fase sigue el ciclo **Spec → Plan → Desarrollo → Validación**, con t
 1. `docs/phases/NN-nombre/spec.md` → ⛔ aprobación del usuario antes de planificar.
 2. `docs/phases/NN-nombre/plan.md` (+ ADRs en `docs/adr/` si hay decisiones) → ⛔ aprobación antes de programar.
 3. Desarrollo en la rama `phase/NN-nombre`, con commits pequeños y tests.
-4. `docs/phases/NN-nombre/validacion.md`: tests en verde, checklist de criterios de aceptación con evidencias, `/code-review` resuelto, retro → ⛔ OK del usuario → merge `--no-ff` a `main`, tag `v0.N` y actualización de `docs/roadmap.md`.
+4. `docs/phases/NN-nombre/validacion.md`: tests en verde, checklist de criterios de aceptación con evidencias, `/code-review` resuelto, retro → ⛔ OK del usuario → merge `--no-ff` a `main`, tag de versión (ver abajo) y actualización de `docs/roadmap.md`.
 
 Reglas:
 - No empezar una fase sin haber cerrado la anterior. No programar fuera del alcance de la spec aprobada; si surge algo, se anota para una fase futura.
 - Mantener al día el estado de la fase en `docs/roadmap.md` (pendiente · spec · plan · dev · validación · cerrada).
+- Tags de versión: hasta el MVP (fase 08) cada fase cerrada es `v0.N` y el MVP es `v1.0`; a partir de ahí cada fase cerrada sube la versión menor (`v1.1`, `v1.2`…). Nunca se etiqueta por debajo de la última versión existente.
 - Las plantillas de los documentos de fase están en `docs/phases/_template/`.
 
 ## Convenciones
