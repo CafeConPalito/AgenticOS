@@ -3,10 +3,11 @@ import { api, getApiBaseUrl } from '@/lib/api'
 import { isoDay } from '@/lib/format'
 import { taskKeys } from './tasks'
 import type {
+  AccountLimit,
   Breakdown,
   DailySeries,
+  LimitState,
   SessionRow,
-  UsageLimits,
   UsageSummary,
   UsageToday,
 } from './types'
@@ -19,6 +20,7 @@ export interface UsageFilters {
   days: PeriodDays
   agentId?: string
   projectId?: string
+  accountId?: string
 }
 
 export const usageKeys = {
@@ -50,6 +52,7 @@ export function periodQuery(f: UsageFilters, extra: Record<string, string> = {})
   const params = new URLSearchParams({ from: isoDay(from), to: isoDay(to), ...extra })
   if (f.agentId) params.set('agent_id', f.agentId)
   if (f.projectId) params.set('project_id', f.projectId)
+  if (f.accountId) params.set('account_id', f.accountId)
   return params.toString()
 }
 
@@ -62,7 +65,7 @@ export function useUsageSummary(f: UsageFilters) {
   })
 }
 
-export function useUsageDaily(f: UsageFilters, group: 'agent' | 'project') {
+export function useUsageDaily(f: UsageFilters, group: 'agent' | 'project' | 'account') {
   return useQuery({
     queryKey: usageKeys.daily(f, group),
     queryFn: () => api.get<DailySeries>(`/api/usage/daily?${periodQuery(f, { group })}`),
@@ -73,7 +76,7 @@ export function useUsageDaily(f: UsageFilters, group: 'agent' | 'project') {
 
 export function useUsageBreakdown(
   f: UsageFilters,
-  group: 'agent' | 'project' | 'task',
+  group: 'agent' | 'project' | 'task' | 'account',
   enabled = true,
 ) {
   return useQuery({
@@ -114,17 +117,19 @@ export function useMonthBreakdown(group: 'agent' | 'project') {
   })
 }
 
+/** The daily limit of each account, with how far it is today. */
 export function useUsageLimits() {
   return useQuery({
     queryKey: usageKeys.limits,
-    queryFn: () => api.get<UsageLimits>('/api/settings/usage-limits'),
+    queryFn: () => api.get<LimitState[]>('/api/settings/usage-limits'),
   })
 }
 
 export function useSaveUsageLimits() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (limits: UsageLimits) => api.put<UsageLimits>('/api/settings/usage-limits', limits),
+    mutationFn: (limits: AccountLimit[]) =>
+      api.put<LimitState[]>('/api/settings/usage-limits', { limits }),
     onSuccess: (limits) => {
       queryClient.setQueryData(usageKeys.limits, limits)
       void queryClient.invalidateQueries({ queryKey: usageKeys.all })

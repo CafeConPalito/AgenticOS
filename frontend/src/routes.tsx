@@ -13,6 +13,7 @@ import {
 import AgentEditorPage from '@/pages/agents/AgentEditorPage'
 import AgentsPage from '@/pages/agents/AgentsPage'
 import BoardPage from '@/pages/BoardPage'
+import ClisPage from '@/pages/clis/ClisPage'
 import HomePage from '@/pages/home/HomePage'
 import InboxPage from '@/pages/InboxPage'
 import ProjectDetailPage from '@/pages/projects/ProjectDetailPage'
@@ -103,6 +104,11 @@ export const routes: RouteObject[] = [
         path: 'consumo',
         element: <UsagePage />,
         handle: crumb(() => <TextCrumb i18nKey="nav.usage" />),
+      },
+      {
+        path: 'clis',
+        element: <ClisPage />,
+        handle: crumb(() => <TextCrumb i18nKey="nav.clis" />),
       },
       {
         path: 'ajustes',

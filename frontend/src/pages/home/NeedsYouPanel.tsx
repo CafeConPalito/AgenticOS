@@ -86,14 +86,17 @@ export function NeedsYouPanel({
 export function CliAlertItem({ alert }: { alert: CliAlert }) {
   const { t } = useTranslation()
   const snooze = useUiPrefs((s) => s.snoozeAlert)
+  // A logged-out session has its own «Reconectar»: «Revisar cuentas» would say the same.
   const review = (
     <>
-      <Link
-        to="/ajustes#clis"
-        className="inline-flex h-7 items-center rounded-full bg-primary-action px-3 text-[12.5px] font-medium text-white hover:bg-primary-action-hover"
-      >
-        {t('home.alerts.review')}
-      </Link>
+      {alert.item?.kind !== 'account' && (
+        <Link
+          to="/clis"
+          className="inline-flex h-7 items-center rounded-full bg-primary-action px-3 text-[12.5px] font-medium text-white hover:bg-primary-action-hover"
+        >
+          {t('home.alerts.review')}
+        </Link>
+      )}
       <button
         type="button"
         onClick={() => {

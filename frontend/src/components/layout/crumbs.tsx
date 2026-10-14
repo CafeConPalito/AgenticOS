@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Params } from 'react-router'
 import { useAgent } from '@/api/agents'
+import { useTeams } from '@/api/teams'
 import { useProject } from '@/api/projects'
 import { useRun } from '@/api/runs'
 import { useTask } from '@/api/tasks'
@@ -23,6 +24,7 @@ export function TextCrumb({
     | 'nav.inbox'
     | 'nav.usage'
     | 'nav.settings'
+    | 'nav.clis'
 }) {
   const { t } = useTranslation()
   return <>{t(i18nKey)}</>
@@ -30,9 +32,13 @@ export function TextCrumb({
 
 export function AgentCrumb({ id }: { id?: string }) {
   const { data } = useAgent(id)
+  const teams = useTeams().data
   if (!data) return <>…</>
+  // Inicio › Equipo / Agente (phase 10): the team is part of where the agent lives.
+  const team = teams?.find((x) => x.id === data.team_id)
   return (
     <>
+      {team ? `${team.name} / ` : ''}
       {data.name}
       {data.role ? ` · ${data.role}` : ''}
     </>

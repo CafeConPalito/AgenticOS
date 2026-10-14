@@ -41,12 +41,18 @@ export class TerminalSocket {
   private exited = false
   private attempts = 0
   private timer: ReturnType<typeof setTimeout> | null = null
-  private readonly runId: string
+  private readonly path: string
   private readonly viewerId: string
   private readonly handlers: TerminalSocketHandlers
 
-  constructor(runId: string, viewerId: string, handlers: TerminalSocketHandlers) {
-    this.runId = runId
+  /** `path`: the WebSocket's path (a run's terminal by default; an account's login terminal). */
+  constructor(
+    runId: string,
+    viewerId: string,
+    handlers: TerminalSocketHandlers,
+    path = `/api/runs/${runId}/terminal`,
+  ) {
+    this.path = path
     this.viewerId = viewerId
     this.handlers = handlers
   }
@@ -55,7 +61,7 @@ export class TerminalSocket {
     if (this.closed) return
     const base = await getApiBaseUrl()
     if (this.closed) return
-    const url = `${base.replace(/^http/, 'ws')}/api/runs/${this.runId}/terminal?client_id=${encodeURIComponent(this.viewerId)}`
+    const url = `${base.replace(/^http/, 'ws')}${this.path}?client_id=${encodeURIComponent(this.viewerId)}`
     const ws = new WebSocket(url)
     this.ws = ws
     ws.onopen = () => {

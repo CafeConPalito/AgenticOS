@@ -17,8 +17,10 @@ from agentic_os.db.migrate import upgrade_to_head
 from agentic_os.db.session import create_db_engine, database_url, make_sessionmaker
 from agentic_os.errors import register_error_handlers
 from agentic_os.logging_setup import configure_logging
+from agentic_os.models import CliAccount
 from agentic_os.services import accounts as account_ops
 from agentic_os.services import housekeeping
+from agentic_os.services.accounts_login import AccountLogins
 from agentic_os.services.clis import CliCatalog
 from agentic_os.services.mcp_server import mount_app
 from agentic_os.services.runs.manager import RunManager
@@ -55,6 +57,19 @@ def check_sessions(sessions, manager: RunManager, scheduler: Scheduler) -> None:
         scheduler.poke()
     except Exception:
         log.exception("could not check the accounts' sessions")
+
+
+def session_checked_after_login(
+    sessions, manager: RunManager, scheduler: Scheduler, account_id: str
+) -> None:
+    """A login terminal closed: ask the CLI who is logged in now, and let the scheduler know."""
+    with sessions() as db:
+        account = db.get(CliAccount, account_id)
+        if account is not None:
+            manager.probe_account(db, account)
+            usage_limits.sync_session_items(db)
+            db.commit()
+    scheduler.poke()
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -98,6 +113,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         manager.on_tasks_changed = scheduler.poke
         scheduler.recover()
         scheduler.probe_account = manager.probe_account
+        logins = AccountLogins(settings.cli_command_overrides)
+        logins.loop = asyncio.get_running_loop()
+        logins.on_end = lambda account_id: session_checked_after_login(
+            app.state.sessionmaker, manager, scheduler, account_id
+        )
+        app.state.logins = logins
         if settings.check_sessions_at_startup:
             threading.Thread(
                 target=check_sessions,
@@ -127,6 +148,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 yield
         finally:
             app.state.mcp_gate = None
+            logins.shutdown()
             # The scheduler stops first: the runs closed by the shutdown are not "stopped by the
             # user"; their tasks are found interrupted on the next start.
             scheduler.stop()

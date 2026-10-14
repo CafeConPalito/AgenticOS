@@ -387,3 +387,20 @@ def test_a_corrupt_window_is_ignored(db: Session):
         },
     }
     assert [v.id for v in accounts.quota_view(account, NOW)] == ["ok"]
+
+
+# ---------------------------------------------------------------- resuming
+def test_a_resumed_run_keeps_the_account_that_started_the_conversation(db: Session, tmp_path):
+    """The conversation lives in the login folder of the account that ran it (phase 10)."""
+    from agentic_os.services.runs.manager import RunManager
+
+    first = accounts.create(db, tmp_path, Cli.CLAUDE)
+    second = accounts.create(db, tmp_path, Cli.CLAUDE)
+    agent = add_agent(db, account_id=second.id)  # the person moved the agent to another account
+    old = add_run(db, first, RunStatus.INTERRUPTED)
+    assert RunManager._account_for(db, agent, old) is first
+    assert RunManager._account_for(db, agent, None) is second
+    old.account_id = None  # its account was removed: the agent's own
+    assert RunManager._account_for(db, agent, old) is second
+    old.account_id = accounts.default_for(db, Cli.AGY).id  # another CLI's account is ignored
+    assert RunManager._account_for(db, agent, old) is second

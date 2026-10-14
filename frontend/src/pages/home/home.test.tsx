@@ -9,16 +9,19 @@ import {
   emptyUsage,
   makeAgent,
   makeInboxItem,
+  makeAccount,
   makeProject,
   makeRun,
   makeTask,
+  makeTeam,
+  systemAccounts,
 } from '@/test/fake-backend'
 import { renderApp } from '@/test/render'
 import { greetingKey } from './Greeting'
 
 beforeEach(() => {
   useUiPrefs.setState({ snoozedAlerts: [] })
-  useDialogs.setState({ newTask: null, newAgent: false, newProject: false })
+  useDialogs.setState({ newTask: null, newAgent: false, newProject: false, newTeam: null })
 })
 
 function team() {
@@ -28,6 +31,14 @@ function team() {
   const project = makeProject({ name: 'Tienda online' })
   return { dev, qa, draft, project }
 }
+
+const plain = (text: string | null) => (text ?? '').replace(/\u00a0|\u202f/g, ' ')
+
+/** The agent cards of a region (each one is a div with role=link, with inner links of its own). */
+const cardsIn = (region: HTMLElement) =>
+  within(region)
+    .getAllByRole('link')
+    .filter((c) => c.getAttribute('role') === 'link')
 
 describe('Inicio · greeting and summary', () => {
   it('greets by time of day', () => {
@@ -65,38 +76,130 @@ describe('Inicio · greeting and summary', () => {
   it('lists the projects with who works on them and the CLIs with their session', async () => {
     const { dev, project } = team()
     const task = makeTask({ agent_id: dev.id, project_id: project.id, status: 'running' })
+    const [claude, agy] = systemAccounts()
     createFakeBackend({
       agents: [dev],
       projects: [project],
       tasks: [task],
       clis: CLIS.map((cli) => ({ ...cli, installed: true, logged_in: cli.id === 'claude' })),
+      accounts: [claude, { ...agy, session_state: 'down' }],
     })
     renderApp('/')
 
     const aside = await screen.findByRole('complementary', { name: es.home.summary.label })
     expect(await within(aside).findByText('Tienda online')).toBeVisible()
     expect(within(aside).getByText(`Dev · ${task.title}`)).toBeVisible()
-    expect(within(aside).getByText(es.home.summary.cliSession.down)).toBeVisible()
+    expect(await within(aside).findByText(/sin sesión · 1 cuenta/)).toBeVisible()
     expect(within(aside).getByRole('link', { name: es.home.summary.manage })).toHaveAttribute(
       'href',
-      '/ajustes#clis',
+      '/clis',
     )
+  })
+
+  it('shows each CLI with its fullest account and unfolds the accounts', async () => {
+    const [claude, agy] = systemAccounts()
+    const resets = new Date(Date.now() + 3600_000).toISOString()
+    const second = makeAccount({
+      id: 'account-personal',
+      cli: 'claude',
+      name: 'marta.personal@gmail.com',
+      plan: 'Pro',
+      quota: [
+        { id: 'five_hour', used_pct: 82, resets_at: resets, read_at: resets, expired: false },
+      ],
+      live_runs: 1,
+    })
+    createFakeBackend({
+      agents: [makeAgent()],
+      clis: CLIS.map((cli) => ({ ...cli, installed: true })),
+      accounts: [
+        {
+          ...claude,
+          quota: [
+            { id: 'five_hour', used_pct: 40, resets_at: resets, read_at: resets, expired: false },
+          ],
+        },
+        second,
+        agy,
+      ],
+    })
+    const user = userEvent.setup()
+    renderApp('/')
+
+    const aside = await screen.findByRole('complementary', { name: es.home.summary.label })
+    const row = await within(aside).findByRole('button', { name: 'Ver las cuentas de Claude Code' })
+    // The CLI shows its fullest account (82 %), in amber from 80 %.
+    expect(within(row).getByText('82 %')).toHaveClass('text-status-waiting')
+    expect(within(row).getByText('2 cuentas · 1 sesión')).toBeVisible()
+    expect(row).toHaveAttribute('aria-expanded', 'false')
+
+    await user.click(row)
+    const accounts = within(aside).getByRole('list', { name: 'Cuentas de Claude Code' })
+    const [system, personal] = within(accounts).getAllByRole('listitem')
+    expect(within(system).getByText('Cuenta del sistema')).toBeVisible()
+    expect(within(system).getByText('40 %')).toBeVisible()
+    expect(within(personal).getByText('marta.personal@gmail.com')).toBeVisible()
+    expect(within(personal).getByText('82 %')).toBeVisible()
+    expect(within(personal).getByText('Pro · 1 sesión')).toBeVisible()
+    expect(plain(personal.getAttribute('title'))).toBe('Ventana de 5 h: 82 %')
+    expect(row).toHaveAttribute('aria-expanded', 'true')
+  })
+
+  it('an expired window no longer counts: the bar falls back to the daily limit', async () => {
+    const [claude, agy] = systemAccounts()
+    const past = new Date(Date.now() - 3600_000).toISOString()
+    createFakeBackend({
+      agents: [makeAgent()],
+      clis: CLIS.map((cli) => ({ ...cli, installed: true })),
+      accounts: [
+        {
+          ...claude,
+          daily_limit: 10,
+          used_today: 3,
+          quota: [
+            { id: 'five_hour', used_pct: 96, resets_at: past, read_at: past, expired: false },
+          ],
+        },
+        agy,
+      ],
+    })
+    renderApp('/')
+    const aside = await screen.findByRole('complementary', { name: es.home.summary.label })
+    const row = await within(aside).findByRole('button', { name: 'Ver las cuentas de Claude Code' })
+    expect(within(row).getByText('30 %')).toBeVisible()
   })
 
   it('the spend meter turns to the limit and links to Consumo', async () => {
     const usage = emptyUsage()
-    usage.today = {
-      ...usage.today,
-      cost_usd: 1.8,
-      limits: usage.today.limits.map((l) =>
-        l.cli === 'claude' ? { ...l, limit: 2, used: 1.8, ratio: 0.9, near: true } : l,
-      ),
-    }
-    createFakeBackend({ agents: [makeAgent()], usage })
+    usage.today = { ...usage.today, cost_usd: 1.8 }
+    const [claude, agy] = systemAccounts()
+    createFakeBackend({
+      agents: [makeAgent()],
+      usage,
+      accounts: [{ ...claude, daily_limit: 2, used_today: 1.8 }, agy],
+    })
     renderApp('/')
     const meter = await screen.findByRole('link', { name: es.home.summary.spend })
     expect(meter).toHaveAttribute('href', '/consumo')
-    expect(within(meter).getByRole('progressbar')).toHaveAttribute('aria-valuenow', '90')
+    expect(await within(meter).findByRole('progressbar')).toHaveAttribute('aria-valuenow', '90')
+  })
+
+  it("the day's limit is what the Claude accounts add up to", async () => {
+    const usage = emptyUsage()
+    usage.today = { ...usage.today, cost_usd: 5 }
+    const [claude, agy] = systemAccounts()
+    createFakeBackend({
+      agents: [makeAgent()],
+      usage,
+      accounts: [
+        { ...claude, daily_limit: 10 },
+        makeAccount({ cli: 'claude', name: 'Personal', daily_limit: 10 }),
+        { ...agy, daily_limit: 1_000_000, unit: 'tokens' }, // another CLI's unit: not added
+      ],
+    })
+    renderApp('/')
+    const meter = await screen.findByRole('link', { name: es.home.summary.spend })
+    expect(await within(meter).findByRole('progressbar')).toHaveAttribute('aria-valuenow', '25')
   })
 })
 
@@ -201,31 +304,74 @@ describe('Inicio · CLI notices', () => {
     expect(await screen.findByText(es.cliReadiness.missingTitle)).toBeVisible()
     expect(screen.getByRole('link', { name: es.home.alerts.review })).toHaveAttribute(
       'href',
-      '/ajustes#clis',
+      '/clis',
     )
   })
 
-  it('warns about a CLI without a session', async () => {
-    createFakeBackend({
-      agents: [makeAgent()],
-      clis: CLIS.map((cli) => ({ ...cli, installed: true, logged_in: cli.id !== 'agy' })),
+  it('a logged-out account asks to reconnect it, from its own request', async () => {
+    const [, agy] = systemAccounts()
+    const down = makeInboxItem({
+      kind: 'account',
+      title: 'La sesión de Antigravity está cerrada',
+      detail: 'Los agentes que usan esta cuenta no arrancarán tareas.',
+      command: agy.id,
     })
+    createFakeBackend({ agents: [makeAgent()], inbox: [down] })
     renderApp('/')
-    expect(await screen.findByText('Antigravity: sin sesión iniciada')).toBeVisible()
-    expect(screen.queryByText('Claude Code: sin sesión iniciada')).toBeNull()
+    // A system notice: its article carries the title alone.
+    const notice = await screen.findByRole('article', {
+      name: 'La sesión de Antigravity está cerrada',
+    })
+    expect(within(notice).getByText(es.home.alerts.kind)).toBeVisible()
+    expect(within(notice).getByRole('link', { name: es.inbox.reconnect })).toHaveAttribute(
+      'href',
+      `/clis?reconectar=${agy.id}`,
+    )
+    // «Reconectar» says it already: no second «Revisar cuentas» next to it.
+    expect(within(notice).queryByRole('link', { name: es.home.alerts.review })).toBeNull()
+    expect(within(notice).getByRole('button', { name: es.home.alerts.snooze })).toBeVisible()
   })
 
   it('warns at 95 % of the daily limit, before the limit request exists', async () => {
-    const usage = emptyUsage()
-    usage.today = {
-      ...usage.today,
-      limits: usage.today.limits.map((l) =>
-        l.cli === 'claude' ? { ...l, limit: 10, used: 9.7, ratio: 0.97, near: true } : l,
-      ),
-    }
-    createFakeBackend({ agents: [makeAgent()], usage })
+    const [claude, agy] = systemAccounts()
+    createFakeBackend({
+      agents: [makeAgent()],
+      accounts: [{ ...claude, daily_limit: 10, used_today: 9.7 }, agy],
+    })
     renderApp('/')
     expect(await screen.findByText(/Claude Code casi sin límite diario · 97/)).toBeVisible()
+  })
+
+  it('warns when a subscription window is at 95 % or more, and drops it once it has reset', async () => {
+    const [claude, agy] = systemAccounts()
+    const soon = new Date(Date.now() + 70 * 60_000).toISOString()
+    const backend = createFakeBackend({
+      agents: [makeAgent()],
+      accounts: [
+        {
+          ...claude,
+          quota: [
+            { id: 'five_hour', used_pct: 96, resets_at: soon, read_at: soon, expired: false },
+            { id: 'seven_day', used_pct: 50, resets_at: soon, read_at: soon, expired: false },
+          ],
+        },
+        agy,
+      ],
+    })
+    renderApp('/')
+    const notice = await screen.findByRole('article', {
+      name: /Claude Code · Ventana de 5 h al 96 %/,
+    })
+    expect(within(notice).getByText(/Se reinicia en 1 h 1\d min/)).toBeVisible()
+    expect(within(notice).getByRole('link', { name: es.home.alerts.review })).toHaveAttribute(
+      'href',
+      '/clis',
+    )
+    // At 90 % there is nothing to say yet.
+    backend.accounts[0].quota[0].used_pct = 90
+    await waitFor(() => expect(screen.queryByText(/Ventana de 5 h al/)).toBeNull(), {
+      timeout: 6000,
+    })
   })
 
   it('paints a quota request as a system notice that keeps its action', async () => {
@@ -248,17 +394,27 @@ describe('Inicio · CLI notices', () => {
   })
 
   it('«Posponer» hides the notice for the session', async () => {
+    const [claude, agy] = systemAccounts()
+    const soon = new Date(Date.now() + 3600_000).toISOString()
     createFakeBackend({
       agents: [makeAgent()],
-      clis: CLIS.map((cli) => ({ ...cli, installed: true, logged_in: cli.id !== 'agy' })),
+      accounts: [
+        {
+          ...claude,
+          quota: [
+            { id: 'five_hour', used_pct: 97, resets_at: soon, read_at: soon, expired: false },
+          ],
+        },
+        agy,
+      ],
     })
     const user = userEvent.setup()
     renderApp('/')
-    const notice = await screen.findByRole('article', { name: /Antigravity: sin sesión/ })
+    const notice = await screen.findByRole('article', { name: /Ventana de 5 h al 97 %/ })
     await user.click(within(notice).getByRole('button', { name: es.home.alerts.snooze }))
-    await waitFor(() => expect(screen.queryByText(/Antigravity: sin sesión/)).toBeNull())
+    await waitFor(() => expect(screen.queryByText(/Ventana de 5 h al 97 %/)).toBeNull())
     expect(await screen.findByText(es.home.alerts.snoozed)).toBeVisible()
-    expect(useUiPrefs.getState().snoozedAlerts).toEqual(['cli-session-agy'])
+    expect(useUiPrefs.getState().snoozedAlerts).toEqual([`quota-near-${claude.id}`])
   })
 })
 
@@ -351,5 +507,118 @@ describe('Inicio · agents', () => {
     createFakeBackend()
     const { container } = renderApp('/')
     expect(container.querySelector('[aria-busy="true"]')).not.toBeNull()
+  })
+})
+
+describe('Inicio · equipos', () => {
+  function crew() {
+    const ana = makeAgent({ name: 'Ana', role: 'Analista' })
+    const dev = makeAgent({ name: 'Dev', role: 'Desarrollador' })
+    const qa = makeAgent({ name: 'QA', role: 'Pruebas' })
+    const product = makeTeam({ name: 'Producto', agent_ids: [ana.id, dev.id] })
+    ana.team_id = product.id
+    dev.team_id = product.id
+    return { ana, dev, qa, product }
+  }
+
+  it('groups the agents by team and keeps the rest under «Sin equipo»', async () => {
+    const { ana, dev, qa, product } = crew()
+    createFakeBackend({ agents: [ana, dev, qa], teams: [product] })
+    renderApp('/')
+
+    const team = await screen.findByRole('region', { name: 'Producto' })
+    expect(within(team).getByText('2 agentes · 0 activos')).toBeVisible()
+    expect(cardsIn(team).map((c) => c.getAttribute('aria-label')?.split(',')[0])).toEqual([
+      'Ana',
+      'Dev',
+    ])
+    const loose = screen.getByRole('region', { name: es.teams.none })
+    expect(cardsIn(loose)).toHaveLength(1)
+    expect(within(loose).getByRole('link', { name: /^QA, Pruebas/ })).toBeVisible()
+    expect(screen.getByText('1 equipos · 3 agentes')).toBeVisible()
+  })
+
+  it('shows the single grid again when there are no teams', async () => {
+    createFakeBackend({ agents: [makeAgent()] })
+    renderApp('/')
+    await screen.findByRole('link', { name: /^Dev, Desarrollador/ })
+    expect(screen.queryByRole('region', { name: es.teams.none })).toBeNull()
+  })
+
+  it('«Nuevo equipo» creates a team with the agents ticked', async () => {
+    const { ana, dev, qa, product } = crew()
+    const backend = createFakeBackend({ agents: [ana, dev, qa], teams: [product] })
+    const user = userEvent.setup()
+    renderApp('/')
+
+    await user.click(await screen.findByRole('button', { name: es.teams.new }))
+    const dialog = await screen.findByRole('dialog', { name: es.teams.newTitle })
+    await user.type(within(dialog).getByLabelText(es.teams.name), 'Contenidos')
+    // Ticking an agent of another team says it moves.
+    await user.click(within(dialog).getByRole('checkbox', { name: /Dev/ }))
+    expect(within(dialog).getByText('pasa de Producto')).toBeVisible()
+    await user.click(within(dialog).getByRole('checkbox', { name: /QA/ }))
+    await user.click(within(dialog).getByRole('button', { name: es.teams.create }))
+
+    await waitFor(() => expect(backend.callsTo('POST', '/api/teams')).toHaveLength(1))
+    expect(backend.callsTo('POST', '/api/teams')[0].body).toEqual({
+      name: 'Contenidos',
+      description: '',
+      agent_ids: [dev.id, qa.id],
+    })
+    // Dev left Producto for the new team.
+    const contenidos = await screen.findByRole('region', { name: 'Contenidos' })
+    expect(cardsIn(contenidos)).toHaveLength(2)
+    expect(cardsIn(screen.getByRole('region', { name: 'Producto' }))).toHaveLength(1)
+  })
+
+  it('edits a team from its pencil and deletes it leaving its agents', async () => {
+    const { ana, dev, qa, product } = crew()
+    const backend = createFakeBackend({ agents: [ana, dev, qa], teams: [product] })
+    const user = userEvent.setup()
+    renderApp('/')
+
+    await user.click(await screen.findByRole('button', { name: 'Editar el equipo Producto' }))
+    const dialog = await screen.findByRole('dialog', { name: es.teams.editTitle })
+    const name = within(dialog).getByLabelText(es.teams.name)
+    expect(name).toHaveValue('Producto')
+    await user.clear(name)
+    await user.type(name, 'Producto 2')
+    await user.click(within(dialog).getByRole('button', { name: es.common.save }))
+    await waitFor(() =>
+      expect(backend.callsTo('PATCH', `/api/teams/${product.id}`)).toHaveLength(1),
+    )
+    expect(backend.callsTo('PATCH', `/api/teams/${product.id}`)[0].body).toMatchObject({
+      name: 'Producto 2',
+      agent_ids: [ana.id, dev.id],
+    })
+
+    await user.click(await screen.findByRole('button', { name: 'Editar el equipo Producto 2' }))
+    const again = await screen.findByRole('dialog', { name: es.teams.editTitle })
+    await user.click(within(again).getByRole('button', { name: es.teams.delete }))
+    const confirm = await screen.findByRole('alertdialog')
+    await user.click(within(confirm).getByRole('button', { name: es.teams.delete }))
+    await waitFor(() =>
+      expect(backend.callsTo('DELETE', `/api/teams/${product.id}`)).toHaveLength(1),
+    )
+    // The agents stay, in the single grid again.
+    await waitFor(() => expect(screen.queryByRole('region', { name: 'Producto 2' })).toBeNull())
+    expect(await screen.findAllByRole('link', { name: /^(Ana|Dev|QA),/ })).toHaveLength(3)
+  })
+
+  it('«+ Agente» of a team opens «Nuevo agente» with that team chosen', async () => {
+    const { ana, dev, qa, product } = crew()
+    createFakeBackend({ agents: [ana, dev, qa], teams: [product] })
+    const user = userEvent.setup()
+    renderApp('/')
+    await user.click(
+      await screen.findByRole('button', { name: 'Añadir un agente al equipo Producto' }),
+    )
+    expect(useDialogs.getState().newAgent).toBe(true)
+    expect(useDialogs.getState().newAgentInit).toEqual({ teamId: product.id })
+    const dialog = await screen.findByRole('dialog', { name: es.agents.new.title })
+    expect(within(dialog).getByRole('combobox', { name: es.agents.fields.team })).toHaveTextContent(
+      'Producto',
+    )
   })
 })

@@ -25,9 +25,11 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import type { NewAgentInit } from '@/stores/dialogs'
 import i18n from '@/i18n'
 import { errorMessage } from '@/lib/form-errors'
 import { cn } from '@/lib/utils'
+import { AccountSelect, TeamSelect } from './AgentLinks'
 import { TemplatePicker } from './TemplatePicker'
 
 const CLIS: CliId[] = ['claude', 'agy']
@@ -43,6 +45,8 @@ interface Draft {
   permission_mode: PermissionMode
   instructions: string
   color: string
+  team_id: string | null
+  account_id: string | null
 }
 
 const BLANK: Draft = {
@@ -54,29 +58,34 @@ const BLANK: Draft = {
   permission_mode: 'ask',
   instructions: '',
   color: BLANK_COLOR,
+  team_id: null,
+  account_id: null,
 }
 
 /** Creates an agent as a draft (activated later from its page): from a template or blank. */
 export function NewAgentDialog({
   open,
   onOpenChange,
+  init,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
+  /** From a team's «+ Agente»: the team is preselected. */
+  init?: NewAgentInit | null
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      {open && <NewAgentForm onClose={() => onOpenChange(false)} />}
+      {open && <NewAgentForm onClose={() => onOpenChange(false)} init={init ?? {}} />}
     </Dialog>
   )
 }
 
-function NewAgentForm({ onClose }: { onClose: () => void }) {
+function NewAgentForm({ onClose, init }: { onClose: () => void; init: NewAgentInit }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const create = useCreateAgent()
   const { data: clis } = useClis()
-  const [draft, setDraft] = useState<Draft>(BLANK)
+  const [draft, setDraft] = useState<Draft>({ ...BLANK, team_id: init.teamId ?? null })
   const [error, setError] = useState<string | null>(null)
   const models = clis?.find((c) => c.id === draft.cli)?.models ?? []
   const modelLabel = (m: { id: string; label: string | null }) => {
@@ -88,7 +97,8 @@ function NewAgentForm({ onClose }: { onClose: () => void }) {
     setDraft((d) => ({ ...d, [key]: value }))
 
   function pick(template: AgentTemplate | null) {
-    setDraft(
+    // The team the person is creating the agent for survives choosing a template.
+    setDraft((d) =>
       template
         ? {
             template: template.id,
@@ -99,8 +109,10 @@ function NewAgentForm({ onClose }: { onClose: () => void }) {
             permission_mode: template.permission_mode,
             instructions: template.instructions,
             color: template.color,
+            team_id: d.team_id,
+            account_id: null,
           }
-        : BLANK,
+        : { ...BLANK, team_id: d.team_id },
     )
   }
 
@@ -117,6 +129,8 @@ function NewAgentForm({ onClose }: { onClose: () => void }) {
         permission_mode: draft.permission_mode,
         instructions: draft.instructions,
         color: draft.color,
+        team_id: draft.team_id,
+        account_id: draft.account_id,
         status: 'draft',
       })
       toast.success(t('agents.new.created', { name: agent.name }))
@@ -166,7 +180,9 @@ function NewAgentForm({ onClose }: { onClose: () => void }) {
             <Field label={t('agents.fields.cli')} htmlFor="new-agent-cli">
               <Select
                 value={draft.cli}
-                onValueChange={(v) => setDraft((d) => ({ ...d, cli: v as CliId, model: '' }))}
+                onValueChange={(v) =>
+                  setDraft((d) => ({ ...d, cli: v as CliId, model: '', account_id: null }))
+                }
               >
                 <SelectTrigger id="new-agent-cli" className="w-full">
                   <SelectValue />
@@ -179,6 +195,21 @@ function NewAgentForm({ onClose }: { onClose: () => void }) {
                   ))}
                 </SelectContent>
               </Select>
+            </Field>
+            <Field label={t('agents.fields.team')} htmlFor="new-agent-team">
+              <TeamSelect
+                id="new-agent-team"
+                value={draft.team_id}
+                onChange={(teamId) => set('team_id', teamId)}
+              />
+            </Field>
+            <Field label={t('agents.fields.account')} htmlFor="new-agent-account">
+              <AccountSelect
+                id="new-agent-account"
+                cli={draft.cli}
+                value={draft.account_id}
+                onChange={(accountId) => set('account_id', accountId)}
+              />
             </Field>
             <Field label={t('agents.fields.model')} htmlFor="new-agent-model">
               <Select

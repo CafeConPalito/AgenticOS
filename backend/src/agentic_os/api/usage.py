@@ -40,6 +40,7 @@ class Period:
         date_to: Annotated[date | None, Query(alias="to")] = None,
         agent_id: str | None = None,
         project_id: str | None = None,
+        account_id: str | None = None,
     ) -> None:
         last = date_to or today()
         first = date_from or last - timedelta(days=29)
@@ -48,7 +49,7 @@ class Period:
         if (last - first).days >= MAX_DAYS:
             raise ApiError(422, "period_too_long", f"at most {MAX_DAYS} days", "from")
         self.first, self.last = first, last
-        self.agent_id, self.project_id = agent_id, project_id
+        self.agent_id, self.project_id, self.account_id = agent_id, project_id, account_id
 
 
 PeriodDep = Annotated[Period, Depends()]
@@ -57,13 +58,18 @@ PeriodDep = Annotated[Period, Depends()]
 @router.get("/usage/summary")
 def get_summary(db: DbSession, period: PeriodDep) -> UsageSummary:
     return stats.summary(
-        db, period.first, period.last, agent_id=period.agent_id, project_id=period.project_id
+        db,
+        period.first,
+        period.last,
+        agent_id=period.agent_id,
+        project_id=period.project_id,
+        account_id=period.account_id,
     )
 
 
 @router.get("/usage/daily")
 def get_daily(
-    db: DbSession, period: PeriodDep, group: Literal["agent", "project"] = "agent"
+    db: DbSession, period: PeriodDep, group: Literal["agent", "project", "account"] = "agent"
 ) -> DailySeries:
     return stats.daily(
         db,
@@ -72,12 +78,15 @@ def get_daily(
         group,
         agent_id=period.agent_id,
         project_id=period.project_id,
+        account_id=period.account_id,
     )
 
 
 @router.get("/usage/breakdown")
 def get_breakdown(
-    db: DbSession, period: PeriodDep, group: Literal["agent", "project", "task"] = "agent"
+    db: DbSession,
+    period: PeriodDep,
+    group: Literal["agent", "project", "task", "account"] = "agent",
 ) -> Breakdown:
     return stats.breakdown(
         db,
@@ -86,6 +95,7 @@ def get_breakdown(
         group,
         agent_id=period.agent_id,
         project_id=period.project_id,
+        account_id=period.account_id,
     )
 
 
@@ -106,6 +116,7 @@ def get_sessions(
         period.last,
         agent_id=period.agent_id,
         project_id=period.project_id,
+        account_id=period.account_id,
         sort=sort,
         descending=direction == "desc",
         limit=limit,
@@ -125,6 +136,7 @@ def get_sessions_csv(
         period.last,
         agent_id=period.agent_id,
         project_id=period.project_id,
+        account_id=period.account_id,
         sort=sort,
         descending=direction == "desc",
         limit=None,

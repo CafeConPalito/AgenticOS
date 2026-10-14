@@ -1,12 +1,14 @@
 """CLI accounts (phase 10, ADR 0014): the logins each CLI can run with, their session, their
 daily limit and the subscription windows read from their status line."""
 
+import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, Depends, Request, WebSocket, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from agentic_os.api.terminal import serve_terminal
 from agentic_os.api.usage import today
 from agentic_os.db.session import get_session
 from agentic_os.errors import ApiError, NotFound
@@ -14,6 +16,7 @@ from agentic_os.models import ACTIVE_STATUSES, Agent, Cli, CliAccount, Run
 from agentic_os.schemas.account import (
     AccountAgent,
     AccountCreate,
+    AccountLogin,
     AccountRead,
     AccountUpdate,
     QuotaWindowRead,
@@ -32,10 +35,13 @@ def _get(db: Session, account_id: str) -> CliAccount:
     return account
 
 
-def read_many(db: Session, accounts: list[CliAccount]) -> list[AccountRead]:
+def read_many(
+    db: Session, accounts: list[CliAccount], logging_in: set[str] | None = None
+) -> list[AccountRead]:
     """AccountRead for many accounts with a handful of queries."""
     if not accounts:
         return []
+    logging_in = logging_in or set()
     used = usage_limits.used_by_account(db, today())
     index = account_ops.AccountIndex(db)
     users: dict[str, list[AccountAgent]] = {a.id: [] for a in accounts}
@@ -80,14 +86,19 @@ def read_many(db: Session, accounts: list[CliAccount]) -> list[AccountRead]:
             ],
             agents=users[a.id],
             live_runs=live.get(a.id, 0),
+            logging_in=a.id in logging_in,
         )
         for a in accounts
     ]
 
 
+def _read(db: Session, request: Request, accounts: list[CliAccount]) -> list[AccountRead]:
+    return read_many(db, accounts, request.app.state.logins.live_ids())
+
+
 @router.get("/accounts")
-def list_accounts(db: DbSession) -> list[AccountRead]:
-    return read_many(db, account_ops.list_accounts(db))
+def list_accounts(db: DbSession, request: Request) -> list[AccountRead]:
+    return _read(db, request, account_ops.list_accounts(db))
 
 
 @router.post("/accounts", status_code=status.HTTP_201_CREATED)
@@ -96,7 +107,7 @@ def create_account(payload: AccountCreate, db: DbSession, request: Request) -> A
         db, request.app.state.settings.data_dir, payload.cli, payload.label
     )
     db.commit()
-    return read_many(db, [account])[0]
+    return _read(db, request, [account])[0]
 
 
 @router.patch("/accounts/{account_id}")
@@ -112,22 +123,25 @@ def update_account(
         usage_limits.sync_limit_items(db, today())
     db.commit()
     request.app.state.scheduler.poke()  # a raised limit lets queued tasks start
-    return read_many(db, [account])[0]
+    return _read(db, request, [account])[0]
 
 
 @router.delete("/accounts/{account_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_account(account_id: str, db: DbSession) -> None:
-    account_ops.delete(db, _get(db, account_id))
+def delete_account(account_id: str, db: DbSession, request: Request) -> None:
+    account = _get(db, account_id)
+    if request.app.state.logins.get(account_id) is not None:
+        raise ApiError(409, "account_busy", "a login is open for this account")
+    account_ops.delete(db, account)
     db.commit()
 
 
 @router.post("/accounts/{account_id}/default")
-def make_default(account_id: str, db: DbSession) -> AccountRead:
+def make_default(account_id: str, db: DbSession, request: Request) -> AccountRead:
     """The account the agents without one of their own use."""
     account = _get(db, account_id)
     account_ops.set_default(db, account)
     db.commit()
-    return read_many(db, [account])[0]
+    return _read(db, request, [account])[0]
 
 
 @router.post("/accounts/{account_id}/probe")
@@ -140,4 +154,33 @@ def probe_account(account_id: str, db: DbSession, request: Request) -> AccountRe
     usage_limits.sync_session_items(db)
     db.commit()
     request.app.state.scheduler.poke()
-    return read_many(db, [account])[0]
+    return _read(db, request, [account])[0]
+
+
+# ---------------------------------------------------------------------- login
+@router.post("/accounts/{account_id}/login")
+def start_login(
+    account_id: str, payload: AccountLogin, db: DbSession, request: Request
+) -> AccountRead:
+    """Opens the CLI's login in a terminal (see `/accounts/{id}/login/terminal`). With one
+    already open, it is the same. When it ends the session is checked again."""
+    account = _get(db, account_id)
+    request.app.state.logins.start(account, payload.email or account.email)
+    return _read(db, request, [account])[0]
+
+
+@router.delete("/accounts/{account_id}/login", status_code=status.HTTP_204_NO_CONTENT)
+def cancel_login(account_id: str, db: DbSession, request: Request) -> None:
+    _get(db, account_id)
+    request.app.state.logins.stop(account_id)
+
+
+@router.websocket("/accounts/{account_id}/login/terminal")
+async def login_terminal(websocket: WebSocket, account_id: str, client_id: str = "") -> None:
+    await websocket.accept()
+    session = websocket.app.state.logins.get(account_id)
+    if session is None:
+        await websocket.send_json({"type": "exit", "code": None, "status": "exited"})
+        await websocket.close()
+        return
+    await serve_terminal(websocket, session, client_id or uuid.uuid4().hex)

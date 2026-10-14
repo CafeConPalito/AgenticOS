@@ -50,11 +50,17 @@ def get(db: Session, account_id: str) -> CliAccount | None:
     return db.get(CliAccount, account_id)
 
 
+CLI_ORDER = {Cli.CLAUDE.value: 0, Cli.AGY.value: 1}
+
+
 def list_accounts(db: Session, cli: Cli | None = None) -> list[CliAccount]:
+    """The accounts in the order the app shows them: by CLI (Claude Code first), then oldest
+    first, so the system account heads its CLI."""
     query = select(CliAccount).where(CliAccount.workspace_id == DEFAULT_WORKSPACE)
     if cli is not None:
         query = query.where(CliAccount.cli == cli.value)
-    return list(db.scalars(query.order_by(CliAccount.cli, CliAccount.created_at, CliAccount.id)))
+    found = db.scalars(query.order_by(CliAccount.created_at, CliAccount.id))
+    return sorted(found, key=lambda a: CLI_ORDER.get(a.cli, len(CLI_ORDER)))
 
 
 def _system_account(db: Session, cli: Cli) -> CliAccount:

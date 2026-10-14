@@ -497,3 +497,37 @@ def test_the_scheduler_asks_the_cli_again_when_the_session_check_is_old(db_facto
     assert launcher.launched == []
     with db_factory() as db:
         assert db.query(InboxItem).filter(InboxItem.kind == InboxKind.ACCOUNT).count() == 1
+
+
+def test_usage_can_be_filtered_and_grouped_by_account(db_factory, tmp_path):
+    with db_factory() as db:
+        system, other, ana, beto, web, blog = two_claude_accounts(db, tmp_path)
+        add_run(db, ana, web, local(DAY, 9), cost=1.5, tokens=(10, 100, 0, 0), account=system)
+        add_run(db, beto, blog, local(DAY, 10), cost=0.5, tokens=(5, 50, 0, 0), account=other)
+        orphan = add_run(db, beto, blog, local(DAY, 11), cost=0.25, tokens=(1, 1, 0, 0))
+        orphan.account_label = "Vieja"  # its account was removed: the launch-time copy remains
+        db.commit()
+        system_id, other_id = system.id, other.id
+
+    with db_factory() as db:
+        rows = {r.id: r for r in stats.breakdown(db, DAY, DAY, "account", tz=TZ).rows}
+        assert rows[system_id].cost_usd == pytest.approx(1.5) and rows[system_id].sessions == 1
+        assert rows[other_id].name == "marta.personal@gmail.com"
+        assert rows[None].name == "Vieja" and rows[None].cost_usd == pytest.approx(0.25)
+        assert sum(r.share or 0 for r in rows.values()) == pytest.approx(1)
+
+        series = stats.daily(db, DAY, DAY, "account", tz=TZ)
+        assert {g.name for g in series.groups} == {
+            accounts.display_name(accounts.get(db, system_id)),
+            "marta.personal@gmail.com",
+            "Vieja",
+        }
+
+        only = stats.summary(db, DAY, DAY, account_id=other_id, tz=TZ)
+        assert only.kpis.cost_usd == pytest.approx(0.5) and only.kpis.sessions == 1
+        sessions = stats.sessions(db, DAY, DAY, account_id=system_id, tz=TZ)
+        assert [(s.account_id, s.account_label) for s in sessions] == [
+            (system_id, accounts.display_name(accounts.get(db, system_id)))
+        ]
+        csv_text = stats.sessions_csv(db, stats.sessions(db, DAY, DAY, tz=TZ))
+        assert ",cli,cuenta,modelo," in csv_text and "marta.personal@gmail.com" in csv_text

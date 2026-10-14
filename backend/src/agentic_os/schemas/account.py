@@ -24,6 +24,13 @@ class AccountUpdate(BaseModel):
     daily_limit: Annotated[float, Field(gt=0, le=10**12)] | None = None
 
 
+class AccountLogin(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    # Pre-fills the email on the CLI's login page (Claude Code).
+    email: Label = ""
+
+
 class QuotaWindowRead(BaseModel):
     id: str  # five_hour, seven_day (Claude) · gemini-5h, 3p-weekly… (agy)
     used_pct: float
@@ -56,3 +63,4 @@ class AccountRead(BaseModel):
     quota: list[QuotaWindowRead]
     agents: list[AccountAgent]
     live_runs: int
+    logging_in: bool = False  # a login terminal is open for it

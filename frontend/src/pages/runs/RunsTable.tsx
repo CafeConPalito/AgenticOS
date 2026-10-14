@@ -40,6 +40,7 @@ export function RunsTable({ runs, showAgent = true }: { runs: Run[]; showAgent?:
             <TableHead>{t('runs.columns.prompt')}</TableHead>
             <TableHead>{t('runs.columns.project')}</TableHead>
             <TableHead>{t('runs.columns.status')}</TableHead>
+            <TableHead>{t('runs.columns.account')}</TableHead>
             <TableHead className="text-right">{t('usage.columns.tokens')}</TableHead>
             <TableHead className="text-right">{t('usage.columns.cost')}</TableHead>
             <TableHead className="pr-4 text-right">{t('runs.columns.duration')}</TableHead>
@@ -92,6 +93,10 @@ export function RunsTable({ runs, showAgent = true }: { runs: Run[]; showAgent?:
                 </TableCell>
                 <TableCell>
                   <RunStatusBadge run={run} size="xs" />
+                </TableCell>
+                {/* Tertiary information (design v7): small and muted. */}
+                <TableCell className="max-w-[160px] truncate text-xs text-muted-foreground">
+                  {run.account_label || '—'}
                 </TableCell>
                 <TableCell className="text-right font-mono text-xs whitespace-nowrap text-muted-foreground">
                   {run.usage.status === 'unavailable' || run.usage.status === 'pending'

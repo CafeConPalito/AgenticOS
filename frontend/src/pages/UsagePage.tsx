@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router'
 import { toast } from 'sonner'
+import { useAccounts } from '@/api/accounts'
 import {
   PERIODS,
   periodFromParam,
@@ -16,6 +17,13 @@ import {
 import { EmptyState } from '@/components/EmptyState'
 import { PageContainer, PageHeader } from '@/components/page'
 import { Button } from '@/components/ui/button'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { errorMessage } from '@/lib/form-errors'
 import { formatPercent, formatTokens, formatUsd } from '@/lib/format'
@@ -23,7 +31,28 @@ import { DailyChart, type Metric } from './usage/DailyChart'
 import { KpiCard, Segmented, ShareBar } from './usage/parts'
 import { SessionsTable } from './usage/SessionsTable'
 
-type Group = 'agent' | 'project'
+type Group = 'agent' | 'project' | 'account'
+const ALL = '__all__' // Radix Select cannot use "" as an item value
+
+const GROUP_PARAM: Record<string, Group> = { proyecto: 'project', cuenta: 'account' }
+const PARAM_OF: Record<Group, string | null> = {
+  agent: null,
+  project: 'proyecto',
+  account: 'cuenta',
+}
+const CHART_TITLE: Record<Group, 'titleAgent' | 'titleProject' | 'titleAccount'> = {
+  agent: 'titleAgent',
+  project: 'titleProject',
+  account: 'titleAccount',
+}
+const TOKENS_TITLE: Record<
+  Group,
+  'tokensTitleAgent' | 'tokensTitleProject' | 'tokensTitleAccount'
+> = {
+  agent: 'tokensTitleAgent',
+  project: 'tokensTitleProject',
+  account: 'tokensTitleAccount',
+}
 
 /** agy records no cost: its rows show tokens instead of «0,00 $». */
 const noCost = (row: { cost_usd: number; tokens: number }) => row.cost_usd === 0 && row.tokens > 0
@@ -32,10 +61,15 @@ export default function UsagePage() {
   const { t, i18n } = useTranslation()
   const [params, setParams] = useSearchParams()
   const days = periodFromParam(params.get('periodo'))
-  const group: Group = params.get('agrupar') === 'proyecto' ? 'project' : 'agent'
+  const group: Group = GROUP_PARAM[params.get('agrupar') ?? ''] ?? 'agent'
+  const accounts = useAccounts().data ?? []
+  // A filter is worth showing once there is something to choose from beyond the system accounts.
+  const accountId = accounts.some((a) => a.id === params.get('cuenta'))
+    ? (params.get('cuenta') as string)
+    : undefined
   const [sort, setSort] = useState<SessionSort>('started_at')
   const [dir, setDir] = useState<'asc' | 'desc'>('desc')
-  const filters = { days }
+  const filters = { days, accountId }
 
   const summary = useUsageSummary(filters)
   const daily = useUsageDaily(filters, group)
@@ -50,7 +84,7 @@ export default function UsagePage() {
   }
 
   function exportCsv() {
-    downloadSessionsCsv({ days }).then(
+    downloadSessionsCsv(filters).then(
       () => toast.success(t('usage.exported')),
       (error: unknown) => toast.error(errorMessage(error)),
     )
@@ -61,10 +95,9 @@ export default function UsagePage() {
   const metric: Metric = kpis && kpis.cost_usd === 0 && kpis.tokens > 0 ? 'tokens' : 'cost'
   const number = (n: number, digits = 1) =>
     new Intl.NumberFormat(i18n.language, { maximumFractionDigits: digits }).format(n)
-  const chartTitle =
-    metric === 'cost'
-      ? t(group === 'agent' ? 'usage.chart.titleAgent' : 'usage.chart.titleProject')
-      : t(group === 'agent' ? 'usage.chart.tokensTitleAgent' : 'usage.chart.tokensTitleProject')
+  const chartTitle = t(
+    `usage.chart.${metric === 'cost' ? CHART_TITLE[group] : TOKENS_TITLE[group]}` as const,
+  )
 
   return (
     <PageContainer>
@@ -79,6 +112,24 @@ export default function UsagePage() {
               options={PERIODS.map((p) => ({ value: p, label: t(`usage.period.${p}`) }))}
               onChange={(value) => update('periodo', value === 30 ? null : String(value))}
             />
+            {accounts.length > 2 && (
+              <Select
+                value={accountId ?? ALL}
+                onValueChange={(value) => update('cuenta', value === ALL ? null : value)}
+              >
+                <SelectTrigger aria-label={t('usage.filters.account')} className="w-[210px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL}>{t('usage.filters.allAccounts')}</SelectItem>
+                  {accounts.map((account) => (
+                    <SelectItem key={account.id} value={account.id}>
+                      {t(`cli.${account.cli}`)} · {account.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
             <Button variant="outline" onClick={exportCsv}>
               <Download />
               {t('header.primary.exportCsv')}
@@ -145,8 +196,9 @@ export default function UsagePage() {
               options={[
                 { value: 'agent' as const, label: t('usage.chart.byAgent') },
                 { value: 'project' as const, label: t('usage.chart.byProject') },
+                { value: 'account' as const, label: t('usage.chart.byAccount') },
               ]}
-              onChange={(value) => update('agrupar', value === 'project' ? 'proyecto' : null)}
+              onChange={(value) => update('agrupar', PARAM_OF[value])}
             />
           </div>
           {daily.data ? (

@@ -5,13 +5,12 @@ import { PageContainer, PageHeader } from '@/components/page'
 import { cn } from '@/lib/utils'
 import { AboutSection } from './AboutSection'
 import { CleanupSection } from './CleanupSection'
-import { CliSection } from './CliSection'
 import { GeneralSection } from './GeneralSection'
 import { LimitsSection } from './LimitsSection'
 import { NotificationsSection } from './NotificationsSection'
 
-/** The six sections, in order; each one is reachable as `/ajustes#<id>`. */
-export const SECTIONS = ['clis', 'general', 'notifications', 'limits', 'cleanup', 'about'] as const
+/** The five sections, in order; each one is reachable as `/ajustes#<id>`. */
+export const SECTIONS = ['general', 'notifications', 'limits', 'cleanup', 'about'] as const
 type SectionId = (typeof SECTIONS)[number]
 
 /** The id of the section that shows at the top of the scroll area. */
@@ -51,13 +50,18 @@ export default function SettingsPage() {
   useEffect(() => {
     const id = hash.slice(1)
     if (!id) return
+    // The CLIs moved out of Ajustes (phase 10): old links to `#clis` land on their page.
+    if (id === 'clis') {
+      void navigate('/clis', { replace: true })
+      return
+    }
     if (fromIndex.current) {
       fromIndex.current = false
       return
     }
     document.getElementById(id)?.scrollIntoView({ block: 'start' })
     if ((SECTIONS as readonly string[]).includes(id)) setVisible(id as SectionId)
-  }, [hash, setVisible])
+  }, [hash, setVisible, navigate])
 
   function go(id: SectionId) {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -96,9 +100,6 @@ export default function SettingsPage() {
           ))}
         </nav>
         <div className="mx-auto flex w-full max-w-[1000px] flex-col gap-5">
-          <div id="clis" className="scroll-mt-4">
-            <CliSection />
-          </div>
           <div id="general" className="scroll-mt-4">
             <GeneralSection />
           </div>

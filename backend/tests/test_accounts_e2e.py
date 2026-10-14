@@ -6,9 +6,11 @@ from __future__ import annotations
 
 import json
 import re
+import sys
 import time
 from pathlib import Path
 
+import httpx
 import pytest
 from live_server import in_process_only, live_server
 from test_scheduler_e2e import Api, settings_for, wait_until
@@ -113,3 +115,69 @@ def test_the_session_check_at_startup_finds_a_logged_out_account(
         api.post(f"/api/accounts/{claude_account(api)['id']}/probe")
         notices = [i for i in api.get("/api/inbox") if i["kind"] == "account"]
         assert len(notices) == 1 and "Claude Code" in notices[0]["title"]
+
+
+def test_logging_an_account_in_runs_the_cli_in_a_terminal_and_checks_the_session(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """Add an account → its login terminal → the CLI writes the login into the account's own
+    folder → the app asks again and the account has its email and a live session."""
+    from websockets.sync.client import connect
+
+    monkeypatch.setenv("FAKE_CLI_REQUIRE_LOGIN", "1")
+    with live_server(settings_for(tmp_path)) as server:
+        api = Api(server)
+        account = api.post("/api/accounts", {"cli": "claude", "label": "Personal"})
+        folder = tmp_path / "data" / "accounts" / account["id"]
+        # A new account has no session yet.
+        probed = api.post(f"/api/accounts/{account['id']}/probe")
+        assert (probed["session_state"], probed["email"]) == ("down", "")
+
+        started = api.post(f"/api/accounts/{account['id']}/login", {"email": "marta@estudio.es"})
+        assert started["logging_in"] is True
+        # The same call again attaches to the open login instead of starting another.
+        assert api.post(f"/api/accounts/{account['id']}/login", {})["logging_in"] is True
+
+        url = server.url.replace("http", "ws") + f"/api/accounts/{account['id']}/login/terminal"
+        output = ""
+        with connect(f"{url}?client_id=test") as ws:
+            while True:
+                message = json.loads(ws.recv(timeout=30))
+                output += (
+                    message.get("data", "") if message["type"] in ("snapshot", "output") else ""
+                )
+                if message["type"] == "exit":
+                    break
+        assert "Login successful." in ANSI.sub("", output)
+        assert (folder / "fake-login.json").is_file()  # the login landed in the account's folder
+
+        # When the terminal closes, the app checks the session by itself.
+        assert wait_until(lambda: account_named(api, account["id"])["session_state"] == "ok", 30), (
+            account_named(api, account["id"])
+        )
+        done = account_named(api, account["id"])
+        assert (done["email"], done["name"], done["logging_in"]) == (
+            "marta@estudio.es",
+            "marta@estudio.es",
+            False,
+        )
+        # No login is open any more: its terminal says so and closes.
+        with connect(f"{url}?client_id=again") as ws:
+            assert json.loads(ws.recv(timeout=10))["type"] == "exit"
+
+
+def test_a_login_can_be_cancelled_and_blocks_removing_the_account(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    settings = settings_for(tmp_path)
+    # A CLI that never finishes its login: it prints and waits.
+    slow = [sys.executable, "-c", "import time; print('esperando…', flush=True); time.sleep(120)"]
+    settings = settings.model_copy(update={"cli_command_overrides": {"claude": slow, "agy": slow}})
+    with live_server(settings) as server:
+        api = Api(server)
+        account = api.post("/api/accounts", {"cli": "claude"})
+        api.post(f"/api/accounts/{account['id']}/login", {})
+        assert api.get_status(f"/api/accounts/{account['id']}", method="delete") == 409
+        assert httpx.delete(f"{server.url}/api/accounts/{account['id']}/login").status_code == 204
+        assert wait_until(lambda: not account_named(api, account["id"])["logging_in"], 30)
+        assert api.get_status(f"/api/accounts/{account['id']}", method="delete") == 204

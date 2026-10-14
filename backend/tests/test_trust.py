@@ -63,3 +63,25 @@ def test_missing_or_broken_files_are_never_rewritten(tmp_path: Path):
     assert not claude.exists()
     assert agy.read_text("utf-8") == "{not json"
     assert cleaner.flush() == {"agy": 1}  # kept for later, in case the file gets repaired
+
+
+def test_the_trust_of_every_accounts_folder_is_cleaned_too(tmp_path: Path):
+    """Phase 10: an account with its own login folder keeps its trust in `<folder>/.claude.json`."""
+    from agentic_os.services.trust import account_claude_config
+
+    cleaner, claude, _ = setup(tmp_path, running=set())
+    folder = tmp_path / "accounts" / "a1"
+    folder.mkdir(parents=True)
+    own = account_claude_config(folder)
+    own.write_text(json.dumps(CLAUDE), "utf-8")
+    cleaner = TrustCleaner(
+        tmp_path / "data" / "trust-cleanup.json",
+        {"claude": claude, "agy": tmp_path / "settings.json"},
+        is_running=lambda image: False,
+        extra_configs=lambda: {"claude": [own, tmp_path / "accounts" / "gone" / ".claude.json"]},
+    )
+    cleaner.forget("D:/web.wt/T-7")
+    for path in (claude, own):  # the system file and the account's
+        assert "D:/web.wt/T-7" not in json.loads(path.read_text("utf-8"))["projects"]
+        assert "D:/web.wt/T-8" in json.loads(path.read_text("utf-8"))["projects"]
+    assert not (tmp_path / "accounts" / "gone").exists()  # a missing file is never created

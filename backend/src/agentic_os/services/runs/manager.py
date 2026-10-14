@@ -113,8 +113,6 @@ class RunManager:
         self.on_run_ended: Callable[[str], None] | None = None
         # Called when tasks change outside an API request (a permission dialog, an answer…).
         self.on_tasks_changed: Callable[[], None] | None = None
-        # Called (from the hook thread) when an account's quota or identity changed.
-        self.on_account_changed: Callable[[str], None] | None = None
         # Usage of the runs (phase 07). Without `start()` it reads synchronously (tests).
         self.usage = UsageService(sessions, publish=self._publish)
         # The installed version of a CLI, if already known (never probes: that is slow).
@@ -1028,18 +1026,11 @@ class RunManager:
                 account = db.get(CliAccount, account_id)
                 if account is None:
                     return
-                identity_before = (account.email, account.plan)
                 account_ops.record_identity(account, effect.email or "", effect.plan or "")
-                changed = account_ops.record_quota(account, effect.quota)
-                changed = changed or identity_before != (account.email, account.plan)
+                account_ops.record_quota(account, effect.quota)
                 db.commit()
         except Exception:
             log.exception("could not record the account status", account_id=account_id)
-            return
-        if changed:
-            self._notify_change()
-            if self.on_account_changed is not None:
-                self.on_account_changed(account_id)
 
     # ------------------------------------------------------------------ CLI hooks
     def on_hook(self, run_id: str, event: str, payload: object) -> None:

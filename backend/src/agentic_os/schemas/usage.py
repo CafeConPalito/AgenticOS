@@ -125,6 +125,8 @@ class SessionRow(BaseModel):
     task_id: str | None
     task_code: str | None
     task_title: str | None
+    account_id: str | None = None
+    account_label: str = ""
     cli: str
     model: str
     status: str

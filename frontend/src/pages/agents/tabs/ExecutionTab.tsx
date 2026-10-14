@@ -21,6 +21,7 @@ import i18n from '@/i18n'
 import { errorMessage } from '@/lib/form-errors'
 import { cn } from '@/lib/utils'
 import type { AgentFormValues } from '../agent-form'
+import { AccountSelect } from '../AgentLinks'
 
 const CLIS: CliId[] = ['claude', 'agy']
 const DEFAULT_MODEL = '__default__' // Radix Select cannot use "" as an item value
@@ -102,7 +103,11 @@ export function ExecutionTab() {
                       key={id}
                       selected={field.value === id}
                       onSelect={() => {
-                        if (field.value !== id) setValue('model', '', { shouldDirty: true })
+                        if (field.value !== id) {
+                          setValue('model', '', { shouldDirty: true })
+                          // The login belongs to the CLI: the new CLI starts with its default.
+                          setValue('account_id', null, { shouldDirty: true })
+                        }
                         field.onChange(id)
                       }}
                     >
@@ -173,6 +178,26 @@ export function ExecutionTab() {
           </div>
         </Field>
       </div>
+
+      <Field
+        label={t('agents.fields.account')}
+        htmlFor="agent-account"
+        help={t('agents.fields.accountHelp')}
+        className="max-w-[512px]"
+      >
+        <Controller
+          control={control}
+          name="account_id"
+          render={({ field }) => (
+            <AccountSelect
+              id="agent-account"
+              cli={cli}
+              value={field.value}
+              onChange={field.onChange}
+            />
+          )}
+        />
+      </Field>
 
       <Field label={t('agents.fields.permissions')}>
         <Controller

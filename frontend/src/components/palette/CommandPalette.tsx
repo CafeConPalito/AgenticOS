@@ -10,6 +10,8 @@ import {
   Plus,
   SunMoon,
   Terminal,
+  UserPlus,
+  UsersRound,
   type LucideIcon,
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
@@ -119,6 +121,20 @@ function PaletteContent({ onClose }: { onClose: () => void }) {
         run: () => dialogs.openNewAgent(),
       },
       {
+        id: 'new-team',
+        group: 'actions',
+        label: t('palette.actions.newTeam'),
+        icon: UsersRound,
+        run: () => dialogs.openTeam(),
+      },
+      {
+        id: 'add-account',
+        group: 'actions',
+        label: t('palette.actions.addAccount'),
+        icon: UserPlus,
+        run: go('/clis?nueva=1'),
+      },
+      {
         id: 'new-project',
         group: 'actions',
         label: t('palette.actions.newProject'),
@@ -177,6 +193,7 @@ function PaletteContent({ onClose }: { onClose: () => void }) {
         ['board', '/tablero'],
         ['runs', '/ejecuciones'],
         ['usage', '/consumo'],
+        ['clis', '/clis'],
         ['inbox', '/inbox'],
         ['settings', '/ajustes'],
       ] as const

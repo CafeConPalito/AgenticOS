@@ -1,10 +1,12 @@
-import { Plus } from 'lucide-react'
-import { useId } from 'react'
+import type { TFunction } from 'i18next'
+import { ChevronDown, Plus } from 'lucide-react'
+import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link } from 'react-router'
-import type { CliInfo, HomeAgent, HomeProject, LimitState, UsageToday } from '@/api/types'
+import { Link, useNavigate } from 'react-router'
+import type { Account, CliInfo, HomeAgent, HomeProject, LimitState, UsageToday } from '@/api/types'
 import { AgentAvatar, CLI_TAG } from '@/components/agentic/primitives'
 import { formatPercent, formatTokensUnit, formatUsd } from '@/lib/format'
+import { highestWindow, windowName } from '@/lib/quota'
 import { cn } from '@/lib/utils'
 import { useDialogs } from '@/stores/dialogs'
 
@@ -60,6 +62,12 @@ function AsideSection({
   )
 }
 
+/** The sum of the daily limits that are set, or null when none is. */
+function totalLimit(states: LimitState[]): number | null {
+  const set = states.filter((s) => s.limit !== null)
+  return set.length > 0 ? set.reduce((sum, s) => sum + (s.limit ?? 0), 0) : null
+}
+
 /** Today's spend against the daily limit (amber from 80 %). */
 export function SpendMeter({
   cost,
@@ -68,10 +76,10 @@ export function SpendMeter({
 }: {
   cost: number
   tokens: number
-  limit: LimitState | undefined
+  limit: number | null
 }) {
   const { t } = useTranslation()
-  const usd = limit?.unit === 'usd' && limit.limit ? limit.limit : null
+  const usd = limit
   const ratio = usd ? cost / usd : null
   const amount = cost > 0 || tokens === 0 ? formatUsd(cost) : formatTokensUnit(tokens)
   return (
@@ -119,55 +127,145 @@ export function SpendMeter({
   )
 }
 
-function CliRow({ cli, limit }: { cli: CliInfo; limit: LimitState | undefined }) {
-  const { t } = useTranslation()
-  const ratio = limit?.ratio ?? null
-  const session = !cli.installed
-    ? 'missing'
-    : cli.logged_in === false
-      ? 'down'
-      : cli.logged_in
-        ? 'ok'
-        : 'unknown'
+/** What fills an account's bar: its fullest subscription window, else its daily limit. */
+export function accountLevel(
+  account: Account,
+  now: number = Date.now(),
+): { ratio: number; source: 'quota' | 'daily'; window?: string } | null {
+  const window = highestWindow(account, now)
+  if (window) return { ratio: window.used_pct / 100, source: 'quota', window: window.id }
+  if (account.daily_limit)
+    return { ratio: account.used_today / account.daily_limit, source: 'daily' }
+  return null
+}
+
+function LevelBar({ ratio }: { ratio: number | null }) {
   return (
-    <Link
-      to="/ajustes#clis"
-      title={ratio !== null ? formatPercent(ratio) : undefined}
+    <span className="h-1 overflow-hidden rounded-full bg-muted">
+      <span
+        className={cn(
+          'block h-full',
+          (ratio ?? 0) >= WARN_AT ? 'bg-status-waiting' : 'bg-muted-foreground',
+        )}
+        style={{ width: `${Math.min(ratio ?? 0, 1) * 100}%` }}
+      />
+    </span>
+  )
+}
+
+function LevelPercent({ ratio }: { ratio: number | null }) {
+  return (
+    <span
       className={cn(
-        ROW,
-        'grid grid-cols-[24px_minmax(0,1fr)_56px_34px] items-center gap-x-2 gap-y-px py-1.5',
+        'text-right font-mono text-xs',
+        (ratio ?? 0) >= WARN_AT ? 'text-status-waiting' : 'text-muted-foreground',
       )}
     >
-      <span className="grid h-[18px] place-items-center rounded-[5px] border font-mono text-[10px] font-bold text-muted-foreground">
-        {CLI_TAG[cli.id]}
-      </span>
-      <span className="truncate">{t(`cli.${cli.id}`)}</span>
-      <span className="h-1 overflow-hidden rounded-full bg-muted">
+      {ratio !== null ? formatPercent(ratio) : '—'}
+    </span>
+  )
+}
+
+function levelTitle(t: TFunction, level: ReturnType<typeof accountLevel>): string | undefined {
+  if (!level) return undefined
+  return level.source === 'quota'
+    ? t('home.summary.quotaWindow', {
+        window: windowName(level.window ?? ''),
+        percent: formatPercent(level.ratio),
+      })
+    : t('home.summary.dailyTitle', { percent: formatPercent(level.ratio) })
+}
+
+/** One CLI: the fullest of its accounts; a click shows each account with its own bar. */
+function CliRow({ cli, accounts }: { cli: CliInfo; accounts: Account[] }) {
+  const { t } = useTranslation()
+  const [open, setOpen] = useState(false)
+  const levels = accounts.map((account) => accountLevel(account))
+  const worst = levels.reduce<number | null>(
+    (max, level) => (level && (max === null || level.ratio > max) ? level.ratio : max),
+    null,
+  )
+  const sessions = accounts.reduce((sum, a) => sum + a.live_runs, 0)
+  const session = !cli.installed
+    ? 'missing'
+    : accounts.some((a) => a.session_state === 'down')
+      ? 'down'
+      : accounts.length > 0 && accounts.every((a) => a.session_state === 'ok')
+        ? 'ok'
+        : 'unknown'
+  const meta = `${t('home.summary.accountsCount', { count: accounts.length })} · ${t('home.summary.sessionsCount', { count: sessions })}`
+  return (
+    <div>
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-label={t(open ? 'home.summary.collapse' : 'home.summary.expand', {
+          cli: t(`cli.${cli.id}`),
+        })}
+        onClick={() => setOpen((v) => !v)}
+        title={
+          worst !== null
+            ? t('home.summary.quotaTitle', { percent: formatPercent(worst) })
+            : undefined
+        }
+        className={cn(
+          ROW,
+          'grid w-[calc(100%+1rem)] grid-cols-[24px_minmax(0,1fr)_56px_34px_14px] items-center gap-x-2 gap-y-px py-1.5 text-left',
+        )}
+      >
+        <span className="grid h-[18px] place-items-center rounded-[5px] border font-mono text-[10px] font-bold text-muted-foreground">
+          {CLI_TAG[cli.id]}
+        </span>
+        <span className="truncate">{t(`cli.${cli.id}`)}</span>
+        <LevelBar ratio={worst} />
+        <LevelPercent ratio={worst} />
+        <ChevronDown
+          aria-hidden
+          className={cn('size-3 text-muted-foreground transition-transform', open && 'rotate-180')}
+        />
         <span
           className={cn(
-            'block h-full',
-            (ratio ?? 0) >= WARN_AT ? 'bg-status-waiting' : 'bg-muted-foreground',
+            'col-[2/5] truncate text-xs',
+            session === 'ok' || session === 'unknown'
+              ? 'text-muted-foreground'
+              : 'text-status-waiting',
           )}
-          style={{ width: `${Math.min(ratio ?? 0, 1) * 100}%` }}
-        />
-      </span>
-      <span
-        className={cn(
-          'text-right font-mono text-xs',
-          (ratio ?? 0) >= WARN_AT ? 'text-status-waiting' : 'text-muted-foreground',
-        )}
-      >
-        {ratio !== null ? formatPercent(ratio) : '—'}
-      </span>
-      <span
-        className={cn(
-          'col-[2/5] truncate text-xs',
-          session === 'ok' ? 'text-muted-foreground' : 'text-status-waiting',
-        )}
-      >
-        {t(`home.summary.cliSession.${session}`)}
-      </span>
-    </Link>
+        >
+          {session === 'ok' || session === 'unknown'
+            ? meta
+            : `${t(`home.summary.cliSession.${session}`)} · ${meta}`}
+        </span>
+      </button>
+      {open && (
+        <ul aria-label={t('clis.accountsOf', { cli: t(`cli.${cli.id}`) })} className="mb-1">
+          {accounts.map((account, i) => {
+            const level = levels[i]
+            return (
+              <li
+                key={account.id}
+                title={levelTitle(t, level)}
+                className="grid grid-cols-[minmax(0,1fr)_56px_34px] items-center gap-x-2 gap-y-px py-1 pl-8 text-[12.5px]"
+              >
+                <span className="truncate">{account.name}</span>
+                <LevelBar ratio={level?.ratio ?? null} />
+                <LevelPercent ratio={level?.ratio ?? null} />
+                <span className="col-span-3 truncate text-xs text-muted-foreground">
+                  {[
+                    account.plan,
+                    account.session_state === 'down' ? t('home.summary.cliSession.down') : null,
+                    account.live_runs > 0
+                      ? t('home.summary.sessionsCount', { count: account.live_runs })
+                      : t('home.summary.accountFree'),
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </span>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+    </div>
   )
 }
 
@@ -177,16 +275,20 @@ export function SummaryAside({
   projects,
   today,
   clis,
+  accounts,
 }: {
   agents: HomeAgent[]
   projects: HomeProject[]
   today: UsageToday | undefined
   clis: CliInfo[]
+  accounts: Account[]
 }) {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const openNewProject = useDialogs((s) => s.openNewProject)
   const limits = today && Array.isArray(today.limits) ? today.limits : []
-  const claude = limits.find((l) => l.cli === 'claude')
+  // The day's spend is Claude Code's; its limit is what the Claude accounts add up to.
+  const claude = totalLimit(limits.filter((l) => l.cli === 'claude'))
 
   return (
     <aside
@@ -240,10 +342,12 @@ export function SummaryAside({
 
       <AsideSection
         title={t('home.summary.clis')}
-        link={{ label: t('home.summary.manage'), to: '/ajustes#clis' }}
+        link={{ label: t('home.summary.manage'), to: '/clis' }}
+        onAdd={() => void navigate('/clis?nueva=1')}
+        addLabel={t('home.summary.addAccount')}
       >
         {clis.map((cli) => (
-          <CliRow key={cli.id} cli={cli} limit={limits.find((l) => l.cli === cli.id)} />
+          <CliRow key={cli.id} cli={cli} accounts={accounts.filter((a) => a.cli === cli.id)} />
         ))}
       </AsideSection>
     </aside>

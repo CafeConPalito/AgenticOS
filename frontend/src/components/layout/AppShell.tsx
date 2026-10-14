@@ -12,6 +12,7 @@ import { TerminalDock, useDockShortcut } from '@/components/terminal/TerminalDoc
 import { useDock } from '@/components/terminal/dock-store'
 import { cn } from '@/lib/utils'
 import { NewAgentDialog } from '@/pages/agents/NewAgentDialog'
+import { TeamDialog } from '@/pages/home/TeamDialog'
 import { NewProjectDialog } from '@/pages/projects/NewProjectDialog'
 import { NewTaskDialog } from '@/pages/tasks/NewTaskDialog'
 import { useDialogs } from '@/stores/dialogs'
@@ -40,6 +41,9 @@ export function AppShell() {
   const closeShortcuts = useDialogs((s) => s.closeShortcuts)
   const newAgent = useDialogs((s) => s.newAgent)
   const closeNewAgent = useDialogs((s) => s.closeNewAgent)
+  const newAgentInit = useDialogs((s) => s.newAgentInit)
+  const team = useDialogs((s) => s.newTeam)
+  const closeTeam = useDialogs((s) => s.closeTeam)
   const newProject = useDialogs((s) => s.newProject)
   const closeNewProject = useDialogs((s) => s.closeNewProject)
   useDockShortcut()
@@ -84,7 +88,12 @@ export function AppShell() {
         init={newTask}
         onOpenChange={(open) => !open && closeNewTask()}
       />
-      <NewAgentDialog open={newAgent} onOpenChange={(open) => !open && closeNewAgent()} />
+      <NewAgentDialog
+        open={newAgent}
+        init={newAgentInit}
+        onOpenChange={(open) => !open && closeNewAgent()}
+      />
+      <TeamDialog team={team} onClose={closeTeam} />
       <NewProjectDialog open={newProject} onOpenChange={(open) => !open && closeNewProject()} />
       <CommandPalette open={palette} onOpenChange={(open) => !open && closePalette()} />
       <ShortcutsDialog open={shortcuts} onOpenChange={(open) => !open && closeShortcuts()} />

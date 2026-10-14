@@ -18,6 +18,8 @@ export function agentSchema() {
     can_spawn_subagents: z.boolean(),
     can_create_tasks: z.boolean(),
     status: z.enum(['active', 'draft']),
+    team_id: z.string().nullable(),
+    account_id: z.string().nullable(),
   })
 }
 
@@ -37,6 +39,8 @@ export const AGENT_FIELDS = [
   'can_spawn_subagents',
   'can_create_tasks',
   'status',
+  'team_id',
+  'account_id',
 ] as const satisfies readonly (keyof AgentFields)[]
 
 export function toFormValues(agent: Agent): AgentFormValues {

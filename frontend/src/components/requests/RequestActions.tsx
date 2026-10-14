@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { Check, Play, RotateCcw, SquareTerminal, X } from 'lucide-react'
+import { Check, LogIn, Play, RotateCcw, SquareTerminal, X } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
@@ -215,6 +215,19 @@ export function RequestActions({
             <Link to="/ajustes">{t('inbox.openSettings')}</Link>
           </Button>
         </>
+      )}
+      {item.kind === 'account' && (
+        <Button
+          size="sm"
+          className="bg-primary-action text-white hover:bg-primary-action-hover"
+          asChild
+        >
+          {/* The item names the account in `command`: «CLIs y cuentas» opens its login. */}
+          <Link to={`/clis?reconectar=${item.command ?? ''}`}>
+            <LogIn />
+            {t('inbox.reconnect')}
+          </Link>
+        </Button>
       )}
       {item.kind === 'attention' && item.task_id && <ResumeTaskSession taskId={item.task_id} />}
       {item.kind === 'attention' && item.task_id && (

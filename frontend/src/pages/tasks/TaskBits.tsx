@@ -90,7 +90,7 @@ export function TaskCard({
         {task.blocked && (
           <span className="inline-flex items-center gap-1 text-status-waiting">
             <Lock className="size-3" />
-            {t(`tasks.blocked.${task.blocked}`)}
+            {t(`tasks.blocked.${task.blocked}`, { account: task.blocked_by ?? '' })}
           </span>
         )}
         {showStatus && (

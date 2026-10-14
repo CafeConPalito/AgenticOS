@@ -9,6 +9,7 @@ import {
   OctagonAlert,
   PackageCheck,
   ShieldCheck,
+  UserX,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
@@ -30,6 +31,7 @@ export const KIND_STYLE: Record<InboxKind, { color: string; icon: typeof Inbox }
   delivery: { color: 'var(--status-done)', icon: PackageCheck },
   limit: { color: 'var(--status-waiting)', icon: Gauge },
   quota: { color: 'var(--status-failed)', icon: BatteryWarning },
+  account: { color: 'var(--status-waiting)', icon: UserX },
 }
 
 /** A request of the agents to the person, with its actions while pending. */
