@@ -238,33 +238,56 @@ def parse_claude_status(result: subprocess.CompletedProcess[str]) -> Identity:
     )
 
 
+LOGGED_OUT_HINTS = ("log in", "login", "sign in", "not logged", "authenticat", "credential")
+
+
+def is_installed(cli: Cli, overrides: Mapping[str, list[str]] | None = None) -> bool:
+    try:
+        resolve_executable(cli, overrides)
+    except ApiError:
+        return False
+    return True
+
+
+def _agy_identity(result: subprocess.CompletedProcess[str]) -> Identity:
+    """agy has no status command: with a session `agy models` lists them (id<TAB>label). A failure
+    only means «logged out» if it says so: offline or a crash must not block the agents."""
+    if result.returncode == 0 and "\t" in (result.stdout or ""):
+        return Identity(True)
+    text = f"{result.stdout or ''} {result.stderr or ''}".lower()
+    if any(hint in text for hint in LOGGED_OUT_HINTS):
+        return Identity(False)
+    return Identity(None)
+
+
 def probe(
     db: Session,
     account: CliAccount,
     overrides: Mapping[str, list[str]] | None = None,
     run: Runner | None = None,
 ) -> CliAccount:
-    """Asks the CLI whether this account's session is alive, and who it is. The caller commits."""
+    """Asks the CLI whether this account's session is alive, and who it is. The caller commits.
+
+    When the CLI cannot tell (a timeout, no network, an unreadable answer) what was known stays:
+    only the time of the check moves, so a hiccup neither blocks the agents of a good account
+    nor releases a logged-out one. A CLI that is not installed is not checked at all."""
     run = run or proc.run
     cli = Cli(account.cli)
     try:
         prefix = resolve_executable(cli, overrides)
     except ApiError:
-        return account  # not installed: nothing to say about the session
+        return account
     env = {**clean_env(), **env_for(account)}
     identity = Identity(None)
     try:
         if cli == Cli.CLAUDE:
             identity = parse_claude_status(run([*prefix, "auth", "status"], AUTH_TIMEOUT, env=env))
         else:
-            # agy has no status command: without a session it cannot list its models.
-            models = run([*prefix, "models"], MODELS_TIMEOUT, env=env)
-            identity = Identity(models.returncode == 0 and "\t" in (models.stdout or ""))
+            identity = _agy_identity(run([*prefix, "models"], MODELS_TIMEOUT, env=env))
     except (OSError, subprocess.TimeoutExpired):
         pass
     account.session_checked_at = utcnow()
     if identity.logged_in is None:
-        account.session_state = SessionState.UNKNOWN
         return account
     account.session_state = SessionState.OK if identity.logged_in else SessionState.DOWN
     if identity.logged_in:
@@ -356,3 +379,14 @@ def quota_view(account: CliAccount, now: datetime | None = None) -> list[QuotaVi
 def highest_quota(account: CliAccount, now: datetime | None = None) -> QuotaView | None:
     views = [v for v in quota_view(account, now) if not v.expired]
     return max(views, key=lambda v: v.used_pct, default=None)
+
+
+# ---------------------------------------------------------------------- daily limit
+def set_daily_limit(account: CliAccount, value: float | None) -> None:
+    """The one place a daily limit is set. agy counts whole tokens: a fraction rounds to the
+    nearest one, and a limit that rounds to 0 would block the account for good, so it is refused."""
+    if value is not None and account.cli == Cli.AGY:
+        value = float(round(value))
+    if value is not None and value < 1 and account.cli == Cli.AGY:
+        raise ApiError(422, "invalid_limit", "the limit must be at least 1 token", "daily_limit")
+    account.daily_limit = value

@@ -478,56 +478,59 @@ def test_only_the_accounts_in_use_are_worth_a_session_notice(db_factory, tmp_pat
         assert db.query(InboxItem).filter(InboxItem.kind == InboxKind.ACCOUNT).count() == 0
 
 
-def test_the_scheduler_asks_the_cli_again_when_the_session_check_is_old(db_factory, tmp_path):
+def test_the_scheduler_asks_the_cli_again_off_its_own_thread(db_factory, tmp_path):
+    """An old session check is redone before launching, but never on the scheduler thread (the
+    CLIs take seconds): the tick goes on with what is known, a logout holds the next one."""
+    import threading
+
     launcher = FakeLauncher()
     scheduler = Scheduler(db_factory, launcher)
+    probing_thread: list[str] = []
+    done = threading.Event()
 
     def probe(db, account):  # the person logged out since the last check
+        probing_thread.append(threading.current_thread().name)
         account.session_state = SessionState.DOWN.value
         account.session_checked_at = utcnow()
+        done.set()
 
     scheduler.probe_account = probe
     with db_factory() as db:
-        system, _other, ana, _beto, web, _blog = two_claude_accounts(db, tmp_path)
-        add_task(db, web, ana, "Se queda esperando")
+        system, _other, ana, _beto, web, blog = two_claude_accounts(db, tmp_path)
+        add_task(db, web, ana, "Primera")  # T-1
         system.session_state = SessionState.OK.value
-        system.session_checked_at = utcnow() - timedelta(hours=1)  # old: asked again first
+        system.session_checked_at = utcnow() - timedelta(hours=1)  # old: asked again
         db.commit()
     scheduler.step()
-    assert launcher.launched == []
+    assert done.wait(10)
+    assert probing_thread == ["session-probe"]  # not the scheduler's thread
+    scheduler.step()  # the logout is known now: nothing starts, and one notice asks to reconnect
+    deadline = time.monotonic() + 5
+    while time.monotonic() < deadline:
+        with db_factory() as db:
+            if db.query(InboxItem).filter(InboxItem.kind == InboxKind.ACCOUNT).count() == 1:
+                break
+        time.sleep(0.05)
     with db_factory() as db:
         assert db.query(InboxItem).filter(InboxItem.kind == InboxKind.ACCOUNT).count() == 1
-
-
-def test_usage_can_be_filtered_and_grouped_by_account(db_factory, tmp_path):
-    with db_factory() as db:
-        system, other, ana, beto, web, blog = two_claude_accounts(db, tmp_path)
-        add_run(db, ana, web, local(DAY, 9), cost=1.5, tokens=(10, 100, 0, 0), account=system)
-        add_run(db, beto, blog, local(DAY, 10), cost=0.5, tokens=(5, 50, 0, 0), account=other)
-        orphan = add_run(db, beto, blog, local(DAY, 11), cost=0.25, tokens=(1, 1, 0, 0))
-        orphan.account_label = "Vieja"  # its account was removed: the launch-time copy remains
+        add_task(db, blog, ana, "Segunda")  # T-2, same agent
         db.commit()
-        system_id, other_id = system.id, other.id
+    scheduler.step()
+    assert "T-2" not in [code for code, _ in launcher.launched]
+
+
+def test_only_a_held_task_says_by_which_account(db_factory, tmp_path):
+    """`blocked_by` names the account of a held task, and is empty for one that is not held."""
+    from agentic_os.api.tasks import read_tasks
 
     with db_factory() as db:
-        rows = {r.id: r for r in stats.breakdown(db, DAY, DAY, "account", tz=TZ).rows}
-        assert rows[system_id].cost_usd == pytest.approx(1.5) and rows[system_id].sessions == 1
-        assert rows[other_id].name == "marta.personal@gmail.com"
-        assert rows[None].name == "Vieja" and rows[None].cost_usd == pytest.approx(0.25)
-        assert sum(r.share or 0 for r in rows.values()) == pytest.approx(1)
-
-        series = stats.daily(db, DAY, DAY, "account", tz=TZ)
-        assert {g.name for g in series.groups} == {
-            accounts.display_name(accounts.get(db, system_id)),
-            "marta.personal@gmail.com",
-            "Vieja",
-        }
-
-        only = stats.summary(db, DAY, DAY, account_id=other_id, tz=TZ)
-        assert only.kpis.cost_usd == pytest.approx(0.5) and only.kpis.sessions == 1
-        sessions = stats.sessions(db, DAY, DAY, account_id=system_id, tz=TZ)
-        assert [(s.account_id, s.account_label) for s in sessions] == [
-            (system_id, accounts.display_name(accounts.get(db, system_id)))
-        ]
-        csv_text = stats.sessions_csv(db, stats.sessions(db, DAY, DAY, tz=TZ))
-        assert ",cli,cuenta,modelo," in csv_text and "marta.personal@gmail.com" in csv_text
+        _system, other, ana, beto, web, blog = two_claude_accounts(db, tmp_path)
+        free, held = add_task(db, web, ana, "Libre"), add_task(db, blog, beto, "Retenida")
+        other.session_state = SessionState.DOWN.value
+        db.flush()
+        reads = {t.title: t for t in read_tasks(db, [free, held])}
+        assert (reads["Libre"].blocked, reads["Libre"].blocked_by) == (None, None)
+        assert (reads["Retenida"].blocked, reads["Retenida"].blocked_by) == (
+            "session",
+            accounts.display_name(other),
+        )

@@ -105,6 +105,7 @@ class Scheduler:
         # Asks a CLI whether an account's session is alive (phase 10). Without it (unit tests of
         # the queues) sessions are never checked before a launch.
         self.probe_account: Callable[[Session, CliAccount], object] | None = None
+        self._probing: set[str] = set()  # accounts being checked right now
         # Slow periodic chores (e.g. pending folder-trust cleanups), every HOUSEKEEPING seconds.
         self.housekeeping: Callable[[], None] | None = None
         self._last_housekeeping = 0.0
@@ -241,17 +242,39 @@ class Scheduler:
         before a task starts with them: a logout is found here and not as a stuck terminal."""
         if self.probe_account is None:
             return
-        changed = False
-        for account in account_ops.list_accounts(db):
-            if account.id in account_ids and not account_ops.session_is_fresh(account):
-                try:
-                    self.probe_account(db, account)
-                    changed = True
-                except Exception:
-                    log.exception("could not check an account's session", account=account.id)
-        if changed:
-            usage_limits.sync_session_items(db)
-            db.commit()
+        stale = [
+            a.id
+            for a in account_ops.list_accounts(db)
+            if a.id in account_ids
+            and not account_ops.session_is_fresh(a)
+            and a.id not in self._probing
+        ]
+        if not stale:
+            return
+        self._probing.update(stale)
+        # The CLIs take seconds to answer: never on the scheduler thread. The tick goes on with
+        # what is known; a logout found here holds the account from the next tick.
+        threading.Thread(
+            target=self._probe_sessions, args=(stale,), name="session-probe", daemon=True
+        ).start()
+
+    def _probe_sessions(self, account_ids: list[str]) -> None:
+        try:
+            for account_id in account_ids:
+                with self._db() as db:
+                    account = db.get(CliAccount, account_id)
+                    if account is None or self.probe_account is None:
+                        continue
+                    try:
+                        self.probe_account(db, account)
+                        usage_limits.sync_session_items(db)
+                        db.commit()
+                    except Exception:
+                        db.rollback()
+                        log.exception("could not check an account's session", account=account_id)
+        finally:
+            self._probing.difference_update(account_ids)
+            self.poke()
 
     # ------------------------------------------------------------------ daily limits
     def check_limits(self, force: bool = False) -> None:

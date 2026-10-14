@@ -118,8 +118,7 @@ def update_account(
     if payload.label is not None:
         account.label = payload.label
     if "daily_limit" in payload.model_fields_set:
-        limit = payload.daily_limit
-        account.daily_limit = float(int(limit)) if limit and account.cli == Cli.AGY else limit
+        account_ops.set_daily_limit(account, payload.daily_limit)
         usage_limits.sync_limit_items(db, today())
     db.commit()
     request.app.state.scheduler.poke()  # a raised limit lets queued tasks start
@@ -148,9 +147,10 @@ def make_default(account_id: str, db: DbSession, request: Request) -> AccountRea
 def probe_account(account_id: str, db: DbSession, request: Request) -> AccountRead:
     """Asks the CLI whether the session is alive and who it belongs to (a few seconds)."""
     account = _get(db, account_id)
-    request.app.state.run_manager.probe_account(db, account)
-    if account.session_state == "unknown" and account.session_checked_at is None:
+    manager = request.app.state.run_manager
+    if not manager.cli_installed(Cli(account.cli)):
         raise ApiError(409, "cli_not_installed", "the CLI of this account is not installed")
+    manager.probe_account(db, account)
     usage_limits.sync_session_items(db)
     db.commit()
     request.app.state.scheduler.poke()

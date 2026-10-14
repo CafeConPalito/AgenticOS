@@ -160,11 +160,16 @@ class TrustCleaner:
                     continue
                 try:
                     done = forgetters[cli](self._configs[cli], folders)
-                    for path in extra.get(cli, []):
-                        forgetters[cli](path, folders)
                 except OSError:
                     log.exception("could not clean the folder trust", cli=cli)
                     continue
+                # The accounts' own files are best effort, each on its own: one locked file must
+                # not undo what the main one already got.
+                for path in extra.get(cli, []):
+                    try:
+                        forgetters[cli](path, folders)
+                    except OSError:
+                        log.exception("could not clean an account's folder trust", path=str(path))
                 pending[cli] = [f for f in folders if f not in done]
             self._save(pending)
             return {cli: len(f) for cli, f in pending.items() if f}

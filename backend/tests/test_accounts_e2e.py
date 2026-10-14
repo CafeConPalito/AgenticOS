@@ -151,6 +151,8 @@ def test_logging_an_account_in_runs_the_cli_in_a_terminal_and_checks_the_session
         assert "Login successful." in ANSI.sub("", output)
         assert (folder / "fake-login.json").is_file()  # the login landed in the account's folder
 
+        # The session was checked BEFORE the exit was announced: no stale «logged out».
+        assert account_named(api, account["id"])["session_state"] == "ok"
         # When the terminal closes, the app checks the session by itself.
         assert wait_until(lambda: account_named(api, account["id"])["session_state"] == "ok", 30), (
             account_named(api, account["id"])

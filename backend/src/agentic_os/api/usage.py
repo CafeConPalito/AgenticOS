@@ -9,7 +9,6 @@ from sqlalchemy.orm import Session
 
 from agentic_os.db.session import get_session
 from agentic_os.errors import ApiError, NotFound
-from agentic_os.models import Cli
 from agentic_os.schemas.usage import (
     Breakdown,
     DailySeries,
@@ -181,9 +180,7 @@ def put_usage_limits(payload: LimitsUpdate, db: DbSession, request: Request) -> 
         account = known.get(entry.account_id)
         if account is None:
             raise NotFound("account")
-        if account.cli == Cli.AGY and entry.daily_limit is not None:
-            entry.daily_limit = float(int(entry.daily_limit))  # whole tokens
-        account.daily_limit = entry.daily_limit
+        account_ops.set_daily_limit(account, entry.daily_limit)
     usage_limits.sync_limit_items(db, today())
     db.commit()
     request.app.state.scheduler.poke()  # a raised limit lets queued tasks start

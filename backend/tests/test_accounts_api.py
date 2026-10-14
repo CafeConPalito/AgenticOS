@@ -203,7 +203,7 @@ def test_the_limits_are_set_per_account(client: TestClient):
     ).json()
     by_id = {s["account_id"]: s for s in states}
     assert by_id[claude["id"]]["limit"] == 25 and by_id[claude["id"]]["unit"] == "usd"
-    assert by_id[agy["id"]]["limit"] == 2_000_000  # whole tokens
+    assert by_id[agy["id"]]["limit"] == 2_000_001  # whole tokens
     assert by_id[other["id"]]["limit"] is None
     assert by_id[other["id"]]["account_name"] == "Personal" and by_id[claude["id"]]["is_default"]
     assert client.get("/api/settings/usage-limits").json() == states
@@ -257,3 +257,30 @@ def test_probing_without_the_cli_installed_says_so(client: TestClient, monkeypat
     monkeypatch.setattr(launcher.shutil, "which", lambda name: None)
     response = client.post(f"/api/accounts/{by_cli(client, 'claude')['id']}/probe")
     assert response.status_code == 409 and response.json()["detail"]["code"] == "cli_not_installed"
+
+
+def test_a_token_limit_that_rounds_to_zero_is_refused_by_both_endpoints(client: TestClient):
+    agy = by_cli(client, "agy")
+    patched = client.patch(f"/api/accounts/{agy['id']}", json={"daily_limit": 0.4})
+    assert patched.status_code == 422 and patched.json()["detail"]["code"] == "invalid_limit"
+    put = client.put(
+        "/api/settings/usage-limits",
+        json={"limits": [{"account_id": agy["id"], "daily_limit": 0.4}]},
+    )
+    assert put.status_code == 422 and put.json()["detail"]["code"] == "invalid_limit"
+    assert by_cli(client, "agy")["daily_limit"] is None  # nothing half-saved
+    assert (
+        client.patch(f"/api/accounts/{agy['id']}", json={"daily_limit": 1}).json()["daily_limit"]
+        == 1
+    )
+
+
+def test_probing_a_missing_cli_is_refused_without_touching_the_account(
+    client: TestClient, monkeypatch
+):
+    from agentic_os.services.runs import launcher
+
+    monkeypatch.setattr(launcher.shutil, "which", lambda name: None)
+    claude = by_cli(client, "claude")
+    refused = client.post(f"/api/accounts/{claude['id']}/probe")
+    assert refused.status_code == 409 and refused.json()["detail"]["code"] == "cli_not_installed"

@@ -211,7 +211,9 @@ def test_probe_reads_the_json_when_claude_exits_with_1(db: Session):
     assert account.email == ""
 
 
-def test_probe_does_not_guess_when_the_cli_cannot_tell(db: Session):
+def test_a_probe_that_cannot_tell_keeps_what_was_known(db: Session):
+    """A timeout, no network or an unreadable answer must neither block a good account nor release
+    a logged-out one: only the time of the check moves."""
     account = accounts.default_for(db, Cli.CLAUDE)
     account.session_state = SessionState.OK.value
 
@@ -219,17 +221,28 @@ def test_probe_does_not_guess_when_the_cli_cannot_tell(db: Session):
         raise subprocess.TimeoutExpired("claude", 20)
 
     accounts.probe(db, account, {"claude": ["claude"]}, boom)
-    assert account.session_state == SessionState.UNKNOWN
+    assert account.session_state == SessionState.OK and account.session_checked_at is not None
+    account.session_checked_at = None
     accounts.probe(db, account, {"claude": ["claude"]}, lambda *a, **k: completed("not json"))
-    assert account.session_state == SessionState.UNKNOWN
+    assert account.session_state == SessionState.OK and account.session_checked_at is not None
+
+    account.session_state = SessionState.DOWN.value
+    accounts.probe(db, account, {"claude": ["claude"]}, boom)
+    assert account.session_state == SessionState.DOWN  # still logged out: the agents stay held
 
 
-def test_probe_of_agy_lists_its_models(db: Session):
+def test_probe_of_agy_lists_its_models_and_a_failure_is_not_a_logout(db: Session):
     account = accounts.default_for(db, Cli.AGY)
     models = "gemini-3.8-flash-high\tGemini 3.8 Flash (High)\n"
     accounts.probe(db, account, {"agy": ["agy"]}, lambda *a, **k: completed(models))
     assert account.session_state == SessionState.OK
-    accounts.probe(db, account, {"agy": ["agy"]}, lambda *a, **k: completed("", 1))
+    # Offline or a crash: it exits with an error but says nothing about a login.
+    for noise in ("", "dial tcp: lookup failed", "panic: runtime error"):
+        accounts.probe(db, account, {"agy": ["agy"]}, lambda *a, n=noise, **k: completed(n, 1))
+        assert account.session_state == SessionState.OK
+    # When it says so, it is logged out.
+    asked = subprocess.CompletedProcess([], 1, "", "Error: not logged in, run agy to log in")
+    accounts.probe(db, account, {"agy": ["agy"]}, lambda *a, **k: asked)
     assert account.session_state == SessionState.DOWN
 
 
@@ -240,6 +253,23 @@ def test_probe_of_a_cli_that_is_not_installed_changes_nothing(db: Session, monke
     account = accounts.default_for(db, Cli.CLAUDE)
     accounts.probe(db, account, {}, lambda *a, **k: pytest.fail("must not run"))
     assert account.session_state == SessionState.UNKNOWN and account.session_checked_at is None
+    assert not accounts.is_installed(Cli.CLAUDE, {})
+    assert accounts.is_installed(Cli.CLAUDE, {"claude": ["fake"]})
+
+
+def test_the_daily_limit_has_one_rule(db: Session):
+    claude, agy = accounts.default_for(db, Cli.CLAUDE), accounts.default_for(db, Cli.AGY)
+    accounts.set_daily_limit(claude, 12.5)
+    assert claude.daily_limit == 12.5  # USD keep their cents
+    accounts.set_daily_limit(claude, None)
+    assert claude.daily_limit is None
+    accounts.set_daily_limit(agy, 2_000_000.7)
+    assert agy.daily_limit == 2_000_001  # whole tokens
+    # A fraction that rounds to nothing would block the account for good: refused.
+    with pytest.raises(ApiError) as error:
+        accounts.set_daily_limit(agy, 0.4)
+    assert error.value.status == 422 and error.value.code == "invalid_limit"
+    assert agy.daily_limit == 2_000_001
 
 
 def test_a_recent_probe_is_fresh(db: Session):

@@ -122,11 +122,13 @@ class LoginSession:
             while pty.is_alive() and time.monotonic() < deadline:
                 time.sleep(0.05)
             self.exit_code = pty.exit_code
-            self._publish({"type": "exit", "code": self.exit_code, "status": "exited"})
+            # The session is checked first: whoever hears the exit then reads a fresh state, and
+            # the account is not «logging in» any more only once that is settled.
             try:
                 self.on_end(self.account_id)
             except Exception:
                 log.exception("login follow-up failed", account=self.account_id)
+            self._publish({"type": "exit", "code": self.exit_code, "status": "exited"})
             self._finished.set()
 
     # ------------------------------------------------------------------ viewers

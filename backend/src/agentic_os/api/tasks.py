@@ -134,7 +134,7 @@ def read_tasks(db: Session, tasks: list[Task]) -> list[TaskRead]:
             account = index.of(agent) if agent and index else None
             gate = gates.get(account.id) if account else None
             blocked = blocked_reason(db, task, project) or gate
-            if blocked == gate and account is not None:
+            if gate is not None and blocked == gate and account is not None:
                 blocked_by = account_ops.display_name(account)
         result.append(
             TaskRead(

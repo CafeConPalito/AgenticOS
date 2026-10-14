@@ -353,6 +353,9 @@ class RunManager:
         db.refresh(run)
         return run
 
+    def cli_installed(self, cli: Cli) -> bool:
+        return account_ops.is_installed(cli, self._settings.cli_command_overrides)
+
     def probe_account(self, db: Session, account: CliAccount) -> CliAccount:
         """Asks the account's CLI whether its session is alive (the caller commits)."""
         return account_ops.probe(db, account, self._settings.cli_command_overrides)

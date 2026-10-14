@@ -85,3 +85,33 @@ def test_the_trust_of_every_accounts_folder_is_cleaned_too(tmp_path: Path):
         assert "D:/web.wt/T-7" not in json.loads(path.read_text("utf-8"))["projects"]
         assert "D:/web.wt/T-8" in json.loads(path.read_text("utf-8"))["projects"]
     assert not (tmp_path / "accounts" / "gone").exists()  # a missing file is never created
+
+
+def test_a_bad_account_file_does_not_hold_back_the_rest(tmp_path: Path, monkeypatch):
+    from agentic_os.services import trust as trust_module
+    from agentic_os.services.trust import account_claude_config
+
+    cleaner, claude, _ = setup(tmp_path, running=set())
+    locked, fine = tmp_path / "a" / ".claude.json", tmp_path / "b" / ".claude.json"
+    for path in (locked, fine):
+        path.parent.mkdir(parents=True)
+        path.write_text(json.dumps(CLAUDE), "utf-8")
+    real = trust_module.forget_claude
+
+    def forget(path: Path, folders: list[str]) -> list[str]:
+        if path == locked:
+            raise PermissionError("locked")
+        return real(path, folders)
+
+    monkeypatch.setattr(trust_module, "forget_claude", forget)
+    cleaner = TrustCleaner(
+        tmp_path / "data" / "trust-cleanup.json",
+        {"claude": claude, "agy": tmp_path / "settings.json"},
+        is_running=lambda image: False,
+        extra_configs=lambda: {"claude": [locked, fine]},
+    )
+    cleaner.forget("D:/web.wt/T-7")
+    assert "D:/web.wt/T-7" not in json.loads(claude.read_text("utf-8"))["projects"]
+    assert "D:/web.wt/T-7" not in json.loads(fine.read_text("utf-8"))["projects"]
+    assert cleaner.flush() == {}  # the main file got it: the folder is not retried for ever
+    assert account_claude_config(tmp_path / "a") == locked

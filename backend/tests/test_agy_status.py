@@ -5,6 +5,7 @@ reports to the run through an environment variable."""
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -167,7 +168,13 @@ def test_agys_status_line_reaches_the_quota_of_its_account(client: TestClient):
         run_id = run.id
     token = client.app.state.run_manager.tokens.issue(run_id)
 
-    payload = (FIXTURES / "agy-1.3.5-statusline-quota.json").read_text("utf-8")
+    # The capture's reset times are from the day it was taken: move them ahead so the windows are
+    # open whenever the test runs (a window past its reset reads as reset).
+    data = json.loads((FIXTURES / "agy-1.3.5-statusline-quota.json").read_text("utf-8"))
+    soon = (datetime.now(UTC) + timedelta(hours=2)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    for bucket in data["quota"].values():
+        bucket["reset_time"] = soon
+    payload = json.dumps(data)
     response = client.post(
         f"/r/{token}/hook/StatusLine", content=payload, headers={"Content-Type": "application/json"}
     )
