@@ -11,6 +11,13 @@ export class Terminal {
   focused = false
   disposed = false
   private dataListeners: ((data: string) => void)[] = []
+  private osc = new Map<number, (data: string) => boolean>()
+  parser = {
+    registerOscHandler: (ident: number, handler: (data: string) => boolean) => {
+      this.osc.set(ident, handler)
+      return { dispose: () => this.osc.delete(ident) }
+    },
+  }
 
   constructor(options: Record<string, unknown> = {}) {
     this.options = { ...options }
@@ -25,7 +32,13 @@ export class Terminal {
     this.output = ''
   }
   write(data: string, callback?: () => void) {
-    this.output += data
+    // Like the real parser: OSC sequences go to their handler and do not reach the screen.
+    // eslint-disable-next-line no-control-regex
+    const osc = /\x1b\](\d+);([^\x07]*)\x07/g
+    this.output += data.replace(osc, (_all, ident: string, body: string) => {
+      this.osc.get(Number(ident))?.(body)
+      return ''
+    })
     callback?.()
   }
   resize(cols: number, rows: number) {

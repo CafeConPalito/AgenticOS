@@ -2,6 +2,7 @@
 
 import asyncio
 import contextlib
+import re
 import sys
 import threading
 import time
@@ -205,6 +206,13 @@ def test_resize_is_broadcast_and_only_the_controller_resizes(app_client: TestCli
         a.send({"type": "resize", "cols": 150, "rows": 40})
         assert b.wait_for(lambda: size_seen(b, 150, 40))  # passive viewers learn the size
         assert run_status(app_client, run["id"])["cols"] == 150
+
+        # The log records the size at the start and at the resize, to replay it as it was drawn.
+        log = (
+            Path(app_client.app.state.settings.data_dir) / "runs" / f"{run['id']}.log"
+        ).read_text("utf-8")
+        marks = re.findall(r"\x1b\]7770;size;(\d+);(\d+)\x07", log)
+        assert len(marks) == 2 and marks[-1] == ("150", "40")
 
         app_client.post(f"/api/runs/{run['id']}/control", json={"action": "take", "client_id": "a"})
         b.send({"type": "resize", "cols": 60, "rows": 10})  # b does not hold the control
