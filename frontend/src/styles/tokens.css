@@ -37,6 +37,12 @@
   --ring: #2e5bd6;
   --subtle: #f8fafd; /* superficie hundida: inputs, cabeceras de tabla */
 
+  /* Diffs (fase 11): derivados de los estados «hecho» y «fallido», así que valen en claro y oscuro. */
+  --diff-add-bg: color-mix(in oklch, var(--status-done) 13%, transparent);
+  --diff-add-fg: var(--status-done);
+  --diff-del-bg: color-mix(in oklch, var(--status-failed) 12%, transparent);
+  --diff-del-fg: var(--status-failed);
+
   /* Sidebar: navy también en modo claro, texto blanco */
   --sidebar: #0f2347;
   --sidebar-foreground: #ffffff;

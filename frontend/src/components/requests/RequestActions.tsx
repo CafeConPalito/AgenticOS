@@ -15,6 +15,7 @@ import {
 } from '@/api/inbox'
 import { taskKeys } from '@/api/tasks'
 import type { InboxItem } from '@/api/types'
+import { ChangesButton } from '@/components/changes/ChangesSheet'
 import { useDock } from '@/components/terminal/dock-store'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -28,12 +29,18 @@ export function RequestActions({
   item,
   inline = false,
   extra,
+  hideChanges = false,
+  onDone,
 }: {
   item: InboxItem
   /** No footer bar: the actions sit inside the item (Inicio). */
   inline?: boolean
   /** More buttons after the kind's own (Inicio's «Revisar CLIs» and «Posponer»). */
   extra?: React.ReactNode
+  /** No «Ver cambios» button: these are the actions at the foot of the changes panel. */
+  hideChanges?: boolean
+  /** Called when a review is decided or a delivery marked as seen (closes that panel). */
+  onDone?: () => void
 }) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
@@ -82,6 +89,14 @@ export function RequestActions({
         !inline && 'border-t border-sep bg-subtle px-4 py-2.5',
       )}
     >
+      {(item.kind === 'review' || item.kind === 'delivery') && item.task_id && !hideChanges && (
+        <ChangesButton
+          target={{ kind: 'task', id: item.task_id }}
+          title={t('changes.titleTask', { code: item.task_code ?? '' })}
+          totals={item.changes}
+          footer={(close) => <RequestActions item={item} hideChanges onDone={close} />}
+        />
+      )}
       {item.kind === 'approval' && (
         <>
           <Button
@@ -158,7 +173,13 @@ export function RequestActions({
             onClick={() =>
               review.mutate(
                 { id: item.id, approve: true },
-                { onSuccess: () => toast.success(t('inbox.toast.approved')), onError },
+                {
+                  onSuccess: () => {
+                    toast.success(t('inbox.toast.approved'))
+                    onDone?.()
+                  },
+                  onError,
+                },
               )
             }
             className="bg-primary-action text-white hover:bg-primary-action-hover"
@@ -179,7 +200,13 @@ export function RequestActions({
             e.preventDefault()
             review.mutate(
               { id: item.id, approve: false, reason: text.trim() },
-              { onSuccess: () => toast.success(t('inbox.toast.rejected')), onError },
+              {
+                onSuccess: () => {
+                  toast.success(t('inbox.toast.rejected'))
+                  onDone?.()
+                },
+                onError,
+              },
             )
           }}
         >
@@ -291,7 +318,7 @@ export function RequestActions({
           size="sm"
           variant="outline"
           disabled={busy}
-          onClick={() => dismiss.mutate(item.id, { onError })}
+          onClick={() => dismiss.mutate(item.id, { onSuccess: () => onDone?.(), onError })}
         >
           {t('inbox.markReviewed')}
         </Button>

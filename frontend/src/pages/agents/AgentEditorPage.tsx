@@ -32,6 +32,7 @@ import { useDialogs } from '@/stores/dialogs'
 import { AGENT_FIELDS, agentSchema, changedFields, toFormValues } from './agent-form'
 import type { AgentFormValues } from './agent-form'
 import { ExecutionTab } from './tabs/ExecutionTab'
+import { ChangesTab } from './tabs/ChangesTab'
 import { HistoryTab } from './tabs/HistoryTab'
 import { GeneralTab } from './tabs/GeneralTab'
 import { SummaryTab } from './tabs/SummaryTab'
@@ -45,6 +46,7 @@ const TABS = [
   'knowledge',
   'skills',
   'history',
+  'changes',
 ] as const
 type Tab = (typeof TABS)[number]
 
@@ -242,6 +244,7 @@ function AgentEditor({ agent, tab }: { agent: Agent; tab: Tab }) {
         {tab === 'knowledge' && <ComingSoonTab icon={BookOpen} />}
         {tab === 'skills' && <ComingSoonTab icon={Puzzle} />}
         {tab === 'history' && <HistoryTab agentId={agent.id} />}
+        {tab === 'changes' && <ChangesTab agentId={agent.id} />}
       </form>
       <ConfirmDialog
         open={confirmDelete}

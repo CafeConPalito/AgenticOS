@@ -1,4 +1,4 @@
-import { GitBranch, Trash2 } from 'lucide-react'
+import { GitBranch, GitCompareArrows, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -6,8 +6,10 @@ import {
   type TaskBranch,
   useCleanLogs,
   useDeleteBranches,
+  useDeleteSnapshots,
   useMaintenanceSettings,
   useSaveMaintenanceSettings,
+  useSnapshots,
   useTaskBranches,
 } from '@/api/maintenance'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
@@ -43,6 +45,7 @@ export function CleanupSection() {
       </h2>
       <LogRetention />
       <Branches />
+      <Snapshots />
     </section>
   )
 }
@@ -228,6 +231,66 @@ function Branches() {
         onConfirm={() => {
           if (unmerged) deleteBranches(unmerged.projectId, [unmerged.branch], true)
           setUnmerged(null)
+        }}
+      />
+    </div>
+  )
+}
+
+/** The snapshots that show what each run changed (phase 11), per project. */
+function Snapshots() {
+  const { t } = useTranslation()
+  const { data: projects } = useSnapshots()
+  const remove = useDeleteSnapshots()
+  const [target, setTarget] = useState<{ id: string; name: string } | null>(null)
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <span className="flex items-center gap-2 text-sm font-medium">
+        <GitCompareArrows className="size-4" />
+        {t('settings.cleanup.snapshots')}
+      </span>
+      <p className="text-xs text-muted-foreground">{t('settings.cleanup.snapshotsHelp')}</p>
+      {!projects ? (
+        <Skeleton className="h-12 rounded-lg" />
+      ) : projects.length === 0 ? (
+        <p className="text-[13px] text-muted-foreground">{t('settings.cleanup.noSnapshots')}</p>
+      ) : (
+        <ul aria-label={t('settings.cleanup.snapshots')} className="divide-y rounded-lg border">
+          {projects.map((project) => (
+            <li key={project.project_id} className="flex items-center gap-3 px-3 py-2">
+              <span className="flex-1 text-[13.5px] font-medium">{project.project_name}</span>
+              <span className="text-xs text-muted-foreground">
+                {t('settings.cleanup.snapshotRuns', { count: project.runs })}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={remove.isPending}
+                aria-label={`${t('settings.cleanup.deleteSnapshots')} ${project.project_name}`}
+                onClick={() => setTarget({ id: project.project_id, name: project.project_name })}
+              >
+                {t('settings.cleanup.deleteSnapshots')}
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <ConfirmDialog
+        open={target !== null}
+        onOpenChange={(open) => !open && setTarget(null)}
+        title={t('settings.cleanup.snapshotsConfirmTitle', { name: target?.name ?? '' })}
+        description={t('settings.cleanup.snapshotsConfirmDescription')}
+        confirmLabel={t('settings.cleanup.deleteSnapshots')}
+        destructive
+        onConfirm={() => {
+          if (target)
+            remove.mutate(target.id, {
+              onSuccess: ({ runs }) =>
+                toast.success(t('settings.cleanup.snapshotsDeleted', { count: runs })),
+              onError: (error) => toast.error(errorMessage(error)),
+            })
+          setTarget(null)
         }}
       />
     </div>

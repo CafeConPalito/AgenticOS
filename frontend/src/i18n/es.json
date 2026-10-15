@@ -207,7 +207,8 @@
       "execution": "Ejecución",
       "knowledge": "Conocimiento",
       "skills": "Skills",
-      "history": "Historial"
+      "history": "Historial",
+      "changes": "Cambios"
     },
     "fields": {
       "name": "Nombre",
@@ -448,7 +449,8 @@
       "cli": "CLI",
       "status": "Estado",
       "duration": "Duración",
-      "account": "Cuenta"
+      "account": "Cuenta",
+      "changes": "Cambios"
     },
     "open": "Abrir ejecución de {{name}}: {{prompt}}",
     "emptyTitle": "Todavía no hay ejecuciones",
@@ -879,7 +881,16 @@
       "forceTitle": "¿Borrar «{{name}}»?",
       "forceDescription": "La rama tiene trabajo que no está en la rama base. Si la borras, ese trabajo se pierde.",
       "forceConfirm": "Borrar igualmente",
-      "deleteFailed": "No se pudo borrar «{{name}}»: {{error}}"
+      "deleteFailed": "No se pudo borrar «{{name}}»: {{error}}",
+      "snapshots": "Instantáneas de cambios",
+      "snapshotsHelp": "Con ellas se ve qué cambió cada ejecución. Se guardan en el repositorio de cada proyecto, ocultas (no son ramas ni tags), y se borran con los logs. Tu código no se toca.",
+      "noSnapshots": "No hay instantáneas en tus proyectos.",
+      "snapshotRuns_one": "{{count}} ejecución",
+      "snapshotRuns_other": "{{count}} ejecuciones",
+      "deleteSnapshots": "Borrar instantáneas",
+      "snapshotsDeleted": "Instantáneas borradas ({{count}} ejecuciones)",
+      "snapshotsConfirmTitle": "¿Borrar las instantáneas de «{{name}}»?",
+      "snapshotsConfirmDescription": "Se pierde el diff de sus ejecuciones; el resumen de líneas añadidas y borradas se conserva."
     },
     "about": {
       "title": "Acerca de",
@@ -1261,5 +1272,75 @@
     "addAgentTo": "Añadir un agente al equipo {{team}}",
     "editTeam": "Editar el equipo {{team}}",
     "emptyTeam": "Este equipo aún no tiene agentes."
+  },
+  "changes": {
+    "title": "Cambios",
+    "files_one": "{{count}} fichero",
+    "files_other": "{{count}} ficheros",
+    "status": {
+      "added": "Añadido",
+      "modified": "Modificado",
+      "deleted": "Borrado",
+      "renamed": "Renombrado"
+    },
+    "view": "Ver cambios",
+    "show": "Mostrar",
+    "wholeTask": "Toda la tarea",
+    "run": "Ejecución",
+    "runOption": "{{stage}} · intento {{attempt}} · {{when}}",
+    "sheetDescription": "Lo que ha cambiado, fichero a fichero, como en git diff.",
+    "fileList": "Ficheros cambiados",
+    "compare": "{{from}} → {{to}}",
+    "ref": {
+      "base": "rama base «{{name}}»",
+      "branch": "«{{name}}»",
+      "run_start": "inicio de la ejecución",
+      "run_end": "fin de la ejecución",
+      "task_start": "inicio de la tarea",
+      "now": "ahora"
+    },
+    "live": "La ejecución sigue en curso: se muestra el estado actual de la carpeta.",
+    "partial": "La ejecución se interrumpió: su final se tomó al reabrir la app y puede incluir cambios posteriores.",
+    "directFolder": "Es la carpeta del proyecto: también aparece lo que cambiara en ella mientras tanto, sea del agente o tuyo.",
+    "skippedLarge_one": "{{count}} fichero nuevo de más de 5 MB no se incluye.",
+    "skippedLarge_other": "{{count}} ficheros nuevos de más de 5 MB no se incluyen.",
+    "truncated_one": "Hay {{count}} fichero más que no se muestra.",
+    "truncated_other": "Hay {{count}} ficheros más que no se muestran.",
+    "foldedGenerated": "generado",
+    "foldedLarge": "{{count}} líneas cambiadas",
+    "showMore_one": "Mostrar {{count}} línea más",
+    "showMore_other": "Mostrar {{count}} líneas más",
+    "showMoreAfter": "Mostrar más líneas",
+    "binary": "Fichero binario",
+    "binarySize": "Binario · {{sizes}}",
+    "tooLarge": "El diff es demasiado grande para mostrarlo aquí. Ábrelo con git.",
+    "noLines": "No hay líneas que mostrar.",
+    "fileError": "No se pudo cargar el diff de este fichero.",
+    "error": "No se pudieron cargar los cambios.",
+    "retry": "Reintentar",
+    "empty": {
+      "none": "Sin cambios",
+      "no_git": {
+        "title": "Este proyecto no usa git",
+        "description": "Sin git no se puede saber qué ha cambiado el agente."
+      },
+      "no_snapshots": {
+        "title": "No hay datos de cambios",
+        "description": "Esta ejecución es anterior a la revisión de código o no se pudo registrar su carpeta."
+      },
+      "snapshot_missing": {
+        "title": "Ya no hay datos de cambios",
+        "description": "Se borraron con la limpieza o el repositorio ya no los conserva."
+      }
+    },
+    "agent": {
+      "empty": "Este agente aún no ha cambiado código.",
+      "project": "Proyecto",
+      "allProjects": "Todos los proyectos",
+      "manual": "Ejecución manual",
+      "open": "Ver los cambios de «{{name}}»"
+    },
+    "titleTask": "Cambios de {{code}}",
+    "titleRun": "Cambios de la ejecución"
   }
 }
