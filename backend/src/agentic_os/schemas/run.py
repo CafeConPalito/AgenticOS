@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
 from agentic_os.models.agent import Cli
 from agentic_os.models.run import Activity, EventKind, RunStatus, Verdict
+from agentic_os.schemas.changes import ChangesTotals
 from agentic_os.schemas.usage import RunUsage
 
 Prompt = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=20000)]
@@ -59,6 +60,8 @@ class RunRead(BaseModel):
     # copy taken at launch after it was removed.
     account_id: str | None = None
     account_label: str = ""
+    # What it changed in its folder (phase 11); null when there is no data.
+    changes: ChangesTotals | None = None
     task_code: str | None = None
     stage_name: str | None = None
     created_at: datetime

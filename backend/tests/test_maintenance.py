@@ -17,6 +17,7 @@ def setup_branches(client: TestClient, tmp_path: Path) -> tuple[str, dict[str, s
     T-1 done and merged, T-2 done with unmerged work, T-3 still running (its worktree has the
     branch), and a branch whose task no longer exists."""
     repo = make_repo(tmp_path / "web app")
+    client.post("/api/scheduler/pause")  # the scheduler must not launch these tasks
     project = client.post("/api/projects", json={"name": "Web", "path": str(repo)}).json()
     agent = client.post("/api/agents", json={"name": "Dev"}).json()
     ids = {}
