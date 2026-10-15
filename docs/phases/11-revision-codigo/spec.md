@@ -70,7 +70,7 @@ Ver **qué código ha cambiado cada agente** sin salir de la app: los ficheros t
 
 ### Fuera
 - **Comentarios en las líneas** del diff y enviarlos al agente como motivo de rechazo. Se anota para una fase futura.
-- **Hacer el merge, el rebase o revertir** desde la app: el merge sigue siendo cosa del usuario (ADR 0009).
+- **Hacer el merge, el rebase o revertir** desde la app: va en la fase 12 (Control de git).
 - **Vista lado a lado** y **resaltado de sintaxis**: solo la vista unificada, con colores de diff.
 - **Pasar el diff a los agentes** de las etapas siguientes (p. ej. que QA reciba la lista de ficheros cambiados en su contexto).
 - Diff entre dos ejecuciones cualesquiera o entre ramas elegidas a mano.
