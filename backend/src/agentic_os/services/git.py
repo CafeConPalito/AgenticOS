@@ -1,5 +1,7 @@
+import os
 import shutil
 import subprocess
+from collections.abc import Mapping
 from functools import cache
 from pathlib import Path
 
@@ -55,14 +57,24 @@ class GitError(RuntimeError):
     pass
 
 
-def run(path: str, *args: str, timeout: float = 60, config: tuple[str, ...] = ()) -> str:
-    """Runs a git command that must succeed (worktrees, commits); returns its stdout."""
+def run(
+    path: str,
+    *args: str,
+    timeout: float = 60,
+    config: tuple[str, ...] = (),
+    env: Mapping[str, str] | None = None,
+    input: str | None = None,
+) -> str:
+    """Runs a git command that must succeed (worktrees, commits); returns its stdout.
+
+    `env` adds variables to the process environment (GIT_INDEX_FILE…); `input` is its stdin."""
     git = _git_executable()
     if git is None:
         raise GitError("git is not installed")
     command = [git, *(arg for pair in config for arg in ("-c", pair)), "-C", path, *args]
     try:
-        result = proc.run(command, timeout)
+        full_env = {**os.environ, **env} if env else None
+        result = proc.run(command, timeout, env=full_env, input=input)
     except (OSError, subprocess.TimeoutExpired) as error:
         raise GitError(f"git {args[0]}: {error}") from error
     if result.returncode != 0:

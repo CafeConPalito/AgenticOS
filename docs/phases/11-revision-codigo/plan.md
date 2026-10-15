@@ -13,6 +13,11 @@
 - **Purga de logs** (`maintenance.purge_logs`, fase 08): marca `log_purged` en las ejecuciones antiguas. Ahí se engancha la limpieza de sus instantáneas.
 - **El CLI falso** (`tests/fake_cli.py`) no toca ficheros. Necesita dos órdenes nuevas para los tests e2e.
 
+## Resultados del spike S1 (git 2.55, Windows)
+- **Índice copiado frente a vacío**: en este repo (675 ficheros), 0,41 s frente a 1,31 s; en uno sintético de 10 000 ficheros con un cambio y un fichero nuevo, **0,27 s frente a 0,80 s**. Se confirma copiar el índice.
+- **`--ignore-cr-at-eol`** se aplica tanto a `--numstat` como a `--name-status`: un fichero que solo cambia de LF a CRLF desaparece de las dos salidas. No hace falta filtrarlos a mano.
+- No se midió un `node_modules` real sin ignorar; el límite de 5 MB por fichero nuevo y el tiempo máximo de 30 s cubren ese caso.
+
 ## Diseño
 
 ### Instantáneas (`services/snapshots.py`, nuevo)
@@ -62,7 +67,7 @@
   - por fichero: `path`, `old_path`, `status` (`added` · `modified` · `deleted` · `renamed`), `additions` y `deletions`;
   - en los binarios (`-` en numstat), `binary` con `old_size` y `new_size` (`git cat-file -s`);
   - `generated`, marcado con una lista fija: `*.lock`, `package-lock.json`, `pnpm-lock.yaml`, `uv.lock`, `dist/`, `build/` y `*.min.*`;
-  - los ficheros que solo cambian de CRLF a LF (0/0 y `modified`) se descartan;
+  - los ficheros que solo cambian de CRLF a LF (0/0 y `modified`) se descartan (lo hace `--ignore-cr-at-eol`);
   - máximo 500 ficheros: el resto se resume en `truncated_files`.
 - **`file_diff(range, path)`**:
   - `git diff -U3 --ignore-cr-at-eol -M <a> <b> -- <path>` (y `old_path` si es un renombrado), convertido a hunks: `old_start`, `old_lines`, `new_start`, `new_lines` y `header` (la función que da git);
@@ -141,7 +146,7 @@
 | `docs/adr/0015-change-snapshots.md` | nuevo |
 
 ## Tareas (en orden)
-1. [ ] **Spike corto** (S1): medir `take()` en este repo y en uno grande (p. ej. un clon de un proyecto con miles de ficheros y un `node_modules` sin ignorar), con el índice copiado frente a uno vacío. Confirmar que `--ignore-cr-at-eol` se aplica a `--numstat` en la versión de git del equipo. Resultados en este plan.
+1. [x] **Spike corto** (S1): medir `take()` en este repo y en uno grande (p. ej. un clon de un proyecto con miles de ficheros y un `node_modules` sin ignorar), con el índice copiado frente a uno vacío. Confirmar que `--ignore-cr-at-eol` se aplica a `--numstat` en la versión de git del equipo. Resultados en este plan.
 2. [ ] `git.run` con `env`; `services/snapshots.py` con tests sobre repos temporales: worktree, carpeta directa, repo vacío, sin identidad, ficheros grandes y `git gc --prune=now` (CA4).
 3. [ ] Migración `0010` y modelos, con su test de migración.
 4. [ ] Instantáneas en `RunManager` (`_launch`, `_on_end`, `recover`) y `base_commit` en `Worktrees.prepare`; resumen +/− al terminar.

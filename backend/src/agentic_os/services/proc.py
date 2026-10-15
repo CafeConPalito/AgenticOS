@@ -19,8 +19,10 @@ def run(
     timeout: float,
     cwd: str | None = None,
     env: Mapping[str, str] | None = None,
+    input: str | None = None,
 ) -> subprocess.CompletedProcess[str]:
-    """Runs a command to completion, capturing its output as text, with no window or stdin."""
+    """Runs a command to completion, capturing its output as text, with no window. Its stdin is
+    empty unless `input` gives it text."""
     return subprocess.run(
         list(argv),
         cwd=cwd,
@@ -30,7 +32,8 @@ def run(
         encoding="utf-8",
         errors="replace",
         timeout=timeout,
-        stdin=subprocess.DEVNULL,
+        input=input,
+        stdin=None if input is not None else subprocess.DEVNULL,
         creationflags=NO_WINDOW,
     )
 
