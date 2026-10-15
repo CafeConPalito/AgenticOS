@@ -37,7 +37,7 @@ Ver **qué código ha cambiado cada agente** sin salir de la app: los ficheros t
   - con worktree: de la rama base (su punto de partida, el *merge-base*) a la última instantánea de la tarea o, si no la hay, a la punta de su rama;
   - con carpeta directa: de la instantánea inicial de su primera ejecución a la última instantánea.
 - **Resumen guardado** en cada ejecución al terminar: ficheros cambiados, líneas añadidas y borradas. Sirve para las listas sin recalcular diffs.
-- **Limpieza**: las referencias de las instantáneas se borran cuando se purgan los logs de la ejecución (housekeeping de la fase 08) y al borrar el proyecto de la app. Se puede vaciar a mano desde Ajustes › Mantenimiento.
+- **Limpieza**: las referencias de las instantáneas se borran cuando se purgan los logs de la ejecución (housekeeping de la fase 08) y al borrar el proyecto de la app. Se puede vaciar a mano desde Ajustes › Limpieza.
 - **Tareas y ejecuciones anteriores a la fase**: sin instantáneas. Las tareas con worktree muestran el diff de su rama frente a la base; el resto, «No hay datos de cambios para esta ejecución».
 
 **Visor de diffs**
