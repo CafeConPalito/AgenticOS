@@ -117,6 +117,16 @@
 ### CLI falso
 - Órdenes nuevas en el prompt: `ESCRIBE: ruta=texto` (crea o sobrescribe un fichero) y `COMMIT: mensaje` (`git add -A` + `git commit`). Así los e2e reproducen un agente que commitea a mitad y deja trabajo sin commitear.
 
+## Notas de desarrollo (cambios respecto a lo planeado)
+- **`runs.snapshot_skipped`** (entero): se añade a la migración `0010` para guardar cuántos ficheros nuevos de más de 5 MB se dejaron fuera, y poder avisarlo en la cabecera del diff.
+- **`partial`** no se guarda: se deduce de que la ejecución esté `interrupted`.
+- **Cabecera de «Cambios»**: se indica con `from_ref` / `to_ref` estructurados (`base`, `branch`, `run_start`, `run_end`, `task_start`, `now`) y es la UI la que escribe la frase.
+- **Tarea y ejecución**: la sección «Cambios» es un botón con el +/− bajo el terminal que abre el panel lateral (el mismo de las revisiones), no un bloque fijo, para no recargar las páginas de tres columnas. No ocupa sitio si no hay diff.
+- **Rutas de la API**: la ruta que llega de la UI se valida (relativa, sin `..` ni unidad) y se pasa con `GIT_LITERAL_PATHSPECS=1`; un renombrado pide también `old_path`. La ruta debe cambiar en el rango o es un 404.
+- **`task_totals`** (Peticiones) se guarda en memoria hasta que cambie la tarea o una de sus ejecuciones, para que el sondeo de la bandeja no lance git.
+- **Diff de tarea en carpeta directa**: si la primera ejecución de la tarea no tiene instantáneas (anterior a la fase o purgada), no se ofrece diff de la tarea (`snapshot_missing` / `no_snapshots`): uno que empezara en la siguiente pasaría por completo. Lo mismo con una ejecución que tuvo diff y lo perdió (resumen guardado o purgada).
+- **Tests existentes**: `test_maintenance.setup_branches` pausa ahora el scheduler. Sus tareas con agente se lanzaban solas, y con la instantánea inicial el lanzamiento tardaba lo bastante para pisar el estado que fijaba el test (una carrera que ya existía).
+
 ## Archivos
 | Archivo | Cambio |
 |---|---|
@@ -139,6 +149,7 @@
 | `frontend/src/pages/tasks/TaskPage.tsx`, `pages/runs/RunPage.tsx`, `pages/runs/RunsTable.tsx` | modificado |
 | `frontend/src/components/requests/RequestActions.tsx`, `RequestItem.tsx` | modificado |
 | `frontend/src/pages/agents/AgentEditorPage.tsx`, `pages/agents/tabs/ChangesTab.tsx` | modificado / nuevo |
+| `frontend/src/components/changes/ChangesBar.tsx` | nuevo: el botón «Cambios» de las páginas de tarea y ejecución |
 | `frontend/src/pages/settings/CleanupSection.tsx` | modificado |
 | `frontend/src/styles/tokens.css` | modificado: tokens del diff |
 | `frontend/src/i18n/es.json` | modificado |
@@ -147,15 +158,15 @@
 
 ## Tareas (en orden)
 1. [x] **Spike corto** (S1): medir `take()` en este repo y en uno grande (p. ej. un clon de un proyecto con miles de ficheros y un `node_modules` sin ignorar), con el índice copiado frente a uno vacío. Confirmar que `--ignore-cr-at-eol` se aplica a `--numstat` en la versión de git del equipo. Resultados en este plan.
-2. [ ] `git.run` con `env`; `services/snapshots.py` con tests sobre repos temporales: worktree, carpeta directa, repo vacío, sin identidad, ficheros grandes y `git gc --prune=now` (CA4).
-3. [ ] Migración `0010` y modelos, con su test de migración.
-4. [ ] Instantáneas en `RunManager` (`_launch`, `_on_end`, `recover`) y `base_commit` en `Worktrees.prepare`; resumen +/− al terminar.
-5. [ ] `services/changes.py`: rangos, `summary`, `file_diff` y `file_lines`, con tests de renombrados, binarios, borrados, CRLF, truncado y estados vacíos (CA1, CA3, CA7, CA8).
-6. [ ] API de cambios, `changes` en ejecuciones e Inbox, y validación de `path`.
-7. [ ] CLI falso con `ESCRIBE`/`COMMIT` y e2e: tarea de dos etapas con commit a mitad y trabajo sin commitear entre ejecuciones (CA2), en worktree y en carpeta directa.
-8. [ ] Limpieza: purga de logs, borrado del proyecto y «Borrar instantáneas» en Ajustes (CA9).
-9. [ ] Frontend: tokens del diff, `components/changes/*` y `api/changes.ts`, con tests del visor.
-10. [ ] Frontend: superficies (detalle de tarea, revisión y entrega con `ChangesSheet`, página de ejecución, pestaña «Cambios» del agente, columna en Ejecuciones y Ajustes) (CA5, CA6).
+2. [x] `git.run` con `env`; `services/snapshots.py` con tests sobre repos temporales: worktree, carpeta directa, repo vacío, sin identidad, ficheros grandes y `git gc --prune=now` (CA4).
+3. [x] Migración `0010` y modelos, con su test de migración.
+4. [x] Instantáneas en `RunManager` (`_launch`, `_on_end`, `recover`) y `base_commit` en `Worktrees.prepare`; resumen +/− al terminar.
+5. [x] `services/changes.py`: rangos, `summary`, `file_diff` y `file_lines`, con tests de renombrados, binarios, borrados, CRLF, truncado y estados vacíos (CA1, CA3, CA7, CA8).
+6. [x] API de cambios, `changes` en ejecuciones e Inbox, y validación de `path`.
+7. [x] CLI falso con `ESCRIBE`/`COMMIT` y e2e: tarea de dos etapas con commit a mitad y trabajo sin commitear entre ejecuciones (CA2), en worktree y en carpeta directa.
+8. [x] Limpieza: purga de logs, borrado del proyecto y «Borrar instantáneas» en Ajustes (CA9).
+9. [x] Frontend: tokens del diff, `components/changes/*` y `api/changes.ts`, con tests del visor.
+10. [x] Frontend: superficies (detalle de tarea, revisión y entrega con `ChangesSheet`, página de ejecución, pestaña «Cambios» del agente, columna en Ejecuciones y Ajustes) (CA5, CA6).
 11. [ ] ADR 0015, prueba manual con Claude Code y agy en un proyecto real (worktree y carpeta directa, diff de más de 5 000 líneas) y `validacion.md`.
 
 ## Tests previstos

@@ -503,7 +503,8 @@
         "waiting_for_human": "Espera tu respuesta en la terminal",
         "mcp_probe": "Conectando el MCP (/mcp)",
         "resumed": "Reanudada en otra ejecución",
-        "session_missing": "El CLI ya no tenía la conversación"
+        "session_missing": "El CLI ya no tenía la conversación",
+        "snapshot_failed": "No se pudo registrar el estado de la carpeta (sin cambios que ver)"
       },
       "human": {
         "bypass_permissions_consent": "Claude pide aceptar el modo «Autónomo» (sin permisos). Toma el control para responder.",

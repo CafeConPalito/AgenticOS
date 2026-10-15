@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import itertools
+import time
 from datetime import timedelta
 from pathlib import Path
 
@@ -220,6 +221,29 @@ def test_file_lines_widen_the_context(repo: Path):
     (repo / "app.py").unlink()
     gone = commit(repo, "borra")
     assert changes.file_lines(between(repo, old, gone), "app.py", 1, 5).lines == []
+
+
+def test_a_diff_of_thousands_of_lines_and_files_is_served_quickly(repo: Path):
+    write(repo, "enorme.txt", "".join(f"linea {n}\n" for n in range(6000)))
+    for index in range(600):
+        write(repo, f"src/f{index}.txt", "x\n")
+    old = commit(repo, "base")
+    write(repo, "enorme.txt", "".join(f"LINEA {n}\n" for n in range(6000)))  # 6 000 changed
+    for index in range(600):
+        write(repo, f"src/f{index}.txt", "x\ny\n")
+    new = commit(repo, "cambios")
+    rng = between(repo, old, new)
+
+    started = time.monotonic()
+    summary = changes.changes(rng)
+    diff = changes.file_diff(rng, "enorme.txt")
+    elapsed = time.monotonic() - started
+
+    assert summary.totals.files == 601 and summary.totals.additions == 6600
+    assert len(summary.files) == changes.MAX_FILES and summary.truncated_files == 101
+    assert not diff.too_large
+    assert sum(len(h.lines) for h in diff.hunks) == 12_000  # 6 000 deleted and 6 000 added
+    assert elapsed < 10  # git does the work: a few hundred milliseconds in practice
 
 
 def test_the_diff_of_a_crlf_file_hides_the_carriage_returns(repo: Path):
