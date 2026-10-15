@@ -70,6 +70,14 @@ Nunca se guardan: los calcula git al pedirlos, con `--ignore-cr-at-eol` (un fich
 - **Ajustes › Limpieza** lista las ejecuciones con instantáneas por proyecto y permite borrarlas.
 - Una ejecución que tuvo diff y ya no lo tiene (resumen guardado o purgada) se muestra como «ya no hay datos»; una anterior a la fase, como «no hay datos».
 
+### Detalles de la implementación que importan
+- **Ficheros grandes**: se excluyen del propio `git add` (con una lista de pathspecs `:(exclude,literal)…` por la entrada estándar), así que git ni los lee ni los guarda.
+- **Alcance**: la instantánea cubre la carpeta de la ejecución (`git add -A .`); en un proyecto que es una subcarpeta de un repositorio, lo que cambie fuera de ella no aparece.
+- **Ejecución en marcha**: cada petición no hace una instantánea nueva; la del «ahora» se reutiliza unos 4 s, de modo que la lista de ficheros, el diff de un fichero y sus líneas de contexto (peticiones distintas) comparan el mismo estado, y el sondeo cada 5 s no recorre la carpeta cada vez.
+- **Borrado**: cada proyecto borra solo las referencias de **sus** ejecuciones, aunque otro proyecto use el mismo repositorio.
+- **Una tarea cuya última ejecución no dejó instantánea final** (cayó, o falló la instantánea) muestra, en un worktree, la punta de su rama y no el final de una ejecución anterior, que pasaría por el total.
+- **Saltos de línea**: el diff se trocea solo por `\n` y cada *hunk* se lee por los contadores de su cabecera, de modo que un formfeed, U+2028 o `diff.suppressBlankEmpty` no desalinean las líneas.
+
 ## Consecuencias
 - ✅ El diff de cada ejecución es exacto aunque el agente commitee a mitad o deje trabajo sin commitear, y el de una tarea coincide con `git diff <base>..<rama>` también después de borrarse el worktree (verificado e2e con el CLI falso).
 - ✅ Sin tocar el índice, la rama ni los ficheros, y sin esperar más que un `git status`.
@@ -77,4 +85,6 @@ Nunca se guardan: los calcula git al pedirlos, con `--ignore-cr-at-eol` (un fich
 - ⚠️ Las referencias ocupan espacio en el repositorio del usuario hasta que se limpian, y aparecen en `git log --all`.
 - ⚠️ Si se borra el repositorio o se vuelve a clonar, las instantáneas se pierden y el diff muestra «ya no hay datos».
 - ⚠️ En carpeta directa no se distingue lo que cambió el agente de lo que cambió el usuario durante la ejecución.
+- ⚠️ La instantánea final se toma en el hilo del PTY antes de avisar al scheduler, con un máximo de 30 s: en un repositorio enorme y con la caché fría, la tarea tarda en pasar a la siguiente etapa. Al reabrir la app, las ejecuciones que quedaron activas se cierran una tras otra con el mismo límite.
+- ⚠️ El total de una tarea para Peticiones se guarda en memoria con una clave que no incluye la punta de la rama: si alguien commitea a mano en la rama de una tarea ya terminada, el número tarda en reflejarse hasta que cambie la tarea.
 - ⚠️ Una ejecución interrumpida (cierre de la app, caída) no tiene instantánea final real: su diff llega hasta el estado de la carpeta al reabrir y se marca como parcial.

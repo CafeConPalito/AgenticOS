@@ -101,6 +101,7 @@ export function ChangesViewer({ target }: { target: ChangesTarget }) {
                 file={file}
                 id={`change-file-${index}`}
                 jump={jump}
+                live={data.live}
               />
             ))}
           </div>

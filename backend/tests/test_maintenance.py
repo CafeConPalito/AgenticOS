@@ -263,3 +263,43 @@ def test_a_task_whose_first_run_was_purged_has_no_complete_diff(client: TestClie
     with client.app.state.sessionmaker() as db:
         assert changes.task_range(db, db.get(Task, task_id)).state == "snapshot_missing"
         assert db.get(Project, project) is not None
+
+
+def test_forgetting_a_projects_snapshots_leaves_another_projects_in_the_same_repo(
+    client: TestClient, tmp_path: Path
+):
+    repo, project = snapshot_project(client, tmp_path)  # old1, old2, recent
+    with client.app.state.sessionmaker() as db:
+        twin = Project(
+            workspace_id="default",
+            name="Gemelo",
+            path=str(repo),
+            path_key=f"{repo}-twin",  # the same repository registered a second time
+        )
+        db.add(twin)
+        db.flush()
+        mine = snapshots.take(str(repo), "mine", "start")
+        run = Run(
+            id="mine",
+            workspace_id="default",
+            agent_name="Dev",
+            agent_color="#fff",
+            project_name="Gemelo",
+            project_id=twin.id,
+            cli="claude",
+            prompt="x",
+            cwd=str(repo),
+            status=RunStatus.COMPLETED,
+            snapshot_start=mine.sha,
+        )
+        db.add(run)
+        db.commit()
+        twin_id = twin.id
+
+    assert client.post(f"/api/maintenance/snapshots/{project}/delete").json() == {"runs": 3}
+
+    assert refs_of(repo) == {"mine"}  # the twin's own run keeps its snapshot
+    with client.app.state.sessionmaker() as db:
+        assert db.get(Run, "mine").snapshot_start == mine.sha
+    listed = client.get("/api/maintenance/snapshots").json()
+    assert listed == [{"project_id": twin_id, "project_name": "Gemelo", "runs": 1}]

@@ -89,11 +89,7 @@ def agent_changes(
             task_title=tasks[run.task_id].title if run.task_id in tasks else None,
             started_at=run.started_at,
             created_at=run.created_at,
-            totals=ChangesTotals(
-                files=run.changes_files or 0,
-                additions=run.changes_added or 0,
-                deletions=run.changes_deleted or 0,
-            ),
+            totals=change_ops.run_totals(run) or ChangesTotals(),
         )
         for run in runs
     ]

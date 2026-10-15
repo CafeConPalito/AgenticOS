@@ -107,8 +107,19 @@ export interface ChangesTarget {
 export const changesKeys = {
   all: ['changes'] as const,
   target: (target: ChangesTarget) => ['changes', target.kind, target.id] as const,
-  file: (target: ChangesTarget, path: string) =>
-    ['changes', target.kind, target.id, 'file', path] as const,
+  /** The key carries the file's counts: when the list changes (a live run), the diff is read again. */
+  file: (target: ChangesTarget, file: FileChange) =>
+    [
+      'changes',
+      target.kind,
+      target.id,
+      'file',
+      file.path,
+      file.old_path,
+      file.status,
+      file.additions,
+      file.deletions,
+    ] as const,
   agent: (agentId: string, projectId?: string) =>
     ['changes', 'agent', agentId, projectId ?? null] as const,
 }
@@ -125,15 +136,21 @@ export function useChanges(target: ChangesTarget, enabled = true) {
   })
 }
 
-export function useChangesFile(target: ChangesTarget, file: FileChange, enabled: boolean) {
+export function useChangesFile(
+  target: ChangesTarget,
+  file: FileChange,
+  enabled: boolean,
+  live = false,
+) {
   const params = new URLSearchParams({ path: file.path })
   if (file.old_path) params.set('old_path', file.old_path)
   return useQuery({
-    queryKey: changesKeys.file(target, file.path),
+    queryKey: changesKeys.file(target, file),
     queryFn: () => api.get<FileDiff>(`${base(target)}/file?${params.toString()}`),
     enabled,
-    // The files of a finished run never change; a live one is re-read with the list.
+    // The files of a finished run never change; a live run's are re-read with the list.
     staleTime: 30_000,
+    refetchInterval: live ? 5000 : false,
   })
 }
 

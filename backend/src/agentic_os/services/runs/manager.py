@@ -361,6 +361,9 @@ class RunManager:
             adapter.cleanup(ctx)
             self._release_agy_folder(folder)
             run.status, run.error, run.ended_at = RunStatus.FAILED, str(error), utcnow()
+            if run.snapshot_start:  # the CLI never ran: nothing to compare, no ref to keep
+                snapshots.delete_runs(cwd, [run.id])
+                run.snapshot_start = None
             db.commit()
             return run
         with self._live_lock:

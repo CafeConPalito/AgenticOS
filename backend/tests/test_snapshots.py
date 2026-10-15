@@ -143,17 +143,24 @@ def test_a_slow_snapshot_is_dropped(repo: Path, tmp_path: Path, monkeypatch: pyt
     assert snap is None and error and "out of time" in error
 
 
-def test_delete_refs_of_some_runs_and_of_the_whole_repo(repo: Path, tmp_path: Path):
+def refs_of(repo: Path) -> list[str]:
+    out = sh(repo, "for-each-ref", "--format=%(refname)", "refs/agentic-os/")
+    return sorted(out.splitlines())
+
+
+def test_delete_the_refs_of_some_runs_only(repo: Path, tmp_path: Path):
     for run in ("a", "b", "c"):
         snapshots.take(str(repo), run, "start", tmp_path)
         snapshots.take(str(repo), run, "end", tmp_path)
-    assert snapshots.count_runs(str(repo)) == 3
+    assert len(refs_of(repo)) == 6
 
     assert snapshots.delete_runs(str(repo), ["a", "zzz"]) == 2  # unknown runs are ignored
-    assert snapshots.count_runs(str(repo)) == 2
-    assert snapshots.delete_all(str(repo)) == 4
-    assert snapshots.count_runs(str(repo)) == 0
-    assert snapshots.delete_all(str(tmp_path)) == 0  # not a repo
+    assert refs_of(repo) == [
+        snapshots.ref_name(run, label) for run in ("b", "c") for label in ("end", "start")
+    ]
+    assert snapshots.delete_runs(str(repo), ["b", "c"]) == 4
+    assert refs_of(repo) == []
+    assert snapshots.delete_runs(str(tmp_path), ["a"]) == 0  # not a repository
 
 
 def test_exists_is_false_for_unknown_shas(repo: Path):

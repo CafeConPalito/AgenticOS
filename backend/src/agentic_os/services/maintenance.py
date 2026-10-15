@@ -10,7 +10,7 @@ from datetime import timedelta
 from pathlib import Path
 
 import structlog
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from agentic_os.db.base import utcnow
@@ -229,22 +229,40 @@ class ProjectSnapshots:
     runs: int  # runs that still have snapshots in the project's repository
 
 
+def _runs_with_snapshots(db: Session, project: Project) -> list[Run]:
+    return list(
+        db.scalars(
+            select(Run).where(
+                Run.project_id == project.id,
+                or_(Run.snapshot_start.is_not(None), Run.snapshot_end.is_not(None)),
+            )
+        )
+    )
+
+
 def snapshot_counts(db: Session) -> list[ProjectSnapshots]:
-    """Projects whose repository holds snapshots (git is asked for each, so it is only used by
-    the cleanup page)."""
+    """Projects whose runs still have snapshots. Counted from the database: two projects may
+    share one repository, and each one only owns its own runs' refs."""
     result = []
     for project in db.scalars(select(Project).order_by(Project.name)):
-        runs = snapshots.count_runs(project.path)
+        runs = len(_runs_with_snapshots(db, project))
         if runs:
             result.append(ProjectSnapshots(project.id, project.name, runs))
     return result
 
 
-def delete_project_snapshots(db: Session, project: Project) -> int:
-    """Removes every snapshot of the project's repository. Returns how many runs had them."""
-    runs = snapshots.count_runs(project.path)
-    snapshots.delete_all(project.path)
-    for run in db.scalars(select(Run).where(Run.project_id == project.id)):
+def forget_project_snapshots(db: Session, project: Project) -> int:
+    """Deletes the snapshot refs of the project's own runs (never another project's, even in the
+    same repository) and forgets their shas. The caller commits. Returns how many runs had them."""
+    runs = _runs_with_snapshots(db, project)
+    snapshots.delete_runs(project.path, [run.id for run in runs])
+    for run in runs:
         run.snapshot_start = run.snapshot_end = None
+    return len(runs)
+
+
+def delete_project_snapshots(db: Session, project: Project) -> int:
+    """«Borrar instantáneas» of a project: the diffs of its runs are gone, their +/- stays."""
+    runs = forget_project_snapshots(db, project)
     db.commit()
     return runs

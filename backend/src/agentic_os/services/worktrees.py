@@ -57,7 +57,7 @@ class Worktrees:
         path.parent.mkdir(parents=True, exist_ok=True)
         if git.branch_exists(project.path, branch):
             git.run(project.path, "worktree", "add", str(path), branch)
-            origin = _merge_base(project.path, base, branch)
+            origin = git.merge_base(project.path, base, branch)
         else:
             origin = git.run(project.path, "rev-parse", base).strip()
             git.run(project.path, "worktree", "add", "-b", branch, str(path), base)
@@ -113,13 +113,6 @@ class Worktrees:
                     raise
                 time.sleep(REMOVE_PAUSE)
         git.run(repo, "worktree", "prune")
-
-
-def _merge_base(repo: str, base: str, branch: str) -> str | None:
-    try:
-        return git.run(repo, "merge-base", base, branch, timeout=10).strip() or None
-    except git.GitError:
-        return None
 
 
 def _has_identity(path: str) -> bool:

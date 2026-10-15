@@ -53,10 +53,13 @@ export function FileDiffView({
   file,
   id,
   jump,
+  live = false,
 }: {
   target: ChangesTarget
   file: FileChange
   id: string
+  /** The run is going: the diff is read again every few seconds. */
+  live?: boolean
   /** The file list asked to show this file. */
   jump: { path: string; n: number } | null
 }) {
@@ -66,7 +69,7 @@ export function FileDiffView({
   const folded = file.generated || large
   const [open, setOpen] = useState(!folded)
   const root = useRef<HTMLElement>(null)
-  const diff = useChangesFile(target, file, open && !file.binary)
+  const diff = useChangesFile(target, file, open && !file.binary, live)
   const [extra, setExtra] = useState<Extra>(NO_EXTRA)
 
   // The file list asked for this file: open it (adjusting state while rendering, not in an

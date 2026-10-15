@@ -83,6 +83,14 @@ def run(
     return result.stdout
 
 
+def merge_base(path: str, first: str, second: str) -> str | None:
+    """The commit two refs have in common; None when there is none (or git fails)."""
+    try:
+        return run(path, "merge-base", first, second, timeout=10).strip() or None
+    except GitError:
+        return None
+
+
 def branch_exists(path: str, branch: str) -> bool:
     found = _git(path, "rev-parse", "--verify", "--quiet", f"refs/heads/{branch}")
     return bool(found and found.returncode == 0)

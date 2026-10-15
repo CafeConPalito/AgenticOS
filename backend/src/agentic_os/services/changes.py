@@ -14,6 +14,8 @@ from __future__ import annotations
 
 import fnmatch
 import re
+import threading
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -94,6 +96,39 @@ def _empty_state(repo: str) -> ChangesState:
     return "no_snapshots" if repo and snapshots.is_repo(repo) else "no_git"
 
 
+LIVE_TTL = 4.0  # seconds a live snapshot is reused
+_LIVE: dict[str, tuple[float, str | None]] = {}
+_LIVE_LOCK = threading.Lock()
+
+
+def _live_snapshot(folder: str) -> str | None:
+    """The folder as it is now, for a run that is going. Reused for a few seconds, so the file
+    list, a file's diff and its context lines (separate requests) compare the same state and the
+    5 s polling does not hash the whole folder each time."""
+    with _LIVE_LOCK:
+        hit = _LIVE.get(folder)
+        if hit and time.monotonic() - hit[0] < LIVE_TTL:
+            return hit[1]
+    snapshot = snapshots.take(folder) if Path(folder).is_dir() else None
+    sha = snapshot.sha if snapshot else None
+    with _LIVE_LOCK:
+        _LIVE[folder] = (time.monotonic(), sha)
+        while len(_LIVE) > 64:
+            _LIVE.pop(next(iter(_LIVE)))
+    return sha
+
+
+def run_totals(run: Run) -> ChangesTotals | None:
+    """The +/- summary stored on a run; None when it has no data."""
+    if run.changes_files is None:
+        return None
+    return ChangesTotals(
+        files=run.changes_files,
+        additions=run.changes_added or 0,
+        deletions=run.changes_deleted or 0,
+    )
+
+
 def run_range(db: Session, run: Run) -> Range:
     project = db.get(Project, run.project_id) if run.project_id else None
     repo = _repo_of(project, run.cwd)
@@ -104,11 +139,7 @@ def run_range(db: Session, run: Run) -> Range:
     if not snapshots.exists(repo, run.snapshot_start):
         return Range("snapshot_missing")
     live = run.status in ACTIVE_STATUSES
-    if live:
-        end = snapshots.take(run.cwd) if Path(run.cwd).is_dir() else None
-        new = end.sha if end else None
-    else:
-        new = run.snapshot_end
+    new = _live_snapshot(run.cwd) if live else run.snapshot_end
     if not new:
         return Range("no_snapshots")
     if not live and not snapshots.exists(repo, new):
@@ -159,17 +190,18 @@ def _worktree_range(task: Task, project: Project, repo: str, runs: list[Run]) ->
     old = task.base_commit
     if not old:  # a task from before the phase: where its branch left the base branch
         base = project.base_branch or ""
-        old = _merge_base(repo, base, branch) if base else None
+        old = git.merge_base(repo, base, branch) if base else None
     if not old or not snapshots.exists(repo, old):
         return Range(_empty_state(repo))
     live = next((r for r in runs if r.status in ACTIVE_STATUSES), None)
     new: str | None = None
     to_ref = RefLabel(kind="branch", name=branch)
-    if live is not None and Path(live.cwd).is_dir():
-        snap = snapshots.take(live.cwd)
-        new, to_ref = (snap.sha if snap else None), RefLabel(kind="now")
+    if live is not None:
+        new, to_ref = _live_snapshot(live.cwd), RefLabel(kind="now")
     if new is None:
-        ended = next((r.snapshot_end for r in reversed(runs) if r.snapshot_end), None)
+        # The end of the task's last run; if that run left none (it crashed), the branch itself,
+        # never an older run's end that would pass for the whole task.
+        ended = runs[-1].snapshot_end if runs else None
         new = ended if ended and snapshots.exists(repo, ended) else _branch_tip(repo, branch)
     if not new:
         return Range("snapshot_missing")
@@ -200,11 +232,7 @@ def _direct_range(repo: str, runs: list[Run]) -> Range:
     if not snapshots.exists(repo, first.snapshot_start):
         return Range("snapshot_missing")
     live = last.status in ACTIVE_STATUSES
-    if live:
-        snap = snapshots.take(last.cwd) if Path(last.cwd).is_dir() else None
-        new = snap.sha if snap else None
-    else:
-        new = last.snapshot_end
+    new = _live_snapshot(last.cwd) if live else last.snapshot_end
     if not new or (not live and not snapshots.exists(repo, new)):
         return Range("no_snapshots" if not new else "snapshot_missing")
     return Range(
@@ -232,7 +260,6 @@ def _run_refs(db: Session, runs: list[Run]) -> list[ChangesRunRef]:
     refs = []
     for run in runs:
         seen[run.stage_id] = seen.get(run.stage_id, 0) + 1
-        has_data = run.changes_files is not None
         refs.append(
             ChangesRunRef(
                 id=run.id,
@@ -241,23 +268,10 @@ def _run_refs(db: Session, runs: list[Run]) -> list[ChangesRunRef]:
                 status=run.status,
                 started_at=run.started_at,
                 created_at=run.created_at,
-                totals=ChangesTotals(
-                    files=run.changes_files or 0,
-                    additions=run.changes_added or 0,
-                    deletions=run.changes_deleted or 0,
-                )
-                if has_data
-                else None,
+                totals=run_totals(run),
             )
         )
     return refs
-
-
-def _merge_base(repo: str, base: str, branch: str) -> str | None:
-    try:
-        return git.run(repo, "merge-base", base, branch, timeout=10).strip() or None
-    except git.GitError:
-        return None
 
 
 def _branch_tip(repo: str, branch: str) -> str | None:
@@ -362,8 +376,9 @@ def file_list(rng: Range) -> list[FileChange]:
             generated=is_generated(path),
         )
         files.append(change)
-    for change in files:
-        if change.binary:  # a handful at most: one call each
+    # One git call per size, so only for the files that are listed (the rest are only counted).
+    for change in files[:MAX_FILES]:
+        if change.binary:
             if change.status != "added":
                 change.old_size = _size(repo, old, change.old_path or change.path)
             if change.status != "deleted":
@@ -403,6 +418,7 @@ def changes(rng: Range) -> Changes:
 
 _TOTALS_CACHE: dict[tuple, ChangesTotals | None] = {}
 _TOTALS_CACHE_SIZE = 256
+_TOTALS_LOCK = threading.Lock()  # requests run in a thread pool
 
 
 def task_totals(db: Session, task: Task) -> ChangesTotals | None:
@@ -415,11 +431,15 @@ def task_totals(db: Session, task: Task) -> ChangesTotals | None:
         task.base_commit,
         tuple((run.id, run.status, run.snapshot_end) for run in runs),
     )
-    if key not in _TOTALS_CACHE:
-        if len(_TOTALS_CACHE) >= _TOTALS_CACHE_SIZE:
+    with _TOTALS_LOCK:
+        if key in _TOTALS_CACHE:
+            return _TOTALS_CACHE[key]
+    value = _compute_task_totals(db, task)
+    with _TOTALS_LOCK:
+        while len(_TOTALS_CACHE) >= _TOTALS_CACHE_SIZE:
             _TOTALS_CACHE.pop(next(iter(_TOTALS_CACHE)))
-        _TOTALS_CACHE[key] = _compute_task_totals(db, task)
-    return _TOTALS_CACHE[key]
+        _TOTALS_CACHE[key] = value
+    return value
 
 
 def _compute_task_totals(db: Session, task: Task) -> ChangesTotals | None:
@@ -464,18 +484,36 @@ def file_diff(rng: Range, path: str, old_path: str | None = None) -> FileDiff:
     return parse_diff(path, output)
 
 
+def _split_lines(text: str) -> list[str]:
+    """Lines split on newlines only: `str.splitlines` also breaks on form feeds, U+2028 and a few
+    more characters that can be part of a line of code."""
+    lines = text.split("\n")
+    if lines and lines[-1] == "":
+        lines.pop()
+    return lines
+
+
 def parse_diff(path: str, output: str) -> FileDiff:
-    lines = output.splitlines()
+    """The hunks of `git diff` for one file. Each hunk is read by the counts in its header, so a
+    blank context line printed with no leading space (`diff.suppressBlankEmpty`) still counts."""
+    lines = _split_lines(output)
     if len(lines) > MAX_DIFF_LINES:
         return FileDiff(path=path, too_large=True)
     hunks: list[Hunk] = []
     current: Hunk | None = None
-    old_no = new_no = 0
+    old_no = new_no = old_left = new_left = 0
     for line in lines:
-        if line.startswith("Binary files ") or line.startswith("GIT binary patch"):
+        if current is None and (
+            line.startswith("Binary files ") or line.startswith("GIT binary patch")
+        ):
             return FileDiff(path=path, binary=True)
-        match = HUNK_HEADER.match(line)
-        if match:
+        in_hunk = current is not None and (old_left > 0 or new_left > 0)
+        if line.startswith("\\"):  # "\ No newline at end of file"
+            continue
+        if not in_hunk:
+            match = HUNK_HEADER.match(line)
+            if not match:  # the file header
+                continue
             old_start, old_lines, new_start, new_lines, header = match.groups()
             current = Hunk(
                 old_start=int(old_start),
@@ -487,21 +525,25 @@ def parse_diff(path: str, output: str) -> FileDiff:
             )
             hunks.append(current)
             old_no, new_no = current.old_start, current.new_start
+            old_left, new_left = current.old_lines, current.new_lines
             continue
-        if current is None or not line:  # the file header; an empty line is not a diff line
-            continue
-        mark, text = line[0], line[1:].rstrip("\r")
+        assert current is not None
+        mark, text = (line[0], line[1:]) if line else (" ", "")
+        text = text.rstrip("\r")
         if mark == "+":
             current.lines.append(DiffLine(kind="add", new_no=new_no, text=text))
             new_no += 1
+            new_left -= 1
         elif mark == "-":
             current.lines.append(DiffLine(kind="del", old_no=old_no, text=text))
             old_no += 1
-        elif mark == " ":
+            old_left -= 1
+        else:
             current.lines.append(DiffLine(kind="context", old_no=old_no, new_no=new_no, text=text))
             old_no += 1
             new_no += 1
-        # "\ No newline at end of file" is dropped
+            old_left -= 1
+            new_left -= 1
     return FileDiff(path=path, hunks=hunks)
 
 
@@ -522,7 +564,7 @@ def file_lines(rng: Range, path: str, start: int, end: int) -> FileLines:
         content = _literal(rng, "show", f"{rng.new}:{path}")
     except git.GitError:  # deleted in the range, or never there
         return FileLines(lines=[])
-    window = content.splitlines()[start - 1 : end]
+    window = _split_lines(content)[start - 1 : end]
     return FileLines(
         lines=[
             DiffLine(kind="context", new_no=start + offset, text=text.rstrip("\r"))

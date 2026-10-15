@@ -20,6 +20,7 @@ from agentic_os.services import tasks as task_ops
 from agentic_os.services.worktrees import Worktrees
 
 COUNTER = itertools.count()
+SEP = chr(0x2028)  # LINE SEPARATOR: part of a line of code for git, a break for str.splitlines
 
 
 def commit(folder: Path, message: str) -> str:
@@ -244,6 +245,90 @@ def test_a_diff_of_thousands_of_lines_and_files_is_served_quickly(repo: Path):
     assert not diff.too_large
     assert sum(len(h.lines) for h in diff.hunks) == 12_000  # 6 000 deleted and 6 000 added
     assert elapsed < 10  # git does the work: a few hundred milliseconds in practice
+
+
+def test_lines_with_form_feeds_or_unicode_separators_are_not_split(repo: Path):
+    write(repo, "odd.txt", "uno\ndos\x0c fin\ntres" + SEP + "tres\ncuatro\n")
+    old = commit(repo, "base")
+    write(repo, "odd.txt", "uno\nDOS\x0c fin\ntres" + SEP + "tres\ncuatro\nnuevo\x0b\n")
+    new = commit(repo, "x")
+    rng = between(repo, old, new)
+
+    diff = changes.file_diff(rng, "odd.txt")
+
+    rows = [
+        (line.kind, line.old_no, line.new_no, line.text) for h in diff.hunks for line in h.lines
+    ]
+    assert ("del", 2, None, "dos\x0c fin") in rows
+    assert ("add", None, 2, "DOS\x0c fin") in rows
+    assert ("context", 3, 3, "tres" + SEP + "tres") in rows
+    assert ("add", None, 5, "nuevo\x0b") in rows
+    assert changes.file_lines(rng, "odd.txt", 2, 3).lines[1].text == "tres" + SEP + "tres"
+
+
+def test_blank_context_lines_printed_without_a_space_still_count(repo: Path):
+    sh(repo, "config", "diff.suppressBlankEmpty", "true")
+    write(repo, "app.py", "a\n\nb\n\nc\n")
+    old = commit(repo, "base")
+    write(repo, "app.py", "a\n\nB\n\nc\n")
+    new = commit(repo, "x")
+
+    diff = changes.file_diff(between(repo, old, new), "app.py")
+
+    (hunk,) = diff.hunks
+    assert [(line.kind, line.old_no, line.new_no) for line in hunk.lines] == [
+        ("context", 1, 1),
+        ("context", 2, 2),
+        ("del", 3, None),
+        ("add", None, 3),
+        ("context", 4, 4),
+        ("context", 5, 5),
+    ]
+
+
+def test_a_live_snapshot_is_reused_for_a_few_seconds(
+    db_factory,  # noqa: F811
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    repo = make_repo(tmp_path / "mi web")
+    monkeypatch.setattr(changes, "_LIVE", {})
+    with db_factory() as db:
+        project, _task = make_task(db, repo)
+        start = snapshots.take(str(repo), "r1", "start")
+        run = make_run(db, project, repo, status=RunStatus.RUNNING, start=start.sha)
+        write(repo, "uno.txt", "1\n")
+
+        first = changes.run_range(db, run)
+        write(repo, "dos.txt", "2\n")  # changes between two requests of the same view
+        second = changes.run_range(db, run)
+        assert second.new == first.new  # the same state: the list and its files agree
+
+        monkeypatch.setattr(changes, "LIVE_TTL", -1)
+        third = changes.run_range(db, run)
+        assert third.new != first.new
+        assert {f.path for f in changes.file_list(third)} == {"uno.txt", "dos.txt"}
+
+
+def test_a_task_whose_last_run_left_no_snapshot_does_not_show_an_older_runs_end(
+    db_factory,  # noqa: F811
+    tmp_path: Path,
+):
+    repo = make_repo(tmp_path / "mi web")
+    worktrees = Worktrees()
+    with db_factory() as db:
+        project, task = make_task(db, repo)
+        path = Path(worktrees.prepare(db, task, project))
+        run_in(db, project, path, task, lambda folder: write(folder, "a.py", "1\n"))
+        crashed = make_run(db, project, path, task, status=RunStatus.FAILED)  # no snapshots
+        write(path, "b.py", "2\n")
+        commit(path, "feat: b")
+        assert crashed.snapshot_end is None
+
+        result = changes.changes(changes.task_range(db, task))
+
+        # The branch tip, which has both: not run 1's end, which would hide b.py.
+        assert {f.path for f in result.files} == {"a.py", "b.py"}
 
 
 def test_the_diff_of_a_crlf_file_hides_the_carriage_returns(repo: Path):

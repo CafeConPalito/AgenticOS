@@ -31,7 +31,6 @@ BUDGET = 30.0  # seconds for a whole snapshot; a slow one is dropped, never bloc
 MAX_NEW_FILE = 5 * 1024 * 1024  # new files above this are left out
 # Identity of the snapshot commits: nobody reads it, and the repo may have none.
 IDENTITY = ("user.name=Agentic OS", "user.email=agentic-os@localhost", "commit.gpgsign=false")
-CHUNK = 50  # paths per command
 
 
 @dataclass(frozen=True)
@@ -111,13 +110,21 @@ def take_checked(
             temporary.unlink()  # git starts an empty index when the file does not exist
         env = {"GIT_INDEX_FILE": str(temporary)}
 
-        def run(*args: str, config: tuple[str, ...] = ()) -> str:
-            return git.run(folder, *args, timeout=budget.left(), env=env, config=config)
+        def run(*args: str, config: tuple[str, ...] = (), input: str | None = None) -> str:
+            return git.run(
+                folder, *args, timeout=budget.left(), env=env, config=config, input=input
+            )
 
+        # The big new files are left out of the `add` itself, so git never reads or stores them.
         big = _large_new_files(folder, budget)
-        run("add", "-A")
-        for start in range(0, len(big), CHUNK):
-            run("rm", "--cached", "-q", "--ignore-unmatch", "--", *big[start : start + CHUNK])
+        specs = [".", *(f":(exclude,literal){path}" for path in big)]
+        run(
+            "add",
+            "-A",
+            "--pathspec-from-file=-",
+            "--pathspec-file-nul",
+            input="\0".join(specs) + "\0",
+        )
         tree = run("write-tree").strip()
         parent = _head(folder, budget)
         args = ["commit-tree", tree, "-m", f"agentic-os snapshot {run_id or ''} {label or ''}"]
@@ -177,19 +184,6 @@ def delete_runs(folder: str, run_ids: list[str]) -> int:
     refs were removed."""
     refs = [ref_name(run_id, label) for run_id in run_ids for label in ("start", "end")]
     return _delete_refs(folder, refs)
-
-
-def delete_all(folder: str) -> int:
-    if not Path(folder).is_dir() or not is_repo(folder):
-        return 0
-    return _delete_refs(folder, _list_refs(folder))
-
-
-def count_runs(folder: str) -> int:
-    """How many runs have snapshots in this repository."""
-    if not Path(folder).is_dir() or not is_repo(folder):
-        return 0
-    return len({ref.rsplit("/", 1)[0] for ref in _list_refs(folder)})
 
 
 def _list_refs(folder: str) -> list[str]:
