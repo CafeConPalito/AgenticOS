@@ -1,7 +1,7 @@
 # Fase 11: Revisión de código · Plan técnico
 
 - **Spec**: [spec.md](spec.md)
-- **Estado**: borrador
+- **Estado**: aprobado (2026-10-15) · en desarrollo
 
 ## Lo que ya se sabe (revisado al escribir el plan)
 - **Fin de una ejecución**: `RunManager._on_end` se llama desde el hilo del PTY cuando el CLI ya ha terminado, **antes** de `on_run_ended`, que es cuando el scheduler mueve la tarea y, si termina, `Worktrees.release` commitea lo que quedó suelto y borra el worktree. Por tanto, la instantánea final se toma con el worktree todavía en su sitio.
