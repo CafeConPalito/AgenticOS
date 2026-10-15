@@ -84,6 +84,8 @@ class Task(IdMixin, WorkspaceMixin, TimestampMixin, Base):
     waiting_detail: Mapped[str | None] = mapped_column(Text, nullable=True)
     worktree_path: Mapped[str | None] = mapped_column(Text, nullable=True)
     branch: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    # The base branch's commit the worktree started from (phase 11): the origin of its diff.
+    base_commit: Mapped[str | None] = mapped_column(String(40), nullable=True)
     queued_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
     started_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
     finished_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
