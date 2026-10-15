@@ -9,7 +9,8 @@ from fastapi.testclient import TestClient
 from test_worktrees import make_repo, sh
 
 from agentic_os.db.base import utcnow
-from agentic_os.models import Run, RunStatus, Task, TaskStatus
+from agentic_os.models import Project, Run, RunStatus, Task, TaskStatus
+from agentic_os.services import changes, snapshots
 
 
 def setup_branches(client: TestClient, tmp_path: Path) -> tuple[str, dict[str, str]]:
@@ -177,3 +178,88 @@ def test_a_locked_log_is_tried_again_later(client: TestClient, monkeypatch):
     assert client.get("/api/runs/old").json()["log_purged"] is False
     monkeypatch.setattr(Path, "unlink", real_unlink)
     assert client.post("/api/maintenance/logs/cleanup").json()["runs"] == 1
+
+
+# ---------------------------------------------------------------- snapshots (phase 11)
+def snapshot_project(client: TestClient, tmp_path: Path) -> tuple[Path, str]:
+    """A project on a real repository with two old runs and one recent run that have snapshots."""
+    repo = make_repo(tmp_path / "web app")
+    project = client.post("/api/projects", json={"name": "Web", "path": str(repo)}).json()["id"]
+    for run_id, days in (("old1", 100), ("old2", 120), ("recent", 5)):
+        add_run(client, run_id, days_ago=days)
+        start = snapshots.take(str(repo), run_id, "start")
+        (repo / f"{run_id}.txt").write_text("a\nb\n", "utf-8")
+        end = snapshots.take(str(repo), run_id, "end")
+        with client.app.state.sessionmaker() as db:
+            run = db.get(Run, run_id)
+            run.project_id, run.snapshot_start, run.snapshot_end = project, start.sha, end.sha
+            run.changes_files, run.changes_added, run.changes_deleted = 1, 2, 0
+            db.commit()
+    return repo, project
+
+
+def refs_of(repo: Path) -> set[str]:
+    out = sh(repo, "for-each-ref", "--format=%(refname)", "refs/agentic-os/")
+    return {ref.split("/")[3] for ref in out.splitlines()}
+
+
+def test_purging_the_logs_drops_the_snapshots_but_keeps_the_summary(
+    client: TestClient, tmp_path: Path
+):
+    repo, _ = snapshot_project(client, tmp_path)
+    assert refs_of(repo) == {"old1", "old2", "recent"}
+
+    assert client.post("/api/maintenance/logs/cleanup").json()["runs"] == 2
+
+    assert refs_of(repo) == {"recent"}
+    old = client.get("/api/runs/old1").json()
+    assert old["changes"] == {"files": 1, "additions": 2, "deletions": 0}  # the summary stays
+    assert client.get("/api/runs/old1/changes").json()["state"] == "snapshot_missing"
+    assert client.get("/api/runs/recent/changes").json()["state"] == "ok"
+
+
+def test_lists_and_deletes_the_snapshots_of_a_project(client: TestClient, tmp_path: Path):
+    repo, project = snapshot_project(client, tmp_path)
+
+    listed = client.get("/api/maintenance/snapshots").json()
+    assert listed == [{"project_id": project, "project_name": "Web", "runs": 3}]
+
+    deleted = client.post(f"/api/maintenance/snapshots/{project}/delete").json()
+
+    assert deleted == {"runs": 3} and refs_of(repo) == set()
+    assert client.get("/api/maintenance/snapshots").json() == []
+    assert client.get("/api/runs/recent/changes").json()["state"] == "snapshot_missing"
+    assert client.get("/api/runs/recent").json()["changes"]["files"] == 1
+    assert client.post("/api/maintenance/snapshots/nope/delete").status_code == 404
+
+
+def test_deleting_a_project_deletes_its_snapshots(client: TestClient, tmp_path: Path):
+    repo, project = snapshot_project(client, tmp_path)
+
+    assert client.delete(f"/api/projects/{project}").status_code == 204
+
+    assert refs_of(repo) == set()
+    assert sh(repo, "status", "--porcelain").count("txt") == 3  # the folder is never touched
+
+
+def test_a_task_whose_first_run_was_purged_has_no_complete_diff(client: TestClient, tmp_path: Path):
+    _repo, project = snapshot_project(client, tmp_path)
+    client.post("/api/scheduler/pause")
+    agent = client.post("/api/agents", json={"name": "Dev"}).json()["id"]
+    task_id = client.post(
+        "/api/tasks", json={"project_id": project, "agent_id": agent, "title": "Login"}
+    ).json()["id"]
+    with client.app.state.sessionmaker() as db:
+        for run_id in ("old1", "recent"):  # two runs of the same task; the first is old
+            run = db.get(Run, run_id)
+            run.task_id, run.started_at = task_id, run.ended_at
+        db.commit()
+    assert client.get(f"/api/tasks/{task_id}/changes").json()["state"] == "ok"
+
+    client.post("/api/maintenance/logs/cleanup")
+
+    # old1 lost its snapshots: a diff starting at `recent` would pass for the whole task
+    assert client.get(f"/api/tasks/{task_id}/changes").json()["state"] == "snapshot_missing"
+    with client.app.state.sessionmaker() as db:
+        assert changes.task_range(db, db.get(Task, task_id)).state == "snapshot_missing"
+        assert db.get(Project, project) is not None

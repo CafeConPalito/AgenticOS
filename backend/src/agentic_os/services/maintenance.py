@@ -1,5 +1,5 @@
 """Cleanup (phase 08): the task branches left in the projects' repositories and the old
-terminal logs of finished runs."""
+terminal logs of finished runs. Phase 11: the snapshots of the runs' folders go with their logs."""
 
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ from agentic_os.db.base import utcnow
 from agentic_os.errors import ApiError
 from agentic_os.models import ACTIVE_STATUSES, AppState, Project, Run, Task, TaskStatus
 from agentic_os.models.app_state import LOG_RETENTION
-from agentic_os.services import git
+from agentic_os.services import git, snapshots
 
 log = structlog.get_logger(__name__)
 
@@ -179,6 +179,7 @@ def purge_logs(db: Session, runs_dir: Path, days: int | None) -> tuple[int, int]
         )
     )
     freed, purged = 0, 0
+    purged_runs: list[Run] = []
     for run in runs:
         complete = True
         for path in (Path(run.log_path) if run.log_path else None, runs_dir / run.id):
@@ -197,7 +198,53 @@ def purge_logs(db: Session, runs_dir: Path, days: int | None) -> tuple[int, int]
         if complete:
             run.log_purged = True
             purged += 1
+            purged_runs.append(run)
+    _drop_snapshots(db, purged_runs)
     db.commit()
     if runs:
         log.info("run_logs_purged", runs=purged, freed=freed, days=days)
     return purged, freed
+
+
+# ---------------------------------------------------------------- snapshots (phase 11)
+def _drop_snapshots(db: Session, runs: list[Run]) -> None:
+    """Deletes the snapshot refs of these runs and forgets their shas. The +/- summary of each
+    run stays, but its diff is gone («No hay datos de cambios»)."""
+    by_project: dict[str | None, list[Run]] = {}
+    for run in runs:
+        if run.snapshot_start or run.snapshot_end:
+            by_project.setdefault(run.project_id, []).append(run)
+    for project_id, group in by_project.items():
+        project = db.get(Project, project_id) if project_id else None
+        if project is not None:
+            snapshots.delete_runs(project.path, [run.id for run in group])
+        for run in group:
+            run.snapshot_start = run.snapshot_end = None
+
+
+@dataclass
+class ProjectSnapshots:
+    project_id: str
+    project_name: str
+    runs: int  # runs that still have snapshots in the project's repository
+
+
+def snapshot_counts(db: Session) -> list[ProjectSnapshots]:
+    """Projects whose repository holds snapshots (git is asked for each, so it is only used by
+    the cleanup page)."""
+    result = []
+    for project in db.scalars(select(Project).order_by(Project.name)):
+        runs = snapshots.count_runs(project.path)
+        if runs:
+            result.append(ProjectSnapshots(project.id, project.name, runs))
+    return result
+
+
+def delete_project_snapshots(db: Session, project: Project) -> int:
+    """Removes every snapshot of the project's repository. Returns how many runs had them."""
+    runs = snapshots.count_runs(project.path)
+    snapshots.delete_all(project.path)
+    for run in db.scalars(select(Run).where(Run.project_id == project.id)):
+        run.snapshot_start = run.snapshot_end = None
+    db.commit()
+    return runs

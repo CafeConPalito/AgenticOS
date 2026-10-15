@@ -98,7 +98,9 @@ def run_range(db: Session, run: Run) -> Range:
     project = db.get(Project, run.project_id) if run.project_id else None
     repo = _repo_of(project, run.cwd)
     if not repo or not run.snapshot_start:
-        return Range(_empty_state(repo))
+        state = _empty_state(repo)
+        # Purged with its logs (or by hand): the diff existed and is gone.
+        return Range("snapshot_missing" if state == "no_snapshots" and _had_diff(run) else state)
     if not snapshots.exists(repo, run.snapshot_start):
         return Range("snapshot_missing")
     live = run.status in ACTIVE_STATUSES
@@ -122,6 +124,11 @@ def run_range(db: Session, run: Run) -> Range:
         partial=run.status == RunStatus.INTERRUPTED,
         skipped_large=run.snapshot_skipped,
     )
+
+
+def _had_diff(run: Run) -> bool:
+    """A run that has no snapshots now but had them: its +/- summary (or its purge) says so."""
+    return run.log_purged or run.changes_files is not None
 
 
 def _task_runs(db: Session, task: Task) -> list[Run]:
@@ -180,9 +187,15 @@ def _worktree_range(task: Task, project: Project, repo: str, runs: list[Run]) ->
 
 
 def _direct_range(repo: str, runs: list[Run]) -> Range:
-    with_start = [r for r in runs if r.snapshot_start]
-    if not with_start:
+    first_index = next((i for i, r in enumerate(runs) if r.snapshot_start), None)
+    if first_index is None:
         return Range(_empty_state(repo))
+    earlier = runs[:first_index]
+    if any(r.started_at is not None for r in earlier):
+        # Runs that did work before the first snapshot (from before the phase, or purged): where
+        # the task started is unknown, so a diff from the first snapshot would look complete.
+        return Range("snapshot_missing" if any(_had_diff(r) for r in earlier) else "no_snapshots")
+    with_start = runs[first_index:]
     first, last = with_start[0], with_start[-1]
     if not snapshots.exists(repo, first.snapshot_start):
         return Range("snapshot_missing")
