@@ -1,6 +1,6 @@
 # Fase 11: Revisión de código · Spec
 
-- **Estado**: borrador
+- **Estado**: aprobada (2026-10-15)
 - **Rama**: `phase/11-revision-codigo`
 
 ## Objetivo
