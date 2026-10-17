@@ -1,7 +1,7 @@
 # Fase 12: Control de git · Plan técnico
 
 - **Spec**: [spec.md](spec.md)
-- **Estado**: borrador
+- **Estado**: aprobado (2026-10-17) · desarrollo sin empezar
 
 ## Lo que ya se sabe (revisado al escribir el plan)
 - **git 2.55** en el equipo. Trae dos piezas que simplifican mucho la integración:

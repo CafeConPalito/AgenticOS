@@ -81,3 +81,4 @@ Flujo de cada fase: ver `CLAUDE.md` (Spec → Plan → Desarrollo → Validació
 | 2026-10-17 | Fase 12 en spec. |
 | 2026-10-17 | Fase 12 ampliada a petición del usuario: control total de git, proyectos con varios repositorios y agentes sin restricciones de git. |
 | 2026-10-17 | Spec de la fase 12 aprobada. Fase 12 en plan. |
+| 2026-10-17 | Plan de la fase 12 aprobado. El desarrollo queda pendiente hasta que el usuario decida empezarlo. |
