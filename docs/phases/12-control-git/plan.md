@@ -23,6 +23,39 @@
 - **Refresco en la UI**: hoy se hace por sondeo (`refetchInterval`); no hay un canal de eventos global.
 - **Credenciales**: Git Credential Manager guarda un token OAuth para `github.com` y `gitlab.com`. `git credential fill` lo devuelve y sirve para su API REST. `httpx` ya es dependencia del backend.
 
+## Resultados de los spikes (bloque 0, 2026-10-17)
+Scripts en `spikes/` (`git_probe.py`, `git_perf_probe.py`, `scenarios/git_permissions.py`, `agy_git_hook.py`, `agy_git_hook_pty.py`, `agy_add_dir.py`) y evidencias en `evidencias/`.
+
+**S1 · agy 1.4.0**
+- **Sesión interactiva (PTY, modo por defecto)**: `git commit`, `git push` y `git push --force` a un remoto *bare* se ejecutan **sin ningún diálogo**, con y sin hook. También `git -C <otra carpeta> commit`. Con este agy y esta configuración, el modo `manual` no pregunta por git.
+- **Modo headless (`-p`)** deniega todo comando, también con reglas en `.agents/settings.json` y con el hook. No es el modo de la app (todo va por PTY), así que no cuenta.
+- **Hook `PreToolUse`**: agy documenta la respuesta `{"decision": "allow" | "deny" | "ask" | "force_ask", "reason", "permissionOverrides"}`. El hook recibe `toolCall.name == "run_command"` y `toolCall.args.CommandLine` con la línea completa (`git -C . commit …`, `cd . && git …`). Queda como **plan B** si en otra máquina agy pregunta por git: `hook.cmd` imprimiría la respuesta del backend en vez de descartarla. No se implementa ahora.
+- **Reglas de permisos de agy**: `command(<prefijo>)`, p. ej. `command(git commit)`, sin comodines. Viven en `~/.gemini/antigravity-cli/settings.json` (global); no se ha encontrado un fichero de proyecto que se aplique. La app **no toca** la configuración global.
+- **`--add-dir <carpeta>`** existe y se usa para los repos vinculados; agy actuó en el repo de fuera con y sin él.
+
+**S2 · Claude Code 2.1.302** (modo `-p`, donde lo no permitido se deniega)
+- Sin reglas, `git commit` se deniega. Con `--allowedTools "Bash(git:*)"` se permite, también `git -C . commit` y `cd . && git commit`.
+- Hay que pasar **las dos reglas, `Bash(git:*)` y `PowerShell(git *)`**: Claude usa una u otra, y con solo la de Bash `git add -A` quedó bloqueado en una ejecución.
+- **`--add-dir` es imprescindible** para que Claude escriba en un repo vinculado fuera de su carpeta (sin él, la herramienta de escritura se rechaza). Con `--add-dir` y las dos reglas, `git -C <otro repo> commit` funciona en `default` y en `acceptEdits`.
+
+**S3 · git 2.55 sin terminal (Windows)**
+- `git merge-tree --write-tree <a> <b>`: imprime el árbol resultante (código 0) o, con conflictos, código 1, el árbol y los ficheros (`--name-only`). `commit-tree` + `update-ref <ref> <nuevo> <viejo>` completa el merge sin carpeta de trabajo.
+- `git replay --onto <base> <base>..<rama>` **actualiza la rama por defecto** (`--ref-action=update`); con `--ref-action=print` solo imprime `update <ref> <nuevo> <viejo>`. No existe `--update-refs`. Sigue marcado experimental: se comprueba al arrancar y, si falla, se usa el worktree temporal.
+- **Rebase interactivo**: `GIT_SEQUENCE_EDITOR` debe ser un **script `sh` con ruta POSIX** (git lo lanza con su propio `sh`); un `.cmd` no funciona. Probados: reordenar, `fixup`, `exec git commit --amend -m …` para `reword` y `edit` (el rebase se para; `reset HEAD^` y `rebase --continue` funcionan).
+- **Sin terminal**: con `GIT_TERMINAL_PROMPT=0` un fetch https sin credenciales falla en 0,3 s (`terminal prompts disabled`); `ssh` con `BatchMode=yes` no se queda esperando. `git credential fill` para `github.com` **devuelve un token guardado** (Git Credential Manager) → los pull requests por API son viables.
+
+**S4 · rendimiento** (repos sintéticos)
+- `git status --porcelain=v2` de 20 repos de 300 ficheros: 625 ms en serie, **109 ms en 8 hilos**.
+- Repo de 50 000 commits: `git log --topo-order -n 200` cuesta ~156 ms **sea cual sea la página** (`--skip` hasta 49 800); `log -S` 375 ms; `blame` 266 ms.
+- Consecuencia: el historial se pagina con **`--skip` y `-n 200` sobre el mismo conjunto de referencias**, no con un cursor por sha (un cursor solo ve los ancestros de ese commit y perdería los de otras ramas en el grafo).
+
+### Cambios al diseño por los spikes
+- §2 Integración: `git replay` se llama sin `--update-refs`; con `--ref-action=print` primero, para registrar el respaldo antes de mover nada.
+- §2 Rebase interactivo: el script del editor es un `.sh` en la carpeta de datos, con ruta POSIX.
+- §2 Historial: paginación por `--skip`.
+- §6 Autorización: Claude lleva las dos reglas; agy no necesita nada en este equipo (el hook queda como plan B).
+- Repos vinculados: `--add-dir` en Claude y en agy.
+
 ## Diseño
 
 ### 1. Proyectos con varios repos ([ADR 0016](../../adr/0016-multi-repo-projects.md))
@@ -232,8 +265,8 @@
 
 **Autorización** (`adapters/base.py`)
 - Con `agents_git_authorized`:
-  - **Claude Code**: `Bash(git:*)` y `PowerShell(git *)` se añaden a `--allowedTools` **en todos los modos** (en `autonomous` ya está todo permitido). El spike S2 comprueba qué pasa con los comandos encadenados (`cd backend && git commit …`) y con `git -C`.
-  - **agy**: no tiene lista por comando. Si el spike S1 encuentra una forma (un *hook* `PreToolUse` que aprueba o un `settings.json` del plugin de workspace), se usa. Si no, en `manual` y `restricted` el CLI seguirá preguntando, y la ficha del agente avisa: «agy pregunta por git en este modo; usa el modo autónomo para que no pregunte».
+  - **Claude Code**: `Bash(git:*)` y `PowerShell(git *)` se añaden a `--allowedTools` **en todos los modos** (en `autonomous` ya está todo permitido). Comprobado en S2: funcionan también con `git -C` y `cd … && git …`, y hacen falta las dos.
+  - **agy**: en S1 no preguntó por ningún comando de git en sesión interactiva (incluidos `push` y `push --force`), así que no se añade nada. Plan B, solo si una máquina pregunta: el hook `PreToolUse` del plugin responde `{"decision":"allow"}` a las líneas que empiezan por `git` (contrato documentado por agy).
 - Sin `agents_git_authorized`: como hoy.
 
 **Registro de lo que hizo cada ejecución** (`services/gitx/activity.py`)
@@ -372,21 +405,21 @@
 La fase se desarrolla en **7 bloques**. Cada bloque termina con sus tests en verde y un commit (o varios), y no empieza el siguiente sin cerrar el anterior. Al cerrar cada bloque te aviso con lo que se puede probar.
 
 **Bloque 0: spikes** (resultados en este plan)
-1. [ ] **S1 · agy**:
+1. [x] **S1 · agy**:
    - `--add-dir` con un repo vinculado: ¿lo ve y puede escribir sin preguntar por confianza?
    - formas de preaprobar solo los comandos de git en `manual` y `accept-edits`: un *hook* `PreToolUse` que responde «allow», o un `settings.json` del plugin de workspace;
    - qué pregunta `--mode accept-edits` cuando ejecuta un comando.
-2. [ ] **S2 · Claude Code**:
+2. [x] **S2 · Claude Code**:
    - `--allowedTools "Bash(git:*)"` en `manual` con `git commit`, `git -C x push`, `cd x && git push` y PowerShell;
    - `--add-dir` con confianza de carpeta.
-3. [ ] **S3 · git sin terminal en Windows**:
+3. [x] **S3 · git sin terminal en Windows**:
    - `GIT_SEQUENCE_EDITOR` con un script para el rebase interactivo;
    - `exec git commit --amend -m` para `reword`;
    - `GIT_TERMINAL_PROMPT=0` con Git Credential Manager (¿abre su ventana?);
    - `BatchMode=yes` con una clave con frase de paso;
    - `git credential fill` de `github.com` → token válido para la API;
    - `git replay` y `merge-tree --write-tree` en git 2.55.
-4. [ ] **S4 · rendimiento**: estado de 20 repos en paralelo; `git log --topo-order` paginado en un repo de 50 000 commits (p. ej. un clon de git). Primer pintado del grafo.
+4. [x] **S4 · rendimiento**: estado de 20 repos en paralelo; `git log --topo-order` paginado en un repo de 50 000 commits (p. ej. un clon de git). Primer pintado del grafo.
 
 **Bloque 1: varios repos**
 
