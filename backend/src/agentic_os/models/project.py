@@ -1,6 +1,6 @@
 from enum import StrEnum
 
-from sqlalchemy import CheckConstraint, String, Text, UniqueConstraint
+from sqlalchemy import CheckConstraint, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from agentic_os.db.base import Base, IdMixin, TimestampMixin, WorkspaceMixin
@@ -27,5 +27,8 @@ class Project(IdMixin, WorkspaceMixin, TimestampMixin, Base):
     workspace_mode: Mapped[str] = mapped_column(
         String(16), nullable=False, default=WorkspaceMode.DIRECT
     )
-    # Worktree mode: the branch each task worktree starts from.
+    # Worktree mode: the branch each task worktree starts from. Phase 12: the base lives in each
+    # repository of the project (`ProjectRepo.base_branch`); this one is the root repo's.
     base_branch: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    # How deep inside the folder repositories are looked for.
+    repo_scan_depth: Mapped[int] = mapped_column(Integer, nullable=False, default=3)
