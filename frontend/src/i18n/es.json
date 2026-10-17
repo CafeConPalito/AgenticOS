@@ -320,7 +320,17 @@
       "webPipeline": "Desarrollo web",
       "webPipelineHelp": "Requisitos → Desarrollo → QA",
       "pipelineFailed": "Proyecto «{{name}}» creado, pero no se pudo añadir el pipeline: {{error}}",
-      "submit": "Crear proyecto"
+      "submit": "Crear proyecto",
+      "source": "Origen del proyecto",
+      "sources": {
+        "folder": "Carpeta existente",
+        "clone": "Clonar desde URL"
+      },
+      "url": "URL del repositorio",
+      "parent": "Carpeta donde clonar",
+      "urlRequired": "Indica la URL del repositorio.",
+      "cloning": "Clonando… {{progress}}",
+      "cloneSubmit": "Clonar y crear"
     },
     "tabs": {
       "summary": "Resumen",
@@ -1395,7 +1405,14 @@
     "section": {
       "changes": "Cambios",
       "history": "Historial",
-      "branches": "Ramas"
+      "branches": "Ramas",
+      "stash": "Stash",
+      "tags": "Tags",
+      "remotes": "Remotos",
+      "advanced": "Avanzado",
+      "maintenance": "Mantenimiento",
+      "settings": "Ajustes",
+      "terminal": "Terminal"
     },
     "operation": {
       "merge": "Hay un merge a medias",
@@ -1422,21 +1439,27 @@
         "pull": "Pull",
         "push": "Push",
         "clone": "Clonando",
-        "gc": "Mantenimiento"
+        "gc": "Mantenimiento",
+        "submodule": "Submódulos",
+        "lfs": "Git LFS"
       },
       "done": {
         "fetch": "Fetch terminado",
         "pull": "Pull terminado",
         "push": "Push terminado",
         "clone": "Clonado terminado",
-        "gc": "Mantenimiento terminado"
+        "gc": "Mantenimiento terminado",
+        "submodule": "Submódulos actualizados",
+        "lfs": "Git LFS descargado"
       },
       "failed": {
         "fetch": "No se pudo hacer fetch",
         "pull": "No se pudo hacer pull",
         "push": "No se pudo hacer push",
         "clone": "No se pudo clonar",
-        "gc": "El mantenimiento falló"
+        "gc": "El mantenimiento falló",
+        "submodule": "No se pudieron actualizar los submódulos",
+        "lfs": "Git LFS falló"
       }
     },
     "errors": {
@@ -1481,7 +1504,9 @@
       "rebase_has_merges": "Entre esos commits hay merges: un rebase interactivo los aplanaría.",
       "stale_rebase": "Los commits han cambiado desde que se hizo la lista: vuelve a abrirla.",
       "bad_rebase": "El primer commit no se puede juntar con uno anterior.",
-      "bad_action": "Esa acción no se puede hacer aquí."
+      "bad_action": "Esa acción no se puede hacer aquí.",
+      "invalid_key": "Ese nombre de ajuste no es válido.",
+      "no_repo": "Hace falta un repositorio para ese ajuste."
     },
     "changes": {
       "conflicts": "Conflictos",
@@ -1720,6 +1745,136 @@
       "defaultMessage": "Merge de {{branch}} en {{current}}",
       "rebaseTitle": "¿Rebase de {{current}} sobre {{branch}}?",
       "rebaseDescription": "Los commits de la rama actual se vuelven a aplicar encima de la otra: cambian de identidad. Se puede deshacer."
+    },
+    "stash": {
+      "message": "Mensaje (opcional)",
+      "untracked": "Incluir ficheros nuevos",
+      "push": "Guardar en el stash",
+      "stored": "Cambios guardados en el stash",
+      "nothing": "No hay cambios que guardar",
+      "empty": "No hay nada en el stash",
+      "view": "Ver",
+      "apply": "Aplicar",
+      "pop": "Aplicar y quitar",
+      "toBranch": "A una rama",
+      "drop": "Descartar",
+      "files": "Ficheros del stash",
+      "applied": "Stash aplicado",
+      "popped": "Stash aplicado y quitado de la lista",
+      "conflicts": "El stash se aplicó con conflictos: resuélvelos en Cambios.",
+      "dropTitle": "¿Descartar {{ref}}?",
+      "dropDescription": "Un stash descartado no se puede recuperar.",
+      "dropped": "Stash descartado",
+      "branchCreated": "Rama «{{name}}» creada desde el stash"
+    },
+    "tags": {
+      "name": "Nombre del tag",
+      "ref": "Commit (opcional)",
+      "message": "Mensaje (con él será anotado)",
+      "create": "Crear tag",
+      "created": "Tag «{{name}}» creado",
+      "empty": "Este repositorio no tiene tags",
+      "annotated": "anotado",
+      "publish": "Subir",
+      "delete": "Borrar",
+      "deleteTitle": "¿Borrar el tag «{{name}}»?",
+      "deleteDescription": "Solo se borra aquí; si ya lo subiste, sigue en el remoto.",
+      "deleted": "Tag «{{name}}» borrado"
+    },
+    "remotes": {
+      "name": "Nombre",
+      "url": "URL",
+      "add": "Añadir remoto",
+      "empty": "Este repositorio no tiene remotos",
+      "test": "Probar",
+      "edit": "Editar",
+      "remove": "Quitar",
+      "reachable_one": "Accesible ({{count}} rama)",
+      "reachable_other": "Accesible ({{count}} ramas)",
+      "removeTitle": "¿Quitar el remoto «{{name}}»?",
+      "removeDescription": "Solo se olvida la dirección; no se toca nada en el servidor.",
+      "forceTitle": "Push forzado",
+      "forceHelp": "Sobrescribe la rama en el remoto. Usa --force-with-lease: se rechaza si alguien subió algo después de tu último fetch.",
+      "force": "Forzar el push de {{branch}}",
+      "forceConfirmTitle": "¿Forzar el push de {{branch}}?",
+      "forceConfirm": "Forzar el push",
+      "checking": "Comprobando qué se perdería en el remoto…",
+      "overwritesNone": "No se perdería ningún commit del remoto.",
+      "overwrites_one": "Se perdería {{count}} commit del remoto: {{commits}}.",
+      "overwrites_other": "Se perderían {{count}} commits del remoto: {{commits}}."
+    },
+    "advanced": {
+      "submodules": "Submódulos",
+      "noSubmodules": "Este repositorio no tiene submódulos.",
+      "submoduleState": {
+        "ok": "al día",
+        "not_initialized": "sin inicializar",
+        "modified": "modificado",
+        "conflict": "en conflicto"
+      },
+      "update": "Actualizar",
+      "updateAll": "Actualizar todos",
+      "addSubmodule": "Añadir submódulo",
+      "submoduleUrl": "URL del submódulo",
+      "submodulePath": "Carpeta",
+      "removeSubmodule": "Quitar",
+      "removeSubmoduleTitle": "¿Quitar el submódulo {{path}}?",
+      "removeSubmoduleDescription": "Se borra su carpeta del proyecto.",
+      "lfs": "Git LFS",
+      "lfsMissing": "Git LFS no está instalado en este equipo.",
+      "noLfs": "Ningún patrón va por LFS.",
+      "lfsPattern": "Patrón (p. ej. *.psd)",
+      "track": "Seguir con LFS",
+      "untrack": "Dejar de seguir",
+      "lfsPull": "Descargar ficheros LFS",
+      "worktrees": "Worktrees",
+      "mainTree": "principal",
+      "taskTree": "de una tarea",
+      "gone": "carpeta perdida",
+      "removeTree": "Quitar",
+      "removeTreeTitle": "¿Quitar el worktree {{path}}?",
+      "removeTreeDescription": "Se borra su carpeta. La rama no se toca.",
+      "prune": "Limpiar worktrees perdidos",
+      "pruned": "Worktrees perdidos limpiados"
+    },
+    "maintenance": {
+      "clean": "Limpiar ficheros sin seguimiento",
+      "cleanHelp": "Borra lo que git no sigue. Antes se guarda una copia, salvo de los ficheros ignorados, que no se pueden recuperar.",
+      "folders": "Incluir carpetas",
+      "ignored": "Incluir ficheros ignorados",
+      "nothingToClean": "No hay nada que limpiar.",
+      "willDelete": "Se borrará",
+      "cleanNow_one": "Borrar {{count}} elemento",
+      "cleanNow_other": "Borrar {{count}} elementos",
+      "cleanTitle_one": "¿Borrar {{count}} elemento?",
+      "cleanTitle_other": "¿Borrar {{count}} elementos?",
+      "cleanDescription": "Podrás recuperarlos con «Deshacer».",
+      "cleanDescriptionIgnored": "Incluye ficheros ignorados: esos no se pueden recuperar.",
+      "cleanConfirm": "Borrar",
+      "cleaned": "Limpieza hecha",
+      "repo": "Repositorio",
+      "size": "Sueltos {{loose}} · empaquetados {{packed}} · basura {{garbage}}",
+      "gc": "Compactar (gc)",
+      "verify": "Comprobar integridad",
+      "verifyOk": "El repositorio está íntegro."
+    },
+    "settings": {
+      "help": "Un valor vacío quita el ajuste de ese ámbito.",
+      "key": "Ajuste",
+      "scope": {
+        "local": "Este repositorio",
+        "global": "Global"
+      },
+      "saved": "«{{key}}» guardado"
+    },
+    "terminal": {
+      "title": "Terminal git",
+      "help": "Una terminal en la carpeta del repositorio, para lo que la interfaz no cubre.",
+      "open": "Abrir terminal",
+      "close": "Cerrar terminal",
+      "label": "Terminal git",
+      "running": "En curso",
+      "exited": "La terminal ha terminado"
     }
   }
 }

@@ -12,10 +12,20 @@ import type {
   CommitInfo,
   JobState,
   RepoOverview,
+  RemoteInfo,
   RepoStatus,
   StatusFile,
 } from '@/api/git'
 import type { ConflictFile, OpResult, OperationRead } from '@/api/git-integration'
+import type {
+  CleanPreview,
+  CommonConfig,
+  LfsState,
+  StashEntry,
+  SubmoduleInfo,
+  TagInfo,
+  WorktreeInfo,
+} from '@/api/git-more'
 import type { ProjectRepo } from '@/api/repos'
 import type { ProjectBranches, ProjectSnapshots } from '@/api/maintenance'
 import {
@@ -657,6 +667,16 @@ export interface FakeRepoGit {
   unstaged?: FileChange[]
   staged?: FileChange[]
   diffs?: Record<string, FileDiff>
+  stashes?: StashEntry[]
+  tags?: TagInfo[]
+  remotes?: RemoteInfo[]
+  /** Commits a forced push would destroy on the remote. */
+  overwrites?: string[]
+  submodules?: SubmoduleInfo[]
+  lfs?: LfsState
+  worktrees?: WorktreeInfo[]
+  clean?: CleanPreview
+  config?: CommonConfig
 }
 
 export function createFakeBackend(
@@ -698,6 +718,8 @@ export function createFakeBackend(
     agentChanges?: AgentChangeRun[]
     /** What GET /api/maintenance/snapshots lists. */
     snapshots?: ProjectSnapshots[]
+    /** The error code a clone ends with (it succeeds by default). */
+    cloneError?: string
   } = {},
 ) {
   const usage: FakeUsage = { ...emptyUsage(), ...(seed.usage ?? {}) }
@@ -1448,6 +1470,15 @@ export function createFakeBackend(
       unstaged: [],
       staged: [],
       diffs: {},
+      stashes: [],
+      tags: [],
+      remotes: [],
+      overwrites: [],
+      submodules: [],
+      lfs: { installed: true, used: false, patterns: [], files: 0 },
+      worktrees: [],
+      clean: { files: [], folders: [] },
+      config: {},
       ...value,
     })
 
@@ -1471,9 +1502,9 @@ export function createFakeBackend(
     })
   }
 
-  function startJob(repoId: string, kind: string): JobState {
+  function startJob(repoId: string, kind: string, id = `job-${calls.length}`): JobState {
     return {
-      id: `job-${calls.length}`,
+      id,
       repo_id: repoId,
       kind,
       status: 'running',
@@ -1526,14 +1557,54 @@ export function createFakeBackend(
     }
     const jobs = path.match(/^\/api\/git\/jobs\/([^/]+)$/)
     if (jobs && method === 'DELETE') return json(204, null)
+    if (path === '/api/git/shells/sh-1' && method === 'DELETE') return json(204, null)
+    if (path === '/api/git/clone' && method === 'POST') {
+      const name = String(body.name ?? 'repo')
+      return json(202, {
+        job: startJob('', 'clone', 'clone-1'),
+        path: `${String(body.parent_folder)}/${name}`,
+      })
+    }
+    if (jobs && method === 'GET')
+      return json(200, {
+        ...startJob('', 'clone', jobs[1]),
+        status: seed.cloneError ? 'failed' : 'succeeded',
+        error_code: seed.cloneError ?? null,
+        message: seed.cloneError ? 'clone failed' : '',
+      })
     const m = path.match(/^\/api\/repos\/([^/]+)\/(.+)$/)
     if (!m || !gitState[m[1]]) return null
     const [, id, rest] = m
     const repo = gitState[id]
+    if (method === 'DELETE') {
+      const tag = rest.match(/^tags\/(.+)$/)
+      if (tag) repo.tags = repo.tags.filter((entry) => entry.name !== decodeURIComponent(tag[1]))
+      const remote = rest.match(/^remotes\/([^/]+)$/)
+      if (remote) repo.remotes = repo.remotes.filter((entry) => entry.name !== remote[1])
+      if (tag || remote) return json(204, null)
+    }
+    if (method === 'PUT' && rest === 'config') {
+      const scope = String(body.scope) as 'local' | 'global'
+      const row = (repo.config[String(body.key)] ??= {})
+      row[scope] = body.value === null ? null : String(body.value)
+      return json(204, null)
+    }
+    if (method === 'PATCH' && rest.startsWith('remotes/')) return json(204, null)
     if (method === 'GET') {
       if (rest === 'status') return json(200, statusOf(id))
       if (rest === 'branches') return json(200, repo.branches)
-      if (rest === 'remotes') return json(200, [])
+      if (rest === 'remotes') return json(200, repo.remotes)
+      if (rest === 'stashes') return json(200, repo.stashes)
+      if (rest === 'tags') return json(200, repo.tags)
+      if (rest === 'submodules') return json(200, repo.submodules)
+      if (rest === 'lfs') return json(200, repo.lfs)
+      if (rest === 'worktrees') return json(200, repo.worktrees)
+      if (rest === 'push/overwrites') return json(200, repo.overwrites)
+      if (rest === 'clean/preview') return json(200, repo.clean)
+      if (rest === 'config') return json(200, repo.config)
+      if (rest === 'size') return json(200, { loose: '1 MiB', packed: '4 MiB', garbage: '0 B' })
+      if (rest === 'verify') return json(200, { ok: true, problems: [] })
+      if (rest === 'stashes/diff') return json(200, makeChanges({ files: repo.unstaged }))
       if (rest === 'blame') return json(200, repo.blame)
       if (rest === 'operations') return json(200, repo.operations)
       if (rest === 'rebase/plan') return json(200, repo.plan)
@@ -1611,6 +1682,68 @@ export function createFakeBackend(
       }
       if (rest === 'fetch' || rest === 'pull' || rest === 'push')
         return json(202, startJob(id, rest))
+      if (rest === 'stashes') {
+        repo.stashes.unshift({
+          index: 0,
+          ref: 'stash@{0}',
+          sha: 'f'.repeat(40),
+          message: String(body.message ?? 'WIP'),
+          date: now(),
+          has_untracked: Boolean(body.include_untracked),
+        })
+        repo.stashes.forEach((entry, index) => {
+          entry.index = index
+          entry.ref = `stash@{${index}}`
+        })
+        return json(200, { stored: true })
+      }
+      if (rest === 'stashes/apply') return json(200, repo.opResult)
+      if (rest === 'stashes/drop') {
+        repo.stashes = repo.stashes.filter((entry) => entry.ref !== body.ref)
+        return json(204, null)
+      }
+      if (rest === 'tags') {
+        repo.tags.push({
+          name: String(body.name),
+          sha: 'a'.repeat(40),
+          annotated: Boolean(body.message),
+          message: String(body.message ?? ''),
+          date: now(),
+        })
+        return json(204, null)
+      }
+      if (rest === 'tags/remote') return json(202, startJob(id, 'push'))
+      if (rest === 'remotes') {
+        repo.remotes.push({
+          name: String(body.name),
+          fetch_url: String(body.url),
+          push_url: String(body.url),
+        })
+        return json(204, null)
+      }
+      const remoteTest = rest.match(/^remotes\/([^/]+)\/test$/)
+      if (remoteTest) return json(200, { ok: true, error_code: null, message: '', branches: 3 })
+      if (rest === 'push/force') {
+        return body.confirm
+          ? json(202, startJob(id, 'push'))
+          : apiError(428, 'confirmation_required')
+      }
+      if (rest === 'submodules/update') return json(202, startJob(id, 'submodule'))
+      if (rest === 'shell') return json(201, { shell_id: 'sh-1' })
+      if (rest === 'lfs/pull') return json(202, startJob(id, 'lfs'))
+      if (rest === 'gc') return json(202, startJob(id, 'gc'))
+      if (
+        [
+          'submodules',
+          'submodules/remove',
+          'lfs/track',
+          'lfs/untrack',
+          'worktrees/remove',
+          'worktrees/prune',
+          'clean',
+        ].includes(rest)
+      )
+        return json(204, null)
       if (['apply', 'switch', 'branches', 'branches/rename', 'branches/upstream'].includes(rest))
         return json(204, null)
       if (rest === 'branches/delete') return json(200, { failed: {} })

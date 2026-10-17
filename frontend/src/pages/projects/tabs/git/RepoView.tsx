@@ -15,19 +15,38 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { relativeTime } from '@/lib/time'
 import { useGitJobs } from '@/stores/git-jobs'
+import { AdvancedSection } from './AdvancedSection'
 import { BranchesSection } from './BranchesSection'
 import { ChangesSection } from './ChangesSection'
 import { gitErrorText } from './git-errors'
 import { HistorySection } from './HistorySection'
 import { JobsPanel } from './JobsPanel'
+import { MaintenanceSection } from './MaintenanceSection'
 import { OperationBar } from './OperationBar'
+import { RemotesSection } from './RemotesSection'
+import { SettingsSection } from './SettingsSection'
+import { StashSection } from './StashSection'
+import { TagsSection } from './TagsSection'
+import { TerminalSection } from './TerminalSection'
 import { UndoButton } from './UndoButton'
 
-export const SECTIONS = ['changes', 'history', 'branches'] as const
+export const SECTIONS = [
+  'changes',
+  'history',
+  'branches',
+  'stash',
+  'tags',
+  'remotes',
+  'advanced',
+  'maintenance',
+  'settings',
+  'terminal',
+] as const
 export type Section = (typeof SECTIONS)[number]
 
 /** One repository: its branch and how far it is from its remote, the network buttons and the
- * sections (changes, history, branches). */
+ * sections (changes, history, branches, stash, tags, remotes, advanced, upkeep, settings and
+ * terminal). */
 export function RepoView({
   repo,
   section,
@@ -151,7 +170,7 @@ export function RepoView({
         <JobsPanel repoIds={[repo.repo_id]} />
       </div>
 
-      <nav aria-label={t('git.sections')} className="flex gap-1 px-6 pt-3">
+      <nav aria-label={t('git.sections')} className="flex flex-wrap gap-1 px-6 pt-3">
         {SECTIONS.map((id) => (
           <Button
             key={id}
@@ -174,6 +193,13 @@ export function RepoView({
       {section === 'changes' && <ChangesSection repoId={repo.repo_id} />}
       {section === 'history' && <HistorySection repoId={repo.repo_id} />}
       {section === 'branches' && <BranchesSection repoId={repo.repo_id} base={repo.base_branch} />}
+      {section === 'stash' && <StashSection repoId={repo.repo_id} />}
+      {section === 'tags' && <TagsSection repoId={repo.repo_id} />}
+      {section === 'remotes' && <RemotesSection repoId={repo.repo_id} />}
+      {section === 'advanced' && <AdvancedSection repoId={repo.repo_id} />}
+      {section === 'maintenance' && <MaintenanceSection repoId={repo.repo_id} />}
+      {section === 'settings' && <SettingsSection repoId={repo.repo_id} />}
+      {section === 'terminal' && <TerminalSection repoId={repo.repo_id} />}
     </div>
   )
 }

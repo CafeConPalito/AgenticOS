@@ -464,8 +464,15 @@ La fase se desarrolla en **7 bloques**. Cada bloque termina con sus tests en ver
 
 **Bloque 4: el resto de git**
 
-16. [ ] Stash, tags, remotos y push forzado, submódulos, LFS, worktrees, reflog, mantenimiento, configuración (repo y global), clonar e inicializar, y terminal git.
-17. [ ] Frontend: sus secciones, «Clonar desde URL» en Nuevo proyecto y la terminal git (CA4, CA9).
+16. [x] Stash, tags, remotos y push forzado, submódulos, LFS, worktrees, reflog, mantenimiento, configuración (repo y global), clonar e inicializar, y terminal git.
+17. [x] Frontend: sus secciones, «Clonar desde URL» en Nuevo proyecto y la terminal git (CA4, CA9).
+
+**Notas del bloque 4 (cambios respecto a lo planeado)**
+- La pestaña Git gana siete secciones: Stash, Tags, Remotos (con el push forzado), Avanzado (submódulos, LFS y worktrees), Mantenimiento (limpiar, gc, comprobar, tamaño), Ajustes (local y global) y Terminal.
+- El push forzado enseña antes los commits del remoto que se perderían (`push/overwrites`) y manda `confirm: true` solo al aceptar; limpiar, descartar un stash, borrar un tag y quitar remotos, submódulos o worktrees también piden confirmación.
+- La terminal git reutiliza `TerminalSocket` con la ruta `/api/git/shells/{id}/terminal` (hook `use-git-shell`); se cierra al salir de la sección.
+- «Clonar desde URL» es un modo de *Nuevo proyecto*: arranca el trabajo `clone`, lo consulta cada segundo (`GET /api/git/jobs/{id}`, la pestaña Git aún no está abierta y no hay WebSocket) y, al terminar bien, crea el proyecto en la carpeta clonada; si falla, no crea nada y enseña el motivo.
+- «Inicializar repositorio» (`POST /projects/{id}/repos/init`) tiene hook (`useInitRepo`), pero su botón queda para los ajustes del proyecto del bloque 5.
 
 **Bloque 5: tareas e integración**
 
