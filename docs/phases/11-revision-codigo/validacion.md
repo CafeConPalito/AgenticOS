@@ -1,6 +1,6 @@
 # Fase 11: Revisión de código · Validación
 
-> Estado: **borrador, a la espera del OK del usuario.** Queda pendiente la prueba manual con Claude Code y agy reales (ver «Pendiente»).
+> Estado: **cerrada** (`v1.3`, OK del usuario el 2026-10-17). La prueba manual con Claude Code y agy reales queda pendiente y anotada (ver «Pendiente»).
 
 ## Tests automáticos
 ```
@@ -12,6 +12,8 @@ frontend (vitest):  28 archivos · 239 tests en verde, con nuevos
                     components/changes/changes.test.tsx (9) · pages/changes-surfaces.test.tsx (10)
 lint:               npm run lint (ruff, eslint, prettier, tsc, cargo fmt, spikes) en verde
 ```
+La última suite completa del backend cruzó la medianoche y 6 tests que dependen del día (`test_usage_stats`, `test_usage_api`) fallaron; repetidos, pasan. Es la fragilidad que ya vimos en la fase 10, no un fallo de la fase.
+
 Dos tests del frontend que renderizan la app entera (`agent-links` y, a veces, `runs`) agotan el tiempo de 15 s cuando toda la suite corre a la vez en esta máquina. **No es una regresión de la fase**: `main` falla igual, en el mismo test (`agent-links … creates the agent in a team and with the account chosen`), y aislados pasan.
 
 ## Criterios de aceptación
@@ -60,7 +62,7 @@ Diez hallazgos, todos resueltos o justificados.
 - **Deuda de pruebas**: `test_maintenance.setup_branches` tenía una carrera latente (sus tareas con agente se lanzaban solas); ahora pausa el scheduler. Los tests del frontend que renderizan la app entera agotan 15 s con la suite completa en esta máquina (también en `main`).
 
 ## Cierre
-- [ ] OK del usuario
-- [ ] Merge a `main` (`--no-ff`)
-- [ ] Tag `v1.3`
-- [ ] `docs/roadmap.md` actualizado
+- [x] OK del usuario (2026-10-17)
+- [x] Merge a `main` (`--no-ff`)
+- [x] Tag `v1.3`
+- [x] `docs/roadmap.md` actualizado
