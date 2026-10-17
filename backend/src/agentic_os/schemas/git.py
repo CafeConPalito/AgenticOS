@@ -216,3 +216,58 @@ class BatchItem(BaseModel):
     sha: str | None = None  # commit
     error_code: str | None = None
     error: str | None = None
+
+
+# ----------------------------------------------------------------------------- integration
+class MergeBody(BaseModel):
+    ref: str = Field(min_length=1, max_length=200)
+    mode: Literal["no_ff", "ff", "squash"] = "no_ff"
+    message: str | None = Field(default=None, max_length=10_000)
+
+
+class RebaseBody(BaseModel):
+    onto: str = Field(min_length=1, max_length=200)
+
+
+class PicksBody(BaseModel):
+    shas: list[str] = Field(min_length=1, max_length=200)
+
+
+class ResetBody(BaseModel):
+    ref: str = Field(min_length=1, max_length=200)
+    mode: Literal["soft", "mixed", "hard"] = "mixed"
+    confirm: bool = False  # `hard` loses uncommitted work
+
+
+class TodoLine(BaseModel):
+    action: Literal["pick", "reword", "squash", "fixup", "edit", "drop"]
+    sha: str = Field(min_length=7, max_length=64)
+    message: str | None = Field(default=None, max_length=100_000)
+
+
+class InteractiveBody(BaseModel):
+    base: str = Field(min_length=1, max_length=200)
+    items: list[TodoLine] = Field(min_length=1, max_length=2000)
+
+
+class ResolveBody(BaseModel):
+    path: str = Field(min_length=1, max_length=1000)
+    content: str = Field(max_length=20_000_000)
+
+
+class TakeBody(BaseModel):
+    path: str = Field(min_length=1, max_length=1000)
+    side: Literal["ours", "theirs"]
+
+
+class OperationRead(BaseModel):
+    id: str
+    kind: str
+    label: str
+    at: datetime
+    group_id: str | None = None
+    undone: bool = False
+    in_progress: bool = False
+    # Why it cannot be undone now (None: it can).
+    blocked_by: str | None = None
+    lost_files: bool = False  # it threw away uncommitted files, which undoing brings back

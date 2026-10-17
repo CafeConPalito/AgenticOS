@@ -5,7 +5,7 @@ from agentic_os.models.inbox import InboxItem, InboxKind, InboxStatus, Resolutio
 from agentic_os.models.memory import AuthorKind, MemoryNote
 from agentic_os.models.pipeline import DEFAULT_MAX_REJECTIONS, Pipeline, Stage
 from agentic_os.models.project import Project, WorkspaceMode
-from agentic_os.models.repo import ProjectRepo, PullMode, RunRepo, TaskRepo
+from agentic_os.models.repo import GitOperation, ProjectRepo, PullMode, RunRepo, TaskRepo
 from agentic_os.models.run import (
     ACTIVE_STATUSES,
     Activity,
@@ -44,6 +44,7 @@ __all__ = [
     "Cli",
     "CliAccount",
     "EventKind",
+    "GitOperation",
     "InboxItem",
     "InboxKind",
     "InboxStatus",

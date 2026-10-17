@@ -9,13 +9,14 @@ from pathlib import Path
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, Request, WebSocket, WebSocketDisconnect, status
+from fastapi import Path as PathParam
 from sqlalchemy.orm import Session
 
 from agentic_os.api.projects import get_project_or_404
 from agentic_os.api.repos import get_repo_or_404
 from agentic_os.db.session import get_session
 from agentic_os.errors import ApiError, NotFound
-from agentic_os.models import Project, ProjectRepo
+from agentic_os.models import GitOperation, Project, ProjectRepo
 from agentic_os.schemas.changes import Changes, FileDiff, FileLines
 from agentic_os.schemas.git import (
     ApplyBody,
@@ -30,20 +31,29 @@ from agentic_os.schemas.git import (
     DeleteBranches,
     DiscardBody,
     FetchBody,
+    InteractiveBody,
     JobState,
+    MergeBody,
+    OperationRead,
     PathsBody,
+    PicksBody,
     PullBody,
     PushBody,
+    RebaseBody,
     RemoteInfo,
     RenameBody,
     RepoOverview,
     RepoStatus,
+    ResetBody,
+    ResolveBody,
     SwitchBody,
+    TakeBody,
     UpstreamBody,
 )
+from agentic_os.schemas.git import CommitInfo as CommitInfoRead
 from agentic_os.services import changes as change_ops
 from agentic_os.services import repos as repo_ops
-from agentic_os.services.gitx import backup, read, remote, tasks, write
+from agentic_os.services.gitx import merge, oplog, read, remote, tasks, write
 from agentic_os.services.gitx.errors import GitxError
 from agentic_os.services.gitx.events import GitEvents
 from agentic_os.services.gitx.jobs import JobManager
@@ -75,6 +85,37 @@ def _open(db: Session, repo_id: str) -> tuple[ProjectRepo, Repo]:
 def _confirm(confirmed: bool, what: str) -> None:
     if not confirmed:
         raise ApiError(428, "confirmation_required", what)
+
+
+def _tracked(
+    db: Session,
+    request: Request,
+    row: ProjectRepo,
+    repo: Repo,
+    kind: str,
+    label: str,
+    action,
+    *,
+    worktree: bool = False,
+):
+    """Runs an operation that moves branches or loses files so it can be undone: how the
+    repository was is noted first, how it ended after. A stop on conflicts leaves the entry open
+    until the operation is continued or aborted."""
+    operation = oplog.begin(db, row, repo, kind, label, worktree=worktree)
+    try:
+        result = action()
+    except Exception:
+        oplog.drop_if_unchanged(db, operation, repo)
+        db.commit()
+        _events(request).changed(row.id)
+        raise
+    if read.operation_in_progress(repo) is None:
+        oplog.finish(operation, repo)
+        if operation.refs_after == operation.refs_before and operation.backup_ref is None:
+            db.delete(operation)  # nothing moved (already up to date…)
+    db.commit()
+    _events(request).changed(row.id)
+    return result
 
 
 # ----------------------------------------------------------------------------- state
@@ -291,11 +332,18 @@ def discard(repo_id: str, body: DiscardBody, db: DbSession, request: Request) ->
     paths = _clean_paths(body.paths)
     current = read.status(repo)
     untracked = {f.path for f in current.unstaged if f.kind == "untracked"}
-    backup.worktree(repo, "discard")
-    write.discard(
-        repo, [p for p in paths if p not in untracked], [p for p in paths if p in untracked]
+    _tracked(
+        db,
+        request,
+        row,
+        repo,
+        "discard",
+        f"Descartar {len(paths)} fichero(s)",
+        lambda: write.discard(
+            repo, [p for p in paths if p not in untracked], [p for p in paths if p in untracked]
+        ),
+        worktree=True,
     )
-    _events(request).changed(row.id)
 
 
 @router.post("/repos/{repo_id}/apply", status_code=status.HTTP_204_NO_CONTENT)
@@ -305,22 +353,44 @@ def apply(repo_id: str, body: ApplyBody, db: DbSession, request: Request) -> Non
     _clean_paths([body.path])
     if body.action == "discard":
         _confirm(body.confirm, "discarding loses uncommitted work")
-        backup.worktree(repo, "discard")
-    write.apply_selection(
-        repo,
+    selection = (
         body.action,
         body.path,
-        [tuple(h) for h in body.hunks],  # type: ignore[misc]
+        [tuple(h) for h in body.hunks],
         [LineRef(line.kind, line.no) for line in body.lines],
     )
+    if body.action == "discard":
+        _tracked(
+            db,
+            request,
+            row,
+            repo,
+            "discard",
+            f"Descartar líneas de {body.path}",
+            lambda: write.apply_selection(repo, *selection),  # type: ignore[arg-type]
+            worktree=True,
+        )
+        return
+    write.apply_selection(repo, *selection)  # type: ignore[arg-type]
     _events(request).changed(row.id)
 
 
 @router.post("/repos/{repo_id}/commit")
 def commit(repo_id: str, body: CommitBody, db: DbSession, request: Request) -> CommitDetail:
     row, repo = _open(db, repo_id)
-    sha = write.commit(repo, body.message, amend=body.amend, no_verify=body.no_verify)
-    _events(request).changed(row.id)
+    if body.amend:
+        sha = _tracked(
+            db,
+            request,
+            row,
+            repo,
+            "amend",
+            "Enmendar el último commit",
+            lambda: write.commit(repo, body.message, amend=True, no_verify=body.no_verify),
+        )
+    else:
+        sha = write.commit(repo, body.message, no_verify=body.no_verify)
+        _events(request).changed(row.id)
     return read.commit_detail(repo, sha)
 
 
@@ -356,12 +426,15 @@ def delete_branches(
     if body.force:
         _confirm(body.confirm, "forcing the delete loses commits that are on no other branch")
     failed: dict[str, str] = {}
-    for name in body.names:
-        try:
-            write.delete_branch(repo, name, body.force)
-        except GitxError as error:
-            failed[name] = error.code
-    _events(request).changed(row.id)
+
+    def delete() -> None:
+        for name in body.names:
+            try:
+                write.delete_branch(repo, name, body.force)
+            except GitxError as error:
+                failed[name] = error.code
+
+    _tracked(db, request, row, repo, "delete_branch", f"Borrar {', '.join(body.names)}", delete)
     return {"failed": failed}
 
 
@@ -369,6 +442,196 @@ def delete_branches(
 def set_upstream(repo_id: str, body: UpstreamBody, db: DbSession, request: Request) -> None:
     row, repo = _open(db, repo_id)
     write.set_upstream(repo, body.branch, body.upstream)
+    _events(request).changed(row.id)
+
+
+# ----------------------------------------------------------------------------- integration
+@router.post("/repos/{repo_id}/merge")
+def merge_branch(repo_id: str, body: MergeBody, db: DbSession, request: Request) -> merge.OpResult:
+    row, repo = _open(db, repo_id)
+    return _tracked(
+        db,
+        request,
+        row,
+        repo,
+        "merge",
+        f"Merge de {body.ref}",
+        lambda: merge.merge(repo, body.ref, body.mode, body.message),
+    )
+
+
+@router.post("/repos/{repo_id}/rebase")
+def rebase_branch(
+    repo_id: str, body: RebaseBody, db: DbSession, request: Request
+) -> merge.OpResult:
+    row, repo = _open(db, repo_id)
+    return _tracked(
+        db,
+        request,
+        row,
+        repo,
+        "rebase",
+        f"Rebase sobre {body.onto}",
+        lambda: merge.rebase(repo, body.onto),
+    )
+
+
+@router.get("/repos/{repo_id}/rebase/plan")
+def rebase_plan(repo_id: str, db: DbSession, base: Rev) -> list[CommitInfoRead]:
+    """The commits an interactive rebase onto `base` would list, oldest first."""
+    return merge.plan(_open(db, repo_id)[1], base)
+
+
+@router.post("/repos/{repo_id}/rebase/interactive")
+def rebase_interactive(
+    repo_id: str, body: InteractiveBody, db: DbSession, request: Request
+) -> merge.OpResult:
+    row, repo = _open(db, repo_id)
+    items = [merge.TodoItem(i.action, i.sha, i.message) for i in body.items]
+    return _tracked(
+        db,
+        request,
+        row,
+        repo,
+        "rebase",
+        f"Rebase interactivo sobre {body.base}",
+        lambda: merge.rebase_interactive(repo, body.base, items),
+    )
+
+
+@router.post("/repos/{repo_id}/cherry-pick")
+def cherry_pick(repo_id: str, body: PicksBody, db: DbSession, request: Request) -> merge.OpResult:
+    row, repo = _open(db, repo_id)
+    shas = [_full_sha(repo, sha) for sha in body.shas]
+    return _tracked(
+        db,
+        request,
+        row,
+        repo,
+        "cherry-pick",
+        f"Cherry-pick de {len(shas)} commit(s)",
+        lambda: merge.cherry_pick(repo, shas),
+    )
+
+
+@router.post("/repos/{repo_id}/revert")
+def revert(repo_id: str, body: PicksBody, db: DbSession, request: Request) -> merge.OpResult:
+    row, repo = _open(db, repo_id)
+    shas = [_full_sha(repo, sha) for sha in body.shas]
+    return _tracked(
+        db,
+        request,
+        row,
+        repo,
+        "revert",
+        f"Revert de {len(shas)} commit(s)",
+        lambda: merge.revert(repo, shas),
+    )
+
+
+@router.post("/repos/{repo_id}/reset")
+def reset(repo_id: str, body: ResetBody, db: DbSession, request: Request) -> merge.OpResult:
+    """Moves the current branch. `hard` also rewrites the files, so it needs `confirm`; a copy
+    of the work tree is kept for undoing it."""
+    row, repo = _open(db, repo_id)
+    if body.mode == "hard":
+        _confirm(body.confirm, "a hard reset loses uncommitted work")
+    target = _full_sha(repo, body.ref)
+    return _tracked(
+        db,
+        request,
+        row,
+        repo,
+        "reset",
+        f"Reset {body.mode} a {body.ref}",
+        lambda: merge.reset(repo, target, body.mode),
+        worktree=body.mode == "hard",
+    )
+
+
+@router.post("/repos/{repo_id}/operation/{action}")
+def finish_operation(
+    repo_id: str,
+    action: Annotated[str, PathParam(pattern="^(continue|skip|abort)$")],
+    db: DbSession,
+    request: Request,
+) -> merge.OpResult:
+    """Carries on, skips or abandons the merge, rebase, cherry-pick or revert that stopped."""
+    row, repo = _open(db, repo_id)
+    result = merge.proceed(repo, action)  # type: ignore[arg-type]
+    open_entry = oplog.open_operation(db, row.id)
+    if open_entry is not None and read.operation_in_progress(repo) is None:
+        if action == "abort":
+            db.delete(open_entry)  # nothing happened after all
+        else:
+            oplog.finish(open_entry, repo)
+    db.commit()
+    _events(request).changed(row.id)
+    return result
+
+
+@router.get("/repos/{repo_id}/conflicts/file")
+def conflict_file(repo_id: str, db: DbSession, path: FilePath) -> merge.ConflictFile:
+    _row, repo = _open(db, repo_id)
+    return merge.conflict(repo, _clean_paths([path])[0])
+
+
+@router.post("/repos/{repo_id}/conflicts/resolve", status_code=status.HTTP_204_NO_CONTENT)
+def resolve_conflict(repo_id: str, body: ResolveBody, db: DbSession, request: Request) -> None:
+    row, repo = _open(db, repo_id)
+    merge.conflict(repo, _clean_paths([body.path])[0])  # it must be a conflicted file
+    merge.resolve(repo, body.path, body.content)
+    _events(request).changed(row.id)
+
+
+@router.post("/repos/{repo_id}/conflicts/take", status_code=status.HTTP_204_NO_CONTENT)
+def take_side(repo_id: str, body: TakeBody, db: DbSession, request: Request) -> None:
+    row, repo = _open(db, repo_id)
+    merge.conflict(repo, _clean_paths([body.path])[0])
+    merge.take(repo, body.path, body.side)
+    _events(request).changed(row.id)
+
+
+# ----------------------------------------------------------------------------- undo
+@router.get("/repos/{repo_id}/operations")
+def operations(repo_id: str, db: DbSession) -> list[OperationRead]:
+    """What the app did to the repository that can be undone, newest first."""
+    row, repo = _open(db, repo_id)
+    now = oplog.heads(repo)
+    latest = oplog.last_undoable(db, row.id)
+    items = []
+    for operation in oplog.recent(db, row.id):
+        blocked = oplog.blocker(operation, repo, now)
+        if blocked is None and operation is not latest:
+            blocked = "not_the_last"  # only the newest can be undone, or branches would cross
+        items.append(
+            OperationRead(
+                id=operation.id,
+                kind=operation.kind,
+                label=operation.label,
+                at=operation.at,
+                group_id=operation.group_id,
+                undone=operation.undone_at is not None,
+                in_progress=operation.refs_after is None and operation.undone_at is None,
+                blocked_by=blocked,
+                lost_files=operation.backup_ref is not None,
+            )
+        )
+    return items
+
+
+@router.post(
+    "/repos/{repo_id}/operations/{operation_id}/undo", status_code=status.HTTP_204_NO_CONTENT
+)
+def undo_operation(repo_id: str, operation_id: str, db: DbSession, request: Request) -> None:
+    row, repo = _open(db, repo_id)
+    operation = db.get(GitOperation, operation_id)
+    if operation is None or operation.repo_id != row.id:
+        raise NotFound("operation")
+    if oplog.last_undoable(db, row.id) is not operation:
+        raise GitxError("not_the_last", "only the last operation can be undone")
+    oplog.undo(operation, repo)
+    db.commit()
     _events(request).changed(row.id)
 
 

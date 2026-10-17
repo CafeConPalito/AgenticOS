@@ -19,7 +19,14 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
-from agentic_os.db.base import Base, IdMixin, TimestampMixin, UTCDateTime, WorkspaceMixin
+from agentic_os.db.base import (
+    Base,
+    IdMixin,
+    TimestampMixin,
+    UTCDateTime,
+    WorkspaceMixin,
+    utcnow,
+)
 
 
 class PullMode(StrEnum):
@@ -105,3 +112,27 @@ class RunRepo(IdMixin, Base):
     # the agents block.
     refs_start: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     activity: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+
+
+class GitOperation(IdMixin, Base):
+    """Something the app did to a repository that can be undone (phase 12, ADR 0017): which
+    branches pointed where before and after, and a copy of the work tree when the operation
+    could lose uncommitted work."""
+
+    __tablename__ = "git_operations"
+
+    repo_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("project_repos.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    # Several operations that are one action of the person (an integration in two repositories).
+    group_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
+    kind: Mapped[str] = mapped_column(String(24), nullable=False)
+    label: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    at: Mapped[datetime] = mapped_column(UTCDateTime(), nullable=False, default=utcnow)
+    # {ref: sha} of every local branch, and where HEAD was («branch:main» or «sha:…»).
+    refs_before: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    refs_after: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    head_before: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    # A snapshot of the work tree taken before an operation that throws files away.
+    backup_ref: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    undone_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
