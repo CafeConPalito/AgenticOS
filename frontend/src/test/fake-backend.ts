@@ -1,4 +1,5 @@
-import type { ProjectBranches } from '@/api/maintenance'
+import type { AgentChangeRun, Changes, DiffLine, FileChange, FileDiff } from '@/api/changes'
+import type { ProjectBranches, ProjectSnapshots } from '@/api/maintenance'
 import {
   ACTIVE_RUN_STATUSES,
   type Account,
@@ -193,6 +194,7 @@ export function makeRun(overrides: Partial<Run> = {}): Run {
     log_purged: false,
     account_id: null,
     account_label: '',
+    changes: null,
     task_code: null,
     stage_name: null,
     created_at: now(),
@@ -340,6 +342,7 @@ export function makeInboxItem(overrides: Partial<InboxItem> = {}): InboxItem {
     task_id: null,
     task_code: null,
     task_title: null,
+    changes: null,
     run_id: null,
     agent_id: 'agent-1',
     agent_name: 'Dev',
@@ -420,6 +423,54 @@ export function emptyUsage(): FakeUsage {
   }
 }
 
+/** A changed file of a diff (phase 11). */
+export function makeFileChange(overrides: Partial<FileChange> = {}): FileChange {
+  return {
+    path: 'src/app.py',
+    old_path: null,
+    status: 'modified',
+    additions: 1,
+    deletions: 0,
+    binary: false,
+    old_size: null,
+    new_size: null,
+    generated: false,
+    ...overrides,
+  }
+}
+
+/** The diff of a run or a task; the totals follow from `files` unless overridden. */
+export function makeChanges(overrides: Partial<Changes> = {}): Changes {
+  const files = overrides.files ?? [makeFileChange()]
+  return {
+    state: 'ok',
+    live: false,
+    partial: false,
+    direct_folder: false,
+    from_ref: { kind: 'base', name: 'main' },
+    to_ref: { kind: 'branch', name: 'agentic/T-1' },
+    totals: {
+      files: files.length,
+      additions: files.reduce((sum, f) => sum + f.additions, 0),
+      deletions: files.reduce((sum, f) => sum + f.deletions, 0),
+    },
+    files,
+    truncated_files: 0,
+    skipped_large: 0,
+    runs: [],
+    ...overrides,
+  }
+}
+
+export function diffLine(
+  kind: DiffLine['kind'],
+  text: string,
+  oldNo: number | null,
+  newNo: number | null,
+): DiffLine {
+  return { kind, text, old_no: oldNo, new_no: newNo }
+}
+
 /** Lower case without accents, like the backend's task search. */
 function fold(text: string): string {
   return text.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().trim()
@@ -450,6 +501,16 @@ export function createFakeBackend(
     teams?: Team[]
     /** agy's opt-in quota line (default: available, off). */
     agyQuota?: AgyQuotaState
+    /** The diffs (phase 11) by `run:<id>` or `task:<id>`: the file list, each file's diff and
+     * the lines `/changes/lines` serves. Anything else answers «no snapshots». */
+    changes?: Record<
+      string,
+      { summary: Changes; diffs?: Record<string, FileDiff>; lines?: DiffLine[] }
+    >
+    /** What GET /api/agents/:id/changes lists. */
+    agentChanges?: AgentChangeRun[]
+    /** What GET /api/maintenance/snapshots lists. */
+    snapshots?: ProjectSnapshots[]
   } = {},
 ) {
   const usage: FakeUsage = { ...emptyUsage(), ...(seed.usage ?? {}) }
@@ -1136,6 +1197,57 @@ export function createFakeBackend(
     return apiError(404, 'not_found')
   }
 
+  const snapshots: ProjectSnapshots[] = structuredClone(seed.snapshots ?? [])
+  const NO_SNAPSHOTS: Changes = {
+    state: 'no_snapshots',
+    live: false,
+    partial: false,
+    direct_folder: false,
+    from_ref: null,
+    to_ref: null,
+    totals: { files: 0, additions: 0, deletions: 0 },
+    files: [],
+    truncated_files: 0,
+    skipped_large: 0,
+    runs: [],
+  }
+
+  function handleChanges(method: string, path: string, params: URLSearchParams) {
+    const match = path.match(/^\/api\/(runs|tasks)\/([^/]+)\/changes(?:\/(file|lines))?$/)
+    if (match && method === 'GET') {
+      const entry = seed.changes?.[`${match[1] === 'runs' ? 'run' : 'task'}:${match[2]}`]
+      if (!entry) return match[3] ? apiError(404, 'not_found') : json(200, NO_SNAPSHOTS)
+      if (!match[3]) return json(200, entry.summary)
+      if (match[3] === 'file') {
+        const diff = entry.diffs?.[params.get('path') ?? '']
+        return diff ? json(200, diff) : apiError(404, 'file_not_found')
+      }
+      const start = Number(params.get('start'))
+      const end = Number(params.get('end'))
+      const lines = (entry.lines ?? []).filter(
+        (line) => (line.new_no ?? 0) >= start && (line.new_no ?? 0) <= end,
+      )
+      return json(200, { lines })
+    }
+    const agent = path.match(/^\/api\/agents\/([^/]+)\/changes$/)
+    if (agent && method === 'GET') {
+      const project = params.get('project_id')
+      return json(
+        200,
+        (seed.agentChanges ?? []).filter((run) => !project || run.project_id === project),
+      )
+    }
+    if (path === '/api/maintenance/snapshots' && method === 'GET') return json(200, snapshots)
+    const cleanup = path.match(/^\/api\/maintenance\/snapshots\/([^/]+)\/delete$/)
+    if (cleanup && method === 'POST') {
+      const index = snapshots.findIndex((s) => s.project_id === cleanup[1])
+      if (index < 0) return apiError(404, 'project_not_found')
+      const [removed] = snapshots.splice(index, 1)
+      return json(200, { runs: removed.runs })
+    }
+    return null
+  }
+
   const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = new URL(typeof input === 'string' ? input : input.toString())
     const method = (init?.method ?? 'GET').toUpperCase()
@@ -1148,6 +1260,7 @@ export function createFakeBackend(
       body: init?.body ? body : undefined,
     })
     return (
+      handleChanges(method, url.pathname, url.searchParams) ??
       handleAccounts(method, url.pathname, body) ??
       handleRuns(method, url.pathname, url.searchParams, body) ??
       handleMemory(method, url.pathname, body) ??
@@ -1172,6 +1285,7 @@ export function createFakeBackend(
     pipelines,
     scheduler,
     usage,
+    snapshots,
     calls,
     callsTo: (method: string, path: string) =>
       calls.filter((c) => c.method === method && c.path === path),

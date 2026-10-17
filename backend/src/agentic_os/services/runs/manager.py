@@ -42,7 +42,8 @@ from agentic_os.models import (
     WaitingReason,
 )
 from agentic_os.services import accounts as account_ops
-from agentic_os.services import inbox
+from agentic_os.services import changes as change_ops
+from agentic_os.services import git, inbox, snapshots
 from agentic_os.services import tasks as task_ops
 from agentic_os.services.adapters import CliAdapter, LaunchContext, adapter_for
 from agentic_os.services.agent_target import Target, target_for
@@ -156,6 +157,8 @@ class RunManager:
                 .values(status=RunStatus.INTERRUPTED, activity="idle", ended_at=utcnow())
             )
             db.commit()
+            for run_id, _cli, cwd in leftovers:  # their diff ends where the folder is now
+                self._close_changes(run_id, cwd)
             return result.rowcount or 0
 
     def launch(
@@ -324,6 +327,11 @@ class RunManager:
             raise
         run.cli_session_id = spec.session_id
         db.commit()
+        # What the folder holds before the CLI touches it: the origin of this run's diff.
+        start = self._snapshot(run.id, cwd, "start")
+        if start is not None:
+            run.snapshot_start, run.snapshot_skipped = start.sha, start.skipped_large
+            db.commit()
         if resumed_from is not None and cli == Cli.AGY:
             self._resume_unconfirmed.add(run.id)
 
@@ -353,6 +361,9 @@ class RunManager:
             adapter.cleanup(ctx)
             self._release_agy_folder(folder)
             run.status, run.error, run.ended_at = RunStatus.FAILED, str(error), utcnow()
+            if run.snapshot_start:  # the CLI never ran: nothing to compare, no ref to keep
+                snapshots.delete_runs(cwd, [run.id])
+                run.snapshot_start = None
             db.commit()
             return run
         with self._live_lock:
@@ -388,6 +399,7 @@ class RunManager:
             adapter.cleanup(ctx)
         finally:
             self._release_agy_folder(folder)
+            self._close_changes(run_id, str(ctx.cwd))
             if ctx.resume_session:
                 self._end_of_resumed(run_id, session)
             self.usage.request(run_id, final=True)
@@ -445,6 +457,47 @@ class RunManager:
             result = summary or f"terminó sin resumen (estado: {status})"
             self.deliver(parent_id, f"Resultado del subagente {name}: {result}")
             self.add_event(parent_id, EventKind.SYSTEM, "subagent_finished", f"{name}: {result}")
+
+    # ------------------------------------------------------------------ changes (phase 11)
+    @property
+    def _scratch_dir(self) -> Path:
+        return Path(self._settings.data_dir) / "tmp"
+
+    def _snapshot(self, run_id: str, folder: str, label: str) -> snapshots.Snapshot | None:
+        """Never fails the run: a snapshot that cannot be taken leaves a system event instead."""
+        snapshot, error = snapshots.take_checked(folder, run_id, label, self._scratch_dir)
+        if error is not None:
+            self.add_event(run_id, EventKind.SYSTEM, "snapshot_failed", f"{label}: {error}")
+        return snapshot
+
+    def _close_changes(self, run_id: str, folder: str) -> None:
+        """Takes the run's final snapshot and stores its +/- summary. Never raises."""
+        try:
+            with self._db() as db:
+                start = db.scalar(select(Run.snapshot_start).where(Run.id == run_id))
+            if not start:
+                return
+            end = self._snapshot(run_id, folder, "end")
+            if end is None:
+                return
+            try:
+                summary = change_ops.totals(folder, start, end.sha)
+            except git.GitError as error:
+                log.warning("could not summarise the changes", run_id=run_id, error=str(error))
+                summary = None
+            with self._db() as db:
+                run = db.get(Run, run_id)
+                if run is None:
+                    return
+                run.snapshot_end = end.sha
+                run.snapshot_skipped = max(run.snapshot_skipped, end.skipped_large)
+                if summary is not None:
+                    run.changes_files = summary.files
+                    run.changes_added = summary.additions
+                    run.changes_deleted = summary.deletions
+                db.commit()
+        except Exception:  # a run's end must always finish
+            log.exception("could not close the run's changes", run_id=run_id)
 
     def _reserve_agy_folder(self, folder: str) -> str:
         key = os.path.normcase(os.path.realpath(folder))

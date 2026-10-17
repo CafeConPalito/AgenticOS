@@ -343,8 +343,11 @@ def use_tools(text: str) -> int | None:
     Phase 05 directives: `RECHAZA: x` → complete_task rejecting; `RECHAZA1: x` → rejects only
     the first time in this folder (a marker file), approves afterwards; `CONTEXTO: <file>` →
     writes what get_context returns; `GIT: <file>` → writes `git status` of the folder;
-    `SALE: n` → exits with n after the turn. Phase 06: `PREGUNTA: título|opción|…` →
-    request_human (ends the turn; a later «Respuesta de la persona…» message completes the task);
+    `SALE: n` → exits with n after the turn. Phase 11: `ESCRIBE: ruta=a|b` writes a file (`|`
+    is a line break), `ANADE: ruta=a` appends lines to it and `COMMIT: mensaje` commits the whole
+    folder, so a run can commit halfway and leave other work uncommitted. Phase 06:
+    `PREGUNTA: título|opción|…` → request_human (ends the turn; a later «Respuesta de la
+    persona…» message completes the task);
     `PERMISO: comando` → shows the CLI's permission dialog (Claude's or agy's real texts) and
     waits for Enter (approve) or Esc (reject); `SUBAGENTE: [agente|]prompt` → spawn_subagent;
     `SUBTAREA: título` → create_subtask; `NATIVO: descripción` → the hooks of a native subagent
@@ -363,6 +366,21 @@ def use_tools(text: str) -> int | None:
         keyword, value = keyword.strip(), value.strip()
         if keyword == "SALE":
             exit_code = int(value)
+            continue
+        if keyword in ("ESCRIBE", "ANADE"):  # `ruta=linea|linea`: creates / appends to a file
+            name, _, content = value.partition("=")
+            target = Path.cwd() / name.strip()
+            target.parent.mkdir(parents=True, exist_ok=True)
+            mode = "a" if keyword == "ANADE" else "w"
+            with target.open(mode, encoding="utf-8", newline="") as file:
+                file.write(content.replace("|", "\n") + "\n")
+            out(f"● wrote {name.strip()}")
+            continue
+        if keyword == "COMMIT":  # commits everything in the working folder
+            identity = ["-c", "user.name=Fake Dev", "-c", "user.email=fake@example.com"]
+            subprocess.run(["git", "add", "-A"], capture_output=True)
+            subprocess.run(["git", *identity, "commit", "-m", value], capture_output=True)
+            out(f"● committed: {value}")
             continue
         if keyword == "GIT":  # what git sees in the working folder
             status = subprocess.run(

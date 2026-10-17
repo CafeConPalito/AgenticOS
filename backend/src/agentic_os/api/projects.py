@@ -12,7 +12,7 @@ from agentic_os.db.session import get_session
 from agentic_os.errors import ApiError, NotFound
 from agentic_os.models import Project, Task, TaskStatus, WorkspaceMode
 from agentic_os.schemas.project import ProjectCreate, ProjectRead, ProjectUpdate
-from agentic_os.services import git, paths
+from agentic_os.services import git, maintenance, paths
 from agentic_os.services.proc import open_in_file_manager
 
 router = APIRouter(tags=["projects"])
@@ -143,6 +143,7 @@ def delete_project(project_id: str, session: DbSession, request: Request) -> Non
     )
     for task in with_worktree:
         scheduler.release_finished(session, task)
+    maintenance.forget_project_snapshots(session, project)  # the refs of its runs' snapshots
     session.delete(project)
     session.commit()
 

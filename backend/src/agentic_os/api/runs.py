@@ -23,6 +23,7 @@ from agentic_os.schemas.run import (
 )
 from agentic_os.schemas.usage import RunUsage
 from agentic_os.services import accounts as account_ops
+from agentic_os.services import changes as change_ops
 from agentic_os.services.runs import resume as resume_ops
 from agentic_os.services.runs.manager import RunManager
 from agentic_os.services.runs.session import SCROLLBACK_LIMIT, ControlConflict, RunSession
@@ -51,6 +52,7 @@ def _read(run: Run, manager: RunManager, detail: bool = False) -> RunRead:
     """`detail`: also whether it can be resumed (a few queries: not for every row of a list)."""
     result = RunRead.model_validate(run)
     result.usage = RunUsage(**usage_payload(run))
+    result.changes = change_ops.run_totals(run)
     db = object_session(run)
     account = db.get(CliAccount, run.account_id) if run.account_id and db is not None else None
     if account is not None:

@@ -17,6 +17,7 @@ from agentic_os.schemas.inbox import (
     NotificationSettings,
     SwitchAnswer,
 )
+from agentic_os.services import changes as change_ops
 from agentic_os.services import inbox
 from agentic_os.services import tasks as task_ops
 from agentic_os.services.usage import switching
@@ -48,6 +49,8 @@ def read_items(db: Session, items: list[InboxItem]) -> list[InboxItemRead]:
         task = tasks.get(item.task_id) if item.task_id else None
         if task is not None:
             read.task_code, read.task_title = task.code, task.title
+            if item.kind in (InboxKind.REVIEW, InboxKind.DELIVERY):
+                read.changes = change_ops.task_totals(db, task)
         result.append(read)
     return result
 

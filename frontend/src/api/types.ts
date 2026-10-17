@@ -6,6 +6,13 @@ export type AgentStatus = 'active' | 'draft'
 export type Tool = 'read' | 'edit' | 'terminal' | 'git' | 'web' | 'browser' | 'mcp_agentic_os'
 export type WorkspaceMode = 'direct' | 'worktree'
 
+/** Files, added and deleted lines (phase 11). */
+export interface ChangesTotals {
+  files: number
+  additions: number
+  deletions: number
+}
+
 export const TOOLS: Tool[] = ['read', 'edit', 'terminal', 'git', 'web', 'browser', 'mcp_agentic_os']
 export const PERMISSION_MODES: PermissionMode[] = ['autonomous', 'restricted', 'ask']
 export const MAX_CONCURRENCY = 5
@@ -144,6 +151,8 @@ export interface Run {
   /** The CLI account it ran with (phase 10) and its name. */
   account_id: string | null
   account_label: string
+  /** What it changed in its folder (phase 11); null when there is no data. */
+  changes: ChangesTotals | null
   task_code: string | null
   stage_name: string | null
   created_at: string
@@ -374,6 +383,8 @@ export interface InboxItem {
   task_id: string | null
   task_code: string | null
   task_title: string | null
+  /** A review or a delivery: what the task changed (phase 11); null when there is no data. */
+  changes: ChangesTotals | null
   run_id: string | null
   agent_id: string | null
   agent_name: string

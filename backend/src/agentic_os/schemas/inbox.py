@@ -4,6 +4,7 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, ConfigDict, StringConstraints
 
 from agentic_os.models.inbox import InboxKind, InboxStatus, Resolution
+from agentic_os.schemas.changes import ChangesTotals
 
 Answer = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=8_000)]
 
@@ -17,6 +18,8 @@ class InboxItemRead(BaseModel):
     task_id: str | None
     task_code: str | None = None
     task_title: str | None = None
+    # A review or a delivery: what the task changed (phase 11); null when there is no data.
+    changes: ChangesTotals | None = None
     run_id: str | None
     agent_id: str | None
     agent_name: str

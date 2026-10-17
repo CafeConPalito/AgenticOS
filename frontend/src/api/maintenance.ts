@@ -26,8 +26,16 @@ export interface MaintenanceSettings {
   log_retention_days: number | null
 }
 
+export interface ProjectSnapshots {
+  project_id: string
+  project_name: string
+  /** Runs that still have snapshots in the project's repository. */
+  runs: number
+}
+
 export const maintenanceKeys = {
   branches: ['maintenance', 'branches'] as const,
+  snapshots: ['maintenance', 'snapshots'] as const,
   settings: ['maintenance', 'settings'] as const,
 }
 
@@ -72,5 +80,26 @@ export function useCleanLogs() {
     mutationFn: () =>
       api.post<{ runs: number; freed_bytes: number }>('/api/maintenance/logs/cleanup'),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: settingsKeys.dataDir }),
+  })
+}
+
+/** Snapshots of the runs' folders (phase 11), which show what each run changed. */
+export function useSnapshots() {
+  return useQuery({
+    queryKey: maintenanceKeys.snapshots,
+    queryFn: () => api.get<ProjectSnapshots[]>('/api/maintenance/snapshots'),
+  })
+}
+
+export function useDeleteSnapshots() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (projectId: string) =>
+      api.post<{ runs: number }>(`/api/maintenance/snapshots/${projectId}/delete`),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: maintenanceKeys.snapshots })
+      // The diffs of those runs are gone.
+      void queryClient.invalidateQueries({ queryKey: ['changes'] })
+    },
   })
 }

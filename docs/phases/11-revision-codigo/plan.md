@@ -1,7 +1,7 @@
 # Fase 11: Revisión de código · Plan técnico
 
 - **Spec**: [spec.md](spec.md)
-- **Estado**: borrador
+- **Estado**: aprobado (2026-10-15) · en desarrollo
 
 ## Lo que ya se sabe (revisado al escribir el plan)
 - **Fin de una ejecución**: `RunManager._on_end` se llama desde el hilo del PTY cuando el CLI ya ha terminado, **antes** de `on_run_ended`, que es cuando el scheduler mueve la tarea y, si termina, `Worktrees.release` commitea lo que quedó suelto y borra el worktree. Por tanto, la instantánea final se toma con el worktree todavía en su sitio.
@@ -12,6 +12,11 @@
 - **`services/git.py`**: `run()` no acepta variables de entorno, pero `proc.run` sí. Hay que añadir `env`.
 - **Purga de logs** (`maintenance.purge_logs`, fase 08): marca `log_purged` en las ejecuciones antiguas. Ahí se engancha la limpieza de sus instantáneas.
 - **El CLI falso** (`tests/fake_cli.py`) no toca ficheros. Necesita dos órdenes nuevas para los tests e2e.
+
+## Resultados del spike S1 (git 2.55, Windows)
+- **Índice copiado frente a vacío**: en este repo (675 ficheros), 0,41 s frente a 1,31 s; en uno sintético de 10 000 ficheros con un cambio y un fichero nuevo, **0,27 s frente a 0,80 s**. Se confirma copiar el índice.
+- **`--ignore-cr-at-eol`** se aplica tanto a `--numstat` como a `--name-status`: un fichero que solo cambia de LF a CRLF desaparece de las dos salidas. No hace falta filtrarlos a mano.
+- No se midió un `node_modules` real sin ignorar; el límite de 5 MB por fichero nuevo y el tiempo máximo de 30 s cubren ese caso.
 
 ## Diseño
 
@@ -62,7 +67,7 @@
   - por fichero: `path`, `old_path`, `status` (`added` · `modified` · `deleted` · `renamed`), `additions` y `deletions`;
   - en los binarios (`-` en numstat), `binary` con `old_size` y `new_size` (`git cat-file -s`);
   - `generated`, marcado con una lista fija: `*.lock`, `package-lock.json`, `pnpm-lock.yaml`, `uv.lock`, `dist/`, `build/` y `*.min.*`;
-  - los ficheros que solo cambian de CRLF a LF (0/0 y `modified`) se descartan;
+  - los ficheros que solo cambian de CRLF a LF (0/0 y `modified`) se descartan (lo hace `--ignore-cr-at-eol`);
   - máximo 500 ficheros: el resto se resume en `truncated_files`.
 - **`file_diff(range, path)`**:
   - `git diff -U3 --ignore-cr-at-eol -M <a> <b> -- <path>` (y `old_path` si es un renombrado), convertido a hunks: `old_start`, `old_lines`, `new_start`, `new_lines` y `header` (la función que da git);
@@ -112,6 +117,16 @@
 ### CLI falso
 - Órdenes nuevas en el prompt: `ESCRIBE: ruta=texto` (crea o sobrescribe un fichero) y `COMMIT: mensaje` (`git add -A` + `git commit`). Así los e2e reproducen un agente que commitea a mitad y deja trabajo sin commitear.
 
+## Notas de desarrollo (cambios respecto a lo planeado)
+- **`runs.snapshot_skipped`** (entero): se añade a la migración `0010` para guardar cuántos ficheros nuevos de más de 5 MB se dejaron fuera, y poder avisarlo en la cabecera del diff.
+- **`partial`** no se guarda: se deduce de que la ejecución esté `interrupted`.
+- **Cabecera de «Cambios»**: se indica con `from_ref` / `to_ref` estructurados (`base`, `branch`, `run_start`, `run_end`, `task_start`, `now`) y es la UI la que escribe la frase.
+- **Tarea y ejecución**: la sección «Cambios» es un botón con el +/− bajo el terminal que abre el panel lateral (el mismo de las revisiones), no un bloque fijo, para no recargar las páginas de tres columnas. No ocupa sitio si no hay diff.
+- **Rutas de la API**: la ruta que llega de la UI se valida (relativa, sin `..` ni unidad) y se pasa con `GIT_LITERAL_PATHSPECS=1`; un renombrado pide también `old_path`. La ruta debe cambiar en el rango o es un 404.
+- **`task_totals`** (Peticiones) se guarda en memoria hasta que cambie la tarea o una de sus ejecuciones, para que el sondeo de la bandeja no lance git.
+- **Diff de tarea en carpeta directa**: si la primera ejecución de la tarea no tiene instantáneas (anterior a la fase o purgada), no se ofrece diff de la tarea (`snapshot_missing` / `no_snapshots`): uno que empezara en la siguiente pasaría por completo. Lo mismo con una ejecución que tuvo diff y lo perdió (resumen guardado o purgada).
+- **Tests existentes**: `test_maintenance.setup_branches` pausa ahora el scheduler. Sus tareas con agente se lanzaban solas, y con la instantánea inicial el lanzamiento tardaba lo bastante para pisar el estado que fijaba el test (una carrera que ya existía).
+
 ## Archivos
 | Archivo | Cambio |
 |---|---|
@@ -134,6 +149,7 @@
 | `frontend/src/pages/tasks/TaskPage.tsx`, `pages/runs/RunPage.tsx`, `pages/runs/RunsTable.tsx` | modificado |
 | `frontend/src/components/requests/RequestActions.tsx`, `RequestItem.tsx` | modificado |
 | `frontend/src/pages/agents/AgentEditorPage.tsx`, `pages/agents/tabs/ChangesTab.tsx` | modificado / nuevo |
+| `frontend/src/components/changes/ChangesBar.tsx` | nuevo: el botón «Cambios» de las páginas de tarea y ejecución |
 | `frontend/src/pages/settings/CleanupSection.tsx` | modificado |
 | `frontend/src/styles/tokens.css` | modificado: tokens del diff |
 | `frontend/src/i18n/es.json` | modificado |
@@ -141,16 +157,16 @@
 | `docs/adr/0015-change-snapshots.md` | nuevo |
 
 ## Tareas (en orden)
-1. [ ] **Spike corto** (S1): medir `take()` en este repo y en uno grande (p. ej. un clon de un proyecto con miles de ficheros y un `node_modules` sin ignorar), con el índice copiado frente a uno vacío. Confirmar que `--ignore-cr-at-eol` se aplica a `--numstat` en la versión de git del equipo. Resultados en este plan.
-2. [ ] `git.run` con `env`; `services/snapshots.py` con tests sobre repos temporales: worktree, carpeta directa, repo vacío, sin identidad, ficheros grandes y `git gc --prune=now` (CA4).
-3. [ ] Migración `0010` y modelos, con su test de migración.
-4. [ ] Instantáneas en `RunManager` (`_launch`, `_on_end`, `recover`) y `base_commit` en `Worktrees.prepare`; resumen +/− al terminar.
-5. [ ] `services/changes.py`: rangos, `summary`, `file_diff` y `file_lines`, con tests de renombrados, binarios, borrados, CRLF, truncado y estados vacíos (CA1, CA3, CA7, CA8).
-6. [ ] API de cambios, `changes` en ejecuciones e Inbox, y validación de `path`.
-7. [ ] CLI falso con `ESCRIBE`/`COMMIT` y e2e: tarea de dos etapas con commit a mitad y trabajo sin commitear entre ejecuciones (CA2), en worktree y en carpeta directa.
-8. [ ] Limpieza: purga de logs, borrado del proyecto y «Borrar instantáneas» en Ajustes (CA9).
-9. [ ] Frontend: tokens del diff, `components/changes/*` y `api/changes.ts`, con tests del visor.
-10. [ ] Frontend: superficies (detalle de tarea, revisión y entrega con `ChangesSheet`, página de ejecución, pestaña «Cambios» del agente, columna en Ejecuciones y Ajustes) (CA5, CA6).
+1. [x] **Spike corto** (S1): medir `take()` en este repo y en uno grande (p. ej. un clon de un proyecto con miles de ficheros y un `node_modules` sin ignorar), con el índice copiado frente a uno vacío. Confirmar que `--ignore-cr-at-eol` se aplica a `--numstat` en la versión de git del equipo. Resultados en este plan.
+2. [x] `git.run` con `env`; `services/snapshots.py` con tests sobre repos temporales: worktree, carpeta directa, repo vacío, sin identidad, ficheros grandes y `git gc --prune=now` (CA4).
+3. [x] Migración `0010` y modelos, con su test de migración.
+4. [x] Instantáneas en `RunManager` (`_launch`, `_on_end`, `recover`) y `base_commit` en `Worktrees.prepare`; resumen +/− al terminar.
+5. [x] `services/changes.py`: rangos, `summary`, `file_diff` y `file_lines`, con tests de renombrados, binarios, borrados, CRLF, truncado y estados vacíos (CA1, CA3, CA7, CA8).
+6. [x] API de cambios, `changes` en ejecuciones e Inbox, y validación de `path`.
+7. [x] CLI falso con `ESCRIBE`/`COMMIT` y e2e: tarea de dos etapas con commit a mitad y trabajo sin commitear entre ejecuciones (CA2), en worktree y en carpeta directa.
+8. [x] Limpieza: purga de logs, borrado del proyecto y «Borrar instantáneas» en Ajustes (CA9).
+9. [x] Frontend: tokens del diff, `components/changes/*` y `api/changes.ts`, con tests del visor.
+10. [x] Frontend: superficies (detalle de tarea, revisión y entrega con `ChangesSheet`, página de ejecución, pestaña «Cambios» del agente, columna en Ejecuciones y Ajustes) (CA5, CA6).
 11. [ ] ADR 0015, prueba manual con Claude Code y agy en un proyecto real (worktree y carpeta directa, diff de más de 5 000 líneas) y `validacion.md`.
 
 ## Tests previstos

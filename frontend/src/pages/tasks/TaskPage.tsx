@@ -29,6 +29,7 @@ import {
 } from '@/api/tasks'
 import type { Run, Stage, Task, TreeNode } from '@/api/types'
 import { AgentAvatar, ProjectChip } from '@/components/agentic/primitives'
+import { ChangesBar } from '@/components/changes/ChangesBar'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { EmptyState } from '@/components/EmptyState'
 import { Field, PageContainer } from '@/components/page'
@@ -206,6 +207,10 @@ function TaskDetail({ task }: { task: Task }) {
               {t('tasks.detail.noRun')}
             </div>
           )}
+          <ChangesBar
+            target={{ kind: 'task', id: task.id }}
+            title={t('changes.titleTask', { code: task.code })}
+          />
         </div>
         <aside className="flex min-h-0 flex-col overflow-auto border-l p-4 [&>*]:shrink-0">
           <ExecutionTree

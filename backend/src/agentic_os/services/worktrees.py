@@ -57,9 +57,13 @@ class Worktrees:
         path.parent.mkdir(parents=True, exist_ok=True)
         if git.branch_exists(project.path, branch):
             git.run(project.path, "worktree", "add", str(path), branch)
+            origin = git.merge_base(project.path, base, branch)
         else:
+            origin = git.run(project.path, "rev-parse", base).strip()
             git.run(project.path, "worktree", "add", "-b", branch, str(path), base)
         task.worktree_path, task.branch = str(path), branch
+        # The origin of the task's diff (a retry keeps the first one).
+        task.base_commit = task.base_commit or origin
         task_ops.add_event(db, task, TaskEventKind.WORKSPACE, f"worktree {path} ({branch})")
         return str(path)
 

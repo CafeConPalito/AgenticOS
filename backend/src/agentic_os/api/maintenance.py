@@ -1,4 +1,5 @@
-"""Cleanup (phase 08): task branches and the retention of the runs' terminal logs."""
+"""Cleanup (phase 08): task branches and the retention of the runs' terminal logs; snapshots of
+the runs' folders (phase 11)."""
 
 from __future__ import annotations
 
@@ -56,6 +57,16 @@ class MaintenanceSettings(BaseModel):
     log_retention_days: int | None = Field(default=None, ge=1, le=3650)
 
 
+class ProjectSnapshotsRead(BaseModel):
+    project_id: str
+    project_name: str
+    runs: int
+
+
+class SnapshotsDeleted(BaseModel):
+    runs: int
+
+
 class LogsCleaned(BaseModel):
     runs: int
     freed_bytes: int
@@ -90,6 +101,17 @@ def delete_branches(payload: BranchDelete, db: DbSession) -> BranchesDeleted:
     project = get_project_or_404(db, payload.project_id)
     deleted, failed = maintenance.delete_branches(db, project, payload.branches, payload.force)
     return BranchesDeleted(deleted=deleted, failed=failed)
+
+
+@router.get("/maintenance/snapshots")
+def list_snapshots(db: DbSession) -> list[ProjectSnapshotsRead]:
+    return [ProjectSnapshotsRead(**vars(item)) for item in maintenance.snapshot_counts(db)]
+
+
+@router.post("/maintenance/snapshots/{project_id}/delete")
+def delete_snapshots(project_id: str, db: DbSession) -> SnapshotsDeleted:
+    project = get_project_or_404(db, project_id)
+    return SnapshotsDeleted(runs=maintenance.delete_project_snapshots(db, project))
 
 
 @router.get("/settings/maintenance")
