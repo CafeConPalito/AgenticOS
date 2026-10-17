@@ -48,6 +48,14 @@ def branch_for(task: Task) -> str:
     return f"agentic/{task.code}"
 
 
+def _branch_of(db: Session, task: Task) -> str:
+    """The task's branch: a task that resolves conflicts works on the branch it resolves."""
+    original = db.get(Task, task.resolves_task_id) if task.resolves_task_id else None
+    if original is not None:
+        return original.branch or branch_for(original)
+    return branch_for(task)
+
+
 def layouts(members: list[ProjectRepo]) -> dict[str, str]:
     """Where each repository's worktree goes inside the work folder, by repository id ("" when
     it is the work folder itself)."""
@@ -90,7 +98,7 @@ class Worktrees:
         where = layouts(members)
         # The repository at the work folder first, then those inside it, by depth.
         ordered = sorted(members, key=lambda r: (len(Path(where[r.id]).parts), where[r.id]))
-        branch = branch_for(task)
+        branch = _branch_of(db, task)
         made: list[tuple[ProjectRepo, Path, str | None]] = []
         try:
             for repo in ordered:
@@ -122,6 +130,12 @@ class Worktrees:
         """The repositories the task works in: those it already has (a retry), else those of the
         project that take part."""
         known = [row.repo_id for row in _task_rows(db, task)]
+        # A task that resolves another's conflicts works only where there are some.
+        from agentic_os.services import integration
+
+        wanted = None if known else integration.resolving_repos(db, task, project)
+        if wanted is not None:
+            return [r for r in repos.active(db, project) if r.id in wanted]
         if known:
             found = [db.get(ProjectRepo, repo_id) for repo_id in known]
             kept = [r for r in found if r is not None and not r.missing]

@@ -261,7 +261,7 @@ describe('Git tab', () => {
     await user.click(await screen.findByRole('button', { name: es.git.section.branches }))
     expect(await screen.findByRole('link', { name: /T-3 · Login/ })).toHaveAttribute(
       'href',
-      '/tareas/t3',
+      '/tablero/tareas/t3',
     )
     const list = () => screen.getByRole('link', { name: /T-3/ }).closest('ul')!
     expect(within(list()).getByText('main')).toBeVisible()

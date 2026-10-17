@@ -93,6 +93,11 @@ class Task(IdMixin, WorkspaceMixin, TimestampMixin, Base):
         String(36), ForeignKey("tasks.id", ondelete="SET NULL"), nullable=True, index=True
     )
 
+    # A task made to resolve the conflicts of integrating another one.
+    resolves_task_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("tasks.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+
     @property
     def code(self) -> str:
         return f"T-{self.number}"
@@ -115,6 +120,7 @@ class TaskEventKind(StrEnum):
     HUMAN_REQUEST = "human_request"  # the agent asked (request_human)
     HUMAN_ANSWERED = "human_answered"  # the person answered
     SUBTASK = "subtask"  # the agent created a subtask
+    INTEGRATED = "integrated"  # the task's branches were brought into their bases
 
 
 class TaskEvent(IdMixin, Base):

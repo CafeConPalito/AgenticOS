@@ -420,6 +420,19 @@
       "remove": "Quitar",
       "removeTitle": "¿Quitar el repositorio {{name}}?",
       "removeDescription": "Se quita de la lista del proyecto. La carpeta y sus archivos no se tocan."
+    },
+    "gitSettings": {
+      "title": "Git",
+      "subtitle": "Cómo se integran las ramas de las tareas y qué pueden hacer los agentes con git.",
+      "mode": "Modo de integración",
+      "onApprove": "Al aprobar una tarea",
+      "onApproveOptions": {
+        "none": "No hacer nada",
+        "integrate": "Integrar en las bases",
+        "integrate_push": "Integrar y subir"
+      },
+      "agentsGit": "Autorizar git a los agentes",
+      "agentsGitHelp": "Pueden hacer commit, ramas, rebase o push sin pedir permiso."
     }
   },
   "time": {
@@ -711,6 +724,50 @@
       "branch": "Rama",
       "folder": "Carpeta",
       "account": "Cuenta"
+    },
+    "integration": {
+      "title": "Integración",
+      "mode": "Cómo",
+      "modes": {
+        "project": "Según el proyecto",
+        "merge": "Merge",
+        "squash": "Squash",
+        "rebase": "Rebase"
+      },
+      "push": "y subir",
+      "deleteBranches": "y borrar ramas",
+      "integrate": "Integrar en las bases",
+      "undo": "Deshacer lo integrado",
+      "undoTitle": "¿Deshacer la integración de {{code}}?",
+      "undoDescription": "Las ramas base vuelven a donde estaban. Si alguna se ha movido desde entonces, no se toca nada.",
+      "undone": "Integración deshecha",
+      "state": {
+        "nothing": "sin cambios",
+        "integrated": "integrada",
+        "clean": "sin conflictos",
+        "conflicts": "con conflictos",
+        "blocked": "bloqueada",
+        "missing": "no disponible"
+      },
+      "ahead_one": "{{count}} commit",
+      "ahead_other": "{{count}} commits",
+      "conflictsIn_one": "Conflicto en {{count}} fichero",
+      "conflictsIn_other": "Conflictos en {{count}} ficheros",
+      "blockedBy": "La carpeta {{folder}} tiene cambios sin commit",
+      "done_one": "Integrado en {{count}} repositorio",
+      "done_other": "Integrado en {{count}} repositorios",
+      "stopped_one": "Se paró en {{name}}; {{count}} repositorio ya está integrado.",
+      "stopped_other": "Se paró en {{name}}; {{count}} repositorios ya están integrados.",
+      "conflictHelp": "La integración da conflictos. Resuélvelos y vuelve a integrar.",
+      "resolveHere": "Resolver aquí",
+      "resolveIn": "Resuelve los ficheros de {{name}} en",
+      "markResolved": "Marcar resuelto",
+      "mergedClean": "La base de {{name}} se integró en su rama sin conflictos.",
+      "resolved": "Conflictos de {{name}} resueltos",
+      "agent": "Agente",
+      "chooseAgent": "Elegir agente…",
+      "handToAgent": "Pasar a un agente",
+      "createdTask": "Tarea {{code}} creada"
     }
   },
   "board": {
@@ -1506,7 +1563,9 @@
       "bad_rebase": "El primer commit no se puede juntar con uno anterior.",
       "bad_action": "Esa acción no se puede hacer aquí.",
       "invalid_key": "Ese nombre de ajuste no es válido.",
-      "no_repo": "Hace falta un repositorio para ese ajuste."
+      "no_repo": "Hace falta un repositorio para ese ajuste.",
+      "no_branches": "Esta tarea no tiene ramas que integrar.",
+      "no_conflicts": "Integrar esta tarea no da conflictos."
     },
     "changes": {
       "conflicts": "Conflictos",

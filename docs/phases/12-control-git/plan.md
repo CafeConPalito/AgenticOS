@@ -476,8 +476,19 @@ La fase se desarrolla en **7 bloques**. Cada bloque termina con sus tests en ver
 
 **Bloque 5: tareas e integración**
 
-18. [ ] `services/integration.py` (comprobación previa, merge, squash y rebase sin carpeta y en carpeta, varios repos con grupo, worktree de integración), «Al aprobar…» en el scheduler y tarea de resolución.
-19. [ ] Frontend: bloque «Integración» de la tarea y ajustes del proyecto; e2e con remoto *bare* (CA3).
+18. [x] `services/integration.py` (comprobación previa, merge, squash y rebase sin carpeta y en carpeta, varios repos con grupo, worktree de integración), «Al aprobar…» en el scheduler y tarea de resolución.
+19. [x] Frontend: bloque «Integración» de la tarea y ajustes del proyecto; e2e con remoto *bare* (CA3).
+
+**Notas del bloque 5 (cambios respecto a lo planeado)**
+- Migración `0013`: `projects.integration_mode`, `on_approve` y `agents_git_authorized`; `tasks.resolves_task_id`; y el evento de tarea `integrated`.
+- `integration.check` usa `merge-tree --write-tree` y distingue cuatro estados por repo: `clean`, `conflicts`, `blocked` (la carpeta donde está la base tiene cambios sin commit, con la lista) y `integrated`/`nothing`. Una rama ya integrada con squash o rebase sigue «por delante» en commits, así que se compara el **árbol** que saldría con el de la base: si es el mismo, no hay nada que integrar (evita integrar dos veces).
+- Integrar nunca toca la carpeta del usuario salvo para avanzarla con `merge --ff-only` cuando la base está activa en ella; el merge y el squash salen de `merge-tree` + `commit-tree`, el rebase de `git replay` (en git 2.55 actualiza la rama sin imprimir nada; si falla, worktree temporal).
+- Varios repos: un `group_id` y un `GitOperation` por repo; se para en el primero que no se puede integrar y los anteriores quedan hechos. «Deshacer lo integrado» no toca nada si alguna base se ha movido desde entonces.
+- **Resolver aquí, distinto a lo planeado**: el plan hablaba de un worktree con la base y el merge a medias. Se hace al revés: un worktree en `<proyecto>.wt\merge-T-n\<repo>` sobre **la rama de la tarea** con la base ya fusionada (con sus conflictos). Al «Marcar resuelto» se hace el commit del merge y se quita la carpeta; después integrar es limpio. Es lo mismo que hace el agente de la tarea de resolución, y los conflictos se resuelven con las herramientas del propio usuario: **el `ConflictEditor` de la app no abre ese worktree** (sus rutas trabajan por `repo_id`, y el worktree no es un repo del proyecto). Queda como mejora para una fase futura.
+- Al aprobar (`on_approve`): el scheduler lanza la integración en un hilo cuando la tarea está `done` y su worktree ya se soltó. Un fallo o conflicto crea una petición `delivery` («No se pudo integrar T-n» con el motivo); `pull_request` queda para el bloque 6. Una tarea de resolución, al terminar, deja una petición «Integrar T-n».
+- Tarea de resolución: `Worktrees.prepare` le da worktrees sobre la rama original, solo en los repos con conflictos (o, si ya no hay, en los que tienen commits).
+- Frontend: `IntegrationBlock` en la tarea terminada (se oculta si no dejó ramas o ya está todo integrado) y «Git» en los ajustes del proyecto (guarda cada cambio al hacerlo).
+- Arreglado de paso: la sección Ramas enlazaba a `/tareas/:id`, que no existe; la ruta es `/tablero/tareas/:id`.
 
 **Bloque 6: pull requests y credenciales**
 

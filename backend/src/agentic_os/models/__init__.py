@@ -4,7 +4,7 @@ from agentic_os.models.app_state import NOTIFICATIONS, SCHEDULER_PAUSED, USAGE_L
 from agentic_os.models.inbox import InboxItem, InboxKind, InboxStatus, Resolution
 from agentic_os.models.memory import AuthorKind, MemoryNote
 from agentic_os.models.pipeline import DEFAULT_MAX_REJECTIONS, Pipeline, Stage
-from agentic_os.models.project import Project, WorkspaceMode
+from agentic_os.models.project import IntegrationMode, OnApprove, Project, WorkspaceMode
 from agentic_os.models.repo import GitOperation, ProjectRepo, PullMode, RunRepo, TaskRepo
 from agentic_os.models.run import (
     ACTIVE_STATUSES,
@@ -48,7 +48,9 @@ __all__ = [
     "InboxItem",
     "InboxKind",
     "InboxStatus",
+    "IntegrationMode",
     "MemoryNote",
+    "OnApprove",
     "PermissionMode",
     "Pipeline",
     "Priority",

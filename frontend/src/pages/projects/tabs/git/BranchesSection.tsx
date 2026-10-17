@@ -132,7 +132,7 @@ export function BranchesSection({ repoId, base }: { repoId: string; base: string
                 {branch.name === base && <Badge variant="outline">{t('git.branches.base')}</Badge>}
                 {branch.task_code && (
                   <Link
-                    to={`/tareas/${branch.task_id}`}
+                    to={`/tablero/tareas/${branch.task_id}`}
                     className="text-xs text-primary hover:underline"
                   >
                     {branch.task_code} · {branch.task_title}

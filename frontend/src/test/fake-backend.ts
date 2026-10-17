@@ -17,6 +17,7 @@ import type {
   StatusFile,
 } from '@/api/git'
 import type { ConflictFile, OpResult, OperationRead } from '@/api/git-integration'
+import type { IntegrationCheck, IntegrationResult, Resolution } from '@/api/integration'
 import type {
   CleanPreview,
   CommonConfig,
@@ -179,6 +180,9 @@ export function makeProject(overrides: Partial<Project> = {}): Project {
     path: 'D:\\proyectos\\tienda',
     workspace_mode: 'direct',
     base_branch: null,
+    integration_mode: 'merge',
+    on_approve: 'none',
+    agents_git_authorized: true,
     created_at: now(),
     updated_at: now(),
     git: { is_repo: true, branch: 'main', dirty: false },
@@ -720,6 +724,12 @@ export function createFakeBackend(
     snapshots?: ProjectSnapshots[]
     /** The error code a clone ends with (it succeeds by default). */
     cloneError?: string
+    /** What GET /api/tasks/:id/integration answers, by task id. */
+    integrations?: Record<string, IntegrationCheck>
+    /** What POST /api/tasks/:id/integrate answers (every repo integrated by default). */
+    integrateResult?: IntegrationResult
+    /** What starting a resolution answers. */
+    resolution?: Resolution
   } = {},
 ) {
   const usage: FakeUsage = { ...emptyUsage(), ...(seed.usage ?? {}) }
@@ -1537,6 +1547,40 @@ export function createFakeBackend(
         error: null,
       }))
       return json(200, list)
+    }
+    const integration = path.match(
+      /^\/api\/tasks\/([^/]+)\/(integration(?:\/.+)?|integrate|resolve-conflicts)$/,
+    )
+    if (integration && seed.integrations?.[integration[1]]) {
+      const check = seed.integrations[integration[1]]
+      const [, , rest] = integration
+      if (method === 'GET' && rest === 'integration') return json(200, check)
+      if (rest === 'integrate')
+        return json(
+          200,
+          seed.integrateResult ?? {
+            group_id: 'g1',
+            stopped: false,
+            integrated: check.pending,
+            repos: check.repos.map((r) => ({
+              repo_id: r.repo_id,
+              name: r.name,
+              status: 'integrated',
+              sha: 'a'.repeat(40),
+              conflicts: [],
+              dirty: [],
+              error_code: null,
+              message: '',
+              pushed: false,
+            })),
+          },
+        )
+      if (rest === 'integration/undo') return json(200, { undone: 1 })
+      if (rest === 'integration/resolution')
+        return json(200, seed.resolution ?? { repo_id: '', name: '', path: '', conflicts: [] })
+      if (rest === 'integration/resolution/finish') return json(204, null)
+      if (rest === 'resolve-conflicts')
+        return json(201, { ...makeTask({ title: 'Resolver conflictos' }) })
     }
     const batch = path.match(/^\/api\/projects\/([^/]+)\/git\/batch$/)
     if (batch && method === 'POST') {

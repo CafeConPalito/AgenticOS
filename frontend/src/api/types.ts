@@ -72,7 +72,17 @@ export interface ProjectFields {
   base_branch: string | null
 }
 
-export interface Project extends ProjectFields {
+export type IntegrationModeSetting = 'merge' | 'squash' | 'rebase'
+export type OnApprove = 'none' | 'integrate' | 'integrate_push' | 'pull_request'
+
+/** How the project brings the branches of its tasks into their bases (phase 12). */
+export interface GitProjectFields {
+  integration_mode: IntegrationModeSetting
+  on_approve: OnApprove
+  agents_git_authorized: boolean
+}
+
+export interface Project extends ProjectFields, GitProjectFields {
   id: string
   created_at: string
   updated_at: string

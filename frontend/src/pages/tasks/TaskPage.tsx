@@ -60,6 +60,7 @@ import { SessionUsage } from '@/components/usage/SessionUsage'
 import { ResumeTaskSession } from '@/pages/runs/ResumeSession'
 import { RunEventsPanel } from '@/pages/runs/RunEventsPanel'
 import { RunStatusBadge } from '@/pages/runs/RunStatusBadge'
+import { IntegrationBlock } from './IntegrationBlock'
 import { SessionFactsLine } from './SessionFactsLine'
 import { PriorityLabel, TaskStatusBadge } from './TaskBits'
 
@@ -211,6 +212,7 @@ function TaskDetail({ task }: { task: Task }) {
             target={{ kind: 'task', id: task.id }}
             title={t('changes.titleTask', { code: task.code })}
           />
+          {task.status === 'done' && <IntegrationBlock task={task} />}
         </div>
         <aside className="flex min-h-0 flex-col overflow-auto border-l p-4 [&>*]:shrink-0">
           <ExecutionTree
