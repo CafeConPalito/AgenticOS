@@ -1,7 +1,7 @@
 from datetime import UTC, datetime, timedelta
 
 from agentic_os.models import Agent, AuthorKind, MemoryNote, Project
-from agentic_os.services.context import build_context, build_instructions
+from agentic_os.services.context import RepoLine, build_context, build_instructions
 from agentic_os.services.memory import render_memory
 from agentic_os.services.tasks import TaskContext
 
@@ -82,3 +82,25 @@ def test_manual_runs_have_no_task_nor_verdict_rules():
     text = build_instructions(agent, Project(name="Web"), "D:/web")
     assert "Proyecto Web, etapa []." in text
     assert "# Tarea" not in text and "verdict" not in text
+
+
+def test_repositories_are_listed_when_there_is_more_than_the_working_folder():
+    agent = Agent(name="Dev", role="", instructions="")
+    project = Project(name="Web", path="D:/web.wt/T-1")
+    lines = [
+        RepoLine("backend", "backend", "agentic/T-1", "main"),
+        RepoLine("Shared lib", "D:/libs/shared"),
+    ]
+    text = build_instructions(agent, project, "D:/web.wt/T-1", repos=lines)
+    assert "## Repositorios del proyecto" in text
+    assert "- backend: backend · rama de trabajo agentic/T-1, base main" in text
+    assert "- Shared lib: D:/libs/shared" in text
+    # The section sits before the memory.
+    assert text.index("## Repositorios del proyecto") < text.index("## Memoria del proyecto")
+
+
+def test_a_single_repository_at_the_working_folder_adds_no_section():
+    agent = Agent(name="Dev", role="", instructions="")
+    project = Project(name="Web", path="D:/web")
+    text = build_instructions(agent, project, "D:/web", repos=[RepoLine("web", ".", None, "main")])
+    assert "Repositorios" not in text

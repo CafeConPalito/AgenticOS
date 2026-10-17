@@ -33,6 +33,8 @@ class LaunchContext:
     # The login the run uses (phase 10): the environment that points the CLI to its folder.
     # Empty for the system account, which is the CLI's own configuration.
     account_env: Mapping[str, str] = field(default_factory=dict)
+    # Linked repositories outside `cwd` (phase 12): the CLI is told it may work there too.
+    extra_dirs: tuple[str, ...] = ()
 
     @property
     def mcp_url(self) -> str:

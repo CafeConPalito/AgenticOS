@@ -43,11 +43,11 @@ from agentic_os.models import (
 )
 from agentic_os.services import accounts as account_ops
 from agentic_os.services import changes as change_ops
-from agentic_os.services import git, inbox, snapshots
+from agentic_os.services import git, inbox, runrepos, snapshots
 from agentic_os.services import tasks as task_ops
 from agentic_os.services.adapters import CliAdapter, LaunchContext, adapter_for
 from agentic_os.services.agent_target import Target, target_for
-from agentic_os.services.context import build_context, build_instructions
+from agentic_os.services.context import RepoLine, build_context, build_instructions
 from agentic_os.services.hooks import (
     HOOK_EVENTS,
     STATUS_LINE,
@@ -318,6 +318,7 @@ class RunManager:
             overrides=self._settings.cli_command_overrides,
             resume_session=resumed_from.cli_session_id if resumed_from else None,
             account_env=account_ops.env_for(account),
+            extra_dirs=runrepos.extra_dirs(runrepos.targets_for(db, project, task), cwd),
         )
         try:
             spec = adapter.prepare(ctx)
@@ -633,7 +634,22 @@ class RunManager:
             self._memory(db, project),
             task_context(db, task) if task else None,
             subagent=(parent.agent_name, run.prompt) if parent else None,
+            repos=self._repo_lines(db, run, project, task),
         )
+
+    @staticmethod
+    def _repo_lines(
+        db: Session, run: Run, project: Project | None, task: Task | None
+    ) -> list[RepoLine]:
+        """The project's repositories as this run sees them, paths relative to its folder."""
+        lines: list[RepoLine] = []
+        for target in runrepos.targets_for(db, project, task):
+            if runrepos.is_within(target.folder, run.cwd):
+                path = os.path.relpath(target.folder, run.cwd).replace("\\", "/")
+            else:
+                path = target.folder
+            lines.append(RepoLine(target.name, path, target.branch, target.base))
+        return lines
 
     @staticmethod
     def _memory(db: Session, project: Project | None) -> str:

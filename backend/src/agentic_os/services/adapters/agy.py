@@ -138,6 +138,8 @@ class AgyAdapter(CliAdapter):
         if ctx.model:
             argv += ["--model", ctx.model]
         argv += agy_permissions(ctx.permission_mode)
+        for folder in ctx.extra_dirs:
+            argv += ["--add-dir", folder]
         # With the opt-in status line installed (agy_status), this is how agy's script knows which
         # run to report its quota to; without it, nothing reads the variable.
         env = {

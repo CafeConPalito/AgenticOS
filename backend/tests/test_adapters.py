@@ -26,6 +26,7 @@ def context(
     model: str = "",
     prompt: str = "Arregla el login",
     run_id: str = "run-1",
+    extra_dirs: tuple[str, ...] = (),
 ) -> LaunchContext:
     project = tmp_path / "proyecto"
     project.mkdir(exist_ok=True)
@@ -42,6 +43,7 @@ def context(
         token="tok-" + "x" * 30,
         instructions="# Tu rol: Dev\n",
         hook_command=r"C:\Users\usuario\AppData\Roaming\AGENTI~1\runs\run-1\hook.cmd",
+        extra_dirs=extra_dirs,
     )
 
 
@@ -206,3 +208,13 @@ def test_cleanup_only_removes_our_own_plugin(tmp_path: Path):
     adapter_for(Cli.AGY).recover(ctx.cwd, "run-1")
     assert not plugin_dir(ctx.cwd).exists()
     assert (ctx.cwd / ".agents" / "rules").is_dir()
+
+
+# ------------------------------------------------------------ linked repositories (phase 12)
+@pytest.mark.parametrize("cli", [Cli.CLAUDE, Cli.AGY])
+def test_linked_repositories_are_handed_to_the_cli_one_flag_each(tmp_path: Path, cli: Cli):
+    dirs = (str(tmp_path / "shared lib"), str(tmp_path / "other"))
+    argv = adapter_for(cli).prepare(context(tmp_path, cli, extra_dirs=dirs)).argv
+    assert [argv[i + 1] for i, a in enumerate(argv) if a == "--add-dir"] == list(dirs)
+    plain = adapter_for(cli).prepare(context(tmp_path, cli, run_id="run-2")).argv
+    assert "--add-dir" not in plain

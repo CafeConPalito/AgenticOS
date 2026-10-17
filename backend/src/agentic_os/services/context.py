@@ -4,6 +4,8 @@ plugin rules, and any agent can read them again with the `get_context` MCP tool.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from agentic_os.models import Agent, Project
@@ -36,6 +38,34 @@ Esta etapa revisa el trabajo de las anteriores. Al terminar, llama a `complete_t
 - `verdict="rejected"` si hay que corregir algo: en `summary` explica con precisión qué falla \
 y qué hay que cambiar. La tarea volverá a la etapa anterior con tu explicación.
 """
+
+
+@dataclass(frozen=True)
+class RepoLine:
+    """One repository of the project as the agent sees it (phase 12)."""
+
+    name: str
+    path: str  # relative to the working folder when it is inside it
+    branch: str | None = None  # the task's working branch here
+    base: str | None = None
+
+
+def repos_section(repos: Sequence[RepoLine], cwd: str) -> str | None:
+    """Lists the repositories when there is more than the working folder itself to explain."""
+    if not repos or (len(repos) == 1 and repos[0].path in ("", ".")):
+        return None
+    lines = ["## Repositorios del proyecto", "Este proyecto tiene varios repositorios git:"]
+    for repo in repos:
+        where = repo.path if repo.path not in ("", ".") else f"{cwd} (la carpeta de trabajo)"
+        detail = []
+        if repo.branch:
+            detail.append(f"rama de trabajo {repo.branch}")
+        if repo.base:
+            detail.append(f"base {repo.base}")
+        suffix = f" · {', '.join(detail)}" if detail else ""
+        lines.append(f"- {repo.name}: {where}{suffix}")
+    return "\n".join(lines)
+
 
 # $VARIABLES the agent's instructions may use (shown in the agent editor, design 03c).
 VARIABLES = ("$PROYECTO", "$ETAPA", "$TAREA", "$MEMORIA", "$WORKSPACE")
@@ -74,9 +104,11 @@ def build_instructions(
     memory: str = "",
     task: TaskContext | None = None,
     subagent: tuple[str, str] | None = None,
+    repos: Sequence[RepoLine] = (),
 ) -> str:
     """`memory` is the rendered project memory (services.memory.render_memory); `task`, the
-    task and stage of a run launched by the scheduler (None for a manual run)."""
+    task and stage of a run launched by the scheduler (None for a manual run); `repos`, the
+    project's repositories as this run sees them."""
     name = project.name if project is not None else "(proyecto)"
     memory = memory.strip() or "(vacía)"
     values = {
@@ -93,6 +125,9 @@ def build_instructions(
         if agent.instructions.strip():
             parts.append(substitute(agent.instructions.strip(), values))
     parts.append(f"# Proyecto: {name}\nCarpeta de trabajo: {cwd}")
+    section = repos_section(repos, cwd)
+    if section:
+        parts.append(section)
     parts.append(f"## Memoria del proyecto\n{memory}")
     if task is not None:
         parts.append(task_section(task))
