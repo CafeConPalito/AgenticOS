@@ -1,6 +1,6 @@
 # Fase 12: Control de git · Spec
 
-- **Estado**: borrador (v2, tras la revisión del usuario del 2026-10-17)
+- **Estado**: aprobada (2026-10-17)
 - **Rama**: `phase/12-control-git`
 
 ## Objetivo
