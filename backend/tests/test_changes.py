@@ -14,8 +14,8 @@ from test_worktrees import make_repo, make_task, sh
 
 from agentic_os.db.base import DEFAULT_WORKSPACE, utcnow
 from agentic_os.errors import NotFound
-from agentic_os.models import Project, Run, RunStatus, Task, WorkspaceMode
-from agentic_os.services import changes, snapshots
+from agentic_os.models import Project, Run, RunRepo, RunStatus, Task, TaskRepo, WorkspaceMode
+from agentic_os.services import changes, repos, snapshots
 from agentic_os.services import tasks as task_ops
 from agentic_os.services.worktrees import Worktrees
 
@@ -323,7 +323,7 @@ def test_a_task_whose_last_run_left_no_snapshot_does_not_show_an_older_runs_end(
         crashed = make_run(db, project, path, task, status=RunStatus.FAILED)  # no snapshots
         write(path, "b.py", "2\n")
         commit(path, "feat: b")
-        assert crashed.snapshot_end is None
+        assert db.query(RunRepo).filter_by(run_id=crashed.id).count() == 0
 
         result = changes.changes(changes.task_range(db, task))
 
@@ -366,13 +366,31 @@ def make_run(
         task_id=task.id if task else None,
         stage_id=stage_id,
         status=status,
-        snapshot_start=start,
-        snapshot_end=end,
         created_at=utcnow() + timedelta(seconds=next(COUNTER)),
     )
     db.add(run)
     db.flush()
+    if start or end:
+        add_repo_row(db, run, project, cwd, start, end)
     return run
+
+
+def add_repo_row(
+    db: Session, run: Run, project: Project, folder: Path, start: str | None, end: str | None
+) -> RunRepo:
+    """What the RunManager records for a run in the project's repository."""
+    repo = next(r for r in repos.ensure(db, project) if not r.linked)
+    row = RunRepo(
+        run_id=run.id,
+        repo_id=repo.id,
+        repo_name=repo.name,
+        path=str(folder),
+        snapshot_start=start,
+        snapshot_end=end,
+    )
+    db.add(row)
+    db.flush()
+    return row
 
 
 def run_in(db: Session, project: Project, folder: Path, task: Task | None, steps) -> Run:
@@ -381,7 +399,7 @@ def run_in(db: Session, project: Project, folder: Path, task: Task | None, steps
     start = snapshots.take(str(folder), run.id, "start")
     steps(folder)
     end = snapshots.take(str(folder), run.id, "end")
-    run.snapshot_start, run.snapshot_end = start.sha, end.sha
+    add_repo_row(db, run, project, folder, start.sha, end.sha)
     summary = changes.totals(str(folder), start.sha, end.sha)
     run.changes_files, run.changes_added, run.changes_deleted = (
         summary.files,
@@ -400,7 +418,7 @@ def numstat(repo: Path, old: str, new: str) -> set[tuple[str, int, int]]:
     }
 
 
-def listed(result: changes.Changes) -> set[tuple[str, int, int]]:
+def listed(result: changes.RepoChanges) -> set[tuple[str, int, int]]:
     return {(f.path, f.additions, f.deletions) for f in result.files}
 
 
@@ -414,7 +432,7 @@ def test_a_worktree_task_matches_git_diff_even_after_the_worktree_is_gone(
         project, task = make_task(db, repo)
         path = Path(worktrees.prepare(db, task, project))
         base = sh(repo, "rev-parse", "main")
-        assert task.base_commit == base
+        assert db.query(TaskRepo).filter_by(task_id=task.id).one().base_commit == base
 
         def dev(folder: Path) -> None:
             write(folder, "api.py", "def login():\n    return 1\n")
@@ -460,8 +478,9 @@ def test_each_run_only_shows_what_it_changed(db_factory, tmp_path: Path):  # noq
         assert listed(run2) == {("b.py", 1, 0), ("c.py", 1, 0)}
         whole = changes.changes(changes.task_range(db, task))
         assert listed(whole) == {("a.py", 1, 0), ("b.py", 2, 0), ("c.py", 1, 0)}
-        assert [r.attempt for r in whole.runs] == [1, 2]  # no stage: one group
-        assert whole.runs[0].totals.files == 2 and whole.runs[1].totals.files == 2
+        summary = changes.task_changes(db, task)
+        assert [r.attempt for r in summary.runs] == [1, 2]  # no stage: one group
+        assert summary.runs[0].totals.files == 2 and summary.runs[1].totals.files == 2
 
 
 def test_a_direct_folder_task_leaves_out_what_the_user_had_before(
@@ -563,7 +582,17 @@ def test_a_task_from_before_the_phase_uses_the_merge_base(db_factory, tmp_path: 
         sh(repo, "checkout", "-q", "main")
         write(repo, "otro.txt", "main avanza\n")  # the base moved on meanwhile
         commit(repo, "main")
-        task.branch, task.base_commit = "agentic/T-1", None
+        task.branch = "agentic/T-1"
+        task.worktree_path = None
+        db.add(
+            TaskRepo(
+                task_id=task.id,
+                repo_id=repos.ensure(db, db.get(Project, task.project_id))[0].id,
+                branch="agentic/T-1",
+                base_commit=None,
+            )
+        )
+        db.flush()
 
         result = changes.changes(changes.task_range(db, task))
 

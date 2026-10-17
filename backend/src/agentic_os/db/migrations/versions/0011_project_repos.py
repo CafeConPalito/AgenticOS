@@ -119,6 +119,14 @@ def upgrade() -> None:
 
     _backfill(op.get_bind())
 
+    # Their data now lives in task_repos and run_repos (one row per repository).
+    with op.batch_alter_table("runs", schema=None) as batch_op:
+        batch_op.drop_column("snapshot_start")
+        batch_op.drop_column("snapshot_end")
+        batch_op.drop_column("snapshot_skipped")
+    with op.batch_alter_table("tasks", schema=None) as batch_op:
+        batch_op.drop_column("base_commit")
+
 
 def _backfill(conn: sa.Connection) -> None:
     now = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S.%f")
@@ -204,6 +212,32 @@ def _backfill(conn: sa.Connection) -> None:
 
 
 def downgrade() -> None:
+    with op.batch_alter_table("tasks", schema=None) as batch_op:
+        batch_op.add_column(sa.Column("base_commit", sa.String(length=40), nullable=True))
+    with op.batch_alter_table("runs", schema=None) as batch_op:
+        batch_op.add_column(sa.Column("snapshot_start", sa.String(length=40), nullable=True))
+        batch_op.add_column(sa.Column("snapshot_end", sa.String(length=40), nullable=True))
+        batch_op.add_column(
+            sa.Column("snapshot_skipped", sa.Integer(), nullable=False, server_default="0")
+        )
+    # One repository per task and run was all there was: the first row of each goes back.
+    conn = op.get_bind()
+    conn.execute(
+        sa.text(
+            "UPDATE tasks SET base_commit = (SELECT base_commit FROM task_repos t"
+            " WHERE t.task_id = tasks.id ORDER BY t.id LIMIT 1)"
+        )
+    )
+    conn.execute(
+        sa.text(
+            "UPDATE runs SET snapshot_start = (SELECT snapshot_start FROM run_repos r"
+            " WHERE r.run_id = runs.id ORDER BY r.id LIMIT 1),"
+            " snapshot_end = (SELECT snapshot_end FROM run_repos r"
+            " WHERE r.run_id = runs.id ORDER BY r.id LIMIT 1),"
+            " snapshot_skipped = COALESCE((SELECT snapshot_skipped FROM run_repos r"
+            " WHERE r.run_id = runs.id ORDER BY r.id LIMIT 1), 0)"
+        )
+    )
     with op.batch_alter_table("projects", schema=None) as batch_op:
         batch_op.drop_column("repo_scan_depth")
     op.drop_index("ix_run_repos_repo_id", table_name="run_repos")

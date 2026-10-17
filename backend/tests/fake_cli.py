@@ -44,6 +44,8 @@ import time
 import uuid
 from pathlib import Path
 
+START_DIR = Path.cwd()  # where the CLI was started: `EN:` is relative to it
+
 
 def subcommand() -> None:
     """The CLIs' non-interactive commands Agentic OS runs to know an account (phase 10):
@@ -345,7 +347,9 @@ def use_tools(text: str) -> int | None:
     writes what get_context returns; `GIT: <file>` → writes `git status` of the folder;
     `SALE: n` → exits with n after the turn. Phase 11: `ESCRIBE: ruta=a|b` writes a file (`|`
     is a line break), `ANADE: ruta=a` appends lines to it and `COMMIT: mensaje` commits the whole
-    folder, so a run can commit halfway and leave other work uncommitted. Phase 06:
+    folder, so a run can commit halfway and leave other work uncommitted. Phase 12: `EN: sub`
+    moves the directives that follow into a subfolder (`EN: .` goes back), to work in several
+    repositories. Phase 06:
     `PREGUNTA: título|opción|…` → request_human (ends the turn; a later «Respuesta de la
     persona…» message completes the task);
     `PERMISO: comando` → shows the CLI's permission dialog (Claude's or agy's real texts) and
@@ -366,6 +370,10 @@ def use_tools(text: str) -> int | None:
         keyword, value = keyword.strip(), value.strip()
         if keyword == "SALE":
             exit_code = int(value)
+            continue
+        if keyword == "EN":  # phase 12: the directives that follow work in this subfolder
+            os.chdir(START_DIR / value.strip() if value.strip() not in ("", ".") else START_DIR)
+            out(f"● in {Path.cwd().name}")
             continue
         if keyword in ("ESCRIBE", "ANADE"):  # `ruta=linea|linea`: creates / appends to a file
             name, _, content = value.partition("=")

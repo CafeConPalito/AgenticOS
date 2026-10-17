@@ -423,11 +423,21 @@ La fase se desarrolla en **7 bloques**. Cada bloque termina con sus tests en ver
 
 **Bloque 1: varios repos**
 
-5. [ ] Modelos y migración `0011`, con su test sobre una BD de la v1.3.
-6. [ ] `services/repos.py` (`scan`, `sync`, `nested_paths`) y API de repos; Ajustes › Repositorios y Resumen.
-7. [ ] Worktrees de varios repos (`prepare`/`release`, vinculados en `@<name>`, submódulos, ramas sin cambios), `extra_dirs` en los adapters y sección «Repositorios» del contexto.
-8. [ ] Instantáneas, diffs y resúmenes por repo (`RunRepo`, `changes.py`, visor agrupado); mantenimiento y limpieza por repo.
-9. [ ] e2e de varios repos con el CLI falso (CA1, CA2).
+5. [x] Modelos y migración `0011`, con su test sobre una BD de la v1.3.
+6. [x] `services/repos.py` (`scan`, `sync`, `nested_paths`) y API de repos; Ajustes › Repositorios y Resumen.
+7. [x] Worktrees de varios repos (`prepare`/`release`, vinculados en `@<name>`, submódulos, ramas sin cambios), `extra_dirs` en los adapters y sección «Repositorios» del contexto.
+8. [x] Instantáneas, diffs y resúmenes por repo (`RunRepo`, `changes.py`, visor agrupado); mantenimiento y limpieza por repo.
+9. [x] e2e de varios repos con el CLI falso (CA1, CA2).
+
+**Notas del bloque 1 (cambios respecto a lo planeado)**
+- La migración `0011` solo crea `project_repos`, `task_repos` y `run_repos` (más `projects.repo_scan_depth`). `GitOperation` y `CommitAttribution` tendrán su propia migración en el bloque que las usa.
+- `projects.base_branch` **no se elimina**: queda como la base por defecto de los repositorios que no tengan la suya. Sí se eliminan `runs.snapshot_*` y `tasks.base_commit` (pasan a las tablas por repositorio).
+- `services/runrepos.py` (nuevo) decide qué repositorios ve una ejecución y dónde están; lo usan las instrucciones, `--add-dir` y las instantáneas.
+- `Changes` lleva `repos[]` y los endpoints de fichero y de líneas reciben `repo` (`422 repo_required` si hay varios y falta). `changes.changes(rng)` devuelve ahora un `RepoChanges`; `run_range` y `task_range` quedan como atajo del primer repositorio.
+- Con **un** repositorio el worktree es la carpeta de trabajo misma (como antes); con varios, la carpeta reproduce el proyecto. Los ficheros que el agente escribe fuera de cualquier repositorio se conservan y la tarea lo anota.
+- El CLI falso gana `EN: <subcarpeta>`. Los submódulos del repositorio de una tarea todavía **no** se inicializan en su worktree: pasa al bloque 4 (submódulos).
+- La pestaña de ajustes del proyecto muestra «Repositorios» (volver a buscar, vincular, base, modo de pull, participa, quitar). La vista general de la pestaña Git es del bloque 2.
+- ADR 0016 escrito.
 
 **Bloque 2: lo básico de un repo**
 

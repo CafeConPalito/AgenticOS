@@ -15,9 +15,19 @@ from sqlalchemy.orm import Session
 
 from agentic_os.db.base import utcnow
 from agentic_os.errors import ApiError
-from agentic_os.models import ACTIVE_STATUSES, AppState, Project, Run, Task, TaskStatus
+from agentic_os.models import (
+    ACTIVE_STATUSES,
+    AppState,
+    Project,
+    ProjectRepo,
+    Run,
+    RunRepo,
+    Task,
+    TaskRepo,
+    TaskStatus,
+)
 from agentic_os.models.app_state import LOG_RETENTION
-from agentic_os.services import git, snapshots
+from agentic_os.services import git, repos, snapshots
 
 log = structlog.get_logger(__name__)
 
@@ -33,25 +43,28 @@ class TaskBranch:
     task_id: str | None
     task_code: str | None
     task_status: str | None
-    merged: bool  # into the project's base branch
+    merged: bool  # into the repository's base branch
     last_commit: str  # ISO date
     in_use: bool  # its task is still open, or a worktree has it checked out
+    repo_id: str | None = None
+    repo_name: str = ""
 
     @property
     def deletable(self) -> bool:
         return not self.in_use
 
 
-def _base_branch(project: Project) -> str | None:
-    if project.base_branch:
-        return project.base_branch
-    info = git.detect(project.path)
+def _base_branch(project: Project, repo: ProjectRepo) -> str | None:
+    base = repos.base_of(project, repo)
+    if base:
+        return base
+    info = git.detect(repo.path)
     return info.branch if info else None
 
 
-def _checked_out(project: Project) -> set[str]:
+def _checked_out(path: str) -> set[str]:
     """Branches a worktree of the repository has checked out."""
-    out = git.run(project.path, "worktree", "list", "--porcelain")
+    out = git.run(path, "worktree", "list", "--porcelain")
     return {
         line.removeprefix("branch refs/heads/")
         for line in out.splitlines()
@@ -60,33 +73,49 @@ def _checked_out(project: Project) -> set[str]:
 
 
 def task_branches(db: Session, project: Project) -> list[TaskBranch]:
-    """The `agentic/T-n` branches of a project (empty without git or without branches)."""
-    info = git.detect(project.path)
+    """The `agentic/T-n` branches of a project's repositories (empty without git or without
+    branches)."""
+    result: list[TaskBranch] = []
+    for repo in repos.ensure(db, project):
+        if repo.missing:
+            continue
+        result += _repo_branches(db, project, repo)
+    return sorted(result, key=lambda b: b.last_commit, reverse=True)
+
+
+def _repo_branches(db: Session, project: Project, repo: ProjectRepo) -> list[TaskBranch]:
+    info = git.detect(repo.path)
     if info is None or not info.is_repo:
         return []
     out = git.run(
-        project.path,
+        repo.path,
         "for-each-ref",
         "--format=%(refname:short)%09%(committerdate:iso-strict)",
         f"refs/heads/{BRANCH_PREFIX}",
     )
-    rows = [line.split("\t", 1) for line in out.splitlines() if "\t" in line]
+    rows = [line.split("	", 1) for line in out.splitlines() if "	" in line]
     if not rows:
         return []
-    base = _base_branch(project)
+    base = _base_branch(project, repo)
     merged = set()
     if base:
         merged = {
             line.strip().lstrip("*+ ").strip()
-            for line in git.run(project.path, "branch", "--merged", base).splitlines()
+            for line in git.run(repo.path, "branch", "--merged", base).splitlines()
         }
-    checked_out = _checked_out(project)
+    checked_out = _checked_out(repo.path)
     tasks = {
-        task.branch: task
-        for task in db.scalars(
-            select(Task).where(Task.project_id == project.id, Task.branch.is_not(None))
+        row.branch: task
+        for row, task in db.execute(
+            select(TaskRepo, Task)
+            .join(Task, Task.id == TaskRepo.task_id)
+            .where(TaskRepo.repo_id == repo.id)
         )
     }
+    for task in db.scalars(
+        select(Task).where(Task.project_id == project.id, Task.branch.is_not(None))
+    ):
+        tasks.setdefault(task.branch or "", task)  # a task from before the repository rows
     branches = []
     for name, date in rows:
         task = tasks.get(name)
@@ -100,20 +129,36 @@ def task_branches(db: Session, project: Project) -> list[TaskBranch]:
                 merged=name in merged,
                 last_commit=date,
                 in_use=open_task or name in checked_out,
+                repo_id=repo.id,
+                repo_name=repo.name,
             )
         )
-    return sorted(branches, key=lambda b: b.last_commit, reverse=True)
+    return branches
 
 
 def delete_branches(
-    db: Session, project: Project, names: list[str], force: bool
+    db: Session,
+    project: Project,
+    names: list[str],
+    force: bool,
+    repo_id: str | None = None,
 ) -> tuple[list[str], dict[str, str]]:
     """Deletes task branches. Without `force` only those merged into the base branch; never one
-    still in use. Returns (deleted, {branch: why it could not be deleted})."""
+    still in use. `repo_id` says which repository when the project has several. Returns
+    (deleted, {branch: why it could not be deleted})."""
     try:
-        known = {b.name: b for b in task_branches(db, project)}
+        every = task_branches(db, project)
     except git.GitError as error:
         raise ApiError(409, "git_failed", str(error), "project_id") from error
+    known: dict[str, TaskBranch] = {}
+    for branch in every:
+        if repo_id is not None and branch.repo_id != repo_id:
+            continue
+        if branch.name in known:
+            raise ApiError(
+                422, "repo_required", f"{branch.name} is in several repositories", "repo_id"
+            )
+        known[branch.name] = branch
     for name in names:
         branch = known.get(name)
         if branch is None:
@@ -124,10 +169,14 @@ def delete_branches(
             raise ApiError(409, "branch_not_merged", f"{name} has unmerged work", "branches")
     deleted, failed = [], {}
     for name in names:
-        # `-D`: whether it is merged was checked above against the project's base branch;
+        repo = db.get(ProjectRepo, known[name].repo_id or "")
+        if repo is None:
+            failed[name] = "the repository is no longer in the project"
+            continue
+        # `-D`: whether it is merged was checked above against the repository's base branch;
         # `git branch -d` would check it against whatever is checked out.
         try:
-            git.run(project.path, "branch", "-D", name)
+            git.run(repo.path, "branch", "-D", name)
         except git.GitError as error:
             failed[name] = str(error)
             continue
@@ -207,34 +256,56 @@ def purge_logs(db: Session, runs_dir: Path, days: int | None) -> tuple[int, int]
 
 
 # ---------------------------------------------------------------- snapshots (phase 11)
+def _git_dir(db: Session, row: RunRepo) -> str | None:
+    repo = db.get(ProjectRepo, row.repo_id) if row.repo_id else None
+    for candidate in (repo.path if repo else None, row.path):
+        if candidate and Path(candidate).is_dir():
+            return candidate
+    return None
+
+
+def _drop_rows(db: Session, rows: list[RunRepo]) -> None:
+    """Deletes the snapshot refs of these run/repository rows and forgets their shas."""
+    by_dir: dict[str, list[str]] = {}
+    for row in rows:
+        folder = _git_dir(db, row)
+        if folder is not None:
+            by_dir.setdefault(folder, []).append(row.run_id)
+    for folder, run_ids in by_dir.items():
+        snapshots.delete_runs(folder, sorted(set(run_ids)))
+    for row in rows:
+        row.snapshot_start = row.snapshot_end = None
+
+
 def _drop_snapshots(db: Session, runs: list[Run]) -> None:
     """Deletes the snapshot refs of these runs and forgets their shas. The +/- summary of each
     run stays, but its diff is gone («No hay datos de cambios»)."""
-    by_project: dict[str | None, list[Run]] = {}
-    for run in runs:
-        if run.snapshot_start or run.snapshot_end:
-            by_project.setdefault(run.project_id, []).append(run)
-    for project_id, group in by_project.items():
-        project = db.get(Project, project_id) if project_id else None
-        if project is not None:
-            snapshots.delete_runs(project.path, [run.id for run in group])
-        for run in group:
-            run.snapshot_start = run.snapshot_end = None
+    if not runs:
+        return
+    rows = db.scalars(
+        select(RunRepo).where(
+            RunRepo.run_id.in_([run.id for run in runs]),
+            or_(RunRepo.snapshot_start.is_not(None), RunRepo.snapshot_end.is_not(None)),
+        )
+    )
+    _drop_rows(db, list(rows))
 
 
 @dataclass
 class ProjectSnapshots:
     project_id: str
     project_name: str
-    runs: int  # runs that still have snapshots in the project's repository
+    runs: int  # runs that still have snapshots in the project's repositories
 
 
-def _runs_with_snapshots(db: Session, project: Project) -> list[Run]:
+def _rows_with_snapshots(db: Session, project: Project) -> list[RunRepo]:
     return list(
         db.scalars(
-            select(Run).where(
+            select(RunRepo)
+            .join(Run, Run.id == RunRepo.run_id)
+            .where(
                 Run.project_id == project.id,
-                or_(Run.snapshot_start.is_not(None), Run.snapshot_end.is_not(None)),
+                or_(RunRepo.snapshot_start.is_not(None), RunRepo.snapshot_end.is_not(None)),
             )
         )
     )
@@ -245,7 +316,7 @@ def snapshot_counts(db: Session) -> list[ProjectSnapshots]:
     share one repository, and each one only owns its own runs' refs."""
     result = []
     for project in db.scalars(select(Project).order_by(Project.name)):
-        runs = len(_runs_with_snapshots(db, project))
+        runs = len({row.run_id for row in _rows_with_snapshots(db, project)})
         if runs:
             result.append(ProjectSnapshots(project.id, project.name, runs))
     return result
@@ -254,11 +325,10 @@ def snapshot_counts(db: Session) -> list[ProjectSnapshots]:
 def forget_project_snapshots(db: Session, project: Project) -> int:
     """Deletes the snapshot refs of the project's own runs (never another project's, even in the
     same repository) and forgets their shas. The caller commits. Returns how many runs had them."""
-    runs = _runs_with_snapshots(db, project)
-    snapshots.delete_runs(project.path, [run.id for run in runs])
-    for run in runs:
-        run.snapshot_start = run.snapshot_end = None
-    return len(runs)
+    rows = _rows_with_snapshots(db, project)
+    runs = len({row.run_id for row in rows})
+    _drop_rows(db, rows)
+    return runs
 
 
 def delete_project_snapshots(db: Session, project: Project) -> int:

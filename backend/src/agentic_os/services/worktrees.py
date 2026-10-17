@@ -112,7 +112,6 @@ class Worktrees:
             # The origin of the task's diff: a retry keeps the first one.
             row.base_commit = row.base_commit or origin
         task.worktree_path, task.branch = str(work), branch
-        task.base_commit = task.base_commit or made[0][2]
         names = ", ".join(r.name for r, _, _ in made)
         extra = f" · {names}" if len(made) > 1 else ""
         task_ops.add_event(db, task, TaskEventKind.WORKSPACE, f"worktree {work} ({branch}){extra}")
@@ -165,6 +164,13 @@ class Worktrees:
         task_ops.add_event(
             db, task, TaskEventKind.WORKSPACE, f"worktree removed; branch {task.branch} kept"
         )
+        if Path(work).exists():  # files the agent wrote outside every repository: never deleted
+            task_ops.add_event(
+                db,
+                task,
+                TaskEventKind.WORKSPACE,
+                f"files outside the repositories were left in {work}",
+            )
         if self._trust is not None:
             self._trust.forget(work)
 

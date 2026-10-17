@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 from test_worktrees import make_repo, sh
 
 from agentic_os.db.base import utcnow
-from agentic_os.models import Project, Run, RunStatus, Task, TaskStatus
+from agentic_os.models import Project, Run, RunRepo, RunStatus, Task, TaskStatus
 from agentic_os.services import changes, snapshots
 
 
@@ -185,6 +185,7 @@ def snapshot_project(client: TestClient, tmp_path: Path) -> tuple[Path, str]:
     """A project on a real repository with two old runs and one recent run that have snapshots."""
     repo = make_repo(tmp_path / "web app")
     project = client.post("/api/projects", json={"name": "Web", "path": str(repo)}).json()["id"]
+    repo_id = client.get(f"/api/projects/{project}/repos").json()[0]["id"]
     for run_id, days in (("old1", 100), ("old2", 120), ("recent", 5)):
         add_run(client, run_id, days_ago=days)
         start = snapshots.take(str(repo), run_id, "start")
@@ -192,7 +193,17 @@ def snapshot_project(client: TestClient, tmp_path: Path) -> tuple[Path, str]:
         end = snapshots.take(str(repo), run_id, "end")
         with client.app.state.sessionmaker() as db:
             run = db.get(Run, run_id)
-            run.project_id, run.snapshot_start, run.snapshot_end = project, start.sha, end.sha
+            run.project_id = project
+            db.add(
+                RunRepo(
+                    run_id=run_id,
+                    repo_id=repo_id,
+                    repo_name="web app",
+                    path=str(repo),
+                    snapshot_start=start.sha,
+                    snapshot_end=end.sha,
+                )
+            )
             run.changes_files, run.changes_added, run.changes_deleted = 1, 2, 0
             db.commit()
     return repo, project
@@ -290,9 +301,10 @@ def test_forgetting_a_projects_snapshots_leaves_another_projects_in_the_same_rep
             prompt="x",
             cwd=str(repo),
             status=RunStatus.COMPLETED,
-            snapshot_start=mine.sha,
         )
         db.add(run)
+        db.flush()
+        db.add(RunRepo(run_id="mine", repo_name="web app", path=str(repo), snapshot_start=mine.sha))
         db.commit()
         twin_id = twin.id
 
@@ -300,6 +312,6 @@ def test_forgetting_a_projects_snapshots_leaves_another_projects_in_the_same_rep
 
     assert refs_of(repo) == {"mine"}  # the twin's own run keeps its snapshot
     with client.app.state.sessionmaker() as db:
-        assert db.get(Run, "mine").snapshot_start == mine.sha
+        assert db.query(RunRepo).filter_by(run_id="mine").one().snapshot_start == mine.sha
     listed = client.get("/api/maintenance/snapshots").json()
     assert listed == [{"project_id": twin_id, "project_name": "Gemelo", "runs": 1}]

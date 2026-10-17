@@ -47,7 +47,11 @@ class ChangesRunRef(BaseModel):
     totals: ChangesTotals | None  # None: no data for that run
 
 
-class Changes(BaseModel):
+class RepoChanges(BaseModel):
+    """What changed in one repository: its header and its file list."""
+
+    key: str = ""  # the repository's id (or the run's row, for one no longer in the project)
+    name: str = ""
     state: ChangesState
     live: bool = False  # the run is still going: the end is the folder right now
     partial: bool = False  # taken when the app reopened: may include later changes
@@ -58,6 +62,17 @@ class Changes(BaseModel):
     files: list[FileChange] = Field(default_factory=list)
     truncated_files: int = 0  # files over the list limit that are not in `files`
     skipped_large: int = 0  # new files too big to be in the snapshots
+
+
+class Changes(BaseModel):
+    """What a run or a task changed, repository by repository."""
+
+    state: ChangesState  # "ok" when any repository has a diff; otherwise why there is none
+    live: bool = False
+    partial: bool = False
+    direct_folder: bool = False
+    totals: ChangesTotals = Field(default_factory=ChangesTotals)  # all repositories added up
+    repos: list[RepoChanges] = Field(default_factory=list)
     runs: list[ChangesRunRef] = Field(default_factory=list)  # tasks only
 
 

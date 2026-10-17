@@ -17,6 +17,7 @@ import contextlib
 import os
 import tempfile
 import time
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -75,13 +76,14 @@ def take(
     run_id: str | None = None,
     label: str | None = None,
     scratch: Path | None = None,
+    exclude: Sequence[str] = (),
 ) -> Snapshot | None:
     """A snapshot of `folder`, or None when it is not a git repository or it could not be taken.
     With `run_id` and `label` it is also pinned to its ref.
 
     Never raises: the callers (run start and end) must not fail because of a snapshot. The error
     is logged; the caller records it as a system event of the run when it matters."""
-    snapshot, _ = take_checked(folder, run_id, label, scratch)
+    snapshot, _ = take_checked(folder, run_id, label, scratch, exclude)
     return snapshot
 
 
@@ -90,9 +92,11 @@ def take_checked(
     run_id: str | None = None,
     label: str | None = None,
     scratch: Path | None = None,
+    exclude: Sequence[str] = (),
 ) -> tuple[Snapshot | None, str | None]:
     """Like `take`, plus the reason when it failed (None when it worked or the folder has no
-    git)."""
+    git). `exclude`: paths (relative to `folder`, POSIX) left out, such as the other repositories
+    of a project that sit inside this one: git would otherwise take them for submodules."""
     if not Path(folder).is_dir() or not is_repo(folder):
         return None, None
     temporary: Path | None = None
@@ -117,7 +121,7 @@ def take_checked(
 
         # The big new files are left out of the `add` itself, so git never reads or stores them.
         big = _large_new_files(folder, budget)
-        specs = [".", *(f":(exclude,literal){path}" for path in big)]
+        specs = [".", *(f":(exclude,literal){path}" for path in [*big, *exclude])]
         run(
             "add",
             "-A",
