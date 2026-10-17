@@ -29,6 +29,19 @@ interface Extra {
 
 const NO_EXTRA: Extra = { top: [], gaps: {}, bottom: [], bottomDone: false }
 
+/** Picking lines to stage, unstage or discard (the Git tab). A changed line is identified by its
+ * number on the side it lives on, which is what the backend looks up. */
+export interface DiffSelection {
+  picked: ReadonlySet<string>
+  toggle: (keys: string[], on: boolean) => void
+}
+
+export const lineKey = (line: DiffLine): string | null =>
+  line.kind === 'add' ? `add:${line.new_no}` : line.kind === 'del' ? `del:${line.old_no}` : null
+
+const hunkKeys = (hunk: Hunk): string[] =>
+  hunk.lines.map(lineKey).filter((key): key is string => key !== null)
+
 export function StatusLetter({ status }: { status: FileChange['status'] }) {
   const { t } = useTranslation()
   return (
@@ -54,12 +67,15 @@ export function FileDiffView({
   id,
   jump,
   live = false,
+  selection,
 }: {
   target: ChangesTarget
   file: FileChange
   id: string
   /** The run is going: the diff is read again every few seconds. */
   live?: boolean
+  /** Shows a checkbox on every changed line and hunk. */
+  selection?: DiffSelection
   /** The file list asked to show this file. */
   jump: { path: string; n: number } | null
 }) {
@@ -159,6 +175,7 @@ export function FileDiffView({
               extra={extra}
               setExtra={setExtra}
               widenable={widenable}
+              selection={selection}
             />
           )}
         </div>
@@ -188,6 +205,7 @@ function Hunks({
   extra,
   setExtra,
   widenable,
+  selection,
 }: {
   target: ChangesTarget
   path: string
@@ -195,7 +213,9 @@ function Hunks({
   extra: Extra
   setExtra: React.Dispatch<React.SetStateAction<Extra>>
   widenable: boolean
+  selection?: DiffSelection
 }) {
+  const columns = selection ? 5 : 4
   const { t } = useTranslation()
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState(false)
@@ -261,7 +281,7 @@ function Hunks({
 
   const expandRow = (key: string, label: string, onClick: () => void) => (
     <tr key={key}>
-      <td colSpan={4} className="bg-subtle px-3 py-1">
+      <td colSpan={columns} className="bg-subtle px-3 py-1">
         <Button
           type="button"
           variant="ghost"
@@ -287,7 +307,7 @@ function Hunks({
             expandTop,
           )}
         {extra.top.map((line) => (
-          <LineRow key={`t${line.new_no}`} line={line} />
+          <LineRow key={`t${line.new_no}`} line={line} selection={selection} />
         ))}
         {hunks.map((hunk, index) => {
           const gapStart = index > 0 ? hunkBounds(hunks[index - 1]).newAfter : 0
@@ -299,7 +319,7 @@ function Hunks({
               {index > 0 && (
                 <>
                   {shown.map((line) => (
-                    <LineRow key={`g${index}-${line.new_no}`} line={line} />
+                    <LineRow key={`g${index}-${line.new_no}`} line={line} selection={selection} />
                   ))}
                   {widenable &&
                     remaining > 0 &&
@@ -311,26 +331,34 @@ function Hunks({
                 </>
               )}
               <tr>
-                <td colSpan={4} className="bg-accent/50 px-3 py-0.5 text-muted-foreground">
+                {selection && (
+                  <td className="w-6 bg-accent/50 text-center">
+                    <HunkCheckbox hunk={hunk} selection={selection} />
+                  </td>
+                )}
+                <td
+                  colSpan={columns - (selection ? 1 : 0)}
+                  className="bg-accent/50 px-3 py-0.5 text-muted-foreground"
+                >
                   {`@@ -${hunk.old_start},${hunk.old_lines} +${hunk.new_start},${hunk.new_lines} @@`}
                   {hunk.header && <span className="ml-2">{hunk.header}</span>}
                 </td>
               </tr>
               {hunk.lines.map((line, position) => (
-                <LineRow key={position} line={line} />
+                <LineRow key={position} line={line} selection={selection} />
               ))}
             </Fragment>
           )
         })}
         {extra.bottom.map((line) => (
-          <LineRow key={`b${line.new_no}`} line={line} />
+          <LineRow key={`b${line.new_no}`} line={line} selection={selection} />
         ))}
         {widenable &&
           !extra.bottomDone &&
           expandRow('bottom', t('changes.showMoreAfter'), expandBottom)}
         {failed && (
           <tr>
-            <td colSpan={4} className="px-3 py-1">
+            <td colSpan={columns} className="px-3 py-1">
               <p role="alert" className="text-xs text-status-failed">
                 {t('changes.fileError')}
               </p>
@@ -342,8 +370,27 @@ function Hunks({
   )
 }
 
-function LineRow({ line }: { line: DiffLine }) {
+function HunkCheckbox({ hunk, selection }: { hunk: Hunk; selection: DiffSelection }) {
+  const { t } = useTranslation()
+  const keys = hunkKeys(hunk)
+  const picked = keys.filter((key) => selection.picked.has(key)).length
+  return (
+    <input
+      type="checkbox"
+      aria-label={t('changes.pickHunk', { header: `${hunk.old_start},${hunk.new_start}` })}
+      checked={keys.length > 0 && picked === keys.length}
+      ref={(box) => {
+        if (box) box.indeterminate = picked > 0 && picked < keys.length
+      }}
+      onChange={(event) => selection.toggle(keys, event.target.checked)}
+    />
+  )
+}
+
+function LineRow({ line, selection }: { line: DiffLine; selection?: DiffSelection }) {
+  const { t } = useTranslation()
   const marker = line.kind === 'add' ? '+' : line.kind === 'del' ? '−' : ' '
+  const key = lineKey(line)
   return (
     <tr
       className={cn(
@@ -351,6 +398,20 @@ function LineRow({ line }: { line: DiffLine }) {
         line.kind === 'del' && 'bg-[var(--diff-del-bg)]',
       )}
     >
+      {selection && (
+        <td className="w-6 text-center">
+          {key && (
+            <input
+              type="checkbox"
+              aria-label={t(line.kind === 'add' ? 'changes.pickAdded' : 'changes.pickDeleted', {
+                number: line.kind === 'add' ? line.new_no : line.old_no,
+              })}
+              checked={selection.picked.has(key)}
+              onChange={(event) => selection.toggle([key], event.target.checked)}
+            />
+          )}
+        </td>
+      )}
       <td className="w-10 min-w-10 px-2 text-right text-muted-foreground/70 select-none">
         {line.old_no ?? ''}
       </td>

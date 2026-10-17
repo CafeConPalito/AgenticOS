@@ -38,6 +38,15 @@
   --subtle: #f8fafd; /* superficie hundida: inputs, cabeceras de tabla */
 
   /* Diffs (fase 11): derivados de los estados «hecho» y «fallido», así que valen en claro y oscuro. */
+  /* Lanes of the commit graph (phase 12): distinct on light and on dark. */
+  --graph-0: #3b6bdc;
+  --graph-1: #1f9d6b;
+  --graph-2: #c2410c;
+  --graph-3: #8b5cf6;
+  --graph-4: #0e8aa6;
+  --graph-5: #b45309;
+  --graph-6: #be185d;
+  --graph-7: #5b6b86;
   --diff-add-bg: color-mix(in oklch, var(--status-done) 13%, transparent);
   --diff-add-fg: var(--status-done);
   --diff-del-bg: color-mix(in oklch, var(--status-failed) 12%, transparent);
@@ -91,6 +100,14 @@
 }
 
 .dark {
+  --graph-0: #7ea2ff;
+  --graph-1: #43d392;
+  --graph-2: #ff9a62;
+  --graph-3: #b39cff;
+  --graph-4: #4cc9f0;
+  --graph-5: #f5b547;
+  --graph-6: #ff7eb6;
+  --graph-7: #9aa8c2;
   --background: #0a1a33;
   --foreground: #ffffff;
   --card: #0f2242;

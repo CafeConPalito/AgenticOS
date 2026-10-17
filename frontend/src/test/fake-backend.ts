@@ -6,6 +6,14 @@ import type {
   FileDiff,
   RepoChanges,
 } from '@/api/changes'
+import type {
+  BranchInfo,
+  CommitInfo,
+  JobState,
+  RepoOverview,
+  RepoStatus,
+  StatusFile,
+} from '@/api/git'
 import type { ProjectRepo } from '@/api/repos'
 import type { ProjectBranches, ProjectSnapshots } from '@/api/maintenance'
 import {
@@ -187,6 +195,78 @@ export function makeRepo(overrides: Partial<ProjectRepo> = {}): ProjectRepo {
     ...overrides,
   }
 }
+
+/** The state of a repository as the Git tab sees it (phase 12). */
+export function makeRepoStatus(overrides: Partial<RepoStatus> = {}): RepoStatus {
+  return {
+    repo_id: null,
+    branch: 'main',
+    head: 'abc1234',
+    detached: false,
+    upstream: 'origin/main',
+    ahead: 0,
+    behind: 0,
+    staged: [],
+    unstaged: [],
+    conflicts: [],
+    stashes: 0,
+    operation: null,
+    last_fetch: null,
+    clean: true,
+    empty: false,
+    ...overrides,
+  }
+}
+
+export function makeCommit(overrides: Partial<CommitInfo> = {}): CommitInfo {
+  seq += 1
+  const sha = overrides.sha ?? `${seq}`.padStart(40, 'a')
+  return {
+    sha,
+    short: sha.slice(0, 7),
+    parents: [],
+    author: 'Ana',
+    email: 'ana@example.com',
+    date: now(),
+    subject: 'feat: algo',
+    refs: [],
+    agent_name: null,
+    task_code: null,
+    run_id: null,
+    ...overrides,
+  }
+}
+
+export function makeBranch(overrides: Partial<BranchInfo> = {}): BranchInfo {
+  seq += 1
+  return {
+    name: 'main',
+    sha: `${seq}`.padStart(40, 'b'),
+    short: `${seq}`.padStart(7, 'b'),
+    current: false,
+    remote: false,
+    upstream: null,
+    ahead: 0,
+    behind: 0,
+    base_ahead: null,
+    base_behind: null,
+    last_commit: now(),
+    subject: '',
+    task_id: null,
+    task_code: null,
+    task_title: null,
+    task_status: null,
+    integrated: false,
+    ...overrides,
+  }
+}
+
+export const statusFile = (path: string, status = 'M'): StatusFile => ({
+  path,
+  orig_path: null,
+  status,
+  kind: status === '?' ? 'untracked' : 'changed',
+})
 
 export function makeRun(overrides: Partial<Run> = {}): Run {
   seq += 1
@@ -558,6 +638,17 @@ function fold(text: string): string {
   return text.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().trim()
 }
 
+/** One repository of the fake backend: files change side when staged or committed. */
+export interface FakeRepoGit {
+  status?: Partial<RepoStatus>
+  branches?: BranchInfo[]
+  commits?: CommitInfo[]
+  /** The changed files, by side. */
+  unstaged?: FileChange[]
+  staged?: FileChange[]
+  diffs?: Record<string, FileDiff>
+}
+
 export function createFakeBackend(
   seed: {
     agents?: Agent[]
@@ -585,6 +676,8 @@ export function createFakeBackend(
     agyQuota?: AgyQuotaState
     /** The diffs (phase 11) by `run:<id>` or `task:<id>`: the file list, each file's diff and
      * the lines `/changes/lines` serves. Anything else answers «no snapshots». */
+    /** What git says about each repository, by repository id. */
+    git?: Record<string, FakeRepoGit>
     /** Repositories by project id. */
     repos?: Record<string, ProjectRepo[]>
     changes?: Record<
@@ -1331,6 +1424,152 @@ export function createFakeBackend(
     return null
   }
 
+  const gitState: Record<string, Required<FakeRepoGit>> = {}
+  for (const [id, value] of Object.entries(seed.git ?? {}))
+    gitState[id] = structuredClone({
+      status: {},
+      branches: [],
+      commits: [],
+      unstaged: [],
+      staged: [],
+      diffs: {},
+      ...value,
+    })
+
+  function statusOf(repoId: string): RepoStatus {
+    const repo = gitState[repoId]
+    const asFiles = (files: FileChange[]) =>
+      files.map((f) => statusFile(f.path, f.status === 'added' ? 'A' : 'M'))
+    const unstaged = repo.unstaged.map((f) => statusFile(f.path, f.status === 'added' ? '?' : 'M'))
+    return makeRepoStatus({
+      repo_id: repoId,
+      ...repo.status,
+      staged: asFiles(repo.staged),
+      unstaged,
+      clean: repo.staged.length + repo.unstaged.length === 0,
+    })
+  }
+
+  function startJob(repoId: string, kind: string): JobState {
+    return {
+      id: `job-${calls.length}`,
+      repo_id: repoId,
+      kind,
+      status: 'running',
+      phase: '',
+      percent: null,
+      message: '',
+      error_code: null,
+      started_at: now(),
+      ended_at: null,
+    }
+  }
+
+  function handleGit(
+    method: string,
+    path: string,
+    params: URLSearchParams,
+    body: Record<string, unknown>,
+  ) {
+    const overview = path.match(/^\/api\/projects\/([^/]+)\/git\/overview$/)
+    if (overview && method === 'GET') {
+      const list: RepoOverview[] = (repos[overview[1]] ?? []).map((repo) => ({
+        repo_id: repo.id,
+        name: repo.name,
+        path: repo.path,
+        rel_path: repo.rel_path,
+        linked: repo.linked,
+        missing: repo.missing,
+        base_branch: repo.base_branch,
+        status: gitState[repo.id] ? statusOf(repo.id) : null,
+        error: null,
+      }))
+      return json(200, list)
+    }
+    const batch = path.match(/^\/api\/projects\/([^/]+)\/git\/batch$/)
+    if (batch && method === 'POST') {
+      const ids = (body.repo_ids as string[]) ?? []
+      return json(
+        200,
+        ids.map((id) => ({
+          repo_id: id,
+          ok: true,
+          job: ['fetch', 'pull', 'push'].includes(String(body.action))
+            ? startJob(id, String(body.action))
+            : null,
+          sha: null,
+          error_code: null,
+          error: null,
+        })),
+      )
+    }
+    const jobs = path.match(/^\/api\/git\/jobs\/([^/]+)$/)
+    if (jobs && method === 'DELETE') return json(204, null)
+    const m = path.match(/^\/api\/repos\/([^/]+)\/(.+)$/)
+    if (!m || !gitState[m[1]]) return null
+    const [, id, rest] = m
+    const repo = gitState[id]
+    if (method === 'GET') {
+      if (rest === 'status') return json(200, statusOf(id))
+      if (rest === 'branches') return json(200, repo.branches)
+      if (rest === 'remotes') return json(200, [])
+      if (rest === 'log') return json(200, { commits: repo.commits, more: false })
+      const commit = rest.match(/^commits\/(.+)$/)
+      if (commit) {
+        const found = repo.commits.find((c) => c.sha.startsWith(commit[1]))
+        return found ? json(200, { ...found, body: '' }) : apiError(404, 'commit_not_found')
+      }
+      if (rest === 'diff' || rest === 'diff/file') {
+        const kind = params.get('kind')
+        if (rest === 'diff/file') {
+          const diff = repo.diffs[params.get('path') ?? '']
+          return diff ? json(200, diff) : apiError(404, 'file_not_found')
+        }
+        const staged = params.get('staged') === 'true'
+        const files = kind === 'worktree' ? (staged ? repo.staged : repo.unstaged) : repo.unstaged
+        return json(
+          200,
+          makeChanges({
+            files,
+            from_ref: { kind: 'head', name: '' },
+            to_ref: { kind: 'worktree', name: '' },
+          }),
+        )
+      }
+    }
+    if (method === 'POST') {
+      const paths = (body.paths as string[]) ?? []
+      if (rest === 'stage') {
+        const moved = repo.unstaged.filter((f) => paths.includes(f.path))
+        repo.unstaged = repo.unstaged.filter((f) => !paths.includes(f.path))
+        repo.staged.push(...moved)
+        return json(204, null)
+      }
+      if (rest === 'unstage') {
+        const moved = repo.staged.filter((f) => paths.includes(f.path))
+        repo.staged = repo.staged.filter((f) => !paths.includes(f.path))
+        repo.unstaged.push(...moved)
+        return json(204, null)
+      }
+      if (rest === 'discard') {
+        repo.unstaged = repo.unstaged.filter((f) => !paths.includes(f.path))
+        return json(204, null)
+      }
+      if (rest === 'commit') {
+        const created = makeCommit({ subject: String(body.message).split('\n')[0] })
+        repo.commits.unshift(created)
+        repo.staged = []
+        return json(200, { ...created, body: '' })
+      }
+      if (rest === 'fetch' || rest === 'pull' || rest === 'push')
+        return json(202, startJob(id, rest))
+      if (['apply', 'switch', 'branches', 'branches/rename', 'branches/upstream'].includes(rest))
+        return json(204, null)
+      if (rest === 'branches/delete') return json(200, { failed: {} })
+    }
+    return null
+  }
+
   function handleChanges(method: string, path: string, params: URLSearchParams) {
     const match = path.match(/^\/api\/(runs|tasks)\/([^/]+)\/changes(?:\/(file|lines))?$/)
     if (match && method === 'GET') {
@@ -1381,6 +1620,7 @@ export function createFakeBackend(
     })
     return (
       handleRepos(method, url.pathname, body) ??
+      handleGit(method, url.pathname, url.searchParams, body) ??
       handleChanges(method, url.pathname, url.searchParams) ??
       handleAccounts(method, url.pathname, body) ??
       handleRuns(method, url.pathname, url.searchParams, body) ??
