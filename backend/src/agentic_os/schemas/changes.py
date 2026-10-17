@@ -9,7 +9,20 @@ ChangesState = Literal["ok", "no_git", "no_snapshots", "snapshot_missing"]
 FileStatus = Literal["added", "modified", "deleted", "renamed"]
 # What one end of the comparison is. The UI writes the sentence («rama base `main`», «inicio de
 # la ejecución»…): `base` and `branch` carry a branch name.
-RefKind = Literal["base", "branch", "run_start", "run_end", "task_start", "now"]
+RefKind = Literal[
+    "base",
+    "branch",
+    "run_start",
+    "run_end",
+    "task_start",
+    "now",
+    # The Git tab (phase 12): a commit, any ref, HEAD, the index, the work tree.
+    "commit",
+    "ref",
+    "head",
+    "index",
+    "worktree",
+]
 
 
 class RefLabel(BaseModel):

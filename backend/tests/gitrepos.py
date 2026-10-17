@@ -34,6 +34,7 @@ def make_repo(folder: Path, branch: str = "main", files: dict[str, str] | None =
     sh(folder, "config", "user.name", "Test")
     sh(folder, "config", "user.email", "test@example.com")
     sh(folder, "config", "commit.gpgsign", "false")
+    sh(folder, "config", "core.autocrlf", "false")  # the same on every machine
     write(folder, "README.md", "hola\n")
     for name, text in (files or {}).items():
         write(folder, name, text)

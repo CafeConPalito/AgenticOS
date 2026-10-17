@@ -51,6 +51,7 @@ from agentic_os.schemas.changes import (
     RepoChanges,
 )
 from agentic_os.services import git, repos, runrepos, snapshots
+from agentic_os.services.gitx.runner import Repo
 
 log = structlog.get_logger()
 
@@ -94,10 +95,22 @@ class Range:
     runs: list[ChangesRunRef] = field(default_factory=list)
     key: str = ""  # which repository (its id), to pick one range out of several
     name: str = ""
+    # "commits": old → new. "staged": HEAD → index. "unstaged": index → work tree (the Git tab).
+    mode: str = "commits"
 
     @property
     def usable(self) -> bool:
-        return self.state == "ok" and bool(self.old and self.new)
+        if self.state != "ok":
+            return False
+        return self.mode != "commits" or bool(self.old and self.new)
+
+    def ends(self) -> list[str]:
+        """The arguments after `git diff <flags>` that pick the two sides."""
+        if self.mode == "staged":
+            return ["--cached"]
+        if self.mode == "unstaged":
+            return []
+        return [self.old or "", self.new or ""]
 
 
 # ---------------------------------------------------------------------- ranges
@@ -378,6 +391,40 @@ def _run_refs(db: Session, runs: list[Run]) -> list[ChangesRunRef]:
     return refs
 
 
+# ---------------------------------------------------------------------- ranges of the Git tab
+def commit_range(repo: str, sha: str, parent: str) -> Range:
+    """What one commit changed, against its first parent (the empty tree for a root commit)."""
+    return Range(
+        "ok",
+        repo,
+        parent,
+        sha,
+        RefLabel(kind="commit", name=parent[:7]),
+        RefLabel(kind="commit", name=sha[:7]),
+    )
+
+
+def compare_range(repo: str, old: str, new: str, merge_base: bool = False) -> Range:
+    """Two refs. With `merge_base`, what `new` changed since it left `old` (like a pull request)."""
+    start = git.merge_base(repo, old, new) if merge_base else old
+    if not start:
+        return Range("no_snapshots")
+    return Range(
+        "ok", repo, start, new, RefLabel(kind="ref", name=old), RefLabel(kind="ref", name=new)
+    )
+
+
+def worktree_range(repo: str, staged: bool) -> Range:
+    """The uncommitted changes: what is staged (HEAD → index) or not (index → work tree)."""
+    return Range(
+        "ok",
+        repo,
+        from_ref=RefLabel(kind="head" if staged else "index"),
+        to_ref=RefLabel(kind="index" if staged else "worktree"),
+        mode="staged" if staged else "unstaged",
+    )
+
+
 def _branch_tip(repo: str, branch: str) -> str | None:
     try:
         return git.run(repo, "rev-parse", "--verify", "-q", f"refs/heads/{branch}").strip()
@@ -463,9 +510,10 @@ def _size(repo: str, commit: str, path: str) -> int | None:
 
 def file_list(rng: Range) -> list[FileChange]:
     old, new, repo = rng.old or "", rng.new or "", rng.repo
-    numstat = git.run(repo, "diff", "--numstat", "-z", *DIFF_FLAGS, old, new, timeout=TIMEOUT)
+    ends = rng.ends()
+    numstat = git.run(repo, "diff", "--numstat", "-z", *DIFF_FLAGS, *ends, timeout=TIMEOUT)
     status = _statuses(
-        git.run(repo, "diff", "--name-status", "-z", *DIFF_FLAGS, old, new, timeout=TIMEOUT)
+        git.run(repo, "diff", "--name-status", "-z", *DIFF_FLAGS, *ends, timeout=TIMEOUT)
     )
     files = []
     for added, deleted, path, old_path in numstat_entries(numstat):
@@ -480,8 +528,10 @@ def file_list(rng: Range) -> list[FileChange]:
             generated=is_generated(path),
         )
         files.append(change)
+    if rng.mode == "unstaged":  # `git diff` leaves out files git does not track yet
+        files += _untracked(repo)
     # One git call per size, so only for the files that are listed (the rest are only counted).
-    for change in files[:MAX_FILES]:
+    for change in files[:MAX_FILES] if rng.mode == "commits" else []:
         if change.binary:
             if change.status != "added":
                 change.old_size = _size(repo, old, change.old_path or change.path)
@@ -618,6 +668,58 @@ def _clean(path: str) -> str:
     return path
 
 
+def _is_untracked(repo: str, path: str) -> bool:
+    out = git.run(
+        repo,
+        "ls-files",
+        "-o",
+        "--exclude-standard",
+        "-z",
+        "--",
+        path,
+        timeout=TIMEOUT,
+    )
+    return path in out.split("\0")
+
+
+UNTRACKED_READ = 2 * 1024 * 1024  # bigger new files are listed without counting their lines
+
+
+def _untracked(repo: str) -> list[FileChange]:
+    """New files git does not track yet, as added files (their lines counted from the disk)."""
+    listing = git.run(repo, "ls-files", "-o", "--exclude-standard", "-z", timeout=TIMEOUT)
+    found = []
+    for relative in filter(None, listing.split("\0")):
+        target = Path(repo) / relative
+        try:
+            size = target.stat().st_size
+            head = target.read_bytes()[:UNTRACKED_READ] if size <= UNTRACKED_READ else b"\0"
+        except OSError:
+            continue
+        binary = b"\0" in head[:8000]
+        lines = 0 if binary else head.count(b"\n") + (1 if head and not head.endswith(b"\n") else 0)
+        found.append(
+            FileChange(
+                path=relative,
+                status="added",
+                additions=lines,
+                binary=binary,
+                new_size=size if binary else None,
+                generated=is_generated(relative),
+            )
+        )
+    return found
+
+
+def _final_content(rng: Range, path: str) -> str:
+    """The newer side of a file: a commit's, the index's or the work tree's."""
+    if rng.mode == "unstaged":
+        return (Path(rng.repo) / path).read_text("utf-8", errors="replace")
+    if rng.mode == "staged":
+        return _literal(rng, "show", f":{path}")
+    return _literal(rng, "show", f"{rng.new}:{path}")
+
+
 def _literal(rng: Range, *args: str) -> str:
     """git with literal pathspecs: a path from the client is never a glob or a magic pathspec."""
     return git.run(rng.repo, *args, timeout=TIMEOUT, env={"GIT_LITERAL_PATHSPECS": "1"})
@@ -631,7 +733,12 @@ def file_diff(rng: Range, path: str, old_path: str | None = None) -> FileDiff:
     paths = [_clean(path)]
     if old_path and old_path != path:
         paths.insert(0, _clean(old_path))
-    output = _literal(rng, "diff", "-U3", *DIFF_FLAGS, rng.old or "", rng.new or "", "--", *paths)
+    output = _literal(rng, "diff", "-U3", *DIFF_FLAGS, *rng.ends(), "--", *paths)
+    if not output.strip() and rng.mode == "unstaged" and _is_untracked(rng.repo, paths[-1]):
+        # A new file git does not track yet: shown as all added.
+        output = Repo(rng.repo).run(
+            "diff", "--no-index", "-U3", "--", "/dev/null", paths[-1], ok=(0, 1), timeout=TIMEOUT
+        )
     if not output.strip():
         raise NotFound("file")
     return parse_diff(path, output)
@@ -708,14 +815,12 @@ def file_lines(rng: Range, path: str, start: int, end: int) -> FileLines:
     path = _clean(path)
     start = max(1, start)
     end = min(end, start + MAX_CONTEXT_LINES - 1)
-    changed = _literal(
-        rng, "diff", "--name-only", *DIFF_FLAGS, rng.old or "", rng.new or "", "--", path
-    )
-    if not changed.strip():  # only files that changed in the range can be read
-        raise NotFound("file")
+    changed = _literal(rng, "diff", "--name-only", *DIFF_FLAGS, *rng.ends(), "--", path)
+    if not changed.strip() and not (rng.mode == "unstaged" and _is_untracked(rng.repo, path)):
+        raise NotFound("file")  # only files that changed in the range can be read
     try:
-        content = _literal(rng, "show", f"{rng.new}:{path}")
-    except git.GitError:  # deleted in the range, or never there
+        content = _final_content(rng, path)
+    except (git.GitError, OSError):  # deleted in the range, or never there
         return FileLines(lines=[])
     window = _split_lines(content)[start - 1 : end]
     return FileLines(
