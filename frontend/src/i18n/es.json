@@ -1588,6 +1588,12 @@
       "failed_one": "Ha fallado en {{count}} repositorio",
       "failed_other": "Ha fallado en {{count}} repositorios",
       "error": "No se pudo aplicar la acción."
+    },
+    "blame": {
+      "open": "Quién cambió cada línea",
+      "title": "Quién cambió {{path}}",
+      "description": "Cada grupo de líneas, con el último commit que lo tocó.",
+      "error": "No se pudo leer el blame de este fichero."
     }
   }
 }

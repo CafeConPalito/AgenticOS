@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
+import { BlameSheet } from './BlameSheet'
 import { gitErrorText } from './git-errors'
 
 interface Picked {
@@ -55,6 +56,7 @@ export function ChangesSection({ repoId }: { repoId: string }) {
   const [picked, setPicked] = useState<Picked | null>(null)
   const [lines, setLines] = useState<ReadonlySet<string>>(new Set())
   const [confirm, setConfirm] = useState<{ paths: string[]; lines?: LineRef[] } | null>(null)
+  const [blaming, setBlaming] = useState<string | null>(null)
 
   const unstagedFiles = useMemo(() => unstaged.data?.repos[0]?.files ?? [], [unstaged.data])
   const stagedFiles = useMemo(() => staged.data?.repos[0]?.files ?? [], [staged.data])
@@ -257,6 +259,18 @@ export function ChangesSection({ repoId }: { repoId: string }) {
                 )}
               </div>
             )}
+            {current.status !== 'added' && !current.binary && (
+              <div className="flex justify-end">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setBlaming(current.path)}
+                >
+                  {t('git.blame.open')}
+                </Button>
+              </div>
+            )}
             {!selectable && !current.binary && (
               <p className="text-xs text-muted-foreground">{t('git.changes.wholeFileOnly')}</p>
             )}
@@ -272,6 +286,7 @@ export function ChangesSection({ repoId }: { repoId: string }) {
         )}
       </div>
 
+      <BlameSheet repoId={repoId} path={blaming} onClose={() => setBlaming(null)} />
       <ConfirmDialog
         open={confirm !== null}
         onOpenChange={(open) => !open && setConfirm(null)}

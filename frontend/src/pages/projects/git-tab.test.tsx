@@ -180,6 +180,41 @@ describe('Git tab', () => {
     )
   })
 
+  it('shows who changed each line of the file picked', async () => {
+    const { project } = setup({
+      git: {
+        r1: {
+          unstaged: [API],
+          diffs: { 'api.py': DIFF },
+          blame: [
+            {
+              start: 1,
+              lines: 2,
+              sha: 'e'.repeat(40),
+              short: 'eeeeeee',
+              author: 'Ana',
+              date: new Date().toISOString(),
+              summary: 'feat: login',
+              text: ['uno', 'dos'],
+              agent_name: 'Dev',
+              task_code: 'T-3',
+            },
+          ],
+        },
+      },
+    })
+    const user = userEvent.setup()
+    open(project.id)
+
+    await user.click(await screen.findByTitle('api.py'))
+    await user.click(await screen.findByRole('button', { name: es.git.blame.open }))
+
+    const group = await screen.findByRole('region', { name: 'eeeeeee 1' })
+    expect(within(group).getByText('feat: login')).toBeVisible()
+    expect(within(group).getByText('Dev')).toBeVisible() // the agent that made the commit
+    expect(within(group).getByText('uno')).toBeVisible()
+  })
+
   it('commits what is staged with a summary and a description', async () => {
     const { project, backend } = setup()
     const user = userEvent.setup()

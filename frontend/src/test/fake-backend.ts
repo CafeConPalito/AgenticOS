@@ -7,6 +7,7 @@ import type {
   RepoChanges,
 } from '@/api/changes'
 import type {
+  BlameGroup,
   BranchInfo,
   CommitInfo,
   JobState,
@@ -643,6 +644,7 @@ export interface FakeRepoGit {
   status?: Partial<RepoStatus>
   branches?: BranchInfo[]
   commits?: CommitInfo[]
+  blame?: BlameGroup[]
   /** The changed files, by side. */
   unstaged?: FileChange[]
   staged?: FileChange[]
@@ -1430,6 +1432,7 @@ export function createFakeBackend(
       status: {},
       branches: [],
       commits: [],
+      blame: [],
       unstaged: [],
       staged: [],
       diffs: {},
@@ -1513,6 +1516,7 @@ export function createFakeBackend(
       if (rest === 'status') return json(200, statusOf(id))
       if (rest === 'branches') return json(200, repo.branches)
       if (rest === 'remotes') return json(200, [])
+      if (rest === 'blame') return json(200, repo.blame)
       if (rest === 'log') return json(200, { commits: repo.commits, more: false })
       const commit = rest.match(/^commits\/(.+)$/)
       if (commit) {
