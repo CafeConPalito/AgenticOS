@@ -50,7 +50,7 @@ def _common_dir(path: str) -> str:
     """The repository's shared git dir, the same for it and all its worktrees."""
     try:
         out = proc.run(
-            [executable(), "-C", path, "rev-parse", "--git-common-dir"], 10, env=_env(False)
+            [executable(), "-C", path, "rev-parse", "--git-common-dir"], 10, env=environment(False)
         )
     except (OSError, subprocess.TimeoutExpired):
         return path
@@ -61,7 +61,9 @@ def _common_dir(path: str) -> str:
     return os.path.normcase(str(folder.resolve()))
 
 
-def _env(interactive: bool, extra: Mapping[str, str] | None = None) -> dict[str, str]:
+def environment(interactive: bool, extra: Mapping[str, str] | None = None) -> dict[str, str]:
+    """The environment git runs in. `interactive`: the person asked for this, so a credential
+    manager may open its own window; otherwise a missing credential is an error."""
     env = {**os.environ, **BASE_ENV, "GCM_INTERACTIVE": "auto" if interactive else "never"}
     if extra:
         env.update(extra)
@@ -114,7 +116,7 @@ class Repo:
             result = proc.run(
                 self.command(*args, config=config),
                 timeout,
-                env=_env(interactive, extra),
+                env=environment(interactive, extra),
                 input=input,
             )
         except subprocess.TimeoutExpired as error:
@@ -142,7 +144,7 @@ class Repo:
                 capture_output=True,
                 input=input,
                 timeout=timeout,
-                env=_env(False, extra),
+                env=environment(False, extra),
                 stdin=None if input is not None else subprocess.DEVNULL,
                 creationflags=proc.NO_WINDOW,
             )

@@ -122,3 +122,97 @@ class JobState(BaseModel):
     error_code: str | None = None
     started_at: datetime
     ended_at: datetime | None = None
+
+
+class RemoteInfo(BaseModel):
+    name: str
+    fetch_url: str
+    push_url: str
+
+
+# ----------------------------------------------------------------------------- requests
+class PathsBody(BaseModel):
+    paths: list[str] = Field(min_length=1, max_length=5000)
+
+
+class DiscardBody(PathsBody):
+    # The person saw what is lost; without it nothing is thrown away.
+    confirm: bool = False
+
+
+class LineBody(BaseModel):
+    kind: Literal["add", "del"]
+    no: int = Field(ge=1)
+
+
+class ApplyBody(BaseModel):
+    action: Literal["stage", "unstage", "discard"]
+    path: str = Field(min_length=1, max_length=1000)
+    hunks: list[tuple[int, int]] = Field(default_factory=list, max_length=2000)  # (old, new) start
+    lines: list[LineBody] = Field(default_factory=list, max_length=20000)
+    confirm: bool = False
+
+
+class CommitBody(BaseModel):
+    message: str = Field(default="", max_length=100_000)
+    amend: bool = False
+    no_verify: bool = False
+
+
+class BranchCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+    start: str | None = Field(default=None, max_length=200)
+    switch: bool = False
+
+
+class SwitchBody(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+
+
+class RenameBody(BaseModel):
+    old: str = Field(min_length=1, max_length=200)
+    new: str = Field(min_length=1, max_length=200)
+
+
+class DeleteBranches(BaseModel):
+    names: list[str] = Field(min_length=1, max_length=500)
+    force: bool = False
+    confirm: bool = False  # `force` loses commits no other branch has
+
+
+class UpstreamBody(BaseModel):
+    branch: str = Field(min_length=1, max_length=200)
+    upstream: str | None = Field(default=None, max_length=200)
+
+
+class FetchBody(BaseModel):
+    remote: str | None = None
+    prune: bool = True
+
+
+class PullBody(BaseModel):
+    mode: Literal["ff_only", "merge", "rebase"] | None = None  # the repository's own by default
+    remote: str | None = None
+    branch: str | None = None
+
+
+class PushBody(BaseModel):
+    remote: str | None = None
+    branch: str | None = None
+    set_upstream: bool = False
+
+
+class BatchBody(BaseModel):
+    action: Literal["fetch", "pull", "push", "switch", "create_branch", "commit"]
+    repo_ids: list[str] = Field(min_length=1, max_length=200)
+    name: str | None = Field(default=None, max_length=200)  # switch, create_branch
+    message: str | None = Field(default=None, max_length=100_000)  # commit
+
+
+class BatchItem(BaseModel):
+    repo_id: str
+    ok: bool
+    job: JobState | None = None  # fetch, pull and push start a job
+    sha: str | None = None  # commit
+    error_code: str | None = None
+    error: str | None = None
