@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, CloudDownload, GitMerge } from 'lucide-react'
+import { ArrowDown, ArrowUp, CloudDownload } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import {
@@ -20,6 +20,8 @@ import { ChangesSection } from './ChangesSection'
 import { gitErrorText } from './git-errors'
 import { HistorySection } from './HistorySection'
 import { JobsPanel } from './JobsPanel'
+import { OperationBar } from './OperationBar'
+import { UndoButton } from './UndoButton'
 
 export const SECTIONS = ['changes', 'history', 'branches'] as const
 export type Section = (typeof SECTIONS)[number]
@@ -110,6 +112,7 @@ export function RepoView({
           </>
         )}
         <span className="ml-auto flex gap-2">
+          <UndoButton repoId={repo.repo_id} />
           <Button
             type="button"
             size="sm"
@@ -143,15 +146,7 @@ export function RepoView({
         </span>
       </header>
 
-      {info?.operation && (
-        <p
-          role="status"
-          className="mx-6 mt-3 flex items-center gap-2 rounded-md border border-status-waiting/40 bg-status-waiting/10 px-3 py-2 text-[13px]"
-        >
-          <GitMerge className="size-4" aria-hidden />
-          {t(`git.operation.${info.operation}`)}
-        </p>
-      )}
+      {info?.operation && <OperationBar repoId={repo.repo_id} status={info} />}
       <div className="px-6 pt-3 empty:hidden">
         <JobsPanel repoIds={[repo.repo_id]} />
       </div>

@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatDateTime, relativeTime } from '@/lib/time'
+import { CommitActions } from './CommitActions'
 import { cn } from '@/lib/utils'
 
 /** The history of a repository: its commits with the branch graph, filters, and the changes of
@@ -199,6 +200,7 @@ function CommitPanel({ repoId, sha }: { repoId: string; sha: string | null }) {
           )}
         </p>
       </header>
+      <CommitActions repoId={repoId} commit={data} />
       <ChangesViewer
         key={data.sha}
         target={{ kind: 'repo', id: repoId, diff: { kind: 'commit', sha: data.sha } }}

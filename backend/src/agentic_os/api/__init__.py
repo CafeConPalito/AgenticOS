@@ -6,6 +6,7 @@ from agentic_os.api import (
     changes,
     clis,
     git,
+    git_more,
     health,
     home,
     inbox,
@@ -29,6 +30,7 @@ api_router.include_router(accounts.router)
 api_router.include_router(projects.router)
 api_router.include_router(repos.router)
 api_router.include_router(git.router)
+api_router.include_router(git_more.router)
 api_router.include_router(memory.router)
 api_router.include_router(pipelines.router)
 api_router.include_router(clis.router)

@@ -19,6 +19,7 @@ import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { relativeTime } from '@/lib/time'
 import { gitErrorText } from './git-errors'
+import { MergeActions } from './MergeActions'
 
 type Filter = 'all' | 'tasks' | 'open'
 
@@ -35,6 +36,7 @@ export function BranchesSection({ repoId, base }: { repoId: string; base: string
   const [name, setName] = useState('')
   const [renaming, setRenaming] = useState<{ old: string; value: string } | null>(null)
   const [deleting, setDeleting] = useState<BranchInfo | null>(null)
+  const current = branches.data?.find((b) => b.current)?.name ?? null
 
   const shown = useMemo(() => {
     const all = branches.data ?? []
@@ -183,6 +185,9 @@ export function BranchesSection({ repoId, base }: { repoId: string; base: string
                 </form>
               ) : (
                 <span className="flex gap-1">
+                  {!branch.current && current && (
+                    <MergeActions repoId={repoId} branch={branch.name} current={current} />
+                  )}
                   {!branch.current && (
                     <Button
                       type="button"

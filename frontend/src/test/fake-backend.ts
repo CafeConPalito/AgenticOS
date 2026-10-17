@@ -15,6 +15,7 @@ import type {
   RepoStatus,
   StatusFile,
 } from '@/api/git'
+import type { ConflictFile, OpResult, OperationRead } from '@/api/git-integration'
 import type { ProjectRepo } from '@/api/repos'
 import type { ProjectBranches, ProjectSnapshots } from '@/api/maintenance'
 import {
@@ -645,6 +646,13 @@ export interface FakeRepoGit {
   branches?: BranchInfo[]
   commits?: CommitInfo[]
   blame?: BlameGroup[]
+  /** Files with conflicts that are not resolved yet, by path. */
+  conflicts?: Record<string, ConflictFile>
+  operations?: OperationRead[]
+  /** The commits of an interactive rebase plan, oldest first. */
+  plan?: CommitInfo[]
+  /** What merge, rebase, cherry-pick… answer (done by default). */
+  opResult?: OpResult
   /** The changed files, by side. */
   unstaged?: FileChange[]
   staged?: FileChange[]
@@ -1433,6 +1441,10 @@ export function createFakeBackend(
       branches: [],
       commits: [],
       blame: [],
+      conflicts: {},
+      operations: [],
+      plan: [],
+      opResult: { status: 'done', conflicts: [], message: '' },
       unstaged: [],
       staged: [],
       diffs: {},
@@ -1449,7 +1461,13 @@ export function createFakeBackend(
       ...repo.status,
       staged: asFiles(repo.staged),
       unstaged,
-      clean: repo.staged.length + repo.unstaged.length === 0,
+      conflicts: Object.keys(repo.conflicts).map((path) => ({
+        path,
+        orig_path: null,
+        status: 'U',
+        kind: 'unmerged' as const,
+      })),
+      clean: repo.staged.length + repo.unstaged.length + Object.keys(repo.conflicts).length === 0,
     })
   }
 
@@ -1517,6 +1535,12 @@ export function createFakeBackend(
       if (rest === 'branches') return json(200, repo.branches)
       if (rest === 'remotes') return json(200, [])
       if (rest === 'blame') return json(200, repo.blame)
+      if (rest === 'operations') return json(200, repo.operations)
+      if (rest === 'rebase/plan') return json(200, repo.plan)
+      if (rest === 'conflicts/file') {
+        const file = repo.conflicts[params.get('path') ?? '']
+        return file ? json(200, file) : apiError(404, 'not_conflicted')
+      }
       if (rest === 'log') return json(200, { commits: repo.commits, more: false })
       const commit = rest.match(/^commits\/(.+)$/)
       if (commit) {
@@ -1564,6 +1588,26 @@ export function createFakeBackend(
         repo.commits.unshift(created)
         repo.staged = []
         return json(200, { ...created, body: '' })
+      }
+      if (
+        ['merge', 'rebase', 'cherry-pick', 'revert', 'reset', 'rebase/interactive'].includes(rest)
+      )
+        return json(200, repo.opResult)
+      const proceed = rest.match(/^operation\/(continue|skip|abort)$/)
+      if (proceed) {
+        if (proceed[1] !== 'skip') repo.status.operation = null
+        if (proceed[1] === 'abort') repo.conflicts = {}
+        return json(200, { status: 'done', conflicts: [], message: '' })
+      }
+      if (rest === 'conflicts/resolve' || rest === 'conflicts/take') {
+        delete repo.conflicts[String(body.path)]
+        return json(204, null)
+      }
+      const undo = rest.match(/^operations\/([^/]+)\/undo$/)
+      if (undo) {
+        const found = repo.operations.find((o) => o.id === undo[1])
+        if (found) found.undone = true
+        return json(204, null)
       }
       if (rest === 'fetch' || rest === 'pull' || rest === 'push')
         return json(202, startJob(id, rest))

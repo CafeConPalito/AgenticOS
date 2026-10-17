@@ -253,7 +253,7 @@ export function useBlame(repoId: string, path: string | null, rev?: string) {
 
 // ----------------------------------------------------------------------------- writes
 /** A mutation on a repository: when it ends, what was read about it is read again. */
-function useRepoMutation<TBody, TResult = void>(
+export function useRepoMutation<TBody, TResult = void>(
   repoId: string,
   run: (body: TBody) => Promise<TResult>,
 ) {

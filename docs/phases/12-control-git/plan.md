@@ -441,15 +441,26 @@ La fase se desarrolla en **7 bloques**. Cada bloque termina con sus tests en ver
 
 **Bloque 2: lo básico de un repo**
 
-10. [ ] `gitx/runner`, `errors`, `jobs` y `WS /api/git/events`; `gitx/read` (estado, vista general, ramas, historial paginado, blame, historial de un fichero, diffs entre referencias y sin commitear).
-11. [ ] Escritura básica: preparar y descartar por fichero, bloque y línea; commit y enmienda; crear, cambiar, renombrar y borrar ramas; fetch, pull y push (sin forzar) como trabajos; lotes de la vista general.
-12. [ ] Frontend: pestaña Git, vista general, `RepoView`, Cambios (con selección por bloque y por línea), Historial con `CommitGraph`, Ramas, blame y `JobToast`.
+10. [x] `gitx/runner`, `errors`, `jobs` y `WS /api/git/events`; `gitx/read` (estado, vista general, ramas, historial paginado, blame, historial de un fichero, diffs entre referencias y sin commitear).
+11. [x] Escritura básica: preparar y descartar por fichero, bloque y línea; commit y enmienda; crear, cambiar, renombrar y borrar ramas; fetch, pull y push (sin forzar) como trabajos; lotes de la vista general.
+12. [x] Frontend: pestaña Git, vista general, `RepoView`, Cambios (con selección por bloque y por línea), Historial con `CommitGraph`, Ramas, blame y `JobToast`.
 
 **Bloque 3: merge, rebase, conflictos y deshacer**
 
-13. [ ] `gitx/backup` (`GitOperation`, referencias de respaldo, instantánea de la carpeta, «Deshacer») y confirmaciones `428`.
-14. [ ] Merge, rebase, rebase interactivo, cherry-pick, revert y reset; continuar, saltar y abortar; lectura y resolución de conflictos.
-15. [ ] Frontend: `MergeDialog`, `RebaseDialog`, `InteractiveRebase`, `ConflictEditor` (CodeMirror) y «Deshacer» (CA6, CA7).
+13. [x] `gitx/backup` (`GitOperation`, referencias de respaldo, instantánea de la carpeta, «Deshacer») y confirmaciones `428`.
+14. [x] Merge, rebase, rebase interactivo, cherry-pick, revert y reset; continuar, saltar y abortar; lectura y resolución de conflictos.
+15. [x] Frontend: `MergeDialog`, `RebaseDialog`, `InteractiveRebase`, `ConflictEditor` (CodeMirror) y «Deshacer» (CA6, CA7).
+
+**Notas de los bloques 2 y 3 (cambios respecto a lo planeado)**
+- Paquete `services/gitx/` (`errors`, `runner`, `read`, `write`, `jobs`, `remote`, `events`, `tasks`, `backup`, `oplog`, `merge`). Todo git de la pestaña corre con `GIT_TERMINAL_PROMPT=0`, `LC_ALL=C` y un candado de escritura por repositorio compartido con sus worktrees.
+- `changes.py` gana modos de rango (`worktree` preparado / sin preparar, `commit`, `compare`) y el visor se reutiliza; los ficheros sin seguimiento salen como añadidos (con `git diff --no-index`).
+- Preparar y descartar por línea: el parche se construye en bytes a partir del diff **de ahora** (`git diff -U3`), no del que vio la UI; si una línea elegida ya no está, `409 stale_diff` y no se aplica nada. No se admiten líneas sueltas en ficheros nuevos, borrados, renombrados, binarios ni junto a «sin salto de línea final» (se puede elegir el bloque entero).
+- La paginación del historial usa `--skip` (spike S4); el grafo se calcula **en el cliente** (`graph.ts`) a partir de los padres, de forma incremental por páginas.
+- Jobs de red (`fetch`, `pull`, `push`): progreso leyendo stderr (`\r`), cancelación matando el árbol de procesos, eventos por `WS /api/git/events`. `pull` y los trabajos `exclusive` toman el candado del repo. La pestaña solo escucha el WebSocket mientras está abierta (no hay conexión global).
+- `GitOperation` (migración `0012`): ramas antes y después, `HEAD`, y una instantánea del árbol de trabajo si la operación puede perder ficheros (`reset --hard`, descartar). Solo se deshace **la última** operación y solo si ninguna de sus ramas se ha movido desde entonces (`moved_since`). Una operación que se detiene en conflictos queda «abierta» hasta continuar (se cierra) o abortar (se borra).
+- **Editor de conflictos con `<textarea>`, no CodeMirror**: bloque a bloque (nuestra / suya / ambas), resultado editable, y botón deshabilitado mientras queden marcas. Evita una dependencia nueva y los problemas de CodeMirror en jsdom; si hiciera falta resaltado de sintaxis se añade después.
+- Rebase interactivo con **flechas** subir/bajar (accesibles y comprobables) en lugar de arrastrar con `@dnd-kit`. El script del editor es un `.sh` con ruta POSIX (spike S3); `reword` se hace con `exec git commit --amend -F`.
+- Lo de la rama (`merge`, `rebase`) y las acciones sobre un commit (cherry-pick, revert, reset, rama aquí, reescribir desde aquí) están en la pestaña Ramas y en el detalle del commit.
 
 **Bloque 4: el resto de git**
 

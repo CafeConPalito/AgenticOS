@@ -1471,7 +1471,17 @@
       "bad_diff_request": "No se sabe qué comparar.",
       "repo_required": "Hay que decir de qué repositorio.",
       "repo_not_found": "El repositorio ya no está en el proyecto.",
-      "bad_batch": "La acción necesita un nombre."
+      "bad_batch": "La acción necesita un nombre.",
+      "moved_since": "La rama ha cambiado desde entonces: deshacer pisaría ese trabajo.",
+      "not_the_last": "Solo se puede deshacer la última operación.",
+      "already_undone": "Esa operación ya está deshecha.",
+      "no_operation": "No hay ninguna operación a medias.",
+      "conflicts_unresolved": "Quedan conflictos por resolver.",
+      "not_conflicted": "Ese fichero no tiene conflicto.",
+      "rebase_has_merges": "Entre esos commits hay merges: un rebase interactivo los aplanaría.",
+      "stale_rebase": "Los commits han cambiado desde que se hizo la lista: vuelve a abrirla.",
+      "bad_rebase": "El primer commit no se puede juntar con uno anterior.",
+      "bad_action": "Esa acción no se puede hacer aquí."
     },
     "changes": {
       "conflicts": "Conflictos",
@@ -1594,6 +1604,122 @@
       "title": "Quién cambió {{path}}",
       "description": "Cada grupo de líneas, con el último commit que lo tocó.",
       "error": "No se pudo leer el blame de este fichero."
+    },
+    "operationDone": "Operación terminada",
+    "nothingToDo": "No había nada que hacer: ya estaba todo",
+    "operations": {
+      "continue": "Continuar",
+      "skip": "Saltar",
+      "abort": "Abortar",
+      "abortTitle": "¿Abortar la operación?",
+      "abortDescription": "El repositorio vuelve a como estaba antes de empezarla. Los cambios ya resueltos se pierden."
+    },
+    "conflicts": {
+      "title": "Ficheros con conflicto",
+      "resolve": "Resolver",
+      "allResolved": "Todos los conflictos están resueltos: ya puedes continuar.",
+      "editorTitle": "Resolver {{path}}",
+      "editorDescription": "Elige qué se queda en cada conflicto y revisa el resultado antes de marcarlo como resuelto.",
+      "error": "No se pudo leer el conflicto de este fichero.",
+      "resolved": "{{path}} resuelto",
+      "more": "Hay conflictos: resuélvelos para seguir",
+      "keepOurs": "Quedarme con toda la de {{name}}",
+      "keepTheirs": "Quedarme con toda la de {{name}}",
+      "binary": "Es un fichero binario: solo se puede elegir una de las dos versiones enteras.",
+      "deletedHere": "{{name}} borró este fichero y la otra rama lo cambió.",
+      "deletedThere": "{{name}} borró este fichero y la tuya lo cambió.",
+      "progress_one": "{{settled}} de {{total}} conflicto elegido",
+      "progress_other": "{{settled}} de {{total}} conflictos elegidos",
+      "block": "Conflicto {{number}}",
+      "acceptOurs": "Aceptar la nuestra",
+      "acceptTheirs": "Aceptar la suya",
+      "acceptBoth": "Aceptar ambas",
+      "ours": "Nuestra ({{name}})",
+      "theirs": "Suya ({{name}})",
+      "base": "Versión original (antes de los dos cambios)",
+      "result": "Resultado",
+      "backToChoices": "Volver a lo elegido",
+      "markersLeft": "Quedan marcas de conflicto (<<<<<<<, =======, >>>>>>>) en el resultado.",
+      "markResolved": "Marcar como resuelto"
+    },
+    "undo": {
+      "button": "Deshacer: {{label}}",
+      "title": "¿Deshacer «{{label}}»?",
+      "description": "Las ramas vuelven a donde estaban antes de la operación.",
+      "withFiles": "Las ramas vuelven a donde estaban y se recuperan los ficheros que se perdieron.",
+      "confirm": "Deshacer",
+      "done": "«{{label}}» deshecho",
+      "blocked": {
+        "already_undone": "Ya está deshecho",
+        "operation_in_progress": "Termina o aborta la operación a medias antes",
+        "moved_since": "La rama ha cambiado después: deshacer pisaría ese trabajo",
+        "not_the_last": "Solo se puede deshacer la última operación"
+      }
+    },
+    "rebase": {
+      "title": "Reescribir desde {{sha}}",
+      "description": "Reordena, junta, renombra o descarta los commits que vienen después de este.",
+      "help": "Los commits van del más antiguo (arriba) al más reciente. Cambia el orden con las flechas y elige qué hacer con cada uno.",
+      "list": "Commits a reescribir",
+      "up": "Subir",
+      "down": "Bajar",
+      "action": "Acción de",
+      "message": "Mensaje de",
+      "actions": {
+        "pick": "Mantener",
+        "reword": "Cambiar mensaje",
+        "squash": "Juntar con el anterior",
+        "fixup": "Juntar, sin su mensaje",
+        "edit": "Parar para editar",
+        "drop": "Descartar"
+      },
+      "firstFold": "El primer commit no se puede juntar con uno anterior.",
+      "dropping_one": "Se descartará {{count}} commit.",
+      "dropping_other": "Se descartarán {{count}} commits.",
+      "start": "Reescribir",
+      "nothing": "No hay commits que reescribir desde aquí.",
+      "done": "Historial reescrito"
+    },
+    "commitActions": {
+      "title": "Acciones sobre el commit",
+      "cherryPick": "Cherry-pick",
+      "revert": "Revertir",
+      "rewrite": "Reescribir desde aquí…",
+      "resetMode": "Tipo de reset",
+      "modes": {
+        "soft": "Reset suave",
+        "mixed": "Reset mixto",
+        "hard": "Reset duro"
+      },
+      "reset": "Mover la rama aquí",
+      "resetDone": "Rama movida",
+      "picked": "Commit copiado a la rama actual",
+      "reverted": "Commit revertido",
+      "branchHere": "Crear rama aquí",
+      "hardTitle": "¿Reset duro a {{sha}}?",
+      "hardDescription": "Los ficheros vuelven a como eran en ese commit y se pierde lo que no esté commiteado. Se guarda una copia para poder deshacerlo."
+    },
+    "merge": {
+      "merge": "Merge",
+      "rebase": "Rebase",
+      "done": "{{branch}} integrada en {{current}}",
+      "squashed": "Cambios preparados: revísalos y haz el commit",
+      "title": "Merge de {{branch}} en {{current}}",
+      "description": "Elige cómo se trae el trabajo de la otra rama.",
+      "modes": {
+        "no_ff": "Con commit de merge",
+        "ff": "Avanzar si se puede",
+        "squash": "Juntar en un solo commit"
+      },
+      "modesHelp": {
+        "no_ff": "Siempre crea un commit de merge, que deja constancia de la integración.",
+        "ff": "Si no hay nada nuevo en esta rama, la mueve sin crear commit.",
+        "squash": "Deja todos los cambios preparados para que los commitees tú, como uno solo."
+      },
+      "message": "Mensaje del merge",
+      "defaultMessage": "Merge de {{branch}} en {{current}}",
+      "rebaseTitle": "¿Rebase de {{current}} sobre {{branch}}?",
+      "rebaseDescription": "Los commits de la rama actual se vuelven a aplicar encima de la otra: cambian de identidad. Se puede deshacer."
     }
   }
 }
