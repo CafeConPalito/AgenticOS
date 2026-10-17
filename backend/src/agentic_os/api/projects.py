@@ -12,7 +12,7 @@ from agentic_os.db.session import get_session
 from agentic_os.errors import ApiError, NotFound
 from agentic_os.models import Project, Task, TaskStatus, WorkspaceMode
 from agentic_os.schemas.project import ProjectCreate, ProjectRead, ProjectUpdate
-from agentic_os.services import git, maintenance, paths
+from agentic_os.services import git, maintenance, paths, repos
 from agentic_os.services.proc import open_in_file_manager
 
 router = APIRouter(tags=["projects"])
@@ -42,11 +42,11 @@ def _read_many(projects: list[Project]) -> list[ProjectRead]:
         return list(pool.map(_read, projects))
 
 
-def _commit(session: Session) -> None:
+def _commit(session: Session, flush_only: bool = False) -> None:
     """The only constraint a valid payload can still violate is the unique folder (two
     requests racing past `_check_unique`): report it as the same 409."""
     try:
-        session.commit()
+        session.flush() if flush_only else session.commit()
     except IntegrityError as error:
         session.rollback()
         raise ApiError(
@@ -64,20 +64,24 @@ def _check_unique(session: Session, path_key: str, exclude_id: str | None = None
         raise ApiError(409, "project_exists", "a project already uses this folder", "path")
 
 
-def _check_worktree(project: Project) -> None:
-    """Worktree mode needs a git repo and an existing base branch (the current branch when the
-    user gives none)."""
+def _check_worktree(session: Session, project: Project) -> None:
+    """Worktree mode needs at least one git repository in the project and, for the project's
+    own base branch, one that exists (the root repository's current branch when the user gives
+    none)."""
     if project.workspace_mode != WorkspaceMode.WORKTREE:
         return
-    info = git.detect(project.path)
-    if not (info and info.is_repo):
+    usable = repos.active(session, project)
+    if not usable:
         raise ApiError(
             422, "worktree_requires_git", "worktree mode needs a git repository", "workspace_mode"
         )
+    main = next((r for r in usable if r.rel_path == ""), usable[0])
     if not project.base_branch:
-        project.base_branch = info.branch
-    if not project.base_branch or not git.branch_exists(project.path, project.base_branch):
+        project.base_branch = main.base_branch
+    if not project.base_branch or not git.branch_exists(main.path, project.base_branch):
         raise ApiError(422, "unknown_branch", "the base branch does not exist", "base_branch")
+    if main.base_branch != project.base_branch and main.rel_path == "":
+        main.base_branch = project.base_branch
 
 
 @router.get("/projects")
@@ -98,8 +102,10 @@ def create_project(payload: ProjectCreate, session: DbSession) -> ProjectRead:
     values = payload.model_dump(exclude_unset=True, exclude={"create_folder", "path"})
     project = Project(workspace_id=DEFAULT_WORKSPACE, path=path, path_key=key, **values)
     project.workspace_mode = payload.workspace_mode
-    _check_worktree(project)
     session.add(project)
+    _commit(session, flush_only=True)
+    repos.sync(session, project)
+    _check_worktree(session, project)
     _commit(session)
     return _read(project)
 
@@ -118,10 +124,11 @@ def update_project(project_id: str, payload: ProjectUpdate, session: DbSession) 
         _check_unique(session, key, exclude_id=project.id)
         paths.ensure_folder(path, create=False)
         project.path, project.path_key = path, key
+        repos.sync(session, project)
     for field, value in changes.items():  # nulls are rejected by the schema
         setattr(project, field, value)
     if {"workspace_mode", "path", "base_branch"} & payload.model_fields_set:
-        _check_worktree(project)
+        _check_worktree(session, project)
     _commit(session)
     return _read(project)
 
