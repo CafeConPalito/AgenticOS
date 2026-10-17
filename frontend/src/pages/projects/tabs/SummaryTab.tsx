@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next'
+import { useRepos } from '@/api/repos'
 import { useMonthBreakdown } from '@/api/usage'
 import { formatTokens, formatUsd } from '@/lib/format'
 import { useTasks } from '@/api/tasks'
@@ -28,6 +29,8 @@ export function SummaryTab({ project }: { project: Project }) {
   const { t } = useTranslation()
   const git = project.git
   const tasks = useTasks({ projectId: project.id }).data
+  const repos = useRepos(project.id).data ?? []
+  const several = repos.length > 1
   const month = useMonthBreakdown('project').data
   const monthRow = month?.rows.find((r) => r.id === project.id)
   const monthCost = !month
@@ -69,19 +72,35 @@ export function SummaryTab({ project }: { project: Project }) {
             label={t('projects.fields.path')}
             value={<span className="font-mono text-xs">{project.path}</span>}
           />
-          <Row
-            label={t('projects.summary.repo')}
-            value={
-              !project.folder_exists
-                ? t('projects.folderMissing')
-                : git === null
-                  ? t('projects.summary.gitUnavailable')
-                  : git.is_repo
-                    ? t('projects.summary.isRepo')
-                    : t('projects.summary.notRepo')
-            }
-          />
-          {git?.is_repo && (
+          {several &&
+            repos.map((repo) => (
+              <Row
+                key={repo.id}
+                label={repo.name}
+                value={
+                  <span className="font-mono text-xs">
+                    {repo.missing
+                      ? t('projects.repos.badgeMissing')
+                      : `${repo.git?.branch ?? t('common.none')}${repo.git?.dirty ? ' · ' + t('projects.summary.dirty') : ''}`}
+                  </span>
+                }
+              />
+            ))}
+          {!several && (
+            <Row
+              label={t('projects.summary.repo')}
+              value={
+                !project.folder_exists
+                  ? t('projects.folderMissing')
+                  : git === null
+                    ? t('projects.summary.gitUnavailable')
+                    : git.is_repo
+                      ? t('projects.summary.isRepo')
+                      : t('projects.summary.notRepo')
+              }
+            />
+          )}
+          {!several && git?.is_repo && (
             <>
               <Row
                 label={t('projects.summary.branch')}

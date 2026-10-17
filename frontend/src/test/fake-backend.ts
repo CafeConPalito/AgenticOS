@@ -1,4 +1,12 @@
-import type { AgentChangeRun, Changes, DiffLine, FileChange, FileDiff } from '@/api/changes'
+import type {
+  AgentChangeRun,
+  Changes,
+  DiffLine,
+  FileChange,
+  FileDiff,
+  RepoChanges,
+} from '@/api/changes'
+import type { ProjectRepo } from '@/api/repos'
 import type { ProjectBranches, ProjectSnapshots } from '@/api/maintenance'
 import {
   ACTIVE_RUN_STATUSES,
@@ -155,6 +163,27 @@ export function makeProject(overrides: Partial<Project> = {}): Project {
     updated_at: now(),
     git: { is_repo: true, branch: 'main', dirty: false },
     folder_exists: true,
+    ...overrides,
+  }
+}
+
+/** A git repository of a project (phase 12). */
+export function makeRepo(overrides: Partial<ProjectRepo> = {}): ProjectRepo {
+  seq += 1
+  return {
+    id: `repo-${seq}`,
+    project_id: 'project-1',
+    name: 'web',
+    path: 'D:\\proyectos\\tienda',
+    rel_path: '',
+    base_branch: 'main',
+    participates: true,
+    linked: false,
+    missing: false,
+    position: 0,
+    pull_mode: 'ff_only',
+    forge: null,
+    git: { is_repo: true, branch: 'main', dirty: false },
     ...overrides,
   }
 }
@@ -439,10 +468,65 @@ export function makeFileChange(overrides: Partial<FileChange> = {}): FileChange 
   }
 }
 
-/** The diff of a run or a task; the totals follow from `files` unless overridden. */
-export function makeChanges(overrides: Partial<Changes> = {}): Changes {
-  const files = overrides.files ?? [makeFileChange()]
+/** What a test says about a diff: the header and, for a single repository, its files. */
+export interface ChangesInput extends Partial<Changes> {
+  files?: FileChange[]
+  from_ref?: RepoChanges['from_ref']
+  to_ref?: RepoChanges['to_ref']
+  truncated_files?: number
+  skipped_large?: number
+}
+
+/** The diff of a run or a task with one repository; the totals follow from `files` unless
+ * overridden. Pass `repos` for a project with several. */
+export function makeChanges(overrides: ChangesInput = {}): Changes {
+  const {
+    files: given,
+    from_ref,
+    to_ref,
+    truncated_files,
+    skipped_large,
+    repos,
+    ...rest
+  } = overrides
+  const files = given ?? [makeFileChange()]
+  const totals = rest.totals ?? {
+    files: files.length,
+    additions: files.reduce((sum, f) => sum + f.additions, 0),
+    deletions: files.reduce((sum, f) => sum + f.deletions, 0),
+  }
+  const ok = (rest.state ?? 'ok') === 'ok'
+  const part: RepoChanges = {
+    key: 'repo-1',
+    name: 'web',
+    state: 'ok',
+    live: rest.live ?? false,
+    partial: rest.partial ?? false,
+    direct_folder: rest.direct_folder ?? false,
+    from_ref: from_ref === undefined ? { kind: 'base', name: 'main' } : from_ref,
+    to_ref: to_ref === undefined ? { kind: 'branch', name: 'agentic/T-1' } : to_ref,
+    totals,
+    files,
+    truncated_files: truncated_files ?? 0,
+    skipped_large: skipped_large ?? 0,
+  }
   return {
+    state: 'ok',
+    live: false,
+    partial: false,
+    direct_folder: false,
+    totals,
+    repos: repos ?? (ok ? [part] : []),
+    runs: [],
+    ...rest,
+  }
+}
+
+/** One repository of a diff with several. */
+export function makeRepoChanges(name: string, files: FileChange[]): RepoChanges {
+  return {
+    key: `repo-${name}`,
+    name,
     state: 'ok',
     live: false,
     partial: false,
@@ -457,8 +541,6 @@ export function makeChanges(overrides: Partial<Changes> = {}): Changes {
     files,
     truncated_files: 0,
     skipped_large: 0,
-    runs: [],
-    ...overrides,
   }
 }
 
@@ -503,6 +585,8 @@ export function createFakeBackend(
     agyQuota?: AgyQuotaState
     /** The diffs (phase 11) by `run:<id>` or `task:<id>`: the file list, each file's diff and
      * the lines `/changes/lines` serves. Anything else answers «no snapshots». */
+    /** Repositories by project id. */
+    repos?: Record<string, ProjectRepo[]>
     changes?: Record<
       string,
       { summary: Changes; diffs?: Record<string, FileDiff>; lines?: DiffLine[] }
@@ -1203,13 +1287,48 @@ export function createFakeBackend(
     live: false,
     partial: false,
     direct_folder: false,
-    from_ref: null,
-    to_ref: null,
     totals: { files: 0, additions: 0, deletions: 0 },
-    files: [],
-    truncated_files: 0,
-    skipped_large: 0,
+    repos: [],
     runs: [],
+  }
+
+  const repos: Record<string, ProjectRepo[]> = structuredClone(seed.repos ?? {})
+
+  function handleRepos(method: string, path: string, body: Record<string, unknown>) {
+    const list = path.match(/^\/api\/projects\/([^/]+)\/repos(\/scan)?$/)
+    if (list) {
+      const items = (repos[list[1]] ??= [])
+      if (method === 'GET' || (method === 'POST' && list[2])) return json(200, items)
+      if (method === 'POST') {
+        const created = makeRepo({
+          project_id: list[1],
+          path: String(body.path),
+          name: String(body.name ?? String(body.path).split(/[\\/]/).pop()),
+          rel_path: null,
+          linked: true,
+          position: items.length,
+        })
+        items.push(created)
+        return json(201, created)
+      }
+    }
+    const one = path.match(/^\/api\/repos\/([^/]+)$/)
+    if (one) {
+      for (const items of Object.values(repos)) {
+        const index = items.findIndex((r) => r.id === one[1])
+        if (index < 0) continue
+        if (method === 'PATCH') {
+          Object.assign(items[index], body)
+          return json(200, items[index])
+        }
+        if (method === 'DELETE') {
+          items.splice(index, 1)
+          return json(204, null)
+        }
+      }
+      return apiError(404, 'not_found')
+    }
+    return null
   }
 
   function handleChanges(method: string, path: string, params: URLSearchParams) {
@@ -1219,7 +1338,8 @@ export function createFakeBackend(
       if (!entry) return match[3] ? apiError(404, 'not_found') : json(200, NO_SNAPSHOTS)
       if (!match[3]) return json(200, entry.summary)
       if (match[3] === 'file') {
-        const diff = entry.diffs?.[params.get('path') ?? '']
+        const file = params.get('path') ?? ''
+        const diff = entry.diffs?.[`${params.get('repo') ?? ''}:${file}`] ?? entry.diffs?.[file]
         return diff ? json(200, diff) : apiError(404, 'file_not_found')
       }
       const start = Number(params.get('start'))
@@ -1260,6 +1380,7 @@ export function createFakeBackend(
       body: init?.body ? body : undefined,
     })
     return (
+      handleRepos(method, url.pathname, body) ??
       handleChanges(method, url.pathname, url.searchParams) ??
       handleAccounts(method, url.pathname, body) ??
       handleRuns(method, url.pathname, url.searchParams, body) ??
@@ -1286,6 +1407,7 @@ export function createFakeBackend(
     scheduler,
     usage,
     snapshots,
+    repos,
     calls,
     callsTo: (method: string, path: string) =>
       calls.filter((c) => c.method === method && c.path === path),

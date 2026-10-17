@@ -383,6 +383,32 @@
       "you": "Tú",
       "empty": "Todavía no hay notas. Los agentes las añaden al aprender algo del proyecto, y tú también puedes.",
       "tooLong": "La memoria supera {{limit}} caracteres: los agentes solo ven las notas más recientes. Borra o resume las antiguas."
+    },
+    "repos": {
+      "title": "Repositorios",
+      "help": "Los repositorios git de este proyecto. Cada tarea trabaja en una rama propia de cada uno que participe.",
+      "scan": "Volver a buscar",
+      "scanned": "Repositorios actualizados",
+      "link": "Añadir repositorio",
+      "linkHelp": "Carpeta de un repositorio que está fuera de la carpeta del proyecto (la raíz del repositorio).",
+      "linkConfirm": "Añadir",
+      "linked": "Repositorio añadido",
+      "none": "Este proyecto no tiene ningún repositorio git. Puedes añadir uno o crearlo desde la pestaña Git.",
+      "error": "No se pudieron leer los repositorios.",
+      "projectFolder": "La carpeta del proyecto",
+      "badgeLinked": "Vinculado",
+      "badgeMissing": "No encontrado",
+      "base": "Rama base",
+      "pull": "Al hacer pull",
+      "pullMode": {
+        "ff_only": "Solo avanzar (fast-forward)",
+        "merge": "Merge",
+        "rebase": "Rebase"
+      },
+      "participates": "Participa en las tareas",
+      "remove": "Quitar",
+      "removeTitle": "¿Quitar el repositorio {{name}}?",
+      "removeDescription": "Se quita de la lista del proyecto. La carpeta y sus archivos no se tocan."
     }
   },
   "time": {

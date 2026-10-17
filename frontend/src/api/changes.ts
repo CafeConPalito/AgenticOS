@@ -41,13 +41,14 @@ export interface ChangesRunRef {
   totals: ChangesTotals | null
 }
 
-export interface Changes {
+/** What changed in one repository of the project. */
+export interface RepoChanges {
+  /** The repository's id: which one a file request is about. */
+  key: string
+  name: string
   state: ChangesState
-  /** The run is going: the end of the diff is the folder right now. */
   live: boolean
-  /** Taken when the app reopened: may include later changes. */
   partial: boolean
-  /** The folder is the user's too: everything that changed shows. */
   direct_folder: boolean
   from_ref: RefLabel | null
   to_ref: RefLabel | null
@@ -57,6 +58,20 @@ export interface Changes {
   truncated_files: number
   /** New files too big to be in the snapshots. */
   skipped_large: number
+}
+
+export interface Changes {
+  /** "ok" when any repository has a diff; otherwise why there is none. */
+  state: ChangesState
+  /** The run is going: the end of the diff is the folder right now. */
+  live: boolean
+  /** Taken when the app reopened: may include later changes. */
+  partial: boolean
+  /** The folder is the user's too: everything that changed shows. */
+  direct_folder: boolean
+  /** All the repositories added up. */
+  totals: ChangesTotals
+  repos: RepoChanges[]
   /** Tasks only. */
   runs: ChangesRunRef[]
 }
@@ -102,17 +117,20 @@ export interface AgentChangeRun {
 export interface ChangesTarget {
   kind: 'run' | 'task'
   id: string
+  /** Which repository, for the file requests (a project can have several). */
+  repo?: string
 }
 
 export const changesKeys = {
   all: ['changes'] as const,
-  target: (target: ChangesTarget) => ['changes', target.kind, target.id] as const,
+  target: (target: ChangesTarget) => ['changes', target.kind, target.id, 'summary'] as const,
   /** The key carries the file's counts: when the list changes (a live run), the diff is read again. */
   file: (target: ChangesTarget, file: FileChange) =>
     [
       'changes',
       target.kind,
       target.id,
+      target.repo ?? null,
       'file',
       file.path,
       file.old_path,
@@ -144,6 +162,7 @@ export function useChangesFile(
 ) {
   const params = new URLSearchParams({ path: file.path })
   if (file.old_path) params.set('old_path', file.old_path)
+  if (target.repo) params.set('repo', target.repo)
   return useQuery({
     queryKey: changesKeys.file(target, file),
     queryFn: () => api.get<FileDiff>(`${base(target)}/file?${params.toString()}`),
@@ -162,6 +181,7 @@ export function fetchContextLines(
   end: number,
 ): Promise<DiffLine[]> {
   const params = new URLSearchParams({ path, start: String(start), end: String(end) })
+  if (target.repo) params.set('repo', target.repo)
   return api
     .get<{ lines: DiffLine[] }>(`${base(target)}/lines?${params.toString()}`)
     .then((result) => result.lines)

@@ -18,6 +18,7 @@ import {
   toApiValues,
 } from '../project-form'
 import { ProjectFormFields } from '../ProjectFormFields'
+import { RepositoriesSection } from './RepositoriesSection'
 
 function toValues(project: Project): ProjectFormValues {
   return {
@@ -88,6 +89,7 @@ export function SettingsTab({ project }: { project: Project }) {
           </Button>
         </form>
       </FormProvider>
+      <RepositoriesSection projectId={project.id} />
       <section className="flex items-center justify-between gap-4 rounded-lg border border-[color-mix(in_oklch,var(--status-failed)_40%,transparent)] p-4">
         <div>
           <h2 className="font-medium">{t('projects.danger')}</h2>
