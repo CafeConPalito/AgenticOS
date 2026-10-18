@@ -7,7 +7,7 @@ import contextlib
 import json
 import os
 import threading
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -33,6 +33,7 @@ from agentic_os.models import (
     Resolution,
     Run,
     RunEvent,
+    RunRepo,
     RunStatus,
     Stage,
     Task,
@@ -43,11 +44,13 @@ from agentic_os.models import (
 )
 from agentic_os.services import accounts as account_ops
 from agentic_os.services import changes as change_ops
-from agentic_os.services import git, inbox, snapshots
+from agentic_os.services import git, inbox, runrepos, snapshots
 from agentic_os.services import tasks as task_ops
 from agentic_os.services.adapters import CliAdapter, LaunchContext, adapter_for
 from agentic_os.services.agent_target import Target, target_for
-from agentic_os.services.context import build_context, build_instructions
+from agentic_os.services.context import RepoLine, build_context, build_instructions
+from agentic_os.services.gitx import activity as git_activity
+from agentic_os.services.gitx.runner import Repo as GitRepo
 from agentic_os.services.hooks import (
     HOOK_EVENTS,
     STATUS_LINE,
@@ -157,8 +160,8 @@ class RunManager:
                 .values(status=RunStatus.INTERRUPTED, activity="idle", ended_at=utcnow())
             )
             db.commit()
-            for run_id, _cli, cwd in leftovers:  # their diff ends where the folder is now
-                self._close_changes(run_id, cwd)
+            for run_id, _cli, _cwd in leftovers:  # their diff ends where the folders are now
+                self._close_changes(run_id)
             return result.rowcount or 0
 
     def launch(
@@ -302,6 +305,7 @@ class RunManager:
         run.cli_version = self.cli_version(cli)
         run_dir = self.runs_dir / run.id
         token = self.tokens.issue(run.id)
+        targets = runrepos.targets_for(db, project, task)
         ctx = LaunchContext(
             run_id=run.id,
             cli=cli,
@@ -318,6 +322,8 @@ class RunManager:
             overrides=self._settings.cli_command_overrides,
             resume_session=resumed_from.cli_session_id if resumed_from else None,
             account_env=account_ops.env_for(account),
+            extra_dirs=runrepos.extra_dirs(targets, cwd),
+            git_authorized=bool(project.agents_git_authorized),
         )
         try:
             spec = adapter.prepare(ctx)
@@ -327,11 +333,8 @@ class RunManager:
             raise
         run.cli_session_id = spec.session_id
         db.commit()
-        # What the folder holds before the CLI touches it: the origin of this run's diff.
-        start = self._snapshot(run.id, cwd, "start")
-        if start is not None:
-            run.snapshot_start, run.snapshot_skipped = start.sha, start.skipped_large
-            db.commit()
+        # What each repository holds before the CLI touches it: the origin of this run's diff.
+        self._open_changes(db, run, targets)
         if resumed_from is not None and cli == Cli.AGY:
             self._resume_unconfirmed.add(run.id)
 
@@ -361,9 +364,7 @@ class RunManager:
             adapter.cleanup(ctx)
             self._release_agy_folder(folder)
             run.status, run.error, run.ended_at = RunStatus.FAILED, str(error), utcnow()
-            if run.snapshot_start:  # the CLI never ran: nothing to compare, no ref to keep
-                snapshots.delete_runs(cwd, [run.id])
-                run.snapshot_start = None
+            self._drop_changes(db, run)  # the CLI never ran: nothing to compare, no refs to keep
             db.commit()
             return run
         with self._live_lock:
@@ -399,7 +400,7 @@ class RunManager:
             adapter.cleanup(ctx)
         finally:
             self._release_agy_folder(folder)
-            self._close_changes(run_id, str(ctx.cwd))
+            self._close_changes(run_id)
             if ctx.resume_session:
                 self._end_of_resumed(run_id, session)
             self.usage.request(run_id, final=True)
@@ -463,41 +464,147 @@ class RunManager:
     def _scratch_dir(self) -> Path:
         return Path(self._settings.data_dir) / "tmp"
 
-    def _snapshot(self, run_id: str, folder: str, label: str) -> snapshots.Snapshot | None:
+    def _snapshot(
+        self, run_id: str, folder: str, label: str, exclude: Sequence[str] = ()
+    ) -> snapshots.Snapshot | None:
         """Never fails the run: a snapshot that cannot be taken leaves a system event instead."""
-        snapshot, error = snapshots.take_checked(folder, run_id, label, self._scratch_dir)
+        snapshot, error = snapshots.take_checked(folder, run_id, label, self._scratch_dir, exclude)
         if error is not None:
             self.add_event(run_id, EventKind.SYSTEM, "snapshot_failed", f"{label}: {error}")
         return snapshot
 
-    def _close_changes(self, run_id: str, folder: str) -> None:
-        """Takes the run's final snapshot and stores its +/- summary. Never raises."""
+    def _snapshots(
+        self, run_id: str, label: str, folders: list[str]
+    ) -> list[snapshots.Snapshot | None]:
+        """One snapshot per repository folder, at the same time (each is I/O bound)."""
+
+        def one(folder: str) -> snapshots.Snapshot | None:
+            return self._snapshot(run_id, folder, label, runrepos.nested_in(folder, folders))
+
+        if len(folders) <= 1:
+            return [one(f) for f in folders]
+        with ThreadPoolExecutor(max_workers=min(8, len(folders))) as pool:
+            return list(pool.map(one, folders))
+
+    def _open_changes(self, db: Session, run: Run, targets: list[runrepos.RunTarget]) -> None:
+        """A row per repository of the run, with the snapshot of where it starts."""
+        taken = self._snapshots(run.id, "start", [t.folder for t in targets])
+        for target, snapshot in zip(targets, taken, strict=True):
+            db.add(
+                RunRepo(
+                    run_id=run.id,
+                    repo_id=target.repo_id,
+                    repo_name=target.name,
+                    path=target.folder,
+                    snapshot_start=snapshot.sha if snapshot else None,
+                    snapshot_skipped=snapshot.skipped_large if snapshot else 0,
+                    refs_start=self._refs_of(target.folder),
+                )
+            )
+        db.commit()
+
+    @staticmethod
+    def _refs_of(folder: str) -> dict | None:
+        """The references of a repository as a run starts (to tell later what it did with git)."""
+        try:
+            return git_activity.snapshot(GitRepo(folder))
+        except Exception as error:  # a folder that is not a repository (yet): nothing to compare
+            log.warning("could not note the references of a run's repository", error=str(error))
+            return None
+
+    @staticmethod
+    def _drop_changes(db: Session, run: Run) -> None:
+        """Forgets the snapshots of a run whose CLI never ran."""
+        for row in db.scalars(select(RunRepo).where(RunRepo.run_id == run.id)):
+            if row.snapshot_start:
+                snapshots.delete_runs(row.path, [run.id])
+            db.delete(row)
+
+    def _close_changes(self, run_id: str) -> None:
+        """Takes the final snapshot of each repository of the run and stores the +/- summaries.
+        Never raises."""
         try:
             with self._db() as db:
-                start = db.scalar(select(Run.snapshot_start).where(Run.id == run_id))
-            if not start:
+                rows = [
+                    (row.id, row.path, row.snapshot_start)
+                    for row in db.scalars(select(RunRepo).where(RunRepo.run_id == run_id))
+                    if row.snapshot_start
+                ]
+            if not rows:
+                # No snapshots to close, but what the run did with git is still worth recording.
+                with self._db() as db:
+                    run = db.get(Run, run_id)
+                    if run is not None:
+                        self._record_git_activity(db, run)
+                        db.commit()
                 return
-            end = self._snapshot(run_id, folder, "end")
-            if end is None:
-                return
-            try:
-                summary = change_ops.totals(folder, start, end.sha)
-            except git.GitError as error:
-                log.warning("could not summarise the changes", run_id=run_id, error=str(error))
-                summary = None
+            ends = self._snapshots(run_id, "end", [path for _id, path, _start in rows])
+            results = []
+            for (row_id, path, start), end in zip(rows, ends, strict=True):
+                if end is None:
+                    continue
+                try:
+                    summary = change_ops.totals(path, start or "", end.sha)
+                except git.GitError as error:
+                    log.warning("could not summarise the changes", run_id=run_id, error=str(error))
+                    summary = None
+                results.append((row_id, end, summary))
             with self._db() as db:
                 run = db.get(Run, run_id)
                 if run is None:
                     return
-                run.snapshot_end = end.sha
-                run.snapshot_skipped = max(run.snapshot_skipped, end.skipped_large)
-                if summary is not None:
-                    run.changes_files = summary.files
-                    run.changes_added = summary.additions
-                    run.changes_deleted = summary.deletions
+                summed = [0, 0, 0]
+                have = False
+                for row_id, end, summary in results:
+                    row = db.get(RunRepo, row_id)
+                    if row is None:
+                        continue
+                    row.snapshot_end = end.sha
+                    row.snapshot_skipped = max(row.snapshot_skipped, end.skipped_large)
+                    if summary is not None:
+                        row.changes_files = summary.files
+                        row.changes_added = summary.additions
+                        row.changes_deleted = summary.deletions
+                        summed = [
+                            summed[0] + summary.files,
+                            summed[1] + summary.additions,
+                            summed[2] + summary.deletions,
+                        ]
+                        have = True
+                if have:
+                    run.changes_files, run.changes_added, run.changes_deleted = summed
+                self._record_git_activity(db, run)
                 db.commit()
         except Exception:  # a run's end must always finish
             log.exception("could not close the run's changes", run_id=run_id)
+
+    @staticmethod
+    def _record_git_activity(db: Session, run: Run) -> None:
+        """What the run did with git in each repository: stored on its row, the commits
+        attributed to the agent, and one line in the task's history. Never raises."""
+        done: list[str] = []
+        task = db.get(Task, run.task_id) if run.task_id else None
+        until = run.ended_at or utcnow()
+        for row in db.scalars(select(RunRepo).where(RunRepo.run_id == run.id)):
+            if not row.refs_start or row.activity is not None:
+                continue
+            try:
+                found = git_activity.collect(
+                    GitRepo(row.path), row.refs_start, run.started_at or run.created_at, until
+                )
+            except Exception:  # the folder is gone (a released worktree): nothing to read
+                log.warning("could not read what the run did with git", run_id=run.id)
+                continue
+            row.activity = found.model_dump()
+            if found.empty:
+                continue
+            if row.repo_id:
+                git_activity.attribute(
+                    db, row.repo_id, run, found.commits, task.code if task else None
+                )
+            done.append(f"{row.repo_name}: {_describe(found)}")
+        if done and task is not None:
+            task_ops.add_event(db, task, TaskEventKind.GIT, "; ".join(done), run.id)
 
     def _reserve_agy_folder(self, folder: str) -> str:
         key = os.path.normcase(os.path.realpath(folder))
@@ -633,7 +740,23 @@ class RunManager:
             self._memory(db, project),
             task_context(db, task) if task else None,
             subagent=(parent.agent_name, run.prompt) if parent else None,
+            repos=self._repo_lines(db, run, project, task),
+            git_authorized=bool(project and project.agents_git_authorized),
         )
+
+    @staticmethod
+    def _repo_lines(
+        db: Session, run: Run, project: Project | None, task: Task | None
+    ) -> list[RepoLine]:
+        """The project's repositories as this run sees them, paths relative to its folder."""
+        lines: list[RepoLine] = []
+        for target in runrepos.targets_for(db, project, task):
+            if runrepos.is_within(target.folder, run.cwd):
+                path = os.path.relpath(target.folder, run.cwd).replace("\\", "/")
+            else:
+                path = target.folder
+            lines.append(RepoLine(target.name, path, target.branch, target.base))
+        return lines
 
     @staticmethod
     def _memory(db: Session, project: Project | None) -> str:
@@ -1156,3 +1279,17 @@ class RunManager:
             self.usage.request(run_id)  # live usage at the end of every turn
         if effect.turn_ended and session is not None:
             session.after_turn_end()
+
+
+def _describe(found: git_activity.Activity) -> str:
+    """«2 commits, 1 rama, push»: one repository's git activity in a line."""
+    parts = []
+    if found.commits:
+        parts.append(f"{len(found.commits)} commit(s)")
+    if found.branches:
+        parts.append(f"{len(found.branches)} rama(s)")
+    if found.tags:
+        parts.append(f"{len(found.tags)} tag(s)")
+    if found.pushes:
+        parts.append("push forzado" if any(p.forced for p in found.pushes) else "push")
+    return ", ".join(parts)

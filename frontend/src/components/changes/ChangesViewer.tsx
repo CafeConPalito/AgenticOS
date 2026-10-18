@@ -2,7 +2,13 @@ import type { TFunction } from 'i18next'
 import { AlertTriangle, GitCompareArrows } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { type Changes, type ChangesTarget, type RefLabel, useChanges } from '@/api/changes'
+import {
+  type Changes,
+  type ChangesTarget,
+  type RefLabel,
+  type RepoChanges,
+  useChanges,
+} from '@/api/changes'
 import { EmptyState } from '@/components/EmptyState'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -14,11 +20,11 @@ function refText(ref: RefLabel | null, t: TFunction): string {
   return ref ? t(`changes.ref.${ref.kind}`, { name: ref.name }) : ''
 }
 
-/** The diff of a run or a task: header, list of files and the diff of each one. */
+/** The diff of a run or a task: header, and for each repository its list of files and the diff
+ * of each one. */
 export function ChangesViewer({ target }: { target: ChangesTarget }) {
   const { t } = useTranslation()
   const changes = useChanges(target)
-  const [jump, setJump] = useState<{ path: string; n: number } | null>(null)
 
   if (changes.isPending)
     return (
@@ -39,19 +45,76 @@ export function ChangesViewer({ target }: { target: ChangesTarget }) {
     )
 
   const data = changes.data
-  if (data.state !== 'ok')
+  if (data.state !== 'ok' || data.repos.length === 0)
     return (
       <EmptyState
         icon={GitCompareArrows}
-        title={t(`changes.empty.${data.state}.title`)}
-        description={t(`changes.empty.${data.state}.description`)}
+        title={t(`changes.empty.${data.state === 'ok' ? 'no_snapshots' : data.state}.title`)}
+        description={t(
+          `changes.empty.${data.state === 'ok' ? 'no_snapshots' : data.state}.description`,
+        )}
       />
     )
 
+  const several = data.repos.length > 1
   return (
-    <div className="flex flex-col gap-3">
-      <Header data={data} />
-      {data.files.length === 0 ? (
+    <div className="flex flex-col gap-4">
+      <Header data={data} single={several ? null : data.repos[0]} />
+      {data.repos.map((part) => (
+        <RepoSection
+          key={part.key}
+          target={{ ...target, repo: part.key }}
+          part={part}
+          showName={several}
+        />
+      ))}
+    </div>
+  )
+}
+
+/** One repository: its comparison, its files and the diff of each. */
+function RepoSection({
+  target,
+  part,
+  showName,
+}: {
+  target: ChangesTarget
+  part: RepoChanges
+  showName: boolean
+}) {
+  const { t } = useTranslation()
+  const [jump, setJump] = useState<{ path: string; n: number } | null>(null)
+
+  if (part.state !== 'ok')
+    return (
+      <section aria-label={part.name} className="flex flex-col gap-2">
+        <h3 className="text-[13px] font-semibold">{part.name}</h3>
+        <Notice>{t(`changes.empty.${part.state}.title`)}</Notice>
+      </section>
+    )
+
+  return (
+    <section aria-label={part.name || undefined} className="flex flex-col gap-3">
+      {showName && (
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <h3 className="text-[13px] font-semibold">{part.name}</h3>
+          <ChangesBadge totals={part.totals} className="text-[12.5px]" />
+          {part.from_ref && part.to_ref && (
+            <span className="text-[12.5px] text-muted-foreground">
+              {t('changes.compare', {
+                from: refText(part.from_ref, t),
+                to: refText(part.to_ref, t),
+              })}
+            </span>
+          )}
+          {part.skipped_large > 0 && (
+            <span className="text-[12.5px] text-muted-foreground">
+              {t('changes.skippedLarge', { count: part.skipped_large })}
+            </span>
+          )}
+        </div>
+      )}
+      {part.files.length === 0 ? (
         <EmptyState icon={GitCompareArrows} title={t('changes.empty.none')} />
       ) : (
         <>
@@ -59,7 +122,7 @@ export function ChangesViewer({ target }: { target: ChangesTarget }) {
             aria-label={t('changes.fileList')}
             className="overflow-hidden rounded-lg border border-sep bg-card"
           >
-            {data.files.map((file) => {
+            {part.files.map((file) => {
               const total = file.additions + file.deletions
               return (
                 <li key={file.path} className="border-b border-sep last:border-b-0">
@@ -90,44 +153,49 @@ export function ChangesViewer({ target }: { target: ChangesTarget }) {
               )
             })}
           </ul>
-          {data.truncated_files > 0 && (
-            <Notice>{t('changes.truncated', { count: data.truncated_files })}</Notice>
+          {part.truncated_files > 0 && (
+            <Notice>{t('changes.truncated', { count: part.truncated_files })}</Notice>
           )}
           <div className="flex flex-col gap-3">
-            {data.files.map((file, index) => (
+            {part.files.map((file, index) => (
               <FileDiffView
                 key={file.path}
                 target={target}
                 file={file}
-                id={`change-file-${index}`}
+                id={`change-file-${part.key}-${index}`}
                 jump={jump}
-                live={data.live}
+                live={part.live}
               />
             ))}
           </div>
         </>
       )}
-    </div>
+    </section>
   )
 }
 
-function Header({ data }: { data: Changes }) {
+/** The totals of everything, and what is true of the whole diff. With a single repository, the
+ * comparison goes here too. */
+function Header({ data, single }: { data: Changes; single: RepoChanges | null }) {
   const { t } = useTranslation()
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <ChangesBadge totals={data.totals} className="text-[13px]" />
-        {data.from_ref && data.to_ref && (
+        {single?.from_ref && single.to_ref && (
           <span className="text-[12.5px] text-muted-foreground">
-            {t('changes.compare', { from: refText(data.from_ref, t), to: refText(data.to_ref, t) })}
+            {t('changes.compare', {
+              from: refText(single.from_ref, t),
+              to: refText(single.to_ref, t),
+            })}
           </span>
         )}
       </div>
       {data.live && <Notice>{t('changes.live')}</Notice>}
       {data.partial && <Notice>{t('changes.partial')}</Notice>}
       {data.direct_folder && <Notice>{t('changes.directFolder')}</Notice>}
-      {data.skipped_large > 0 && (
-        <Notice>{t('changes.skippedLarge', { count: data.skipped_large })}</Notice>
+      {single && single.skipped_large > 0 && (
+        <Notice>{t('changes.skippedLarge', { count: single.skipped_large })}</Notice>
       )}
     </div>
   )

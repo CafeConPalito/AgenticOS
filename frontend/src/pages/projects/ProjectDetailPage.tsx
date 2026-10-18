@@ -11,13 +11,14 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { errorMessage } from '@/lib/form-errors'
 import { LaunchRunButton } from '@/pages/runs/LaunchRunDialog'
 import { GitLabel } from './ProjectsPage'
+import { GitTab } from './tabs/git/GitTab'
 import { MemoryTab } from './tabs/MemoryTab'
 import { PipelineTab } from './tabs/PipelineTab'
 import { SettingsTab } from './tabs/SettingsTab'
 import { SummaryTab } from './tabs/SummaryTab'
 import { TasksTab } from './tabs/TasksTab'
 
-const TABS = ['summary', 'tasks', 'pipeline', 'memory', 'knowledge', 'settings'] as const
+const TABS = ['summary', 'tasks', 'pipeline', 'git', 'memory', 'knowledge', 'settings'] as const
 type Tab = (typeof TABS)[number]
 
 export default function ProjectDetailPage() {
@@ -84,6 +85,7 @@ function ProjectDetail({ project, tab }: { project: Project; tab: Tab }) {
       {tab === 'summary' && <SummaryTab project={project} />}
       {tab === 'tasks' && <TasksTab project={project} />}
       {tab === 'pipeline' && <PipelineTab project={project} />}
+      {tab === 'git' && <GitTab project={project} />}
       {tab === 'memory' && <MemoryTab project={project} />}
       {tab === 'knowledge' && <ComingSoonTab icon={BookOpen} />}
       {tab === 'settings' && <SettingsTab project={project} />}

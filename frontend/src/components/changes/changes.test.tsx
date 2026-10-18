@@ -1,9 +1,15 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import type { ChangesTarget, FileDiff } from '@/api/changes'
+import type { ChangesTarget, FileDiff, RepoChanges } from '@/api/changes'
 import es from '@/i18n/es.json'
 import { Providers } from '@/providers'
-import { createFakeBackend, diffLine, makeChanges, makeFileChange } from '@/test/fake-backend'
+import {
+  createFakeBackend,
+  diffLine,
+  makeChanges,
+  makeFileChange,
+  makeRepoChanges,
+} from '@/test/fake-backend'
 import { TaskChanges } from './ChangesSheet'
 import { ChangesViewer } from './ChangesViewer'
 
@@ -336,5 +342,82 @@ describe('TaskChanges', () => {
 
     expect(await screen.findByRole('list', { name: es.changes.fileList })).toBeVisible()
     expect(screen.queryByRole('combobox')).toBeNull()
+  })
+})
+
+describe('ChangesViewer with several repositories', () => {
+  const hunk = (text: string): FileDiff['hunks'] => [
+    {
+      old_start: 0,
+      old_lines: 0,
+      new_start: 1,
+      new_lines: 1,
+      header: '',
+      lines: [diffLine('add', text, null, 1)],
+    },
+  ]
+
+  it('groups the files by repository and asks each diff of its own repository', async () => {
+    const api = makeRepoChanges('backend', [makeFileChange({ path: 'api.py', additions: 2 })])
+    const ui = makeRepoChanges('frontend', [makeFileChange({ path: 'api.py', additions: 1 })])
+    const backend = createFakeBackend({
+      changes: {
+        'run:r1': {
+          summary: makeChanges({
+            repos: [api, ui],
+            totals: { files: 2, additions: 3, deletions: 0 },
+          }),
+          // The same path in two repositories: each one has its own diff.
+          diffs: {
+            'repo-backend:api.py': {
+              path: 'api.py',
+              binary: false,
+              too_large: false,
+              hunks: hunk('def login(): pass'),
+            },
+            'repo-frontend:api.py': {
+              path: 'api.py',
+              binary: false,
+              too_large: false,
+              hunks: hunk('export const api = 1'),
+            },
+          },
+        },
+      },
+    })
+    show()
+
+    expect(await screen.findByRole('heading', { name: 'backend' })).toBeVisible()
+    expect(screen.getByRole('heading', { name: 'frontend' })).toBeVisible()
+    expect(screen.getByText('2 ficheros')).toBeVisible() // the total of both
+
+    const backendSection = screen.getByRole('region', { name: 'backend' })
+    const frontendSection = screen.getByRole('region', { name: 'frontend' })
+    expect(await within(backendSection).findByText('def login(): pass')).toBeVisible()
+    expect(await within(frontendSection).findByText('export const api = 1')).toBeVisible()
+    const asked = backend.calls
+      .filter((c) => c.path.endsWith('/changes/file'))
+      .map((c) => new URLSearchParams(c.query).get('repo'))
+    expect(asked.sort()).toEqual(['repo-backend', 'repo-frontend'])
+  })
+
+  it('shows a repository without a diff next to the ones that have one', async () => {
+    const api = makeRepoChanges('backend', [makeFileChange({ path: 'api.py', additions: 2 })])
+    const empty: RepoChanges = { ...makeRepoChanges('docs', []), state: 'snapshot_missing' }
+    createFakeBackend({
+      changes: {
+        'run:r1': {
+          summary: makeChanges({ repos: [api, empty], totals: api.totals }),
+          diffs: {},
+        },
+      },
+    })
+    show()
+
+    expect(await screen.findByRole('heading', { name: 'backend' })).toBeVisible()
+    const docs = screen.getByRole('region', { name: 'docs' })
+    expect(within(docs).getByRole('note')).toHaveTextContent(
+      es.changes.empty.snapshot_missing.title,
+    )
   })
 })

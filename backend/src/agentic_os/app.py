@@ -22,6 +22,9 @@ from agentic_os.services import accounts as account_ops
 from agentic_os.services import housekeeping
 from agentic_os.services.accounts_login import AccountLogins
 from agentic_os.services.clis import CliCatalog
+from agentic_os.services.gitx.events import GitEvents
+from agentic_os.services.gitx.jobs import JobManager
+from agentic_os.services.gitx.shell import ShellSessions
 from agentic_os.services.mcp_server import mount_app
 from agentic_os.services.runs.manager import RunManager
 from agentic_os.services.scheduler import Scheduler
@@ -120,6 +123,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             app.state.sessionmaker, manager, scheduler, account_id
         )
         app.state.logins = logins
+        git_events = GitEvents()
+        git_jobs = JobManager()
+        git_jobs.listener = git_events.publish
+        app.state.git_events, app.state.git_jobs = git_events, git_jobs
+        git_shells = ShellSessions()
+        git_shells.loop = asyncio.get_running_loop()
+        git_shells.on_end = git_events.changed
+        app.state.git_shells = git_shells
         if settings.check_sessions_at_startup:
             threading.Thread(
                 target=check_sessions,
@@ -150,6 +161,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         finally:
             app.state.mcp_gate = None
             logins.shutdown()
+            git_jobs.shutdown()
+            git_shells.shutdown()
             # The scheduler stops first: the runs closed by the shutdown are not "stopped by the
             # user"; their tasks are found interrupted on the next start.
             scheduler.stop()

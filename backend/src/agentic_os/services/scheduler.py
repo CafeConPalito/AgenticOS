@@ -41,7 +41,7 @@ from agentic_os.models import (
     WorkspaceMode,
 )
 from agentic_os.services import accounts as account_ops
-from agentic_os.services import inbox
+from agentic_os.services import inbox, integration
 from agentic_os.services import tasks as task_ops
 from agentic_os.services.usage import limits as usage_limits
 from agentic_os.services.usage import switching
@@ -107,6 +107,7 @@ class Scheduler:
         # the queues) sessions are never checked before a launch.
         self.probe_account: Callable[[Session, CliAccount], object] | None = None
         self._probing: set[str] = set()  # accounts being checked right now
+        self._integrating: set[str] = set()  # tasks being integrated after their approval
         # Slow periodic chores (e.g. pending folder-trust cleanups), every HOUSEKEEPING seconds.
         self.housekeeping: Callable[[], None] | None = None
         self._last_housekeeping = 0.0
@@ -445,6 +446,38 @@ class Scheduler:
             self.release_workspace(db, task, project)
         except Exception:
             log.exception("could not release the workspace", task=task.code)
+            return
+        if task.status == TaskStatus.DONE and task.id not in self._integrating:
+            self._integrating.add(task.id)
+            threading.Thread(
+                target=self._after_approval, args=(task.id,), name="integrate", daemon=True
+            ).start()
+
+    def _after_approval(self, task_id: str) -> None:
+        """`Project.on_approve`: integrates the task's branches in the background. A failure
+        leaves a request in the inbox; it never changes the task."""
+        try:
+            with self._db() as db:
+                task = db.get(Task, task_id)
+                project = db.get(Project, task.project_id) if task else None
+                if task is None or project is None:
+                    return
+                try:
+                    integration.after_approval(db, task, project)
+                    db.commit()
+                except Exception as error:
+                    db.rollback()
+                    log.exception("could not integrate the task", task=task.code)
+                    inbox.create(
+                        db,
+                        InboxKind.DELIVERY,
+                        f"No se pudo integrar {task.code}",
+                        f"No se pudo integrar: {error}",
+                        task=task,
+                    )
+                    db.commit()
+        finally:
+            self._integrating.discard(task_id)
 
     def check_stalled(self, now: datetime | None = None) -> int:
         """«Sin terminar»: a task's run that has waited for input for STALLED_AFTER without

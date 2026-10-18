@@ -1,6 +1,6 @@
 from enum import StrEnum
 
-from sqlalchemy import CheckConstraint, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, CheckConstraint, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from agentic_os.db.base import Base, IdMixin, TimestampMixin, WorkspaceMixin
@@ -11,11 +11,35 @@ class WorkspaceMode(StrEnum):
     WORKTREE = "worktree"
 
 
+class IntegrationMode(StrEnum):
+    """How a task's branch is brought into the base branch."""
+
+    MERGE = "merge"
+    SQUASH = "squash"
+    REBASE = "rebase"
+
+
+class OnApprove(StrEnum):
+    """What happens to a task's branches when the task is approved (done)."""
+
+    NONE = "none"
+    INTEGRATE = "integrate"
+    INTEGRATE_PUSH = "integrate_push"
+    PULL_REQUEST = "pull_request"
+
+
 class Project(IdMixin, WorkspaceMixin, TimestampMixin, Base):
     __tablename__ = "projects"
     __table_args__ = (
         UniqueConstraint("workspace_id", "path_key", name="uq_projects_workspace_path"),
         CheckConstraint("workspace_mode IN ('direct', 'worktree')", name="workspace_mode"),
+        CheckConstraint(
+            "integration_mode IN ('merge', 'squash', 'rebase')", name="integration_mode"
+        ),
+        CheckConstraint(
+            "on_approve IN ('none', 'integrate', 'integrate_push', 'pull_request')",
+            name="on_approve",
+        ),
     )
 
     name: Mapped[str] = mapped_column(String(80), nullable=False)
@@ -27,5 +51,14 @@ class Project(IdMixin, WorkspaceMixin, TimestampMixin, Base):
     workspace_mode: Mapped[str] = mapped_column(
         String(16), nullable=False, default=WorkspaceMode.DIRECT
     )
-    # Worktree mode: the branch each task worktree starts from.
+    # Worktree mode: the branch each task worktree starts from. Phase 12: the base lives in each
+    # repository of the project (`ProjectRepo.base_branch`); this one is the root repo's.
     base_branch: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    # How deep inside the folder repositories are looked for.
+    repo_scan_depth: Mapped[int] = mapped_column(Integer, nullable=False, default=3)
+    integration_mode: Mapped[str] = mapped_column(
+        String(8), nullable=False, default=IntegrationMode.MERGE
+    )
+    on_approve: Mapped[str] = mapped_column(String(16), nullable=False, default=OnApprove.NONE)
+    # Agents may run any git command (commit, branches, rebase, push…) without being asked.
+    agents_git_authorized: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)

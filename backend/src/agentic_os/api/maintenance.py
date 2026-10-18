@@ -30,6 +30,8 @@ class BranchRead(BaseModel):
     merged: bool
     last_commit: str
     in_use: bool
+    repo_id: str | None = None
+    repo_name: str = ""
 
 
 class ProjectBranches(BaseModel):
@@ -44,6 +46,8 @@ class BranchDelete(BaseModel):
     project_id: str
     branches: list[str] = Field(min_length=1)
     force: bool = False
+    # Which repository, when the project has several with the same branch name.
+    repo_id: str | None = None
 
 
 class BranchesDeleted(BaseModel):
@@ -99,7 +103,9 @@ def list_branches(db: DbSession) -> list[ProjectBranches]:
 @router.post("/maintenance/branches/delete")
 def delete_branches(payload: BranchDelete, db: DbSession) -> BranchesDeleted:
     project = get_project_or_404(db, payload.project_id)
-    deleted, failed = maintenance.delete_branches(db, project, payload.branches, payload.force)
+    deleted, failed = maintenance.delete_branches(
+        db, project, payload.branches, payload.force, payload.repo_id
+    )
     return BranchesDeleted(deleted=deleted, failed=failed)
 
 

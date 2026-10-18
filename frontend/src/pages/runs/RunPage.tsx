@@ -11,6 +11,7 @@ import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { EmptyState } from '@/components/EmptyState'
 import { PageContainer } from '@/components/page'
 import { ChangesBar } from '@/components/changes/ChangesBar'
+import { RunGitSection } from '@/components/RunGitSection'
 import { TerminalPanel } from '@/components/terminal/TerminalPanel'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -130,6 +131,7 @@ function RunDetail({ run }: { run: Run }) {
             <span className="truncate">{run.cwd}</span>
           </div>
           <ChangesBar target={{ kind: 'run', id: run.id }} title={t('changes.titleRun')} />
+          <RunGitSection runId={run.id} />
         </div>
         <aside className="flex min-h-0 flex-col overflow-auto border-l p-4 [&>*]:shrink-0">
           <SessionUsage run={run} />

@@ -3,7 +3,7 @@ from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, StringConstraints, field_validator
 
-from agentic_os.models.project import WorkspaceMode
+from agentic_os.models.project import IntegrationMode, OnApprove, WorkspaceMode
 from agentic_os.schemas.agent import Color, Name, reject_null
 from agentic_os.services.git import GitInfo
 
@@ -36,9 +36,20 @@ class ProjectUpdate(BaseModel):
     description: str | None = None
     workspace_mode: WorkspaceMode | None = None
     base_branch: BranchName | None = None
+    integration_mode: IntegrationMode | None = None
+    on_approve: OnApprove | None = None
+    agents_git_authorized: bool | None = None
 
     _no_nulls = field_validator(
-        "name", "path", "color", "description", "workspace_mode", mode="before"
+        "name",
+        "path",
+        "color",
+        "description",
+        "workspace_mode",
+        "integration_mode",
+        "on_approve",
+        "agents_git_authorized",
+        mode="before",
     )(reject_null)
 
 
@@ -52,6 +63,9 @@ class ProjectRead(BaseModel):
     path: str
     workspace_mode: WorkspaceMode
     base_branch: str | None
+    integration_mode: IntegrationMode = IntegrationMode.MERGE
+    on_approve: OnApprove = OnApprove.NONE
+    agents_git_authorized: bool = True
     created_at: datetime
     updated_at: datetime
     git: GitInfo | None = None

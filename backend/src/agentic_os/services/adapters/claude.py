@@ -76,10 +76,12 @@ class ClaudeAdapter(CliAdapter):
             "--strict-mcp-config",
             "--append-system-prompt-file",
             str(instructions),
-            *claude_permissions(ctx.permission_mode, ctx.allowed_tools),
+            *claude_permissions(ctx.permission_mode, ctx.allowed_tools, ctx.git_authorized),
         ]
         if ctx.model:
             argv += ["--model", ctx.model]
+        for folder in ctx.extra_dirs:  # one flag each: --add-dir is variadic
+            argv += ["--add-dir", folder]
         # The account's folder wins over a CLAUDE_CONFIG_DIR of the person (system account:
         # nothing is added and their own value, if any, is kept).
         return LaunchSpec(argv, {**clean_env(), **ctx.account_env}, session_id)

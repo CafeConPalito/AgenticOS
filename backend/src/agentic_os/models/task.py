@@ -82,15 +82,19 @@ class Task(IdMixin, WorkspaceMixin, TimestampMixin, Base):
     rejections: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     waiting_reason: Mapped[str | None] = mapped_column(String(24), nullable=True)
     waiting_detail: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # The task's work folder (phase 12: one worktree per repository inside it, see TaskRepo).
     worktree_path: Mapped[str | None] = mapped_column(Text, nullable=True)
     branch: Mapped[str | None] = mapped_column(String(120), nullable=True)
-    # The base branch's commit the worktree started from (phase 11): the origin of its diff.
-    base_commit: Mapped[str | None] = mapped_column(String(40), nullable=True)
     queued_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
     started_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
     finished_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
     # A subtask (create_subtask): the task whose agent created it.
     parent_task_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("tasks.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+
+    # A task made to resolve the conflicts of integrating another one.
+    resolves_task_id: Mapped[str | None] = mapped_column(
         String(36), ForeignKey("tasks.id", ondelete="SET NULL"), nullable=True, index=True
     )
 
@@ -116,6 +120,8 @@ class TaskEventKind(StrEnum):
     HUMAN_REQUEST = "human_request"  # the agent asked (request_human)
     HUMAN_ANSWERED = "human_answered"  # the person answered
     SUBTASK = "subtask"  # the agent created a subtask
+    GIT = "git"  # a run did something with git (commits, branches, pushes)
+    INTEGRATED = "integrated"  # the task's branches were brought into their bases
 
 
 class TaskEvent(IdMixin, Base):

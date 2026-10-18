@@ -26,39 +26,49 @@ DbSession = Annotated[Session, Depends(get_session)]
 Path = Annotated[str, Query(min_length=1, max_length=1000)]
 OldPath = Annotated[str | None, Query(max_length=1000)]
 Line = Annotated[int, Query(ge=1, le=10_000_000)]
+# Which repository, for runs and tasks that worked in several.
+Repo = Annotated[str | None, Query(max_length=100)]
 
 
 @router.get("/runs/{run_id}/changes")
 def run_changes(run_id: str, db: DbSession) -> Changes:
-    return change_ops.changes(change_ops.run_range(db, get_run_row(db, run_id)))
+    return change_ops.run_changes(db, get_run_row(db, run_id))
 
 
 @router.get("/runs/{run_id}/changes/file")
-def run_file_diff(run_id: str, db: DbSession, path: Path, old_path: OldPath = None) -> FileDiff:
-    rng = change_ops.run_range(db, get_run_row(db, run_id))
+def run_file_diff(
+    run_id: str, db: DbSession, path: Path, old_path: OldPath = None, repo: Repo = None
+) -> FileDiff:
+    rng = change_ops.pick(change_ops.run_ranges(db, get_run_row(db, run_id)), repo)
     return change_ops.file_diff(rng, path, old_path)
 
 
 @router.get("/runs/{run_id}/changes/lines")
-def run_file_lines(run_id: str, db: DbSession, path: Path, start: Line, end: Line) -> FileLines:
-    rng = change_ops.run_range(db, get_run_row(db, run_id))
+def run_file_lines(
+    run_id: str, db: DbSession, path: Path, start: Line, end: Line, repo: Repo = None
+) -> FileLines:
+    rng = change_ops.pick(change_ops.run_ranges(db, get_run_row(db, run_id)), repo)
     return change_ops.file_lines(rng, path, start, end)
 
 
 @router.get("/tasks/{task_id}/changes")
 def task_changes(task_id: str, db: DbSession) -> Changes:
-    return change_ops.changes(change_ops.task_range(db, get_task_row(db, task_id)))
+    return change_ops.task_changes(db, get_task_row(db, task_id))
 
 
 @router.get("/tasks/{task_id}/changes/file")
-def task_file_diff(task_id: str, db: DbSession, path: Path, old_path: OldPath = None) -> FileDiff:
-    rng = change_ops.task_range(db, get_task_row(db, task_id))
+def task_file_diff(
+    task_id: str, db: DbSession, path: Path, old_path: OldPath = None, repo: Repo = None
+) -> FileDiff:
+    rng = change_ops.pick(change_ops.task_ranges(db, get_task_row(db, task_id)), repo)
     return change_ops.file_diff(rng, path, old_path)
 
 
 @router.get("/tasks/{task_id}/changes/lines")
-def task_file_lines(task_id: str, db: DbSession, path: Path, start: Line, end: Line) -> FileLines:
-    rng = change_ops.task_range(db, get_task_row(db, task_id))
+def task_file_lines(
+    task_id: str, db: DbSession, path: Path, start: Line, end: Line, repo: Repo = None
+) -> FileLines:
+    rng = change_ops.pick(change_ops.task_ranges(db, get_task_row(db, task_id)), repo)
     return change_ops.file_lines(rng, path, start, end)
 
 

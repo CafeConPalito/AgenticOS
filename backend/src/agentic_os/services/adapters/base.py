@@ -33,6 +33,10 @@ class LaunchContext:
     # The login the run uses (phase 10): the environment that points the CLI to its folder.
     # Empty for the system account, which is the CLI's own configuration.
     account_env: Mapping[str, str] = field(default_factory=dict)
+    # Linked repositories outside `cwd` (phase 12): the CLI is told it may work there too.
+    extra_dirs: tuple[str, ...] = ()
+    # The project lets agents use git freely (phase 12): no permission prompt for it.
+    git_authorized: bool = False
 
     @property
     def mcp_url(self) -> str:
@@ -76,15 +80,21 @@ CLAUDE_TOOLS: dict[str, tuple[str, ...]] = {
 AGENTIC_OS_TOOLS = "mcp__agentic-os__*"
 
 
-def claude_permissions(mode: PermissionMode, allowed_tools: tuple[str, ...]) -> list[str]:
+def claude_permissions(
+    mode: PermissionMode, allowed_tools: tuple[str, ...], git_authorized: bool = False
+) -> list[str]:
     """`--permission-mode` and `--allowedTools` for an agent (spike P6, ADR 0004).
 
     Our own MCP tools are always pre-approved. In "autonomous" the list is not applied: denying
     tools on top of bypassPermissions is no barrier (the model can use the shell instead).
+    With `git_authorized` (phase 12, spike S2) git is allowed in every other mode: both rules are
+    needed, Claude uses the Bash tool or the PowerShell one.
     """
     if mode == PermissionMode.AUTONOMOUS:
         return ["--permission-mode", "bypassPermissions", "--allowedTools", AGENTIC_OS_TOOLS]
     tools = [AGENTIC_OS_TOOLS]
+    if git_authorized:
+        tools += CLAUDE_TOOLS["git"]
     if mode == PermissionMode.RESTRICTED:
         for name in allowed_tools:
             tools += [t for t in CLAUDE_TOOLS.get(name, ()) if t not in tools]

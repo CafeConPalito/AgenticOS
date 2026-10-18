@@ -13,7 +13,7 @@ from test_scheduler_e2e import Api, settings_for
 from test_worktrees import make_repo, sh
 
 from agentic_os.config import Settings
-from agentic_os.models import Run, RunStatus, WorkspaceMode
+from agentic_os.models import Run, RunRepo, RunStatus, WorkspaceMode
 from agentic_os.services import snapshots
 from agentic_os.services.runs.manager import RunManager
 
@@ -26,8 +26,8 @@ def runs_of(api: Api, task_id: str) -> list[dict]:
     return sorted(api.get(f"/api/runs?task_id={task_id}"), key=lambda r: r["created_at"])
 
 
-def listed(body: dict) -> dict[str, tuple[int, int]]:
-    return {f["path"]: (f["additions"], f["deletions"]) for f in body["files"]}
+def listed(body: dict, repo: int = 0) -> dict[str, tuple[int, int]]:
+    return {f["path"]: (f["additions"], f["deletions"]) for f in body["repos"][repo]["files"]}
 
 
 def pipeline(server_url: str, project: str, dev: str, qa: str) -> None:
@@ -83,8 +83,9 @@ def test_a_worktree_task_with_a_rejection_shows_each_runs_own_changes(tmp_path: 
         assert [r["changes"]["files"] for r in runs] == [2, 3, 2, 2]  # the +/- on the run list
 
         whole = api.get(f"/api/tasks/{task['id']}/changes")
-        assert whole["state"] == "ok" and whole["from_ref"]["kind"] == "base"
-        assert whole["to_ref"] == {"kind": "branch", "name": "agentic/T-1"}
+        part = whole["repos"][0]
+        assert whole["state"] == "ok" and part["from_ref"]["kind"] == "base"
+        assert part["to_ref"] == {"kind": "branch", "name": "agentic/T-1"}
         assert listed(whole) == {"a.py": (4, 0), "b.py": (4, 0), ".fake-rejected": (1, 0)}
         # The same numbers as `git diff` on the branch the worktree left behind (CA1).
         expected = {
@@ -127,7 +128,8 @@ def test_a_direct_folder_leaves_out_what_the_user_had_before(tmp_path: Path):
         # The agent's COMMIT also committed notas.md, but it was already in the starting snapshot.
         assert listed(body) == {"a.py": (1, 0), "b.py": (1, 0)}
         whole = api.get(f"/api/tasks/{task['id']}/changes")
-        assert whole["direct_folder"] is True and whole["from_ref"]["kind"] == "task_start"
+        assert whole["direct_folder"] is True
+        assert whole["repos"][0]["from_ref"]["kind"] == "task_start"
         assert listed(whole) == listed(body)
 
 
@@ -177,5 +179,85 @@ def test_recovery_closes_the_changes_of_an_interrupted_run(
 
     with db_factory() as db:
         run = db.get(Run, run_id)
-        assert run.status == RunStatus.INTERRUPTED and run.snapshot_end
+        assert run.status == RunStatus.INTERRUPTED
+        assert db.query(RunRepo).filter_by(run_id=run_id).one().snapshot_end
         assert (run.changes_files, run.changes_added, run.changes_deleted) == (2, 3, 0)
+
+
+# A task in a project with two repositories: it works in both, in worktrees, at once (phase 12).
+TWO_REPOS = (
+    "trabajo; EN: backend; ANADE: api.py=x|y; COMMIT: feat api; ANADE: notas.py=z;"
+    " EN: frontend; ANADE: app.ts=u; EN: .; ESCRIBE: raiz.txt=fuera"
+)
+
+
+def test_a_task_in_two_repositories_shows_the_changes_of_each(tmp_path: Path):
+    from gitrepos import make_repo as repo_in
+
+    folder = tmp_path / "shop"
+    backend = repo_in(folder / "backend")
+    frontend = repo_in(folder / "frontend")
+    with live_server(settings_for(tmp_path)) as server:
+        api = Api(server)
+        project = api.post(
+            "/api/projects", {"name": "Shop", "path": str(folder), "workspace_mode": "worktree"}
+        )["id"]
+        dev = api.post("/api/agents", {"name": "Dev", "cli": "claude"})["id"]
+        task = api.post(
+            "/api/tasks",
+            {"project_id": project, "agent_id": dev, "title": f"{TWO_REPOS}; TERMINA: hecho"},
+        )
+
+        done = api.wait_status(task["id"], "done", "waiting_human", timeout=180)
+        assert done["status"] == "done", done
+        work = tmp_path / "shop.wt" / "T-1"
+        # The worktrees are gone; what the agent wrote outside every repository stays (it is
+        # nobody's to delete) and the task says so.
+        assert done["worktree_path"] is None
+        assert sorted(p.name for p in work.iterdir()) == ["raiz.txt"]
+        events = api.get(f"/api/tasks/{task['id']}/events")
+        assert any("outside the repositories" in e["detail"] for e in events)
+
+        (run,) = runs_of(api, task["id"])
+        body = api.get(f"/api/runs/{run['id']}/changes")
+        assert body["state"] == "ok"
+        by_name = {part["name"]: part for part in body["repos"]}
+        assert set(by_name) == {"backend", "frontend"}
+        # What the run did in each repository: committed work and work left uncommitted. The file
+        # written at the root of the work folder belongs to no repository.
+        got = {
+            name: {f["path"]: (f["additions"], f["deletions"]) for f in part["files"]}
+            for name, part in by_name.items()
+        }
+        assert got == {
+            "backend": {"api.py": (2, 0), "notas.py": (1, 0)},
+            "frontend": {"app.ts": (1, 0)},
+        }
+        assert body["totals"] == {"files": 3, "additions": 4, "deletions": 0}
+        assert run["changes"] == {"files": 3, "additions": 4, "deletions": 0}
+
+        whole = api.get(f"/api/tasks/{task['id']}/changes")
+        for repo, name in ((backend, "backend"), (frontend, "frontend")):
+            expected = {
+                path: (int(added), int(deleted))
+                for added, deleted, path in (
+                    line.split(chr(9))
+                    for line in sh(repo, "diff", "--numstat", "main", "agentic/T-1").splitlines()
+                )
+            }
+            part = next(p for p in whole["repos"] if p["name"] == name)
+            assert {f["path"]: (f["additions"], f["deletions"]) for f in part["files"]} == expected
+            assert part["from_ref"]["kind"] == "base" and part["from_ref"]["name"] == "main"
+
+        # A file's diff needs to know which repository it is in.
+        key = by_name["frontend"]["key"]
+        diff = api.get(f"/api/tasks/{task['id']}/changes/file?path=app.ts&repo={key}")
+        assert [line["text"] for h in diff["hunks"] for line in h["lines"]] == ["u"]
+
+        # Snapshots in each repository, and the real checkouts untouched (CA4).
+        for repo in (backend, frontend):
+            for label in ("start", "end"):
+                assert sh(repo, "rev-parse", snapshots.ref_name(run["id"], label))
+            assert sh(repo, "status", "--porcelain") == ""
+            assert sh(repo, "branch", "--show-current") == "main"
+            assert sh(repo, "worktree", "list").count(chr(10)) == 0

@@ -130,12 +130,9 @@ class Run(IdMixin, WorkspaceMixin, TimestampMixin, Base):
     )
     account_label: Mapped[str] = mapped_column(String(120), nullable=False, default="")
 
-    # What the run changed (phase 11, ADR 0015): snapshots of its folder (commit shas, kept by
-    # refs/agentic-os/runs/<id>/{start,end}) and the +/- summary computed when it ended.
+    # What the run changed: the +/- summary computed when it ended, summed over its repositories
+    # (phase 11, ADR 0015). Each repository's snapshots and summary are in `RunRepo` (phase 12).
     # None = no data (not a git folder, a run from before the phase, a snapshot that failed).
-    snapshot_start: Mapped[str | None] = mapped_column(String(40), nullable=True)
-    snapshot_end: Mapped[str | None] = mapped_column(String(40), nullable=True)
-    snapshot_skipped: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     changes_files: Mapped[int | None] = mapped_column(Integer, nullable=True)
     changes_added: Mapped[int | None] = mapped_column(Integer, nullable=True)
     changes_deleted: Mapped[int | None] = mapped_column(Integer, nullable=True)

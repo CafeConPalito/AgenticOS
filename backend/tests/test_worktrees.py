@@ -10,8 +10,8 @@ from sqlalchemy.orm import Session
 from test_scheduler import db_factory, make_agent  # noqa: F401 - pytest fixture
 
 from agentic_os.db.base import DEFAULT_WORKSPACE
-from agentic_os.models import Project, Task, WorkspaceMode
-from agentic_os.services import git
+from agentic_os.models import Project, ProjectRepo, Task, TaskRepo, WorkspaceMode
+from agentic_os.services import git, repos
 from agentic_os.services import tasks as task_ops
 from agentic_os.services.worktrees import Worktrees, root_for
 
@@ -162,3 +162,137 @@ def test_deleting_a_project_releases_its_task_worktrees(settings, tmp_path: Path
     assert not Path(path).exists()
     assert git.branch_exists(str(repo), "agentic/T-1")
     assert sh(repo, "worktree", "list").count("\n") == 0
+
+
+# ------------------------------------------------------------------------ several repositories
+def project_of(db: Session, folder: Path) -> tuple[Project, Task]:
+    return make_task(db, folder)
+
+
+def test_two_repositories_below_the_folder_get_a_worktree_each(db_factory, tmp_path: Path):  # noqa: F811
+    from gitrepos import make_repo as repo_in
+
+    folder = tmp_path / "shop"
+    backend = repo_in(folder / "backend")
+    frontend = repo_in(folder / "frontend", branch="develop")
+    sh(frontend, "checkout", "-q", "develop")
+    with db_factory() as db:
+        project, task = make_task(db, folder)
+        project.base_branch = None
+        work = Path(Worktrees().prepare(db, task, project))
+        assert work == tmp_path / "shop.wt" / "T-1"
+        assert sh(work / "backend", "branch", "--show-current") == "agentic/T-1"
+        assert sh(work / "frontend", "branch", "--show-current") == "agentic/T-1"
+        # Each branch starts from its own repository's base.
+        assert sh(backend, "rev-parse", "agentic/T-1") == sh(backend, "rev-parse", "main")
+        assert sh(frontend, "rev-parse", "agentic/T-1") == sh(frontend, "rev-parse", "develop")
+        rows = {
+            db.get(ProjectRepo, r.repo_id).name: r
+            for r in db.query(TaskRepo).filter_by(task_id=task.id)
+        }
+        assert set(rows) == {"backend", "frontend"}
+        assert rows["backend"].worktree_path == str(work / "backend")
+        assert rows["frontend"].base_commit == sh(frontend, "rev-parse", "develop")
+        assert task.worktree_path == str(work) and task.branch == "agentic/T-1"
+        assert Worktrees().prepare(db, task, project) == str(work)  # shared by every stage
+
+
+def test_a_single_repository_below_the_folder_is_the_work_folder(db_factory, tmp_path: Path):  # noqa: F811
+    from gitrepos import make_repo as repo_in
+
+    folder = tmp_path / "shop"
+    repo_in(folder / "backend")
+    with db_factory() as db:
+        project, task = make_task(db, folder)
+        work = Path(Worktrees().prepare(db, task, project))
+        assert (work / "README.md").exists() and (work / ".git").exists()
+
+
+def test_release_commits_each_repository_and_drops_untouched_branches(
+    db_factory,  # noqa: F811
+    tmp_path: Path,
+):
+    from gitrepos import make_repo as repo_in
+
+    folder = tmp_path / "shop"
+    backend = repo_in(folder / "backend")
+    frontend = repo_in(folder / "frontend")
+    docs = repo_in(folder / "docs")
+    with db_factory() as db:
+        project, task = make_task(db, folder)
+        worktrees = Worktrees()
+        work = Path(worktrees.prepare(db, task, project))
+        (work / "backend" / "api.py").write_text("x = 1\n", "utf-8")
+        (work / "frontend" / "app.ts").write_text("let x = 1\n", "utf-8")
+        worktrees.release(db, task, project)
+
+        assert task.worktree_path is None and not work.exists()
+        assert git.branch_exists(str(backend), "agentic/T-1")
+        assert git.branch_exists(str(frontend), "agentic/T-1")
+        assert not git.branch_exists(str(docs), "agentic/T-1")  # nothing happened there
+        assert "api.py" in sh(backend, "ls-tree", "--name-only", "agentic/T-1").splitlines()
+        assert "app.ts" in sh(frontend, "ls-tree", "--name-only", "agentic/T-1").splitlines()
+        left = {
+            db.get(ProjectRepo, r.repo_id).name
+            for r in db.query(TaskRepo).filter_by(task_id=task.id)
+        }
+        assert left == {"backend", "frontend"}
+        for repo in (backend, frontend, docs):
+            assert sh(repo, "worktree", "list").count("\n") == 0
+
+        # A retry brings the same branches back.
+        again = Path(worktrees.prepare(db, task, project))
+        assert (again / "backend" / "api.py").exists()
+
+
+def test_a_failure_in_one_repository_leaves_no_worktrees_behind(db_factory, tmp_path: Path):  # noqa: F811
+    from gitrepos import make_repo as repo_in
+
+    folder = tmp_path / "shop"
+    backend = repo_in(folder / "backend")
+    repo_in(folder / "frontend")
+    with db_factory() as db:
+        project, task = make_task(db, folder)
+        project.base_branch = None
+        repos.sync(db, project)
+        broken = db.query(ProjectRepo).filter_by(name="frontend").one()
+        broken.base_branch = "ghost"
+        with pytest.raises(git.GitError):
+            Worktrees().prepare(db, task, project)
+        assert task.worktree_path is None
+        assert db.query(TaskRepo).filter_by(task_id=task.id).count() == 0
+        assert sh(backend, "worktree", "list").count("\n") == 0
+
+
+def test_a_repository_inside_another_is_not_committed_into_it(db_factory, tmp_path: Path):  # noqa: F811
+    from gitrepos import make_repo as repo_in
+
+    folder = repo_in(tmp_path / "mono")
+    inner = repo_in(folder / "tools" / "cli")
+    with db_factory() as db:
+        project, task = make_task(db, folder)
+        worktrees = Worktrees()
+        work = Path(worktrees.prepare(db, task, project))
+        assert (work / "tools" / "cli" / ".git").exists()
+        (work / "root.txt").write_text("r\n", "utf-8")
+        (work / "tools" / "cli" / "tool.py").write_text("t = 1\n", "utf-8")
+        worktrees.release(db, task, project)
+    root_tree = sh(folder, "ls-tree", "-r", "--name-only", "agentic/T-1").splitlines()
+    assert "root.txt" in root_tree
+    assert not any(name.startswith("tools") for name in root_tree)  # no gitlink either
+    assert "tool.py" in sh(inner, "ls-tree", "--name-only", "agentic/T-1").splitlines()
+
+
+def test_a_linked_repository_goes_to_an_at_folder(db_factory, tmp_path: Path):  # noqa: F811
+    from gitrepos import make_repo as repo_in
+
+    folder = repo_in(tmp_path / "app")
+    shared = repo_in(tmp_path / "shared-lib")
+    with db_factory() as db:
+        project, task = make_task(db, folder)
+        repos.ensure(db, project)
+        repos.link(db, project, str(shared), name="Shared lib")
+        work = Path(Worktrees().prepare(db, task, project))
+        assert (work / ".git").exists()  # the root repository: the work folder itself
+        assert (work / "@Shared lib" / "README.md").exists()
+        assert sh(work / "@Shared lib", "branch", "--show-current") == "agentic/T-1"

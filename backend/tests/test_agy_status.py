@@ -100,12 +100,13 @@ def test_without_a_settings_file_there_is_nothing_to_edit(tmp_path: Path):
     assert broken.read_text("utf-8") == "{not json"
 
 
-def test_an_agy_run_gets_the_address_to_report_to(tmp_path: Path):
+def test_an_agy_run_gets_the_address_to_report_to(tmp_path: Path, monkeypatch):
     from agentic_os.models import Cli, PermissionMode
     from agentic_os.services.adapters import LaunchContext, adapter_for
     from agentic_os.services.runs import launcher
 
-    launcher.shutil.which = lambda name: f"C:/bin/{name}.exe"  # type: ignore[assignment]
+    # `launcher.shutil` is the real module: restored after the test so git is found again.
+    monkeypatch.setattr(launcher.shutil, "which", lambda name: f"C:/bin/{name}.exe")
     project = tmp_path / "project"
     project.mkdir()
     ctx = LaunchContext(

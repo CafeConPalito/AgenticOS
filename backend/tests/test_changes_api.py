@@ -55,7 +55,7 @@ def test_the_changes_of_a_run_and_of_its_task(api: TestClient, tmp_path: Path):
         body = api.get(url).json()
         assert body["state"] == "ok" and not body["live"]
         assert body["totals"] == {"files": 2, "additions": 3, "deletions": 0}
-        files = {f["path"]: f for f in body["files"]}
+        files = {f["path"]: f for f in body["repos"][0]["files"]}
         assert files["api.py"]["status"] == "added" and files["api.py"]["additions"] == 2
         assert files["ui.py"]["additions"] == 1
     task_body = api.get(f"/api/tasks/{task_id}/changes").json()

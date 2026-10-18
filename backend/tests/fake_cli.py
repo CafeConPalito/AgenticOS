@@ -36,6 +36,7 @@ from __future__ import annotations
 
 import json
 import os
+import shlex
 import signal
 import subprocess
 import sys
@@ -43,6 +44,8 @@ import tempfile
 import time
 import uuid
 from pathlib import Path
+
+START_DIR = Path.cwd()  # where the CLI was started: `EN:` is relative to it
 
 
 def subcommand() -> None:
@@ -345,7 +348,9 @@ def use_tools(text: str) -> int | None:
     writes what get_context returns; `GIT: <file>` → writes `git status` of the folder;
     `SALE: n` → exits with n after the turn. Phase 11: `ESCRIBE: ruta=a|b` writes a file (`|`
     is a line break), `ANADE: ruta=a` appends lines to it and `COMMIT: mensaje` commits the whole
-    folder, so a run can commit halfway and leave other work uncommitted. Phase 06:
+    folder, so a run can commit halfway and leave other work uncommitted. Phase 12: `EN: sub`
+    moves the directives that follow into a subfolder (`EN: .` goes back), to work in several
+    repositories. Phase 06:
     `PREGUNTA: título|opción|…` → request_human (ends the turn; a later «Respuesta de la
     persona…» message completes the task);
     `PERMISO: comando` → shows the CLI's permission dialog (Claude's or agy's real texts) and
@@ -367,6 +372,10 @@ def use_tools(text: str) -> int | None:
         if keyword == "SALE":
             exit_code = int(value)
             continue
+        if keyword == "EN":  # phase 12: the directives that follow work in this subfolder
+            os.chdir(START_DIR / value.strip() if value.strip() not in ("", ".") else START_DIR)
+            out(f"● in {Path.cwd().name}")
+            continue
         if keyword in ("ESCRIBE", "ANADE"):  # `ruta=linea|linea`: creates / appends to a file
             name, _, content = value.partition("=")
             target = Path.cwd() / name.strip()
@@ -381,6 +390,11 @@ def use_tools(text: str) -> int | None:
             subprocess.run(["git", "add", "-A"], capture_output=True)
             subprocess.run(["git", *identity, "commit", "-m", value], capture_output=True)
             out(f"● committed: {value}")
+            continue
+        if keyword == "GITCMD":  # phase 12: any git command, e.g. `GITCMD: push origin main`
+            identity = ["-c", "user.name=Fake Dev", "-c", "user.email=fake@example.com"]
+            subprocess.run(["git", *identity, *shlex.split(value)], capture_output=True)
+            out(f"● git {value}")
             continue
         if keyword == "GIT":  # what git sees in the working folder
             status = subprocess.run(

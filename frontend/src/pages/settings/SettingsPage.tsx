@@ -6,11 +6,12 @@ import { cn } from '@/lib/utils'
 import { AboutSection } from './AboutSection'
 import { CleanupSection } from './CleanupSection'
 import { GeneralSection } from './GeneralSection'
+import { GitSection } from './GitSection'
 import { LimitsSection } from './LimitsSection'
 import { NotificationsSection } from './NotificationsSection'
 
-/** The five sections, in order; each one is reachable as `/ajustes#<id>`. */
-export const SECTIONS = ['general', 'notifications', 'limits', 'cleanup', 'about'] as const
+/** The six sections, in order; each one is reachable as `/ajustes#<id>`. */
+export const SECTIONS = ['general', 'notifications', 'limits', 'git', 'cleanup', 'about'] as const
 type SectionId = (typeof SECTIONS)[number]
 
 /** The id of the section that shows at the top of the scroll area. */
@@ -108,6 +109,9 @@ export default function SettingsPage() {
           </div>
           <div id="limits" className="scroll-mt-4">
             <LimitsSection />
+          </div>
+          <div id="git" className="scroll-mt-4">
+            <GitSection />
           </div>
           <div id="cleanup" className="scroll-mt-4">
             <CleanupSection />

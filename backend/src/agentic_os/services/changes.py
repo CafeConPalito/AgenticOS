@@ -16,6 +16,7 @@ import fnmatch
 import re
 import threading
 import time
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -23,8 +24,19 @@ import structlog
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from agentic_os.errors import NotFound
-from agentic_os.models import ACTIVE_STATUSES, Project, Run, RunStatus, Stage, Task, WorkspaceMode
+from agentic_os.errors import ApiError, NotFound
+from agentic_os.models import (
+    ACTIVE_STATUSES,
+    Project,
+    ProjectRepo,
+    Run,
+    RunRepo,
+    RunStatus,
+    Stage,
+    Task,
+    TaskRepo,
+    WorkspaceMode,
+)
 from agentic_os.schemas.changes import (
     Changes,
     ChangesRunRef,
@@ -36,8 +48,10 @@ from agentic_os.schemas.changes import (
     FileLines,
     Hunk,
     RefLabel,
+    RepoChanges,
 )
-from agentic_os.services import git, snapshots
+from agentic_os.services import git, repos, runrepos, snapshots
+from agentic_os.services.gitx.runner import Repo
 
 log = structlog.get_logger()
 
@@ -64,8 +78,9 @@ class Totals:
 
 @dataclass
 class Range:
-    """The two commits a diff compares, run by git in `repo` (the project's own repository:
-    objects and refs are shared with its worktrees, which may already be gone)."""
+    """The two commits a diff compares in one repository, run by git in `repo` (the project's
+    own repository: objects and refs are shared with its worktrees, which may already be
+    gone)."""
 
     state: ChangesState
     repo: str = ""
@@ -78,17 +93,34 @@ class Range:
     direct_folder: bool = False
     skipped_large: int = 0
     runs: list[ChangesRunRef] = field(default_factory=list)
+    key: str = ""  # which repository (its id), to pick one range out of several
+    name: str = ""
+    # "commits": old → new. "staged": HEAD → index. "unstaged": index → work tree (the Git tab).
+    mode: str = "commits"
 
     @property
     def usable(self) -> bool:
-        return self.state == "ok" and bool(self.old and self.new)
+        if self.state != "ok":
+            return False
+        return self.mode != "commits" or bool(self.old and self.new)
+
+    def ends(self) -> list[str]:
+        """The arguments after `git diff <flags>` that pick the two sides."""
+        if self.mode == "staged":
+            return ["--cached"]
+        if self.mode == "unstaged":
+            return []
+        return [self.old or "", self.new or ""]
 
 
 # ---------------------------------------------------------------------- ranges
-def _repo_of(project: Project | None, fallback: str) -> str:
-    if project is not None and Path(project.path).is_dir():
-        return project.path
-    return fallback if Path(fallback).is_dir() else ""
+def _git_dir(db: Session, repo_id: str | None, fallback: str) -> str:
+    """The folder git commands run in: the project's repository (its objects and refs are shared
+    with its worktrees, which may already be gone), else the folder the snapshots were taken in."""
+    repo = db.get(ProjectRepo, repo_id) if repo_id else None
+    if repo is not None and Path(repo.path).is_dir():
+        return repo.path
+    return fallback if fallback and Path(fallback).is_dir() else ""
 
 
 def _empty_state(repo: str) -> ChangesState:
@@ -96,12 +128,20 @@ def _empty_state(repo: str) -> ChangesState:
     return "no_snapshots" if repo and snapshots.is_repo(repo) else "no_git"
 
 
+def _state_without_rows(db: Session, project: Project | None) -> ChangesState:
+    """A run or task with no repository rows: its project has repositories (so it predates the
+    snapshots or lost them) or it has none."""
+    if project is not None and any(not r.missing for r in repos.ensure(db, project)):
+        return "no_snapshots"
+    return "no_git"
+
+
 LIVE_TTL = 4.0  # seconds a live snapshot is reused
 _LIVE: dict[str, tuple[float, str | None]] = {}
 _LIVE_LOCK = threading.Lock()
 
 
-def _live_snapshot(folder: str) -> str | None:
+def _live_snapshot(folder: str, exclude: Sequence[str] = ()) -> str | None:
     """The folder as it is now, for a run that is going. Reused for a few seconds, so the file
     list, a file's diff and its context lines (separate requests) compare the same state and the
     5 s polling does not hash the whole folder each time."""
@@ -109,7 +149,7 @@ def _live_snapshot(folder: str) -> str | None:
         hit = _LIVE.get(folder)
         if hit and time.monotonic() - hit[0] < LIVE_TTL:
             return hit[1]
-    snapshot = snapshots.take(folder) if Path(folder).is_dir() else None
+    snapshot = snapshots.take(folder, exclude=exclude) if Path(folder).is_dir() else None
     sha = snapshot.sha if snapshot else None
     with _LIVE_LOCK:
         _LIVE[folder] = (time.monotonic(), sha)
@@ -119,7 +159,7 @@ def _live_snapshot(folder: str) -> str | None:
 
 
 def run_totals(run: Run) -> ChangesTotals | None:
-    """The +/- summary stored on a run; None when it has no data."""
+    """The +/- summary stored on a run (all its repositories); None when it has no data."""
     if run.changes_files is None:
         return None
     return ChangesTotals(
@@ -129,31 +169,64 @@ def run_totals(run: Run) -> ChangesTotals | None:
     )
 
 
-def run_range(db: Session, run: Run) -> Range:
+def _run_rows(db: Session, run_ids: Sequence[str]) -> list[RunRepo]:
+    if not run_ids:
+        return []
+    query = select(RunRepo).where(RunRepo.run_id.in_(run_ids)).order_by(RunRepo.path)
+    return list(db.scalars(query))
+
+
+def _key(row: RunRepo) -> str:
+    return row.repo_id or f"row:{row.id}"
+
+
+def _nested(folder: str, rows: Sequence[RunRepo]) -> list[str]:
+    return runrepos.nested_in(folder, [r.path for r in rows])
+
+
+def run_ranges(db: Session, run: Run) -> list[Range]:
+    """One range per repository the run worked in."""
     project = db.get(Project, run.project_id) if run.project_id else None
-    repo = _repo_of(project, run.cwd)
-    if not repo or not run.snapshot_start:
-        state = _empty_state(repo)
+    rows = _run_rows(db, [run.id])
+    if not rows:
+        state = _state_without_rows(db, project)
         # Purged with its logs (or by hand): the diff existed and is gone.
-        return Range("snapshot_missing" if state == "no_snapshots" and _had_diff(run) else state)
-    if not snapshots.exists(repo, run.snapshot_start):
-        return Range("snapshot_missing")
+        return [Range("snapshot_missing" if state == "no_snapshots" and _had_diff(run) else state)]
+    return [_run_range(db, run, row, rows) for row in rows]
+
+
+def run_range(db: Session, run: Run) -> Range:
+    """The first repository's range (a project with one repository has no other)."""
+    return run_ranges(db, run)[0]
+
+
+def _run_range(db: Session, run: Run, row: RunRepo, siblings: Sequence[RunRepo]) -> Range:
+    repo = _git_dir(db, row.repo_id, row.path)
+    key, name = _key(row), row.repo_name
+    if not repo or not row.snapshot_start:
+        state = _empty_state(repo)
+        had = state == "no_snapshots" and _had_diff(run)
+        return Range("snapshot_missing" if had else state, key=key, name=name)
+    if not snapshots.exists(repo, row.snapshot_start):
+        return Range("snapshot_missing", key=key, name=name)
     live = run.status in ACTIVE_STATUSES
-    new = _live_snapshot(run.cwd) if live else run.snapshot_end
+    new = _live_snapshot(row.path, _nested(row.path, siblings)) if live else row.snapshot_end
     if not new:
-        return Range("no_snapshots")
+        return Range("no_snapshots", key=key, name=name)
     if not live and not snapshots.exists(repo, new):
-        return Range("snapshot_missing")
+        return Range("snapshot_missing", key=key, name=name)
     return Range(
         "ok",
         repo,
-        run.snapshot_start,
+        row.snapshot_start,
         new,
         RefLabel(kind="run_start"),
         RefLabel(kind="now" if live else "run_end"),
         live=live,
         partial=run.status == RunStatus.INTERRUPTED,
-        skipped_large=run.snapshot_skipped,
+        skipped_large=row.snapshot_skipped,
+        key=key,
+        name=name,
     )
 
 
@@ -168,73 +241,115 @@ def _task_runs(db: Session, task: Task) -> list[Run]:
     )
 
 
-def task_range(db: Session, task: Task) -> Range:
+def task_ranges(db: Session, task: Task) -> list[Range]:
+    """One range per repository the task changed."""
     project = db.get(Project, task.project_id)
-    if project is None:
-        return Range("no_git")
-    repo = _repo_of(project, task.worktree_path or "")
     runs = _task_runs(db, task)
     refs = _run_refs(db, runs)
-    if not repo:
-        return Range("no_git", runs=refs)
-    if project.workspace_mode == WorkspaceMode.WORKTREE and task.branch:
-        result = _worktree_range(task, project, repo, runs)
+    if project is None:
+        return [Range("no_git", runs=refs)]
+    rows = _run_rows(db, [r.id for r in runs])
+    task_rows = list(db.scalars(select(TaskRepo).where(TaskRepo.task_id == task.id)))
+    if project.workspace_mode == WorkspaceMode.WORKTREE and task_rows:
+        result = [_worktree_range(db, project, tr, runs, rows) for tr in task_rows]
     else:
-        result = _direct_range(repo, runs)
-    result.runs = refs
+        result = _direct_ranges(db, project, runs, rows)
+    for rng in result:
+        rng.runs = refs
     return result
 
 
-def _worktree_range(task: Task, project: Project, repo: str, runs: list[Run]) -> Range:
-    branch = task.branch or ""
-    old = task.base_commit
-    if not old:  # a task from before the phase: where its branch left the base branch
-        base = project.base_branch or ""
+def task_range(db: Session, task: Task) -> Range:
+    """The first repository's range (a project with one repository has no other)."""
+    return task_ranges(db, task)[0]
+
+
+def _worktree_range(
+    db: Session, project: Project, task_repo: TaskRepo, runs: list[Run], rows: list[RunRepo]
+) -> Range:
+    repo_row = db.get(ProjectRepo, task_repo.repo_id)
+    name = repo_row.name if repo_row else ""
+    key = task_repo.repo_id
+    repo = _git_dir(db, task_repo.repo_id, task_repo.worktree_path or "")
+    branch = task_repo.branch
+    base = (repos.base_of(project, repo_row) if repo_row else project.base_branch) or ""
+    if not repo:
+        return Range("no_git", key=key, name=name)
+    old = task_repo.base_commit
+    if not old:  # a branch whose origin was not kept: where it left the base branch
         old = git.merge_base(repo, base, branch) if base else None
     if not old or not snapshots.exists(repo, old):
-        return Range(_empty_state(repo))
-    live = next((r for r in runs if r.status in ACTIVE_STATUSES), None)
+        return Range(_empty_state(repo), key=key, name=name)
+    mine = [r for r in rows if r.repo_id == task_repo.repo_id]
+    by_run = {r.run_id: r for r in mine}
+    live = next((r for r in runs if r.status in ACTIVE_STATUSES and r.id in by_run), None)
     new: str | None = None
     to_ref = RefLabel(kind="branch", name=branch)
     if live is not None:
-        new, to_ref = _live_snapshot(live.cwd), RefLabel(kind="now")
+        row = by_run[live.id]
+        new, to_ref = _live_snapshot(row.path, _nested(row.path, rows)), RefLabel(kind="now")
     if new is None:
         # The end of the task's last run; if that run left none (it crashed), the branch itself,
         # never an older run's end that would pass for the whole task.
-        ended = runs[-1].snapshot_end if runs else None
+        last = by_run.get(runs[-1].id) if runs else None
+        ended = last.snapshot_end if last else None
         new = ended if ended and snapshots.exists(repo, ended) else _branch_tip(repo, branch)
     if not new:
-        return Range("snapshot_missing")
-    skipped = max((r.snapshot_skipped for r in runs), default=0)
+        return Range("snapshot_missing", key=key, name=name)
     return Range(
         "ok",
         repo,
         old,
         new,
-        RefLabel(kind="base", name=project.base_branch or ""),
+        RefLabel(kind="base", name=base),
         to_ref,
         live=live is not None,
-        skipped_large=skipped,
+        skipped_large=max((r.snapshot_skipped for r in mine), default=0),
+        key=key,
+        name=name,
     )
 
 
-def _direct_range(repo: str, runs: list[Run]) -> Range:
-    first_index = next((i for i, r in enumerate(runs) if r.snapshot_start), None)
+def _direct_ranges(
+    db: Session, project: Project, runs: list[Run], rows: list[RunRepo]
+) -> list[Range]:
+    if not rows:
+        return [Range(_state_without_rows(db, project))]
+    order = {run.id: index for index, run in enumerate(runs)}
+    groups: dict[str, list[RunRepo]] = {}
+    for row in sorted(rows, key=lambda r: order.get(r.run_id, 0)):
+        groups.setdefault(_key(row), []).append(row)
+    return [_direct_range(db, runs, order, group, rows) for _name, group in sorted(groups.items())]
+
+
+def _direct_range(
+    db: Session,
+    runs: list[Run],
+    order: dict[str, int],
+    group: list[RunRepo],
+    all_rows: list[RunRepo],
+) -> Range:
+    by_id = {run.id: run for run in runs}
+    key, name = _key(group[0]), group[0].repo_name
+    repo = _git_dir(db, group[0].repo_id, group[0].path)
+    first_index = next((order[r.run_id] for r in group if r.snapshot_start), None)
     if first_index is None:
-        return Range(_empty_state(repo))
+        return Range(_empty_state(repo), key=key, name=name)
     earlier = runs[:first_index]
     if any(r.started_at is not None for r in earlier):
         # Runs that did work before the first snapshot (from before the phase, or purged): where
         # the task started is unknown, so a diff from the first snapshot would look complete.
-        return Range("snapshot_missing" if any(_had_diff(r) for r in earlier) else "no_snapshots")
-    with_start = runs[first_index:]
+        state = "snapshot_missing" if any(_had_diff(r) for r in earlier) else "no_snapshots"
+        return Range(state, key=key, name=name)
+    with_start = [r for r in group if order[r.run_id] >= first_index and r.run_id in by_id]
     first, last = with_start[0], with_start[-1]
-    if not snapshots.exists(repo, first.snapshot_start):
-        return Range("snapshot_missing")
-    live = last.status in ACTIVE_STATUSES
-    new = _live_snapshot(last.cwd) if live else last.snapshot_end
+    if not repo or not snapshots.exists(repo, first.snapshot_start):
+        return Range("snapshot_missing", key=key, name=name)
+    last_run = by_id[last.run_id]
+    live = last_run.status in ACTIVE_STATUSES
+    new = _live_snapshot(last.path, _nested(last.path, all_rows)) if live else last.snapshot_end
     if not new or (not live and not snapshots.exists(repo, new)):
-        return Range("no_snapshots" if not new else "snapshot_missing")
+        return Range("no_snapshots" if not new else "snapshot_missing", key=key, name=name)
     return Range(
         "ok",
         repo,
@@ -243,9 +358,11 @@ def _direct_range(repo: str, runs: list[Run]) -> Range:
         RefLabel(kind="task_start"),
         RefLabel(kind="now" if live else "run_end"),
         live=live,
-        partial=last.status == RunStatus.INTERRUPTED,
+        partial=last_run.status == RunStatus.INTERRUPTED,
         direct_folder=True,
         skipped_large=max(r.snapshot_skipped for r in with_start),
+        key=key,
+        name=name,
     )
 
 
@@ -272,6 +389,40 @@ def _run_refs(db: Session, runs: list[Run]) -> list[ChangesRunRef]:
             )
         )
     return refs
+
+
+# ---------------------------------------------------------------------- ranges of the Git tab
+def commit_range(repo: str, sha: str, parent: str) -> Range:
+    """What one commit changed, against its first parent (the empty tree for a root commit)."""
+    return Range(
+        "ok",
+        repo,
+        parent,
+        sha,
+        RefLabel(kind="commit", name=parent[:7]),
+        RefLabel(kind="commit", name=sha[:7]),
+    )
+
+
+def compare_range(repo: str, old: str, new: str, merge_base: bool = False) -> Range:
+    """Two refs. With `merge_base`, what `new` changed since it left `old` (like a pull request)."""
+    start = git.merge_base(repo, old, new) if merge_base else old
+    if not start:
+        return Range("no_snapshots")
+    return Range(
+        "ok", repo, start, new, RefLabel(kind="ref", name=old), RefLabel(kind="ref", name=new)
+    )
+
+
+def worktree_range(repo: str, staged: bool) -> Range:
+    """The uncommitted changes: what is staged (HEAD → index) or not (index → work tree)."""
+    return Range(
+        "ok",
+        repo,
+        from_ref=RefLabel(kind="head" if staged else "index"),
+        to_ref=RefLabel(kind="index" if staged else "worktree"),
+        mode="staged" if staged else "unstaged",
+    )
 
 
 def _branch_tip(repo: str, branch: str) -> str | None:
@@ -359,9 +510,10 @@ def _size(repo: str, commit: str, path: str) -> int | None:
 
 def file_list(rng: Range) -> list[FileChange]:
     old, new, repo = rng.old or "", rng.new or "", rng.repo
-    numstat = git.run(repo, "diff", "--numstat", "-z", *DIFF_FLAGS, old, new, timeout=TIMEOUT)
+    ends = rng.ends()
+    numstat = git.run(repo, "diff", "--numstat", "-z", *DIFF_FLAGS, *ends, timeout=TIMEOUT)
     status = _statuses(
-        git.run(repo, "diff", "--name-status", "-z", *DIFF_FLAGS, old, new, timeout=TIMEOUT)
+        git.run(repo, "diff", "--name-status", "-z", *DIFF_FLAGS, *ends, timeout=TIMEOUT)
     )
     files = []
     for added, deleted, path, old_path in numstat_entries(numstat):
@@ -376,8 +528,10 @@ def file_list(rng: Range) -> list[FileChange]:
             generated=is_generated(path),
         )
         files.append(change)
+    if rng.mode == "unstaged":  # `git diff` leaves out files git does not track yet
+        files += _untracked(repo)
     # One git call per size, so only for the files that are listed (the rest are only counted).
-    for change in files[:MAX_FILES]:
+    for change in files[:MAX_FILES] if rng.mode == "commits" else []:
         if change.binary:
             if change.status != "added":
                 change.old_size = _size(repo, old, change.old_path or change.path)
@@ -386,9 +540,11 @@ def file_list(rng: Range) -> list[FileChange]:
     return files
 
 
-def changes(rng: Range) -> Changes:
-    """The header and the file list of a range."""
-    result = Changes(
+def changes(rng: Range) -> RepoChanges:
+    """The header and the file list of one repository's range."""
+    result = RepoChanges(
+        key=rng.key,
+        name=rng.name,
         state=rng.state,
         live=rng.live,
         partial=rng.partial,
@@ -396,7 +552,6 @@ def changes(rng: Range) -> Changes:
         from_ref=rng.from_ref,
         to_ref=rng.to_ref,
         skipped_large=rng.skipped_large,
-        runs=rng.runs,
     )
     if not rng.usable:
         return result
@@ -416,6 +571,46 @@ def changes(rng: Range) -> Changes:
     return result
 
 
+def combine(ranges: Sequence[Range]) -> Changes:
+    """The changes of every repository of a run or a task."""
+    parts = [changes(rng) for rng in ranges]
+    usable = [p for p in parts if p.state == "ok"]
+    state: ChangesState = "ok" if usable else (parts[0].state if parts else "no_git")
+    return Changes(
+        state=state,
+        live=any(p.live for p in parts),
+        partial=any(p.partial for p in parts),
+        direct_folder=any(p.direct_folder for p in parts),
+        totals=ChangesTotals(
+            files=sum(p.totals.files for p in usable),
+            additions=sum(p.totals.additions for p in usable),
+            deletions=sum(p.totals.deletions for p in usable),
+        ),
+        repos=parts if state == "ok" else [],
+        runs=ranges[0].runs if ranges else [],
+    )
+
+
+def run_changes(db: Session, run: Run) -> Changes:
+    return combine(run_ranges(db, run))
+
+
+def task_changes(db: Session, task: Task) -> Changes:
+    return combine(task_ranges(db, task))
+
+
+def pick(ranges: Sequence[Range], key: str | None) -> Range:
+    """The repository a file request is about; the only one when `key` is not given."""
+    if key:
+        for rng in ranges:
+            if rng.key == key:
+                return rng
+        raise NotFound("repo")
+    if len(ranges) == 1:
+        return ranges[0]
+    raise ApiError(422, "repo_required", "this has several repositories: say which", "repo")
+
+
 _TOTALS_CACHE: dict[tuple, ChangesTotals | None] = {}
 _TOTALS_CACHE_SIZE = 256
 _TOTALS_LOCK = threading.Lock()  # requests run in a thread pool
@@ -425,11 +620,15 @@ def task_totals(db: Session, task: Task) -> ChangesTotals | None:
     """The task's +/- for the Inbox, which polls it: cached until the task or one of its runs
     changes, so a poll does not run git. None: no data (or a run is still going)."""
     runs = _task_runs(db, task)
+    task_rows = db.scalars(select(TaskRepo).where(TaskRepo.task_id == task.id)).all()
     key = (
         task.id,
         task.updated_at,
-        task.base_commit,
-        tuple((run.id, run.status, run.snapshot_end) for run in runs),
+        tuple((row.repo_id, row.base_commit) for row in task_rows),
+        tuple(
+            (run.id, run.status, run.changes_files, run.changes_added, run.changes_deleted)
+            for run in runs
+        ),
     )
     with _TOTALS_LOCK:
         if key in _TOTALS_CACHE:
@@ -443,16 +642,20 @@ def task_totals(db: Session, task: Task) -> ChangesTotals | None:
 
 
 def _compute_task_totals(db: Session, task: Task) -> ChangesTotals | None:
-    rng = task_range(db, task)
-    if not rng.usable or rng.live:
+    ranges = task_ranges(db, task)
+    usable = [rng for rng in ranges if rng.usable]
+    if not usable or any(rng.live for rng in ranges):
         return None
-    try:
-        summary = totals(rng.repo, rng.old or "", rng.new or "")
-    except git.GitError:
-        return None
-    return ChangesTotals(
-        files=summary.files, additions=summary.additions, deletions=summary.deletions
-    )
+    total = ChangesTotals()
+    for rng in usable:
+        try:
+            summary = totals(rng.repo, rng.old or "", rng.new or "")
+        except git.GitError:
+            return None
+        total.files += summary.files
+        total.additions += summary.additions
+        total.deletions += summary.deletions
+    return total
 
 
 # ---------------------------------------------------------------------- file diffs
@@ -463,6 +666,58 @@ def _clean(path: str) -> str:
     if not path or "\0" in path or normal.startswith("/") or ".." in parts or ":" in parts[0]:
         raise NotFound("file")
     return path
+
+
+def _is_untracked(repo: str, path: str) -> bool:
+    out = git.run(
+        repo,
+        "ls-files",
+        "-o",
+        "--exclude-standard",
+        "-z",
+        "--",
+        path,
+        timeout=TIMEOUT,
+    )
+    return path in out.split("\0")
+
+
+UNTRACKED_READ = 2 * 1024 * 1024  # bigger new files are listed without counting their lines
+
+
+def _untracked(repo: str) -> list[FileChange]:
+    """New files git does not track yet, as added files (their lines counted from the disk)."""
+    listing = git.run(repo, "ls-files", "-o", "--exclude-standard", "-z", timeout=TIMEOUT)
+    found = []
+    for relative in filter(None, listing.split("\0")):
+        target = Path(repo) / relative
+        try:
+            size = target.stat().st_size
+            head = target.read_bytes()[:UNTRACKED_READ] if size <= UNTRACKED_READ else b"\0"
+        except OSError:
+            continue
+        binary = b"\0" in head[:8000]
+        lines = 0 if binary else head.count(b"\n") + (1 if head and not head.endswith(b"\n") else 0)
+        found.append(
+            FileChange(
+                path=relative,
+                status="added",
+                additions=lines,
+                binary=binary,
+                new_size=size if binary else None,
+                generated=is_generated(relative),
+            )
+        )
+    return found
+
+
+def _final_content(rng: Range, path: str) -> str:
+    """The newer side of a file: a commit's, the index's or the work tree's."""
+    if rng.mode == "unstaged":
+        return (Path(rng.repo) / path).read_text("utf-8", errors="replace")
+    if rng.mode == "staged":
+        return _literal(rng, "show", f":{path}")
+    return _literal(rng, "show", f"{rng.new}:{path}")
 
 
 def _literal(rng: Range, *args: str) -> str:
@@ -478,7 +733,12 @@ def file_diff(rng: Range, path: str, old_path: str | None = None) -> FileDiff:
     paths = [_clean(path)]
     if old_path and old_path != path:
         paths.insert(0, _clean(old_path))
-    output = _literal(rng, "diff", "-U3", *DIFF_FLAGS, rng.old or "", rng.new or "", "--", *paths)
+    output = _literal(rng, "diff", "-U3", *DIFF_FLAGS, *rng.ends(), "--", *paths)
+    if not output.strip() and rng.mode == "unstaged" and _is_untracked(rng.repo, paths[-1]):
+        # A new file git does not track yet: shown as all added.
+        output = Repo(rng.repo).run(
+            "diff", "--no-index", "-U3", "--", "/dev/null", paths[-1], ok=(0, 1), timeout=TIMEOUT
+        )
     if not output.strip():
         raise NotFound("file")
     return parse_diff(path, output)
@@ -555,14 +815,12 @@ def file_lines(rng: Range, path: str, start: int, end: int) -> FileLines:
     path = _clean(path)
     start = max(1, start)
     end = min(end, start + MAX_CONTEXT_LINES - 1)
-    changed = _literal(
-        rng, "diff", "--name-only", *DIFF_FLAGS, rng.old or "", rng.new or "", "--", path
-    )
-    if not changed.strip():  # only files that changed in the range can be read
-        raise NotFound("file")
+    changed = _literal(rng, "diff", "--name-only", *DIFF_FLAGS, *rng.ends(), "--", path)
+    if not changed.strip() and not (rng.mode == "unstaged" and _is_untracked(rng.repo, path)):
+        raise NotFound("file")  # only files that changed in the range can be read
     try:
-        content = _literal(rng, "show", f"{rng.new}:{path}")
-    except git.GitError:  # deleted in the range, or never there
+        content = _final_content(rng, path)
+    except (git.GitError, OSError):  # deleted in the range, or never there
         return FileLines(lines=[])
     window = _split_lines(content)[start - 1 : end]
     return FileLines(
