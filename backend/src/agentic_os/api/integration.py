@@ -12,9 +12,11 @@ from agentic_os.api.agents import _get as get_agent_row
 from agentic_os.api.tasks import SchedulerDep, _get, read_task
 from agentic_os.db.session import get_session
 from agentic_os.errors import ApiError
-from agentic_os.models import Project, TaskRepo
-from agentic_os.schemas.task import TaskRead
-from agentic_os.services import integration
+from agentic_os.models import Project, TaskRepo, TaskStatus, WaitingReason
+from agentic_os.schemas.task import ClashRead, TaskRead
+from agentic_os.services import integration, lane_git
+from agentic_os.services import lanes as lane_ops
+from agentic_os.services import tasks as task_ops
 from agentic_os.services.gitx.errors import GitxError
 
 router = APIRouter(tags=["integration"])
@@ -110,6 +112,77 @@ def finish_resolution(task_id: str, body: RepoBody, db: DbSession, request: Requ
     task = _get(db, task_id)
     integration.finish_resolution(db, task, _project(db, task), body.repo_id)
     _changed(request, [body.repo_id])
+
+
+# ------------------------------------------------------------- the join of a forked task
+def _joining(db: Session, task_id: str):
+    """The task, which has to be waiting because its lanes' branches clash."""
+    task = _get(db, task_id)
+    if task.status != TaskStatus.WAITING_HUMAN or task.waiting_reason != (
+        WaitingReason.JOIN_CONFLICT
+    ):
+        raise ApiError(409, "task_status", "the task is not waiting to join its branches", "status")
+    return task
+
+
+@router.get("/tasks/{task_id}/join")
+def get_join(task_id: str, db: DbSession) -> list[ClashRead]:
+    """What keeps the lanes of the task from being merged (changing nothing)."""
+    task = _get(db, task_id)
+    found = lane_git.clashes(db, task, lane_ops.lanes_of(db, task, task.stage_id))
+    return [ClashRead(repo_id=c.repo_id, name=c.name, lane=c.lane, files=c.files) for c in found]
+
+
+@router.post("/tasks/{task_id}/join/editor")
+def start_join_editor(
+    task_id: str, db: DbSession, scheduler: SchedulerDep
+) -> list[integration.Resolution]:
+    """Scratch worktrees on the task's branch with its lanes merged in, left with their
+    conflicts to resolve (the task's own worktree is closed first: the branch is free)."""
+    task = _joining(db, task_id)
+    project = _project(db, task)
+    scheduler.release_workspace(db, task, project)
+    result = lane_git.prepare_editor(db, task, project)
+    db.commit()
+    return result
+
+
+@router.post("/tasks/{task_id}/join/editor/finish")
+def finish_join_editor(
+    task_id: str, body: RepoBody, db: DbSession, scheduler: SchedulerDep
+) -> dict[str, object]:
+    """Commits what the person resolved in a repository. When nothing is left, the join
+    goes on by itself."""
+    task = _joining(db, task_id)
+    files = lane_git.finish_editor(db, task, _project(db, task), body.repo_id)
+    joined = False
+    if not files:
+        left = lane_git.clashes(db, task, lane_ops.lanes_of(db, task, task.stage_id))
+        if not left:
+            task_ops.retry(db, task)
+            joined = True
+    db.commit()
+    scheduler.poke()
+    return {"conflicts": files, "joined": joined}
+
+
+@router.post("/tasks/{task_id}/join/agent", status_code=status.HTTP_201_CREATED)
+def resolve_join_with_agent(
+    task_id: str, body: ResolveBody, db: DbSession, scheduler: SchedulerDep
+) -> TaskRead:
+    """A task for an agent to merge the lanes' branches into the task's and resolve the
+    conflicts; when it is approved the join goes on."""
+    task = _joining(db, task_id)
+    get_agent_row(db, body.agent_id)
+    project = _project(db, task)
+    found = lane_git.clashes(db, task, lane_ops.lanes_of(db, task, task.stage_id))
+    if not found:
+        raise ApiError(409, "no_conflicts", "joining these branches has no conflicts")
+    scheduler.release_workspace(db, task, project)
+    created = lane_git.resolution_task(db, task, project, body.agent_id, found)
+    db.commit()
+    scheduler.poke()
+    return read_task(db, created)
 
 
 @router.post("/tasks/{task_id}/resolve-conflicts", status_code=status.HTTP_201_CREATED)

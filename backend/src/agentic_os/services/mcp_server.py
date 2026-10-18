@@ -60,7 +60,9 @@ class AgentBackend(Protocol):
     def mcp_connected(self, run_id: str) -> None: ...
     def get_context(self, run_id: str) -> str: ...
     def report_status(self, run_id: str, message: str) -> None: ...
-    def complete_task(self, run_id: str, summary: str, verdict: Verdict) -> str | None: ...
+    def complete_task(
+        self, run_id: str, summary: str, verdict: Verdict, reject_to: str = ""
+    ) -> str | None: ...
     def write_project_memory(self, run_id: str, note: str) -> None: ...
     def request_human(self, run_id: str, title: str, detail: str, options: list[str]) -> str: ...
     def spawn_subagent(self, run_id: str, prompt: str, agent_name: str) -> str: ...
@@ -158,13 +160,24 @@ def build_mcp(backend: AgentBackend) -> MCPServer:
 
     @server.tool()
     async def complete_task(
-        summary: str, ctx: Context, verdict: Literal["approved", "rejected"] = "approved"
+        summary: str,
+        ctx: Context,
+        verdict: Literal["approved", "rejected"] = "approved",
+        reject_to: str = "",
     ) -> str:
         """Marca tu trabajo como terminado. El resumen debe contar qué has hecho y qué queda
         pendiente. `verdict` solo cambia en las etapas que revisan el trabajo de otras:
         "rejected" devuelve la tarea a la etapa anterior y el resumen debe explicar qué hay que
-        corregir. Después de llamarla no sigas trabajando: Agentic OS cerrará la sesión."""
-        error = await call(backend.complete_task, _run_id(ctx), _clip(summary), Verdict(verdict))
+        corregir. Si tu etapa puede devolver la tarea a varias etapas, `reject_to` es el nombre de
+        la que debe rehacerlo. Después de llamarla no sigas trabajando: Agentic OS cerrará la
+        sesión."""
+        error = await call(
+            backend.complete_task,
+            _run_id(ctx),
+            _clip(summary),
+            Verdict(verdict),
+            reject_to.strip()[:80],
+        )
         if error:
             return error
         return "Tarea completada. Puedes terminar tu turno."

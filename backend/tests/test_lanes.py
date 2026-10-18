@@ -19,8 +19,10 @@ from agentic_os.errors import ApiError
 from agentic_os.models import (
     Agent,
     BranchDecision,
+    DecisionBy,
     Project,
     Run,
+    Stage,
     Task,
     TaskEvent,
     TaskEventKind,
@@ -29,8 +31,10 @@ from agentic_os.models import (
     WorkspaceMode,
 )
 from agentic_os.schemas.pipeline import LinkWrite, PipelineWrite, StageWrite
+from agentic_os.services import context as ctx_module
 from agentic_os.services import lanes, pipelines
 from agentic_os.services import tasks as task_ops
+from agentic_os.services.runs.manager import RunManager
 
 COND_BACK = "La tarea toca el backend"
 COND_FRONT = "La tarea toca el frontend"
@@ -398,3 +402,76 @@ def test_a_link_a_lane_is_using_cannot_be_removed(db_factory, scheduler, launche
             pipelines.save(db, project, PipelineWrite(stages=stages, links=chain))
         assert caught.value.code == "link_in_use"
         db.rollback()
+
+
+# ------------------------------------------------------------------- what the agents are told
+def test_a_lane_knows_its_branch_why_it_was_taken_and_what_the_others_do(
+    db_factory, scheduler, launcher
+):
+    ids, _ = setup_split(db_factory, mode=WorkspaceMode.WORKTREE)
+    new_task(db_factory)
+    scheduler.step()
+    finish_stage(db_factory, scheduler, launcher, "T-1", "requisitos claros")
+    with db_factory() as db:  # the person chooses, with their reasons
+        mother = db.scalar(select(Task).where(Task.lane_key == ""))
+        fork = db.get(Stage, mother.stage_id)
+        lanes.take(
+            db,
+            mother,
+            fork,
+            list(ids["links"].values()),
+            DecisionBy.MODEL,
+            {ids["links"]["Backend"]: "toca la API"},
+        )
+        db.commit()
+    scheduler.step()
+    with db_factory() as db:
+        lane = db.scalar(select(Task).where(Task.lane_key == "backend"))
+        context = task_ops.task_context(db, lane)
+        assert context.lane == "Backend" and context.lane_reason == "toca la API"
+        assert context.siblings == ("frontend · Frontend · Fran (en ejecución)",)
+        assert any("Requisitos · Ana terminó: requisitos claros" in h for h in context.history)
+        text = ctx_module.task_section(context)
+        assert "## Rama: Backend" in text and "toca la API" in text and "frontend" in text
+        rendered = ctx_module.build_instructions(
+            None, db.get(Project, lane.project_id), "D:/w", task=context
+        )
+        assert "## Rama: Backend" in rendered
+        assert ctx_module.substitute("rama: $RAMA", {"$RAMA": context.lane}) == "rama: Backend"
+
+
+def test_after_the_join_the_task_sees_what_each_branch_did_and_where_it_can_send_it_back(
+    db_factory, scheduler, launcher
+):
+    setup_split(db_factory, mode=WorkspaceMode.WORKTREE, always=True)
+    new_task(db_factory)
+    scheduler.step()
+    finish_stage(db_factory, scheduler, launcher, "T-1")
+    finish_stage(db_factory, scheduler, launcher, "T-1·backend", "api lista")
+    finish_stage(db_factory, scheduler, launcher, "T-1·frontend", "ui lista")
+    with db_factory() as db:
+        mother = db.scalar(select(Task).where(Task.lane_key == ""))
+        context = task_ops.task_context(db, mother)
+    assert context.stage_name == "QA" and context.lane is None
+    assert "backend: api lista" in (context.joined or "")
+    assert "frontend: ui lista" in (context.joined or "")
+    lines = "\n".join(context.history)
+    assert "Backend · Bea terminó: api lista" in lines and "Frontend · Fran terminó" in lines
+    assert context.can_reject and context.reject_targets == ("Backend", "Frontend")
+    rendered = ctx_module.build_instructions(None, None, "D:/w", task=context)
+    assert "## Ramas unidas" in rendered and "reject_to" in rendered and "«Frontend»" in rendered
+
+
+def test_a_rejection_names_the_stage_when_there_are_several(db_factory, scheduler, launcher):
+    ids, _ = setup_split(db_factory)
+    with db_factory() as db:
+        qa = db.get(Stage, ids["stages"]["QA"])
+        pick = RunManager._reject_target
+        assert pick(db, qa, "") == (None, pick(db, qa, "")[1])
+        assert "reject_to" in pick(db, qa, "")[1]  # asks which one
+        assert pick(db, qa, "backend") == (None, None)  # the default
+        assert pick(db, qa, "FRONTEND") == (ids["stages"]["Frontend"], None)
+        target, problem = pick(db, qa, "Despliegue")
+        assert target is None and "«Backend», «Frontend»" in problem
+        backend = db.get(Stage, ids["stages"]["Backend"])
+        assert pick(db, backend, "") == (None, None)  # nothing to choose

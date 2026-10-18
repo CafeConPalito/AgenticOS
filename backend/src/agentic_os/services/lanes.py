@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import re
 import unicodedata
-from collections.abc import Callable
 
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
@@ -49,11 +48,6 @@ FORK_WAITS = (
 
 # A lane in one of these is working or waiting for someone: the fork is not over.
 IDLE_LANE = (TaskStatus.DONE, TaskStatus.CANCELLED, TaskStatus.BACKLOG)
-
-# Brings the git branches of the lanes together before the task goes on (block 4). Returns
-# why it could not (conflicts), or None.
-JoinHook = Callable[[Session, Task, list[Task]], str | None]
-integrate_lanes: JoinHook | None = None
 
 
 # ----------------------------------------------------------------------------- the graph
@@ -191,11 +185,12 @@ def try_join(db: Session, parent: Task) -> None:
         return
     if any(lane.status != TaskStatus.DONE for lane in live):
         return
-    if integrate_lanes is not None:
-        problem = integrate_lanes(db, parent, live)
-        if problem is not None:
-            task_ops.wait_for_human(db, parent, WaitingReason.JOIN_CONFLICT, problem)
-            return
+    from agentic_os.services import lane_git
+
+    problem = lane_git.integrate(db, parent, live)
+    if problem is not None:
+        task_ops.wait_for_human(db, parent, WaitingReason.JOIN_CONFLICT, problem)
+        return
     found = pipeline_graph(db, parent)
     join_id = found[1].join_of(parent.stage_id) if found else None
     summaries = "\n".join(

@@ -143,6 +143,15 @@ class ReviewRequest(BaseModel):
     target_stage_id: str | None = None
 
 
+class ClashRead(BaseModel):
+    """A lane whose branch cannot be merged into its parent's in one repository."""
+
+    repo_id: str
+    name: str
+    lane: str
+    files: list[str]
+
+
 class DecisionRequest(BaseModel):
     """The person picks the branches of a fork (by the ids of its links)."""
 

@@ -481,7 +481,15 @@ class Scheduler:
                 task_ops.wait_for_human(db, task, reason, detail, run.id)
             if task.status in (TaskStatus.DONE, TaskStatus.CANCELLED):
                 self._release_when_idle(db, task)
+            self._release_root(db, task)
             db.commit()
+
+    def _release_root(self, db: Session, task: Task) -> None:
+        """A lane that arrived may have finished the task it belongs to (a join with nothing
+        after it): that one's workspace goes now."""
+        root = lane_ops.root_of(db, task)
+        if root.id != task.id and root.status in (TaskStatus.DONE, TaskStatus.CANCELLED):
+            self._release_when_idle(db, root)
 
     def _release_when_idle(self, db: Session, task: Task) -> None:
         """Releases a finished task's workspace once none of its runs (main or subagents) is
@@ -500,7 +508,8 @@ class Scheduler:
         except Exception:
             log.exception("could not release the workspace", task=task.code)
             return
-        if task.status == TaskStatus.DONE and task.id not in self._integrating:
+        done = task.status == TaskStatus.DONE and task.lane_of_id is None
+        if done and task.id not in self._integrating:
             self._integrating.add(task.id)
             threading.Thread(
                 target=self._after_approval, args=(task.id,), name="integrate", daemon=True
@@ -573,6 +582,9 @@ class Scheduler:
         project = db.get(Project, task.project_id)
         if project is not None:
             self._release(db, task, project)
+            root = lane_ops.root_of(db, task)
+            if root.id != task.id and root.status in (TaskStatus.DONE, TaskStatus.CANCELLED):
+                self._release(db, root, project)
 
 
 def blocked_reason(db: Session, task: Task, project: Project) -> str | None:

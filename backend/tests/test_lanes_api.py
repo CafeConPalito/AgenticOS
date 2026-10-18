@@ -238,3 +238,16 @@ def test_try_the_conditions_asks_the_decider_without_creating_a_task(
             json={"title": "x", "branches": [{"name": "A", "condition": "b"}]},
         )
         assert too_few.status_code == 422
+
+
+def test_the_join_endpoints_only_work_while_the_branches_clash(api: TestClient, tmp_path: Path):
+    ctx = setup(api, tmp_path)
+    task = create(api, ctx)
+    assert api.get(f"/api/tasks/{task['id']}/join").json() == []
+    for path in ("join/editor",):
+        assert api.post(f"/api/tasks/{task['id']}/{path}").status_code == 409
+    agent = ctx["agents"][0]
+    refused = api.post(f"/api/tasks/{task['id']}/join/agent", json={"agent_id": agent})
+    assert refused.status_code == 409
+    finish = api.post(f"/api/tasks/{task['id']}/join/editor/finish", json={"repo_id": "x"})
+    assert finish.status_code == 409

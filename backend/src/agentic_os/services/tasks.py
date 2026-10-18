@@ -9,6 +9,7 @@ that comes back does not wait for the whole queue again.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 
 from sqlalchemy import and_, case, func, or_, select
 from sqlalchemy.orm import Session
@@ -18,6 +19,7 @@ from agentic_os.errors import ApiError
 from agentic_os.models import (
     PRIORITY_RANK,
     Agent,
+    BranchDecision,
     InboxKind,
     Pipeline,
     Priority,
@@ -184,10 +186,12 @@ def create_task(
     enqueue_now: bool = True,
     parent_task_id: str | None = None,
     preset_lanes: dict[str, list[str]] | None = None,
+    standalone: bool = False,
 ) -> Task:
     """With a pipeline the task starts at its first stage (and that stage's agent); without
-    one it goes to `agent_id`."""
-    stages = stages_of(db, project.id)
+    one it goes to `agent_id`. A standalone task skips the pipeline: it is for `agent_id` alone
+    (the tasks that resolve conflicts)."""
+    stages = [] if standalone else stages_of(db, project.id)
     _check_presets(db, preset_lanes or {})
     if stages:
         stage_id, agent_id = stages[0].id, stages[0].agent_id
@@ -520,6 +524,16 @@ class TaskContext:
     history: tuple[str, ...]  # summaries of earlier stages, oldest first
     rejection: str | None  # why the task came back to this stage, if it did
     branch: str | None
+    # The stages this one can send the task back to (names), when there are several: the agent
+    # says which one when it rejects.
+    reject_targets: tuple[str, ...] = ()
+    # A task that is a lane of a fork (phase 13): its branch, why it was taken and what the
+    # other branches are doing.
+    lane: str | None = None
+    lane_reason: str | None = None
+    siblings: tuple[str, ...] = ()
+    # After a join: what each branch said (the task goes on from where they meet).
+    joined: str | None = None
 
 
 HISTORY_KINDS = (
@@ -531,20 +545,52 @@ HISTORY_KINDS = (
     TaskEventKind.HUMAN_ANSWERED,
 )
 HISTORY_LIMIT = 8_000
+STATUS_TEXT = {
+    TaskStatus.BACKLOG: "pendiente",
+    TaskStatus.QUEUED: "en cola",
+    TaskStatus.RUNNING: "en ejecución",
+    TaskStatus.WAITING_HUMAN: "esperando a la persona",
+    TaskStatus.REVIEW: "en revisión",
+    TaskStatus.DONE: "terminada",
+    TaskStatus.CANCELLED: "cancelada",
+    TaskStatus.FORKED: "en sus ramas",
+    TaskStatus.DECIDING: "eligiendo rama",
+}
+
+
+def _history_events(db: Session, task: Task) -> list[TaskEvent]:
+    """The events that tell what happened to the work: the task's own, what its lanes did,
+    and, for a lane, what its parents did before it was created."""
+    sources: list[tuple[str, datetime | None]] = [(task.id, None)]
+    parent = db.get(Task, task.lane_of_id) if task.lane_of_id else None
+    cutoff = task.created_at
+    while parent is not None:
+        sources.append((parent.id, cutoff))
+        cutoff = parent.created_at
+        parent = db.get(Task, parent.lane_of_id) if parent.lane_of_id else None
+    pending = [task]
+    while pending:  # the lanes under the task, at any depth
+        current = pending.pop()
+        for lane in db.scalars(select(Task).where(Task.lane_of_id == current.id)):
+            sources.append((lane.id, None))
+            pending.append(lane)
+    kinds = [k.value for k in HISTORY_KINDS]
+    events = list(
+        db.scalars(
+            select(TaskEvent).where(
+                TaskEvent.task_id.in_([i for i, _ in sources]), TaskEvent.kind.in_(kinds)
+            )
+        )
+    )
+    limits = {i: at for i, at in sources}
+    events = [e for e in events if limits[e.task_id] is None or e.at <= limits[e.task_id]]
+    return sorted(events, key=lambda e: (e.at, e.task_id != task.id, e.seq))
 
 
 def task_context(db: Session, task: Task) -> TaskContext:
     stages = stages_of(db, task.project_id)
     stage = next((s for s in stages if s.id == task.stage_id), None)
-    events = list(
-        db.scalars(
-            select(TaskEvent)
-            .where(
-                TaskEvent.task_id == task.id, TaskEvent.kind.in_([k.value for k in HISTORY_KINDS])
-            )
-            .order_by(TaskEvent.seq)
-        )
-    )
+    events = _history_events(db, task)
     labels = {
         TaskEventKind.STAGE_COMPLETED: "terminó",
         TaskEventKind.COMPLETED_MANUALLY: "terminó (a mano)",
@@ -562,11 +608,21 @@ def task_context(db: Session, task: Task) -> TaskContext:
             break
         history.append(line)
         size += len(line)
-    last = events[-1] if events else None
+    own = [e for e in events if e.task_id == task.id]
+    last = own[-1] if own else None
     rejection = (
         last.detail.strip()
         if last is not None and last.kind in (TaskEventKind.REJECTED, TaskEventKind.REVIEW_REJECTED)
         else None
+    )
+    targets = [t for t in [stage.reject_to_stage_id, *stage.reject_extra_ids] if t] if stage else []
+    names = [x.name for x in (db.get(Stage, t) for t in targets) if x is not None]
+    lane, reason, siblings = _lane_context(db, task)
+    joined = db.scalar(
+        select(TaskEvent.detail)
+        .where(TaskEvent.task_id == task.id, TaskEvent.kind == TaskEventKind.JOINED.value)
+        .order_by(TaskEvent.seq.desc())
+        .limit(1)
     )
     return TaskContext(
         code=task.code,
@@ -575,11 +631,49 @@ def task_context(db: Session, task: Task) -> TaskContext:
         stage_name=stage.name if stage else None,
         stage_index=(stages.index(stage) + 1) if stage else 0,
         stage_count=len(stages),
-        can_reject=bool(stage and stage.reject_to_stage_id),
+        can_reject=bool(targets),
         history=tuple(reversed(history)),
         rejection=rejection,
         branch=task.branch,
+        reject_targets=tuple(names) if len(names) > 1 else (),
+        lane=lane,
+        lane_reason=reason,
+        siblings=siblings,
+        joined=joined,
     )
+
+
+def _lane_context(db: Session, task: Task) -> tuple[str | None, str | None, tuple[str, ...]]:
+    """For a lane: the name of its branch, why the decision took it and its sibling lanes."""
+    if task.lane_of_id is None:
+        return None, None, ()
+    link = db.get(StageLink, task.lane_link_id) if task.lane_link_id else None
+    reason = None
+    decision = db.scalar(
+        select(BranchDecision)
+        .where(
+            BranchDecision.task_id == task.lane_of_id,
+            BranchDecision.fork_stage_id == task.fork_stage_id,
+            BranchDecision.proposed.is_(False),
+        )
+        .order_by(BranchDecision.at.desc())
+        .limit(1)
+    )
+    if decision is not None and link is not None:
+        reason = decision.reasons.get(link.id) or None
+    siblings = []
+    for other in db.scalars(
+        select(Task).where(Task.lane_of_id == task.lane_of_id, Task.id != task.id)
+    ):
+        at = db.get(Stage, other.stage_id) if other.stage_id else None
+        who = db.get(Agent, other.agent_id) if other.agent_id else None
+        parts = [other.lane_key, "·", at.name if at else "—"]
+        if who is not None:
+            parts += ["·", who.name]
+        siblings.append(
+            " ".join(parts) + f" ({STATUS_TEXT.get(TaskStatus(other.status), other.status)})"
+        )
+    return (link.name if link else task.lane_key), reason, tuple(siblings)
 
 
 def task_prompt(task: Task) -> str:

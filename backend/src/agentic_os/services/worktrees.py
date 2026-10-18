@@ -45,7 +45,7 @@ def root_for(project: Project) -> Path:
 
 
 def branch_for(task: Task) -> str:
-    return f"agentic/{task.code}"
+    return f"agentic/{task.ref_name}"
 
 
 def _branch_of(db: Session, task: Task) -> str:
@@ -91,11 +91,17 @@ class Worktrees:
             return None
         if task.worktree_path and Path(task.worktree_path).is_dir():
             return task.worktree_path
-        members = self._members(db, task, project)
+        parent = db.get(Task, task.lane_of_id) if task.lane_of_id else None
+        members = self._members(db, task, project, parent)
         if not members:
             raise git.GitError("the project has no git repository")
-        work = root_for(project) / task.code
+        work = root_for(project) / task.ref_name
         where = layouts(members)
+        starts = (
+            self._lane_starts(db, parent, members, repos.ordered(db, project))
+            if parent is not None
+            else {}
+        )
         # The repository at the work folder first, then those inside it, by depth.
         ordered = sorted(members, key=lambda r: (len(Path(where[r.id]).parts), where[r.id]))
         branch = _branch_of(db, task)
@@ -103,7 +109,7 @@ class Worktrees:
         try:
             for repo in ordered:
                 folder = work / where[repo.id] if where[repo.id] else work
-                origin = self._add(project, repo, branch, folder)
+                origin = self._add(project, repo, branch, folder, starts.get(repo.id))
                 made.append((repo, folder, origin))
         except git.GitError:
             for repo, folder, _ in reversed(made):
@@ -117,8 +123,9 @@ class Worktrees:
                 row = TaskRepo(task_id=task.id, repo_id=repo.id, branch=branch)
                 db.add(row)
             row.worktree_path = str(folder)
-            # The origin of the task's diff: a retry keeps the first one.
-            row.base_commit = row.base_commit or origin
+            # The origin of the task's diff: a retry keeps the first one. A lane that comes
+            # back after a rejection starts again from where its task is now.
+            row.base_commit = origin if parent is not None else (row.base_commit or origin)
         task.worktree_path, task.branch = str(work), branch
         names = ", ".join(r.name for r, _, _ in made)
         extra = f" · {names}" if len(made) > 1 else ""
@@ -126,10 +133,37 @@ class Worktrees:
         return str(work)
 
     @staticmethod
-    def _members(db: Session, task: Task, project: Project) -> list[ProjectRepo]:
+    def _lane_starts(
+        db: Session, parent: Task, members: list[ProjectRepo], everyone: list[ProjectRepo]
+    ) -> dict[str, str]:
+        """For a lane: the branch of its parent in each repository, which the lane starts from.
+        What the parent left loose in its folders is committed first, so the lane sees it."""
+        starts: dict[str, str] = {}
+        rows = _task_rows(db, parent)
+        by_id = {m.id: m for m in members}
+        for row in rows:
+            if row.repo_id not in by_id:
+                continue
+            starts[row.repo_id] = row.branch
+            path = row.worktree_path or ""
+            if path and Path(path).is_dir():
+                nested = [
+                    str(Path(n))
+                    for n in repos.nested_paths(everyone, by_id[row.repo_id])
+                    if len(rows) > 1
+                ]
+                Worktrees._commit_leftovers(parent, path, nested)
+        return starts
+
+    @staticmethod
+    def _members(
+        db: Session, task: Task, project: Project, parent: Task | None = None
+    ) -> list[ProjectRepo]:
         """The repositories the task works in: those it already has (a retry), else those of the
-        project that take part."""
+        project that take part (a lane: those its parent works in)."""
         known = [row.repo_id for row in _task_rows(db, task)]
+        if not known and parent is not None:
+            known = [row.repo_id for row in _task_rows(db, parent)]
         # A task that resolves another's conflicts works only where there are some.
         from agentic_os.services import integration
 
@@ -144,8 +178,12 @@ class Worktrees:
         return repos.active(db, project)
 
     @staticmethod
-    def _add(project: Project, repo: ProjectRepo, branch: str, folder: Path) -> str | None:
-        base = repos.base_of(project, repo)
+    def _add(
+        project: Project, repo: ProjectRepo, branch: str, folder: Path, start: str | None = None
+    ) -> str | None:
+        """A worktree on `branch`, created from the repository's base (a lane: from `start`, the
+        branch of its parent)."""
+        base = start or repos.base_of(project, repo)
         if not base:
             info = git.detect(repo.path)
             base = info.branch if info else None
@@ -153,7 +191,14 @@ class Worktrees:
             raise git.GitError(f"the repository {repo.name} has no base branch")
         folder.parent.mkdir(parents=True, exist_ok=True)
         if git.branch_exists(repo.path, branch):
+            if start:  # a reopened lane: all it did is in its parent already, so it catches up
+                lane_is_merged = _is_ancestor(repo.path, branch, start)
+                if lane_is_merged:
+                    with contextlib.suppress(git.GitError):
+                        git.run(repo.path, "branch", "-f", branch, start)
             git.run(repo.path, "worktree", "add", str(folder), branch)
+            if start:
+                return git.run(repo.path, "rev-parse", start).strip()
             return git.merge_base(repo.path, base, branch)
         origin = git.run(repo.path, "rev-parse", base).strip()
         git.run(repo.path, "worktree", "add", "-b", branch, str(folder), base)
@@ -258,6 +303,14 @@ class Worktrees:
                     raise
                 time.sleep(REMOVE_PAUSE)
         git.run(repo, "worktree", "prune")
+
+
+def _is_ancestor(repo: str, older: str, newer: str) -> bool:
+    try:
+        git.run(repo, "merge-base", "--is-ancestor", older, newer)
+    except git.GitError:
+        return False
+    return True
 
 
 def _remove_empty_folders(folder: Path) -> None:
