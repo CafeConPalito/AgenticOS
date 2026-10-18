@@ -31,6 +31,17 @@
 | S2 | ¿`agy -p` con `--output-format json` o `stream-json` devuelve el texto de la respuesta con algún modelo? ¿Trae el consumo? | Mismo script, `evidencias/s2-agy-decider.md` | El decisor solo admite Claude Code; el editor no ofrece agy y lo explica |
 | S3 | Ramas de las vías: ¿se puede crear `agentic/T-142-backend` desde `agentic/T-142` con este ya activo en otro worktree, hacer merge de las dos vías en el worktree de la tarea y reabrir una vía (llevar su rama al nuevo extremo de la de la tarea) sin chocar con el worktree que la tiene activa? | `spikes/git_lanes_probe.py` con un repo temporal; `evidencias/s3-git-lanes.md` | Ajustar los pasos de `services/lanes.py` |
 
+## Resultados de los spikes (bloque 0, 2026-10-18)
+Scripts en `spikes/scenarios/decider.py` y `spikes/git_lanes_probe.py`; evidencias en `evidencias/`.
+
+- **S1 · Claude Code 2.1.302** (`haiku`): con `--json-schema`, `--tools ""`, `--strict-mcp-config`, `--no-session-persistence` y `--max-budget-usd 0.05`, 5 de 5 decisiones correctas, todas con `structured_output` válido, en **3–4,5 s** y a **~0,0003–0,001 USD**. Sin ficheros en la carpeta y sin cambios en la configuración global. Una tarea sin ninguna rama aplicable devuelve todas con `take: false`: la app lo trata como fallo (spec §2).
+- **S2 · agy 1.4.2** (`gemini-3.8-flash-low`, `-p --output-format json`): 5 de 5 correctas en **5–8 s**. Devuelve el texto en `result.response` (JSON dentro del texto, sin modo de esquema) y los tokens en `result.usage` (~11 800 de entrada por llamada, sin coste, como en la fase 07). El `response` vacío del spike de la fase 01 se debía a que aquel prompt pedía escribir un fichero y `-p` lo deniega. **agy sirve como decisor**; su salida se extrae del texto.
+- **S3 · git**: `agentic/T-1/backend` no puede existir junto a `agentic/T-1` (confirmado) → ramas `agentic/T-1-backend`. Se pueden crear los worktrees de las vías desde la rama de la tarea mientras esta está activa en su carpeta. La unión desde el worktree de la tarea funciona: *fast-forward* de la primera vía y `--no-ff` de la segunda; un conflicto devuelve código 1 y `merge --abort` deja el worktree limpio. Reabrir una vía: `branch -f` al extremo de la tarea sin worktree, o `merge --ff-only` desde la tarea con el worktree vivo; ambos dejan la vía sin commits propios.
+
+### Cambios al diseño por los spikes
+- §3 `HeadlessDecider` ya tiene **dos adaptadores**: Claude Code (salida estructurada) y agy (JSON extraído del texto, con un reintento si no es válido). El editor ofrece los dos.
+- Sin otros cambios: el diseño de §4 se confirma tal cual.
+
 ## Diseño ([ADR 0020](../../adr/0020-branching-pipelines.md), nuevo)
 
 ### 1. El grafo del pipeline
@@ -269,7 +280,7 @@
 ## Tareas (en orden)
 Cada bloque se cierra con sus tests en verde y un commit (o varios) en `phase/13-pipelines-ramas`.
 
-0. [ ] **Spikes S1–S3** con sus evidencias; ajustar el plan si algo cambia.
+0. [x] **Spikes S1–S3** con sus evidencias; ajustar el plan si algo cambia.
 1. [ ] **Grafo y migración**:
    - `StageLink` y los campos nuevos;
    - `pipeline_graph` con todas las reglas;
