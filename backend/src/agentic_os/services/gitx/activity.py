@@ -103,6 +103,8 @@ def _commits(repo: Repo, before: int | None, since: int, until: int) -> list[Run
         match = WHEN.search(selector)
         if not match or not COMMIT_KINDS.match(subject):
             continue
+        if subject.startswith("merge") and "Fast-forward" in subject:
+            continue  # it moved the branch to a commit somebody else made
         if before is None and not since <= int(match[1]) <= until:
             continue
         kind = subject.split(":", 1)[0]
@@ -120,7 +122,9 @@ def _commits(repo: Repo, before: int | None, since: int, until: int) -> list[Run
         title = repo.attempt("log", "-1", "--format=%s", sha) or ""
         found.append(RunCommit(sha=sha, subject=title.strip(), kind=label))
     found.reverse()
-    return found
+    # A commit can come up twice (`rebase (pick)` and `rebase (continue)`): once is enough.
+    seen: set[str] = set()
+    return [c for c in found if not (c.sha in seen or seen.add(c.sha))]
 
 
 def _moves(start: dict[str, str], end: dict[str, str]) -> list[BranchMove]:
@@ -141,6 +145,18 @@ def _is_ancestor(repo: Repo, old: str, new: str) -> bool:
     return True
 
 
+def _has_ours(repo: Repo, move: BranchMove, made: set[str]) -> bool:
+    """Did the run's commits go into this reference? One `rev-list` of what it gained, however
+    many commits and references there are."""
+    if not made or move.end is None:
+        return False
+    if move.end in made:
+        return True
+    span = f"{move.start}..{move.end}" if move.start else move.end
+    gained = repo.attempt("rev-list", "--max-count=2000", span) or ""
+    return not made.isdisjoint(gained.split())
+
+
 def collect(repo: Repo, before: dict[str, Any], since: datetime, until: datetime) -> Activity:
     """What changed in the repository between the snapshot and now, as far as this run did it.
     `repo` is the run's own folder."""
@@ -150,20 +166,18 @@ def collect(repo: Repo, before: dict[str, Any], since: datetime, until: datetime
         repo, before.get("reflog"), int(since.timestamp()) - 1, int(until.timestamp()) + 2
     )
     made = {c.sha for c in commits}
-    current = (repo.attempt("branch", "--show-current") or "").strip()
 
     heads_start, heads_end = _started(start_refs, HEADS), _started(end_refs, HEADS)
-    head_at_start = (before.get("head") or "").removeprefix("branch:")
+    head_now = (repo.attempt("rev-parse", "HEAD") or "").strip()
     branches = []
     for move in _moves(heads_start, heads_end):
-        mine = (
-            move.end is None  # nobody else can delete a branch that is checked out elsewhere
-            or move.end in made
-            or move.name in (current, head_at_start)
-            or (
-                move.start is None and move.end == (repo.attempt("rev-parse", "HEAD") or "").strip()
-            )
-        )
+        # Nobody else can delete a branch that is checked out in the run's folder.
+        if move.end is None or _has_ours(repo, move, made):
+            mine = True
+        elif move.start is None:  # created at where the run stood, with no commit of its own
+            mine = move.end == head_now
+        else:  # moved with none of the run's commits (a reset…): could be anybody's work
+            mine = False
         if mine:
             branches.append(move)
 
@@ -172,10 +186,7 @@ def collect(repo: Repo, before: dict[str, Any], since: datetime, until: datetime
     pushes: list[Push] = []
     for move in _moves(_started(start_refs, REMOTES), _started(end_refs, REMOTES)):
         remote, _, branch = move.name.partition("/")
-        if move.end is None or branch in ("", "HEAD"):
-            continue
-        ours = move.end in made or any(_is_ancestor(repo, sha, move.end) for sha in made)
-        if not ours:
+        if move.end is None or branch in ("", "HEAD") or not _has_ours(repo, move, made):
             continue
         forced = bool(move.start) and not _is_ancestor(repo, move.start or "", move.end)
         pushes.append(
@@ -196,17 +207,12 @@ def attribute(
     db: Session, repo_id: str, run: Run, commits: list[RunCommit], task_code: str | None
 ) -> int:
     """Records who made the commits (the ones already known are kept)."""
-    known = {
-        sha
-        for (sha,) in db.query(CommitAttribution.sha).filter(
-            CommitAttribution.repo_id == repo_id,
-            CommitAttribution.sha.in_([c.sha for c in commits]),
-        )
-    }
+    known = set(attributions(db, repo_id, [c.sha for c in commits]))
     added = 0
     for commit in commits:
         if commit.sha in known:
             continue
+        known.add(commit.sha)
         db.add(
             CommitAttribution(
                 repo_id=repo_id,
@@ -222,13 +228,19 @@ def attribute(
     return added
 
 
+CHUNK = 500
+
+
 def attributions(db: Session, repo_id: str, shas: list[str]) -> dict[str, CommitAttribution]:
-    if not shas:
-        return {}
-    rows = db.query(CommitAttribution).filter(
-        CommitAttribution.repo_id == repo_id, CommitAttribution.sha.in_(shas)
-    )
-    return {row.sha: row for row in rows}
+    """Who made each of the commits, for the ones the app saw being made."""
+    found: dict[str, CommitAttribution] = {}
+    for start in range(0, len(shas), CHUNK):
+        rows = db.query(CommitAttribution).filter(
+            CommitAttribution.repo_id == repo_id,
+            CommitAttribution.sha.in_(shas[start : start + CHUNK]),
+        )
+        found.update({row.sha: row for row in rows})
+    return found
 
 
 # ------------------------------------------------------------------------------ undoing
@@ -261,6 +273,15 @@ def undo(db: Session, row: ProjectRepo, repo: Repo, activity: Activity) -> UndoR
             current = (
                 repo.attempt("rev-parse", "--verify", "-q", f"{HEADS}{move.name}") or ""
             ).strip()
+            if (current or None) == move.start:  # a previous undo already did this one
+                items.append(
+                    UndoItem(
+                        branch=move.name,
+                        result="deleted" if move.start is None else "reverted",
+                        reason="already",
+                    )
+                )
+                continue
             if (current or None) != move.end:
                 items.append(UndoItem(branch=move.name, result="skipped", reason="moved_since"))
                 continue

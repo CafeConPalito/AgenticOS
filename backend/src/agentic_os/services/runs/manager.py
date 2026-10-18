@@ -508,7 +508,8 @@ class RunManager:
         """The references of a repository as a run starts (to tell later what it did with git)."""
         try:
             return git_activity.snapshot(GitRepo(folder))
-        except Exception:  # a folder that is not a repository (yet): nothing to compare later
+        except Exception as error:  # a folder that is not a repository (yet): nothing to compare
+            log.warning("could not note the references of a run's repository", error=str(error))
             return None
 
     @staticmethod
@@ -530,6 +531,12 @@ class RunManager:
                     if row.snapshot_start
                 ]
             if not rows:
+                # No snapshots to close, but what the run did with git is still worth recording.
+                with self._db() as db:
+                    run = db.get(Run, run_id)
+                    if run is not None:
+                        self._record_git_activity(db, run)
+                        db.commit()
                 return
             ends = self._snapshots(run_id, "end", [path for _id, path, _start in rows])
             results = []
