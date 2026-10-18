@@ -17,6 +17,7 @@ import type {
   StatusFile,
 } from '@/api/git'
 import type { ConflictFile, OpResult, OperationRead } from '@/api/git-integration'
+import type { RunRepoGit, UndoReport } from '@/api/run-git'
 import type { ForgeInfo, PullDetail, PullRequest, RepoPull, SshKey } from '@/api/forges'
 import type { IntegrationCheck, IntegrationResult, Resolution } from '@/api/integration'
 import type {
@@ -734,6 +735,10 @@ export function createFakeBackend(
     integrateResult?: IntegrationResult
     /** What starting a resolution answers. */
     resolution?: Resolution
+    /** What GET /api/runs/:id/git lists, by run id. */
+    runGit?: Record<string, RunRepoGit[]>
+    /** What undoing a run's git answers. */
+    undoReport?: UndoReport
     /** What POST /api/tasks/:id/pulls answers. */
     taskPulls?: RepoPull[]
     sshKeys?: SshKey[]
@@ -1640,6 +1645,19 @@ export function createFakeBackend(
         if (body.value === null) delete globalConfig[String(body.key)]
         else globalConfig[String(body.key)] = String(body.value)
         return json(204, null)
+      }
+    }
+    const runGit = path.match(/^\/api\/runs\/([^/]+)\/git(\/undo)?$/)
+    if (runGit) {
+      const rows = seed.runGit?.[runGit[1]] ?? []
+      if (!runGit[2] && method === 'GET') return json(200, structuredClone(rows))
+      if (runGit[2] && method === 'POST') {
+        if (!body.confirm) return apiError(428, 'confirmation_required')
+        for (const row of rows) {
+          row.can_undo = false
+          if (row.activity) row.activity.undone = true
+        }
+        return json(200, seed.undoReport ?? { repos: {} })
       }
     }
     const taskPulls = path.match(/^\/api\/tasks\/([^/]+)\/pulls$/)

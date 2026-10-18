@@ -49,6 +49,8 @@ from agentic_os.services import tasks as task_ops
 from agentic_os.services.adapters import CliAdapter, LaunchContext, adapter_for
 from agentic_os.services.agent_target import Target, target_for
 from agentic_os.services.context import RepoLine, build_context, build_instructions
+from agentic_os.services.gitx import activity as git_activity
+from agentic_os.services.gitx.runner import Repo as GitRepo
 from agentic_os.services.hooks import (
     HOOK_EVENTS,
     STATUS_LINE,
@@ -321,6 +323,7 @@ class RunManager:
             resume_session=resumed_from.cli_session_id if resumed_from else None,
             account_env=account_ops.env_for(account),
             extra_dirs=runrepos.extra_dirs(targets, cwd),
+            git_authorized=bool(project.agents_git_authorized),
         )
         try:
             spec = adapter.prepare(ctx)
@@ -495,9 +498,18 @@ class RunManager:
                     path=target.folder,
                     snapshot_start=snapshot.sha if snapshot else None,
                     snapshot_skipped=snapshot.skipped_large if snapshot else 0,
+                    refs_start=self._refs_of(target.folder),
                 )
             )
         db.commit()
+
+    @staticmethod
+    def _refs_of(folder: str) -> dict | None:
+        """The references of a repository as a run starts (to tell later what it did with git)."""
+        try:
+            return git_activity.snapshot(GitRepo(folder))
+        except Exception:  # a folder that is not a repository (yet): nothing to compare later
+            return None
 
     @staticmethod
     def _drop_changes(db: Session, run: Run) -> None:
@@ -554,9 +566,38 @@ class RunManager:
                         have = True
                 if have:
                     run.changes_files, run.changes_added, run.changes_deleted = summed
+                self._record_git_activity(db, run)
                 db.commit()
         except Exception:  # a run's end must always finish
             log.exception("could not close the run's changes", run_id=run_id)
+
+    @staticmethod
+    def _record_git_activity(db: Session, run: Run) -> None:
+        """What the run did with git in each repository: stored on its row, the commits
+        attributed to the agent, and one line in the task's history. Never raises."""
+        done: list[str] = []
+        task = db.get(Task, run.task_id) if run.task_id else None
+        until = run.ended_at or utcnow()
+        for row in db.scalars(select(RunRepo).where(RunRepo.run_id == run.id)):
+            if not row.refs_start or row.activity is not None:
+                continue
+            try:
+                found = git_activity.collect(
+                    GitRepo(row.path), row.refs_start, run.started_at or run.created_at, until
+                )
+            except Exception:  # the folder is gone (a released worktree): nothing to read
+                log.warning("could not read what the run did with git", run_id=run.id)
+                continue
+            row.activity = found.model_dump()
+            if found.empty:
+                continue
+            if row.repo_id:
+                git_activity.attribute(
+                    db, row.repo_id, run, found.commits, task.code if task else None
+                )
+            done.append(f"{row.repo_name}: {_describe(found)}")
+        if done and task is not None:
+            task_ops.add_event(db, task, TaskEventKind.GIT, "; ".join(done), run.id)
 
     def _reserve_agy_folder(self, folder: str) -> str:
         key = os.path.normcase(os.path.realpath(folder))
@@ -693,6 +734,7 @@ class RunManager:
             task_context(db, task) if task else None,
             subagent=(parent.agent_name, run.prompt) if parent else None,
             repos=self._repo_lines(db, run, project, task),
+            git_authorized=bool(project and project.agents_git_authorized),
         )
 
     @staticmethod
@@ -1230,3 +1272,17 @@ class RunManager:
             self.usage.request(run_id)  # live usage at the end of every turn
         if effect.turn_ended and session is not None:
             session.after_turn_end()
+
+
+def _describe(found: git_activity.Activity) -> str:
+    """«2 commits, 1 rama, push»: one repository's git activity in a line."""
+    parts = []
+    if found.commits:
+        parts.append(f"{len(found.commits)} commit(s)")
+    if found.branches:
+        parts.append(f"{len(found.branches)} rama(s)")
+    if found.tags:
+        parts.append(f"{len(found.tags)} tag(s)")
+    if found.pushes:
+        parts.append("push forzado" if any(p.forced for p in found.pushes) else "push")
+    return ", ".join(parts)

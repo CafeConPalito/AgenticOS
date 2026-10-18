@@ -53,7 +53,7 @@ from agentic_os.schemas.git import (
 from agentic_os.schemas.git import CommitInfo as CommitInfoRead
 from agentic_os.services import changes as change_ops
 from agentic_os.services import repos as repo_ops
-from agentic_os.services.gitx import merge, oplog, read, remote, tasks, write
+from agentic_os.services.gitx import activity, merge, oplog, read, remote, tasks, write
 from agentic_os.services.gitx.errors import GitxError
 from agentic_os.services.gitx.events import GitEvents
 from agentic_os.services.gitx.jobs import JobManager
@@ -184,7 +184,7 @@ def history(
     follow: bool = False,
 ) -> CommitPage:
     _row, repo = _open(db, repo_id)
-    return read.log(
+    page = read.log(
         repo,
         skip=skip,
         limit=limit,
@@ -196,17 +196,40 @@ def history(
         path=path,
         follow=follow,
     )
+    _attribute(db, repo_id, page.commits)
+    return page
 
 
 @router.get("/repos/{repo_id}/commits/{sha}")
 def commit_detail(repo_id: str, sha: str, db: DbSession) -> CommitDetail:
     repo = _open(db, repo_id)[1]
-    return read.commit_detail(repo, _full_sha(repo, sha))
+    detail = read.commit_detail(repo, _full_sha(repo, sha))
+    _attribute(db, repo_id, [detail])
+    return detail
 
 
 @router.get("/repos/{repo_id}/blame")
 def blame(repo_id: str, db: DbSession, path: FilePath, rev: str | None = None) -> list[BlameGroup]:
-    return read.blame(_open(db, repo_id)[1], path, rev)
+    groups = read.blame(_open(db, repo_id)[1], path, rev)
+    known = activity.attributions(db, repo_id, sorted({g.sha for g in groups}))
+    for group in groups:
+        found = known.get(group.sha)
+        if found is not None:
+            group.agent_name, group.task_code = found.agent_name, found.task_code
+    return groups
+
+
+def _attribute(db: Session, repo_id: str, commits: list[CommitInfoRead]) -> None:
+    """Says which agent, task and run made each commit the app saw them make."""
+    known = activity.attributions(db, repo_id, [c.sha for c in commits])
+    for commit in commits:
+        found = known.get(commit.sha)
+        if found is not None:
+            commit.agent_name, commit.task_code, commit.run_id = (
+                found.agent_name,
+                found.task_code,
+                found.run_id,
+            )
 
 
 def _full_sha(repo: Repo, rev: str) -> str:

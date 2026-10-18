@@ -136,3 +136,22 @@ class GitOperation(IdMixin, Base):
     # A snapshot of the work tree taken before an operation that throws files away.
     backup_ref: Mapped[str | None] = mapped_column(String(200), nullable=True)
     undone_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+
+
+class CommitAttribution(IdMixin, Base):
+    """Which run, task and agent made a commit (phase 12, ADR 0019): the history, the graph and
+    the blame show the agent next to the commits it created."""
+
+    __tablename__ = "commit_attributions"
+    __table_args__ = (UniqueConstraint("repo_id", "sha", name="uq_commit_attributions_repo_sha"),)
+
+    repo_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("project_repos.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    sha: Mapped[str] = mapped_column(String(40), nullable=False)
+    run_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
+    task_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    agent_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    # Copies, so the history keeps saying who made it when the agent or task is gone.
+    agent_name: Mapped[str] = mapped_column(String(80), nullable=False, default="")
+    task_code: Mapped[str | None] = mapped_column(String(24), nullable=True)

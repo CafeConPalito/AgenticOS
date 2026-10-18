@@ -17,6 +17,7 @@ from agentic_os.api import (
     pipelines,
     projects,
     repos,
+    run_git,
     runs,
     settings,
     tasks,
@@ -38,6 +39,7 @@ api_router.include_router(memory.router)
 api_router.include_router(pipelines.router)
 api_router.include_router(clis.router)
 api_router.include_router(runs.router)
+api_router.include_router(run_git.router)
 api_router.include_router(tasks.router)
 api_router.include_router(integration.router)
 api_router.include_router(changes.router)

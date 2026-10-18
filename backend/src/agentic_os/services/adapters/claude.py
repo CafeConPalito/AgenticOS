@@ -76,7 +76,7 @@ class ClaudeAdapter(CliAdapter):
             "--strict-mcp-config",
             "--append-system-prompt-file",
             str(instructions),
-            *claude_permissions(ctx.permission_mode, ctx.allowed_tools),
+            *claude_permissions(ctx.permission_mode, ctx.allowed_tools, ctx.git_authorized),
         ]
         if ctx.model:
             argv += ["--model", ctx.model]

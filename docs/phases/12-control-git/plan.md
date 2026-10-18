@@ -507,12 +507,25 @@ La fase se desarrolla en **7 bloques**. Cada bloque termina con sus tests en ver
 
 **Bloque 7: agentes**
 
-22. [ ] Autorización de git en los adapters, registro de cada ejecución (`activity`, `CommitAttribution`), atribución en historial, grafo y blame, y «Deshacer lo que hizo esta ejecución».
-23. [ ] Frontend: sección «Git» de la ejecución y agente en el historial; e2e con el CLI falso (commit, rama, rebase, push y push forzado) y prueba manual con Claude Code en modo `manual` (CA5, CA8).
+22. [x] Autorización de git en los adapters, registro de cada ejecución (`activity`, `CommitAttribution`), atribución en historial, grafo y blame, y «Deshacer lo que hizo esta ejecución».
+23. [x] Frontend: sección «Git» de la ejecución y agente en el historial; e2e con el CLI falso (commit, rama, rebase, push y push forzado) y prueba manual con Claude Code en modo `manual` (CA5, CA8). **La prueba manual con Claude Code real queda pendiente de hacerla el usuario**: aquí solo se ha comprobado que el argv lleva las dos reglas de git.
+
+**Notas del bloque 7 (cambios respecto a lo planeado)**
+- Migración `0014`: `commit_attributions` y el evento de tarea `git`.
+- `LaunchContext.git_authorized` y `claude_permissions(..., git_authorized)`: las dos reglas (`Bash(git:*)`, `PowerShell(git *)`) en todos los modos salvo `autonomous`, sin duplicarlas en un agente restringido que ya tiene la herramienta `git`. agy no cambia. El contexto del agente gana la sección «Git» (`GIT_RULES`).
+- **El reflog se cuenta, no se mide con el reloj**: la instantánea inicial guarda cuántas entradas tenía el reflog de `HEAD` de la carpeta, y los commits de la ejecución son las entradas nuevas. El plan decía «entre `started_at` y `ended_at`»; una ventana de tiempo colaba los commits anteriores que cayeran dentro (lo destapó un test). La hora queda como respaldo.
+- Una rama movida o creada solo se atribuye a la ejecución si apunta a un commit suyo, es la rama de su carpeta o nació en su `HEAD`; los tags y los borrados se cuentan todos.
+- «Deshacer lo que hizo esta ejecución» exige `confirm`, deja las ramas que se movieron después (`moved_since`), hace `reset --keep` en la carpeta si la rama está abierta y se registra como `GitOperation` (`undo_run`).
+- El historial, el detalle y el *blame* muestran el agente a través de `CommitAttribution`. **No se atribuyen los commits anteriores a la fase** (el plan proponía atribuir al leer los de `agentic/T-n`): se ven sin agente.
+- El CLI falso gana `GITCMD: <args>` para hacer cualquier comando de git. El e2e (`test_git_agents_e2e.py`) hace commit, rama, tag y push desde una tarea real, comprueba el registro, la atribución y el evento de la tarea, y deshace. El push forzado y la enmienda se prueban a nivel de `activity` (no se puede forzar un push que la propia ejecución crea desde cero).
+- Frontend: sección «Git» en `RunPage` (commits, ramas, tags y pushes por repo, con «forzado» marcado) y «Deshacer lo que hizo esta ejecución» con un diálogo que avisa de que lo subido no se toca; los eventos `git` e `integrated` tienen su etiqueta en el historial de la tarea.
+
+**Cierre**
+- ADRs 0018 (pull requests y credenciales) y 0019 (agentes y git) escritos; el 0016 y el 0017 ya lo estaban.
 
 **Cierre**
 
-24. [ ] ADRs 0016 a 0019, prueba manual completa (CA10) y `validacion.md`.
+24. [ ] ADRs 0016 a 0019 (hechos), prueba manual completa (CA10) y `validacion.md`.
 
 ## Tests previstos
 | Test | Cubre |

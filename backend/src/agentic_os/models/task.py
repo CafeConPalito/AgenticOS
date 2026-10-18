@@ -120,6 +120,7 @@ class TaskEventKind(StrEnum):
     HUMAN_REQUEST = "human_request"  # the agent asked (request_human)
     HUMAN_ANSWERED = "human_answered"  # the person answered
     SUBTASK = "subtask"  # the agent created a subtask
+    GIT = "git"  # a run did something with git (commits, branches, pushes)
     INTEGRATED = "integrated"  # the task's branches were brought into their bases
 
 

@@ -40,6 +40,13 @@ y qué hay que cambiar. La tarea volverá a la etapa anterior con tu explicació
 """
 
 
+GIT_RULES = """\
+## Git
+Puedes usar git libremente (commit, ramas, merge, rebase, push…) sin pedir permiso. \
+Commitea tu trabajo en la rama de trabajo de cada repositorio. Agentic OS registra lo que \
+haces con git en esta ejecución y la persona puede deshacerlo."""
+
+
 @dataclass(frozen=True)
 class RepoLine:
     """One repository of the project as the agent sees it (phase 12)."""
@@ -105,6 +112,7 @@ def build_instructions(
     task: TaskContext | None = None,
     subagent: tuple[str, str] | None = None,
     repos: Sequence[RepoLine] = (),
+    git_authorized: bool = False,
 ) -> str:
     """`memory` is the rendered project memory (services.memory.render_memory); `task`, the
     task and stage of a run launched by the scheduler (None for a manual run); `repos`, the
@@ -128,6 +136,8 @@ def build_instructions(
     section = repos_section(repos, cwd)
     if section:
         parts.append(section)
+    if git_authorized:
+        parts.append(GIT_RULES)
     parts.append(f"## Memoria del proyecto\n{memory}")
     if task is not None:
         parts.append(task_section(task))

@@ -578,7 +578,36 @@
       "session_missing": "El CLI ya no tiene esta conversación, así que no se puede reanudar. Reintenta la tarea desde el principio."
     },
     "logPurged": "El log de esta ejecución se borró por la retención de logs (Ajustes › Limpieza).",
-    "task": "Ver la tarea"
+    "task": "Ver la tarea",
+    "git": {
+      "title": "Git",
+      "undo": "Deshacer lo que hizo esta ejecución",
+      "undoTitle": "¿Deshacer lo que hizo esta ejecución con git?",
+      "undoDescription": "Las ramas locales que movió vuelven a donde estaban y las que creó se borran. Si alguna se ha movido después, no se toca.",
+      "undoDescriptionPushed": "Las ramas locales que movió vuelven a donde estaban y las que creó se borran. Lo que subió al remoto no se toca. Si alguna rama se ha movido después, tampoco.",
+      "undone": "Ejecución deshecha",
+      "undoneWithSkipped": "Deshecho, salvo: {{skipped}}",
+      "undoneBadge": "deshecho",
+      "reason": {
+        "moved_since": "se ha movido después",
+        "checked_out": "está abierta en otra carpeta",
+        "other": "no se pudo"
+      },
+      "commits": "Commits de {{name}}",
+      "branches": "Ramas de {{name}}",
+      "pushes": "Pushes de {{name}}",
+      "tags": "Tags",
+      "created": "creada",
+      "deleted": "borrada",
+      "moved": "movida",
+      "forced": "forzado",
+      "kind": {
+        "amend": "enmienda",
+        "merge": "merge",
+        "rebase": "rebase",
+        "cherry-pick": "cherry-pick"
+      }
+    }
   },
   "dock": {
     "label": "Terminal",
@@ -700,7 +729,9 @@
       "workspace": "Workspace",
       "human_request": "Preguntó",
       "human_answered": "Respondiste",
-      "subtask": "Creó una subtarea"
+      "subtask": "Creó una subtarea",
+      "integrated": "Integración",
+      "git": "Git"
     },
     "actions": {
       "enqueue": "Encolar",

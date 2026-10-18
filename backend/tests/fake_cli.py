@@ -36,6 +36,7 @@ from __future__ import annotations
 
 import json
 import os
+import shlex
 import signal
 import subprocess
 import sys
@@ -389,6 +390,11 @@ def use_tools(text: str) -> int | None:
             subprocess.run(["git", "add", "-A"], capture_output=True)
             subprocess.run(["git", *identity, "commit", "-m", value], capture_output=True)
             out(f"● committed: {value}")
+            continue
+        if keyword == "GITCMD":  # phase 12: any git command, e.g. `GITCMD: push origin main`
+            identity = ["-c", "user.name=Fake Dev", "-c", "user.email=fake@example.com"]
+            subprocess.run(["git", *identity, *shlex.split(value)], capture_output=True)
+            out(f"● git {value}")
             continue
         if keyword == "GIT":  # what git sees in the working folder
             status = subprocess.run(

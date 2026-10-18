@@ -310,6 +310,8 @@ export type TaskEventKind =
   | 'human_request'
   | 'human_answered'
   | 'subtask'
+  | 'integrated'
+  | 'git'
 
 export interface TaskEvent {
   id: string
