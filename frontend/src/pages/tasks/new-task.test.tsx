@@ -2,7 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import es from '@/i18n/es.json'
 import { useUiPrefs } from '@/stores/ui-prefs'
-import { createFakeBackend, makeAgent, makeProject } from '@/test/fake-backend'
+import { createFakeBackend, makeAgent, makePipeline, makeProject } from '@/test/fake-backend'
 import { renderApp } from '@/test/render'
 
 function seed() {
@@ -115,25 +115,19 @@ describe('Nueva tarea dialog', () => {
 
   it('with a pipeline the stage decides the agent: says so and remembers the one used', async () => {
     const { dev, qa, tienda } = seed()
-    const pipeline = {
-      id: 'pl-1',
-      project_id: tienda.id,
-      name: 'Desarrollo web',
-      max_rejections: 3,
-      stages: [
+    const pipeline = makePipeline(
+      tienda.id,
+      [
         {
           id: 'st-1',
-          position: 0,
           name: 'Diseño',
           agent_id: dev.id,
           agent_name: 'Dev',
           agent_color: dev.color,
-          requires_review: false,
-          reject_to_stage_id: null,
-          active_tasks: 0,
         },
       ],
-    }
+      { id: 'pl-1', name: 'Desarrollo web' },
+    )
     const backend = createFakeBackend({
       agents: [dev, qa],
       projects: [tienda],
@@ -182,5 +176,62 @@ describe('Nueva tarea dialog', () => {
     await user.type(within(dialog).getByLabelText(es.tasks.new.what), 'nnn')
     expect(screen.getAllByRole('dialog')).toHaveLength(1)
     expect(within(dialog).getByLabelText(es.tasks.new.what)).toHaveValue('nnn')
+  })
+})
+
+describe('Nueva tarea con un pipeline que bifurca', () => {
+  function forked() {
+    const { dev, tienda } = seed()
+    const pipeline = makePipeline(
+      tienda.id,
+      [
+        { id: 'req', name: 'Requisitos', agent_id: dev.id, agent_name: 'Dev' },
+        { id: 'back', name: 'Dev backend' },
+        { id: 'front', name: 'Dev frontend' },
+      ],
+      {
+        links: [
+          ['l-back', 'req', 'back', 'Backend', 0],
+          ['l-front', 'req', 'front', 'Frontend', 1],
+        ].map(([id, from, to, name, position]) => ({
+          id: String(id),
+          from_stage_id: String(from),
+          to_stage_id: String(to),
+          name: String(name),
+          condition: 'x',
+          always: false,
+          position: Number(position),
+        })),
+      },
+    )
+    return { dev, tienda, pipeline }
+  }
+
+  it('can fix the branches by hand, and sends nothing when left alone', async () => {
+    const { dev, tienda, pipeline } = forked()
+    const backend = createFakeBackend({
+      agents: [dev],
+      projects: [tienda],
+      pipelines: { [tienda.id]: pipeline },
+    })
+    const user = userEvent.setup()
+    renderApp('/tablero')
+
+    let dialog = await openWithN(user)
+    await user.type(within(dialog).getByLabelText(es.tasks.new.what), 'Sin elegir')
+    await user.click(within(dialog).getByRole('button', { name: es.tasks.new.submit }))
+    await waitFor(() => expect(backend.callsTo('POST', '/api/tasks')).toHaveLength(1))
+    expect(backend.callsTo('POST', '/api/tasks')[0].body).not.toHaveProperty('preset_lanes')
+
+    dialog = await openWithN(user)
+    await user.type(within(dialog).getByLabelText(es.tasks.new.what), 'Solo el backend')
+    await user.click(within(dialog).getByRole('button', { name: es.tasks.lanes.manual }))
+    const fork = await within(dialog).findByRole('group', { name: 'Requisitos' })
+    await user.click(within(fork).getByLabelText('Backend'))
+    await user.click(within(dialog).getByRole('button', { name: es.tasks.new.submit }))
+    await waitFor(() => expect(backend.callsTo('POST', '/api/tasks')).toHaveLength(2))
+    expect(backend.callsTo('POST', '/api/tasks')[1].body).toMatchObject({
+      preset_lanes: { req: ['l-back'] },
+    })
   })
 })

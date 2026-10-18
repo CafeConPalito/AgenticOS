@@ -37,6 +37,10 @@ globalThis.IntersectionObserver ??= class {
     return []
   }
 } as unknown as typeof IntersectionObserver
+// React Flow (the pipeline editor) reads the zoom from the viewport's transform matrix.
+globalThis.DOMMatrixReadOnly ??= class {
+  m22 = 1
+} as unknown as typeof DOMMatrixReadOnly
 globalThis.ResizeObserver ??= class {
   observe() {}
   unobserve() {}

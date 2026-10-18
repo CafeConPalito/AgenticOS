@@ -3,6 +3,8 @@ import { api } from '@/lib/api'
 import { agentKeys } from './agents'
 import type {
   AgentQueue,
+  BranchDecision,
+  JoinClash,
   Priority,
   SchedulerState,
   Task,
@@ -16,6 +18,8 @@ export interface TaskFilters {
   agentId?: string
   status?: TaskStatus[]
   parentTaskId?: string
+  /** Also the lanes of forked tasks, as tasks of their own (the board by stage). */
+  lanes?: boolean
 }
 
 export const taskKeys = {
@@ -27,9 +31,10 @@ export const taskKeys = {
   scheduler: ['tasks', 'scheduler'] as const,
 }
 
-/** Tasks the scheduler may still move: lists poll while one of them is shown. */
-export const isMoving = (task: Pick<Task, 'status'>) =>
-  task.status === 'queued' || task.status === 'running'
+/** Tasks the scheduler may still move: lists poll while one of them is shown. A task that
+ * forked changes with its lanes, whatever the state it shows. */
+export const isMoving = (task: Pick<Task, 'status'> & { phase?: Task['phase'] }) =>
+  task.status === 'queued' || task.status === 'running' || Boolean(task.phase)
 
 const POLL_MS = 2500
 
@@ -38,6 +43,7 @@ function query(filters: TaskFilters): string {
   if (filters.projectId) params.set('project_id', filters.projectId)
   if (filters.agentId) params.set('agent_id', filters.agentId)
   for (const status of filters.status ?? []) params.append('status', status)
+  if (filters.lanes) params.set('lanes', 'include')
   const text = params.toString()
   return text ? `?${text}` : ''
 }
@@ -120,6 +126,8 @@ export interface TaskCreate {
   priority?: Priority
   agent_id?: string | null
   enqueue?: boolean
+  /** Branches fixed by hand: fork stage id → ids of its links (the decider is not asked). */
+  preset_lanes?: Record<string, string[]>
 }
 
 export function useCreateTask() {
@@ -203,5 +211,76 @@ export function useSetSchedulerPaused() {
     mutationFn: (paused: boolean) =>
       api.post<SchedulerState>(`/api/scheduler/${paused ? 'pause' : 'resume'}`),
     onSuccess: (state) => queryClient.setQueryData(taskKeys.scheduler, state),
+  })
+}
+
+// ------------------------------------------------------------ forks and lanes (phase 13)
+export function useTaskDecisions(id: string, enabled = true) {
+  return useQuery({
+    queryKey: [...taskKeys.detail(id), 'decisions'],
+    queryFn: () => api.get<BranchDecision[]>(`/api/tasks/${id}/decisions`),
+    enabled,
+  })
+}
+
+/** The person picks the branches of a fork (or changes the ones proposed). */
+export function useDecide(id: string) {
+  const invalidate = useInvalidateTasks()
+  return useMutation({
+    mutationFn: (chosen: string[]) => api.post<Task>(`/api/tasks/${id}/decision`, { chosen }),
+    onSuccess: (task) => invalidate(task),
+  })
+}
+
+export function useAddLane(id: string) {
+  const invalidate = useInvalidateTasks()
+  return useMutation({
+    mutationFn: (linkId: string) => api.post<Task>(`/api/tasks/${id}/lanes`, { link_id: linkId }),
+    onSuccess: () => invalidate(),
+  })
+}
+
+export const joinKey = (id: string) => [...taskKeys.detail(id), 'join'] as const
+
+/** What keeps the branches of a forked task from being merged. */
+export function useJoin(id: string, enabled: boolean) {
+  return useQuery({
+    queryKey: joinKey(id),
+    queryFn: () => api.get<JoinClash[]>(`/api/tasks/${id}/join`),
+    enabled,
+    staleTime: 0,
+  })
+}
+
+export interface JoinResolution {
+  repo_id: string
+  name: string
+  path: string
+  conflicts: string[]
+}
+
+export function useStartJoinEditor(id: string) {
+  return useMutation({
+    mutationFn: () => api.post<JoinResolution[]>(`/api/tasks/${id}/join/editor`),
+  })
+}
+
+export function useFinishJoinEditor(id: string) {
+  const invalidate = useInvalidateTasks()
+  return useMutation({
+    mutationFn: (repoId: string) =>
+      api.post<{ conflicts: string[]; joined: boolean }>(`/api/tasks/${id}/join/editor/finish`, {
+        repo_id: repoId,
+      }),
+    onSuccess: () => invalidate(),
+  })
+}
+
+export function useJoinAgent(id: string) {
+  const invalidate = useInvalidateTasks()
+  return useMutation({
+    mutationFn: (agentId: string) =>
+      api.post<Task>(`/api/tasks/${id}/join/agent`, { agent_id: agentId }),
+    onSuccess: () => invalidate(),
   })
 }

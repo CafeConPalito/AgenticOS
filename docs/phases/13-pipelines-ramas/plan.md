@@ -306,21 +306,21 @@ Cada bloque se cierra con sus tests en verde y un commit (o varios) en `phase/13
    - fallos y `choose_branch`, confirmar la decisión, peticiones de la Inbox;
    - `decide-preview`;
    - recuperación al arrancar.
-4. [ ] **Worktrees de las vías**:
+4. [x] **Worktrees de las vías**:
    - ramas y carpetas de las vías;
    - integración en la unión;
    - conflictos (editor y agente);
    - reabrir una vía;
    - nombres de rama en la pestaña Git;
    - diffs de la madre con sus vías.
-5. [ ] **Contexto**: `TaskContext` con la vía y la unión, `get_context` y `$RAMA`.
-6. [ ] **Editor del grafo**:
+5. [x] **Contexto**: `TaskContext` con la vía y la unión, `get_context` y `$RAMA`.
+6. [x] **Editor del grafo**:
    - `@xyflow/react`, nodos, aristas y paneles;
    - validación en vivo y «Ordenar»;
    - «Probar»;
    - plantilla `web_split`;
    - aviso de carpeta directa.
-7. [ ] **Seguimiento en la UI**:
+7. [x] **Seguimiento en la UI**:
    - camino de la tarea, panel de vías y bloque de decisión;
    - Nueva tarea con ramas a mano;
    - tablero y colas;

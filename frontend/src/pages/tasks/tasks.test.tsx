@@ -5,6 +5,7 @@ import {
   createFakeBackend,
   makeAgent,
   makeInboxItem,
+  makePipeline,
   makeProject,
   makeRun,
   makeTask,
@@ -82,6 +83,96 @@ describe('Board', () => {
     await user.click(screen.getByRole('button', { name: es.board.pause }))
     await waitFor(() => expect(backend.scheduler.paused).toBe(true))
     expect(await screen.findByRole('button', { name: es.board.resume })).toBeVisible()
+  })
+})
+
+describe('Board with forked tasks', () => {
+  function forkedTasks() {
+    const { dev, tienda } = seed()
+    const mother = makeTask({
+      title: 'Filtro de pedidos',
+      code: 'T-9',
+      project_id: tienda.id,
+      status: 'running',
+      phase: 'forked',
+      agent_id: null,
+      agent_name: null,
+      stage_name: 'Requisitos',
+      stage_index: 1,
+      lanes: ['backend', 'frontend'].map((key) => ({
+        id: `lane-${key}`,
+        code: `T-9·${key}`,
+        lane_key: key,
+        name: key,
+        status: 'running' as const,
+        stage_id: null,
+        stage_name: null,
+        agent_name: null,
+        agent_color: null,
+        waiting_reason: null,
+        link_id: null,
+        fork_stage_id: null,
+      })),
+    })
+    const back = makeTask({
+      title: 'Filtro de pedidos',
+      code: 'T-9·backend',
+      project_id: tienda.id,
+      status: 'running',
+      lane_of_id: mother.id,
+      lane_name: 'Backend',
+      stage_name: 'Dev backend',
+      stage_index: 2,
+      agent_id: dev.id,
+    })
+    const front = makeTask({
+      title: 'Filtro de pedidos',
+      code: 'T-9·frontend',
+      project_id: tienda.id,
+      status: 'queued',
+      lane_of_id: mother.id,
+      lane_name: 'Frontend',
+      stage_name: 'Dev frontend',
+      stage_index: 3,
+      agent_id: dev.id,
+    })
+    return { dev, tienda, mother, back, front }
+  }
+
+  it('by state a forked task counts once; by stage its lanes sit in their own columns', async () => {
+    const { dev, tienda, mother, back, front } = forkedTasks()
+    createFakeBackend({
+      agents: [dev],
+      projects: [tienda],
+      tasks: [mother, back, front],
+    })
+    const user = userEvent.setup()
+    renderApp('/tablero')
+
+    const running = await screen.findByRole('region', { name: es.tasks.status.running })
+    expect(await within(running).findAllByRole('link')).toHaveLength(1) // the task, not its lanes
+    expect(within(running).getByText('2 ramas')).toBeVisible()
+    expect(screen.queryByText(/Rama Backend/)).toBeNull()
+
+    await user.click(screen.getByRole('tab', { name: es.board.views.stage }))
+    const backColumn = await screen.findByRole('region', { name: 'Dev backend' })
+    expect(within(backColumn).getByText('Rama Backend')).toBeVisible()
+    const frontColumn = screen.getByRole('region', { name: 'Dev frontend' })
+    expect(within(frontColumn).getByText('Rama Frontend')).toBeVisible()
+    // the task that forked is not repeated: its lanes stand for it
+    expect(screen.queryByRole('region', { name: 'Requisitos' })).toBeNull()
+  })
+
+  it('an agent queue lists the lane it has to work on', async () => {
+    const { dev, tienda, mother, back, front } = forkedTasks()
+    createFakeBackend({
+      agents: [dev],
+      projects: [tienda],
+      tasks: [mother, back, front],
+    })
+    renderApp('/tablero?vista=queues')
+    const row = await screen.findByRole('region', { name: 'Dev' })
+    expect(within(row).getByText(/Rama Frontend/)).toBeVisible()
   })
 })
 
@@ -248,25 +339,21 @@ describe('Task page', () => {
 
   it('rejects a task in review back to an earlier stage', async () => {
     const { dev, tienda } = seed()
-    const pipeline = {
-      id: 'p1',
-      project_id: tienda.id,
-      name: 'Web',
-      max_rejections: 3,
-      stages: [
+    const pipeline = makePipeline(
+      tienda.id,
+      [
         {
           id: 's1',
-          position: 0,
           name: 'Desarrollo',
           agent_id: dev.id,
           agent_name: 'Dev',
           agent_color: '#4FD1C5',
           requires_review: true,
-          reject_to_stage_id: null,
           active_tasks: 1,
         },
       ],
-    }
+      { id: 'p1', name: 'Web' },
+    )
     const task = makeTask({ status: 'review', stage_id: 's1', project_id: tienda.id })
     const backend = createFakeBackend({
       agents: [dev],
@@ -313,35 +400,5 @@ describe('New task', () => {
       enqueue: true,
     })
     expect(await screen.findByRole('row', { name: /Carrito/ })).toBeVisible()
-  })
-})
-
-describe('Pipeline editor', () => {
-  it('starts from the template, edits and saves the stages', async () => {
-    const { dev, qa, tienda } = seed()
-    const backend = createFakeBackend({ agents: [dev, qa], projects: [tienda] })
-    const user = userEvent.setup()
-    renderApp(`/proyectos/${tienda.id}/pipeline`)
-
-    await user.click(await screen.findByRole('button', { name: es.pipeline.useTemplate }))
-    const stages = await screen.findAllByRole('article')
-    expect(stages).toHaveLength(3)
-    expect(screen.getByText(/Si QA rechaza → vuelve a Desarrollo/)).toBeVisible()
-
-    // Move QA before Desarrollo: its rejection target is no longer earlier, so it is dropped.
-    await user.click(within(stages[2]).getByRole('button', { name: es.pipeline.moveLeft }))
-    expect(screen.queryByText(/Si QA rechaza/)).toBeNull()
-    await user.click(screen.getByRole('button', { name: es.common.save }))
-    await waitFor(() =>
-      expect(backend.callsTo('PUT', `/api/projects/${tienda.id}/pipeline`)).toHaveLength(1),
-    )
-    const body = backend.callsTo('PUT', `/api/projects/${tienda.id}/pipeline`)[0].body as {
-      stages: { name: string; reject_to: number | null }[]
-    }
-    expect(body.stages.map((s) => [s.name, s.reject_to])).toEqual([
-      ['Requisitos', null],
-      ['QA', null],
-      ['Desarrollo', null],
-    ])
   })
 })
