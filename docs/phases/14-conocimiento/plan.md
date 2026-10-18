@@ -1,7 +1,7 @@
 # Fase 14: Conocimiento · Plan técnico
 
 - **Spec**: [spec.md](spec.md)
-- **Estado**: borrador
+- **Estado**: aprobado (2026-10-18) · desarrollo sin empezar
 
 ## Lo que ya se sabe (revisado al escribir el plan)
 - **Contexto** (`services/context.py`): `build_instructions` monta las instrucciones por secciones (rol, proyecto, repos, git, memoria, tarea, subagente, reglas). El conocimiento es una sección más, después de la memoria. `get_context` devuelve lo mismo.
