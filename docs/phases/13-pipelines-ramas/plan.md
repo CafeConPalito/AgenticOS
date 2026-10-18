@@ -325,7 +325,7 @@ Cada bloque se cierra con sus tests en verde y un commit (o varios) en `phase/13
    - Nueva tarea con ramas a mano;
    - tablero y colas;
    - peticiones nuevas.
-8. [ ] **e2e y cierre**:
+8. [~] **e2e y cierre** (e2e, ADR y README hechos; falta la revisión de código y la validación):
    - `test_e2e_branching.py` (CA1, CA7);
    - prueba manual con el decisor real (Claude Code) y la plantilla;
    - ADR 0020, README;

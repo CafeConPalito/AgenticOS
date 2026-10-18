@@ -100,7 +100,7 @@ En la app empaquetada, el backend usa un puerto libre asignado al arrancar (ver 
 - Herramientas del MCP `agentic-os`:
   - `report_status`: el agente cuenta en qué está;
   - `write_project_memory`: añade notas a la memoria del proyecto;
-  - `complete_task`: deja el resumen (y, en las etapas que revisan, el veredicto); Agentic OS cierra el CLI y la ejecución queda «Completada»;
+  - `complete_task`: deja el resumen (y, en las etapas que revisan, el veredicto y, si pueden devolver la tarea a varias etapas, a cuál); Agentic OS cierra el CLI y la ejecución queda «Completada»;
   - `get_context`.
 
   Los eventos se ven en vivo en la columna «Eventos MCP».
@@ -118,7 +118,12 @@ En la app empaquetada, el backend usa un puerto libre asignado al arrancar (ver 
 - **Pipeline** (pestaña «Pipeline» del proyecto):
   - etapas en orden, cada una con su agente;
   - una etapa puede **requerir revisión** (la tarea espera en «En revisión» a que la apruebes o la rechaces) o **rechazar** y devolver la tarea a una etapa anterior. El agente lo hace con `complete_task(summary, verdict="rejected")`, hasta un máximo de rechazos;
-  - plantilla «Desarrollo web»: Requisitos → Desarrollo → QA.
+  - plantillas «Desarrollo web» (Requisitos → Desarrollo → QA) y «Backend y frontend» (Requisitos → Dev backend | Dev frontend → QA).
+- **Ramas** ([ADR 0020](docs/adr/0020-branching-pipelines.md)): el pipeline es un **grafo**. Una etapa con varias salidas es una bifurcación y cada salida es una rama con su condición («la tarea toca la API…») o «siempre»:
+  - **quién elige las ramas**: una llamada corta a un modelo barato (Claude Code o agy, sin herramientas) que dice qué ramas toma la tarea y por qué; se registra en el historial y su consumo cuenta como el de cualquier sesión. Si falla, eliges tú. Puedes fijar las ramas al crear la tarea, confirmar la decisión antes de empezar, añadir una rama en curso o cancelar otra, y «Probar» las condiciones con una tarea de ejemplo en el editor;
+  - **a la vez, y juntas después**: cada rama tomada es una tarea hija (`T-142·backend`) con su cola, su agente y su estado; la tarea que bifurcó espera y sigue cuando llegan todas. En una carpeta directa las ramas van una detrás de otra;
+  - **un rechazo repite solo la rama que falló**: tras la unión, la etapa que rechaza nombra la rama a la que devuelve la tarea (`complete_task(summary, verdict="rejected", reject_to="Dev backend")`);
+  - **git**: en modo worktree cada rama trabaja en su carpeta y su rama (`agentic/T-142-backend`, desde la de la tarea); al unirse se mezclan en `agentic/T-142`. Si chocan, la tarea espera y los conflictos se resuelven en una carpeta de trabajo o se pasan a un agente.
 - **Cuando algo falla**, la tarea queda **«Esperando humano»** con el motivo, y el agente sigue con su cola. Desde la tarea puedes reintentarla, darla por terminada con un resumen o cancelarla. Una ejecución cortada por un reinicio nunca se relanza sola.
 - **Workspaces**, según el modo del proyecto:
   - **Carpeta directa**: como mucho una tarea a la vez por proyecto; mientras, el agente adelanta trabajo de otros proyectos.
@@ -154,9 +159,11 @@ En la app empaquetada, el backend usa un puerto libre asignado al arrancar (ver 
 | `/api/agents`, `/api/agents/{id}`, `POST /api/agents/{id}/duplicate`, `GET /api/agent-templates` | Agentes y plantillas |
 | `/api/projects`, `/api/projects/{id}`, `POST /api/projects/{id}/open` | Proyectos (con el estado git calculado al leerlos) |
 | `/api/projects/{id}/memory`, `/api/projects/{id}/memory/{note_id}` | Notas de la memoria del proyecto |
-| `GET/PUT/DELETE /api/projects/{id}/pipeline`, `POST /api/projects/{id}/pipeline/template` | Pipeline del proyecto (las etapas conservan su id) |
+| `GET/PUT/DELETE /api/projects/{id}/pipeline`, `POST …/pipeline/template · validate · decide-preview` | Pipeline del proyecto como grafo (etapas y enlaces; las etapas y enlaces conservan su id), validarlo sin guardar y probar las condiciones de una bifurcación |
 | `/api/tasks?project_id&agent_id&status`, `/api/tasks/{id}`, `GET /api/tasks/{id}/events` | Tareas e historial |
-| `POST /api/tasks/{id}/enqueue · retry · complete · review · cancel · open-worktree` | Acciones sobre una tarea |
+| `POST /api/tasks/{id}/enqueue · retry · complete · review · cancel · open-worktree` | Acciones sobre una tarea (en una rama, sobre esa rama) |
+| `GET /api/tasks/{id}/decisions`, `POST /api/tasks/{id}/decision · lanes` | Decisiones de rama de una tarea, elegirlas (o cambiar una propuesta) y añadir una rama en curso |
+| `GET /api/tasks/{id}/join`, `POST /api/tasks/{id}/join/editor · join/editor/finish · join/agent` | Conflictos al unir las ramas y cómo resolverlos |
 | `GET/PUT /api/agents/{id}/queue` | Cola de un agente / reordenarla |
 | `GET /api/scheduler`, `POST /api/scheduler/pause · resume` | Estado y pausa global del scheduler |
 | `GET /api/inbox?status=`, `GET /api/inbox/summary` | Inbox y contador (con los elementos aún sin notificar) |

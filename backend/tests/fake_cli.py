@@ -346,7 +346,8 @@ def use_tools(text: str) -> int | None:
     Phase 05 directives: `RECHAZA: x` → complete_task rejecting; `RECHAZA1: x` → rejects only
     the first time in this folder (a marker file), approves afterwards; `CONTEXTO: <file>` →
     writes what get_context returns; `GIT: <file>` → writes `git status` of the folder;
-    `SALE: n` → exits with n after the turn. Phase 11: `ESCRIBE: ruta=a|b` writes a file (`|`
+    `SALE: n` → exits with n after the turn; phase 13: `DEVUELVE: etapa` → the next rejection names
+    that stage (`reject_to`). Phase 11: `ESCRIBE: ruta=a|b` writes a file (`|`
     is a line break), `ANADE: ruta=a` appends lines to it and `COMMIT: mensaje` commits the whole
     folder, so a run can commit halfway and leave other work uncommitted. Phase 12: `EN: sub`
     moves the directives that follow into a subfolder (`EN: .` goes back), to work in several
@@ -365,6 +366,7 @@ def use_tools(text: str) -> int | None:
     """
     exit_code = None
     completed = False
+    reject_to = ""  # phase 13: `DEVUELVE: etapa` names the stage a rejection goes back to
     first_line = text.strip().splitlines()[0] if text.strip() else ""  # a task's title
     for part in first_line.split(";"):
         keyword, _, value = part.strip().partition(":")
@@ -425,6 +427,9 @@ def use_tools(text: str) -> int | None:
                 continue
             out(f"● MCP create_subtask: {mcp('create_subtask', {'title': value})}")
             continue
+        if keyword == "DEVUELVE":
+            reject_to = value
+            continue
         if keyword == "NATIVO":
             native_subagent(value)
             continue
@@ -450,6 +455,8 @@ def use_tools(text: str) -> int | None:
             tool, args = "complete_task", {"summary": value}
             if rejecting:
                 args["verdict"] = "rejected"
+                if reject_to:
+                    args["reject_to"] = reject_to
         else:
             tool = TOOLS.get(keyword)
             if tool is not None:
