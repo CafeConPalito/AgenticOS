@@ -1,0 +1,26 @@
+[project]
+name = "agentic-os-spikes-knowledge"
+version = "0.1.0"
+description = "Phase 14 spikes: conversion, OCR, embeddings, llama.cpp"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "markitdown[pdf,docx,xlsx,pptx]",
+    "pypdfium2",
+    "onnxruntime",
+    "tokenizers",
+    "numpy",
+    "psutil",
+    "httpx",
+    "pillow",
+    "reportlab",
+    "python-docx",
+    "openpyxl",
+    "python-pptx",
+    "huggingface_hub",
+    "rapidocr>=3.10.0",
+    "pyinstaller>=6.22.3",
+    "trafilatura>=2.3.1",
+]
+
+[tool.uv]
+package = false

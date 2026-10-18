@@ -1,7 +1,7 @@
 # Fase 14: Conocimiento · Plan técnico
 
 - **Spec**: [spec.md](spec.md)
-- **Estado**: aprobado (2026-10-18) · desarrollo sin empezar
+- **Estado**: aprobado (2026-10-18) · en desarrollo (bloque 0 hecho)
 
 ## Lo que ya se sabe (revisado al escribir el plan)
 - **Contexto** (`services/context.py`): `build_instructions` monta las instrucciones por secciones (rol, proyecto, repos, git, memoria, tarea, subagente, reglas). El conocimiento es una sección más, después de la memoria. `get_context` devuelve lo mismo.
@@ -30,6 +30,27 @@ Scripts en `spikes/knowledge/` con un corpus de ejemplo en `spikes/knowledge/cor
 | S7 | **Describir con el CLI**: `claude -p` con la herramienta `Read` limitada a la carpeta de la imagen (o la imagen en el prompt) y salida JSON: calidad, tiempo y coste con `haiku`; y lo mismo con `agy -p` | Solo Claude Code; el ajuste no ofrece agy y lo explica |
 | S8 | **Recursos y proceso de trabajo**: CPU y memoria con `psutil`; GPU de cualquier fabricante con los contadores PDH `\GPU Engine(*)\Utilization Percentage` por `ctypes`; lanzar el mismo ejecutable de PyInstaller como proceso de trabajo (`--knowledge-worker`) con prioridad `BELOW_NORMAL` y comunicarse por stdin/stdout | GPU «No disponible»; si el subproceso empaquetado da problemas, hilos con prioridad baja dentro del backend |
 | S9 | **Tauri**: rutas reales al soltar ficheros (`onDragDropEvent`) y con el selector; PDF del backend en un `iframe` con el visor de WebView2; imágenes del backend; qué cambios de CSP hacen falta | `pdf.js` como visor; imágenes como `blob:` |
+
+## Resultados de los spikes (bloque 0, 2026-10-18)
+Scripts en `spikes/knowledge/` y `spikes/scenarios/knowledge_describe.py`; evidencias completas en `evidencias/`.
+
+- **S1 · MarkItDown 0.1.8** ([evidencia](evidencias/s1-markitdown.md)): bien con `.docx`, `.pptx` (imágenes en su sitio como *data URI*), `.xlsx`, texto, código y HTML. **Flojo con PDF** (sin títulos ni páginas y con la tabla desordenada) y **0 caracteres** con imágenes y PDF escaneados. El HTML conserva el menú: para URLs, `trafilatura` 2.3.1 (Apache 2.0) extrae solo el contenido principal (en una página real, 114 000 → 72 000 caracteres). **Peso**: el trabajador completo pesa 160 MB y, **sin `pandas`, sin `pdfminer` y sin los modelos de OCR, 109 MB** (el *sidecar* actual: 30,5 MB). Todo funciona congelado.
+- **S2 · PDF** ([evidencia](evidencias/s2-s3-s5-pdf-ocr-fts.md)): `pypdfium2` da el texto por página en orden de lectura (la tabla sale como filas legibles) en 0,04 s, detecta las páginas escaneadas, las renderiza y extrae las imágenes incrustadas.
+- **S3 · OCR**: RapidOCR 3.10 con el reconocedor **latino** de PP-OCRv5 lee bien el español (tildes, `ñ`, códigos) a ~1 s por página. Modelos: ~18 MB (detector 9,9 + clasificador 0,6 + reconocedor 7,9). Lo pesado es OpenCV (113 MB sin comprimir).
+- **S4 · Embeddings** ([evidencia](evidencias/s4-embeddings.md)): sin cuenta de Hugging Face. `multilingual-e5-small` (118 MB): 1 000 trozos en **52 s**, +0,6 GB de memoria. **EmbeddingGemma 2 (q4)** (174 MB, Apache 2.0) y **bge-m3** (570 MB): unos 400 s, +1,3–1,5 GB. Calidad entre 127 pasajes: bge-m3 0,93 de acierto en el primero y 0,97 en los cinco primeros; Gemma 2 0,87/0,90; e5 0,73/0,87, que con el híbrido sube a 0,80/0,90. **La fusión del plan empeoraba el resultado** (ver abajo).
+- **S5 · FTS5**: disponible (SQLite 3.53.1), ignora tildes y encuentra identificadores; sin *stemming*.
+- **S6 · `llama.cpp`** ([evidencia](evidencias/s6-llamacpp-vision.md)): release `b11720`, `win-cpu-x64` de **20 MB**, con `sha256` publicado por GitHub; arranca sin avisos de Windows. Por imagen en CPU: **Gemma 4 E2B 7,0 s** (4,1 GB de descarga, 4 GB de memoria), **Qwen3.5-2B 9,2 s** (2,0 GB, 3,1 GB; leyó mal un código), Qwen3.5-4B 18,8 s (3,4 GB, 6 GB). Ninguno pide cuenta.
+- **S7 · CLI** ([evidencia](evidencias/s7-cli-describe.md)): `claude -p` (`haiku`, `--tools Read --allowedTools Read`) describe una imagen en **6,5 s por ~0,0009 USD**; `agy -p` en **9,7 s** (~24 800 tokens por llamada). 21/21 palabras clave en los dos y configuración global sin cambios.
+- **S8 · Recursos y trabajador** ([evidencia](evidencias/s8-recursos-trabajador.md)): CPU y memoria con `psutil`; **GPU de cualquier fabricante con los contadores PDH** (`GPU Engine`) por `ctypes`, sin permisos especiales; el trabajador arranca con prioridad `BELOW_NORMAL` y queda listo en 0,2 s. Las tuberías hay que forzarlas a UTF-8.
+- **S9 · Tauri** ([evidencia](evidencias/s9-tauri.md)): el evento `drop` trae las rutas reales y `dragDropEnabled` es `true` por defecto. El visor de PDF en un `iframe` y la CSP no se pueden comprobar sin una ventana real: quedan para la prueba manual del bloque 8, con `pdf.js` como plan B.
+
+### Cambios al diseño por los spikes
+1. **Búsqueda por palabras solo con identificadores** (§4): la fusión con todas las palabras de la pregunta empeoraba el top-1 (bge-m3: de 0,93 a 0,33 en preguntas con otras palabras). Se usa la parte de palabras únicamente con términos tipo identificador (con dígitos, `_`, `/`, `.`, `-`, `+` o en MAYÚSCULAS); si la pregunta no tiene ninguno, solo manda el vector. Sin modelo de *embeddings*, se busca por palabras con todos los términos y sin fusión.
+2. **Modelo de *embeddings* por defecto: `multilingual-e5-small`** (§6), por velocidad (8× más rápido) y memoria; EmbeddingGemma 2 (q4) y bge-m3 son las opciones de más calidad.
+3. **Conversión** (§3): MarkItDown con conversores registrados en la misma pipeline: PDF (`pypdfium2`), Excel (`openpyxl`, sin `pandas`), imágenes y páginas escaneadas (OCR) y URLs (`trafilatura`, con MarkItDown de respaldo). Sin `pdfminer`.
+4. **Modelos de visión** (§6 y §7): Gemma 4 E2B por defecto; Qwen3.5-2B (el más ligero) y Qwen3.5-4B (el más preciso). `llama.cpp` `b11720`, build CPU de 20 MB, con `sha256` fijado.
+5. **Trabajador** (§3): protocolo en UTF-8 forzado; descarga el modelo de la memoria tras un rato sin trabajo.
+6. **Tamaño del instalador**: el trabajador recortado añade ~100 MB al *sidecar* (~140 MB en total con `trafilatura`). Decisión abierta: instalador con todo o motor de conocimiento descargable (ver «Decisiones»).
 
 ## Diseño ([ADR 0021](../../adr/0021-knowledge.md), nuevo)
 
@@ -70,11 +91,13 @@ No hay copias de los originales ni ficheros intermedios. El Markdown y el índic
 ### 3. La pipeline (`services/knowledge/pipeline.py`)
 **Una sola pipeline** para cualquier documento, con estos pasos:
 1. **Comprobar el origen** (presencia y huella) y, en una URL, descargarla con `httpx` (tiempo máximo, tamaño máximo, solo `http(s)`).
-2. **Convertir con MarkItDown** (`convert_local` o `convert_stream`), con `keep_data_uris=True` y los plugins propios registrados:
-   - `PdfPagesConverter` (`pypdfium2`, según S2): texto por página con una marca `<!-- page: 12 -->`; las páginas sin texto salen como una imagen de la página entera (para el OCR); las imágenes incrustadas salen como *data URI* en su sitio;
-   - los que hagan falta según S1.
+2. **Convertir con MarkItDown** (`convert_local` o `convert_stream`), con `keep_data_uris=True` y estos conversores propios registrados con `register_converter` (misma pipeline, no una aparte):
+   - `PdfPagesConverter` (`pypdfium2`, S2): texto por página con una marca `<!-- page: 12 -->`; las páginas sin texto salen como una imagen de la página entera (para el OCR); las imágenes incrustadas salen como *data URI* en su sitio;
+   - `XlsxConverter` (`openpyxl`): una tabla por hoja, sin `pandas`;
+   - `HtmlMainConverter` (`trafilatura`, con el conversor de MarkItDown de respaldo): solo el contenido principal de las URLs;
+   - `ImageConverter`: una imagen suelta es solo su marca (`![…](kimg:…)`), y su texto lo añade el paso 3.
    
-   Una imagen suelta pasa por MarkItDown igual, y su Markdown es la marca de la imagen.
+   `pdfminer` y `pandas` no se empaquetan (S1).
 3. **Imágenes** (paso común, `images.py`): recorre los *data URI* del Markdown y, para cada uno:
    - descarta los pequeños (menos de 64×64 px o de 4 KB) y los repetidos (`sha256`);
    - guarda el fichero en `images/` y sustituye el *data URI* por `![Figura, p. 12](kimg:<id>)`;
@@ -102,9 +125,9 @@ No hay copias de los originales ni ficheros intermedios. El Markdown y el índic
 
 ### 4. Búsqueda híbrida (`services/knowledge/search.py`)
 - **Visibilidad** (`visible_docs(project_id, agent_ids)`): `general` + `project` del proyecto + `agent` de los agentes dados (el de la ejecución y, en un subagente, también el padre), con `status = ready` y `mode != off`. Una imagen suelta con el original `missing` no es visible.
-- **Por palabras**: consulta FTS5 con los términos de la pregunta (escapados, unidos con `OR` y ordenados por `bm25`), top 50.
+- **Por palabras, solo con identificadores** (S4): se extraen de la pregunta los términos tipo identificador (con dígitos, `_`, `/`, `.`, `-` o `+`, o en MAYÚSCULAS de más de 2 letras: `ERR_4012`, `/v2/invoices`, `AURORA_PROXY`, `4.18`) y se consultan en FTS5 (escapados, unidos con `OR`, ordenados por `bm25`), top 50. Si no hay ninguno, esta parte no participa. Las palabras vacías nunca cuentan.
 - **Por significado**: el vector de la consulta (con el prefijo del modelo) contra la matriz de vectores de los trozos visibles, por producto escalar (están normalizados), top 50. La matriz se carga con NumPy y se guarda en caché por modelo, invalidada cuando cambia algún trozo.
-- **Fusión** RRF (`k = 60`) y top `limit` (por defecto 8, máximo 20). Si no hay modelo o los vectores son de otro modelo, solo FTS.
+- **Fusión** RRF (`k = 60`, peso 1 para el vector y 2 para las palabras) y top `limit` (por defecto 8, máximo 20). Sin modelo de *embeddings* (o con vectores de otro modelo) no hay fusión: se busca en FTS5 con **todos** los términos sin palabras vacías.
 - **Resultado**: documento (id y título), nivel, `location`, el texto del trozo, la puntuación y las imágenes del trozo (`kimg:` → ruta, §5).
 - **Codificador** (`embeddings.py`): protocolo `Embedder` (`encode(texts, kind="query" | "passage")`), `OnnxEmbedder` (`onnxruntime` + `tokenizers`, *mean pooling* o el del modelo, normalizado) y `FakeEmbedder` para los tests (vectores por palabras).
 
@@ -129,10 +152,10 @@ Los tokens se estiman como caracteres ÷ 4. La UI de cada nivel avisa cuando el 
 
 ### 6. Modelos y motores locales (`services/localmodels/`)
 - **Catálogo** en código (`catalog.py`). Cada entrada tiene `id`, `kind` (`embedding` · `ocr` · `vision` · `engine`), nombre, tamaño, ficheros (URL, `sha256` y tamaño), si pide cuenta y sus datos de uso (dimensiones, prefijos, `mmproj`…). Entradas:
-  - *embeddings*: `multilingual-e5-small`, EmbeddingGemma y `bge-m3`;
-  - OCR: el de S3;
-  - visión: Qwen 3.5 y Gemma 4 pequeños (S6);
-  - motor: `llama.cpp` (versión fijada y binario CPU de Windows).
+  - *embeddings* (S4): **`multilingual-e5-small`** (por defecto; `Xenova/multilingual-e5-small`, `model_quantized`, 118 MB, 384 dim.), **EmbeddingGemma 2** (`onnx-community/embeddinggemma-2-ONNX`, `model_q4` con su `.onnx_data`, 174 MB, 768 dim.) y **`bge-m3`** (`Xenova/bge-m3`, `model_quantized`, 570 MB, 1024 dim.). Cada entrada lleva sus prefijos de consulta y de documento, el *pooling* y las entradas extra (EmbeddingGemma 2 pide tres vacías);
+  - OCR (S3): detector `PP-OCRv6_det_small` (9,9 MB), clasificador de orientación (0,6 MB) y reconocedor `latin_PP-OCRv5_rec_mobile` (7,9 MB), unos 18 MB;
+  - visión (S6): **Gemma 4 E2B** (`unsloth/gemma-4-E2B-it-GGUF`, `Q4_K_M` + `mmproj-F16`, 4,1 GB; por defecto), **Qwen3.5-2B** (`unsloth/Qwen3.5-2B-GGUF`, 1,95 GB) y **Qwen3.5-4B** (`unsloth/Qwen3.5-4B-GGUF`, 3,4 GB);
+  - motor: `llama.cpp` **`b11720`**, `llama-b11720-bin-win-cpu-x64.zip` (20 MB, `sha256 d59fd840…728de`).
 - **Descargas** (`downloads.py`): `httpx` en un hilo, a `<datos>/models/<id>/` o `<datos>/engines/<id>/`, con reanudación (`Range`), progreso por eventos, cancelación y comprobación del `sha256`. Se escribe a un `.part` y se renombra al final. El motor se descomprime tras comprobarlo.
 - **Estado**: se deduce del disco (`manifest.json` por modelo, escrito al terminar). La selección vive en `AppState`: `models.embedding`, `models.ocr` y `models.vision`.
 - **Cuenta de Hugging Face**: para los modelos que la piden, el *token* sale de `HF_TOKEN`, del fichero de `huggingface_hub` (`~/.cache/huggingface/token`) o de `git credential fill` con `host=huggingface.co`. Si la persona lo pega en Ajustes, se guarda con `git credential approve`, igual que en el ADR 0018: la app no guarda secretos propios.
@@ -142,7 +165,7 @@ Los tokens se estiman como caracteres ÷ 4. La UI de cada nivel avisa cuando el 
 ### 7. Describir imágenes (opcional, `services/knowledge/describe.py`)
 - **Ajustes**: `knowledge.describe` (desactivado por defecto) y `knowledge.describer` (`cli` con CLI, cuenta y modelo, o `local` con el modelo de visión). Cada documento puede forzarlo con `describe_images`.
 - **Protocolo** `Describer.describe(image_path, context) -> Description`, donde `context` es el título y el apartado del documento. El prompt pide una descripción breve, en español y centrada en lo que aporta información (texto, datos, diagramas).
-- **`CliDescriber`** (según S7): reutiliza `decider.call` con su propio comando (lectura de la imagen, salida JSON, `--max-budget-usd`) y deja una `Run` `kind=describe`, con `agent_name` «Describir imágenes». Antes de llamar, comprueba el límite diario y la cuota (`usage_limits.blocked_all`); si está bloqueado, el paso se salta con aviso y el documento queda `ready` sin descripciones.
+- **`CliDescriber`** (S7): reutiliza `decider.call`. Copia la imagen a una carpeta temporal vacía (el `cwd` de la llamada) y pide leerla con la herramienta de lectura del CLI: `claude -p … --model haiku --output-format json --tools Read --allowedTools Read --strict-mcp-config --no-session-persistence --max-budget-usd 0.10` o `agy -p … --output-format json` (la descripción está en `result.response`). Deja una `Run` `kind=describe`, con `agent_name` «Describir imágenes» (en las pruebas: ~0,0009 USD y 6,5 s por imagen con Claude; ~24 800 tokens y 9,7 s con agy). Antes de llamar, comprueba el límite diario y la cuota (`usage_limits.blocked_all`); si está bloqueado, el paso se salta con aviso y el documento queda `ready` sin descripciones.
 - **`LlamaDescriber`**: `services/localmodels/llama.py` arranca `llama-server` (modelo + `mmproj`, `--threads` de los ajustes, puerto libre en `127.0.0.1`) cuando hay imágenes que describir, le habla por `/v1/chat/completions` con la imagen como *data URI*, y lo para tras 60 s sin trabajo y al cerrar la app. Si no arranca, error claro: «No se pudo iniciar llama.cpp: …».
 - Cuenta en el progreso como «describiendo imágenes (n de m)».
 
@@ -196,7 +219,7 @@ Los tokens se estiman como caracteres ÷ 4. La UI de cada nivel avisa cuando el 
 | Archivo | Cambio |
 |---|---|
 | `spikes/knowledge/*` | nuevos (bloque 0) |
-| `backend/pyproject.toml` | `markitdown[pdf,docx,xlsx,pptx]`, `pypdfium2`, `onnxruntime`, `tokenizers`, `numpy`, OCR (S3) y `psutil` |
+| `backend/pyproject.toml` | `markitdown[docx,pptx]` (sin los extras `pdf` ni `xlsx`, que arrastran `pdfminer` y `pandas`), `openpyxl`, `pypdfium2`, `trafilatura`, `onnxruntime`, `tokenizers`, `numpy`, `rapidocr` y `psutil` |
 | `backend/src/agentic_os/models/knowledge.py` | nuevo: `KnowledgeDoc`, `KnowledgeChunk`, `KnowledgeImage` |
 | `backend/src/agentic_os/models/run.py` | `RunKind.DESCRIBE` |
 | `backend/src/agentic_os/db/migrations/versions/0016_knowledge.py` | nuevo (tablas, FTS5, `CHECK` de `runs.kind`) |
@@ -224,7 +247,7 @@ Los tokens se estiman como caracteres ÷ 4. La UI de cada nivel avisa cuando el 
 ## Tareas (en orden)
 Cada bloque se cierra con sus tests en verde y un commit (o varios) en `phase/14-conocimiento`.
 
-0. [ ] **Spikes S1–S9** con sus evidencias; ajustar el plan si algo cambia.
+0. [x] **Spikes S1–S9** con sus evidencias; ajustar el plan si algo cambia. (S9, el visor de PDF y la CSP, se completa con la prueba manual del bloque 8.)
 1. [ ] **Documentos por referencia**:
    - modelo y migración `0016`;
    - añadir, editar, mover, quitar, presencia, reubicar, `original`, `open` y `reveal`;
@@ -288,4 +311,8 @@ Cada bloque se cierra con sus tests en verde y un commit (o varios) en `phase/14
   - las imágenes sueltas no se dan al agente con su ruta original, sino con una **copia temporal** en la carpeta de la ejecución, para no darle acceso a la carpeta del usuario con `--add-dir`;
   - si el describidor por CLI está bloqueado por el límite diario o la cuota, el documento queda listo sin descripciones, con aviso, en lugar de fallar;
   - reprocesar conserva el resultado anterior si el nuevo intento falla.
+- **Concreciones tras el bloque 0** (para aprobar):
+  - la parte de palabras de la búsqueda híbrida **solo se activa con términos tipo identificador**; el resto lo resuelve el vector (los spikes muestran que usar todas las palabras empeora el resultado);
+  - modelo de *embeddings* por defecto `multilingual-e5-small` y de visión por defecto Gemma 4 E2B, con las demás opciones en Ajustes;
+  - **instalador**: el motor de conocimiento (conversión, OCR y *embeddings*) va **dentro del *sidecar*** (~140 MB en total, frente a 30,5 MB hoy), sin descargas obligatorias salvo los modelos. La alternativa, un ejecutable aparte que se descarga bajo demanda, exige alojar y firmar ese artefacto, y se revisará en la fase 20 (instaladores firmados) si el tamaño molesta.
 - **Fuera de esta fase**, anotado para el futuro: GPU para ONNX y `llama.cpp`, binarios de `llama.cpp` para macOS y Linux (fase 20), reranking local.
