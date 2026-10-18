@@ -1,6 +1,6 @@
 # Fase 12: Control de git · Validación
 
-> Estado: **en validación**. El desarrollo está terminado y el `/code-review` resuelto; faltan **tres pruebas manuales con servicios reales** (ver «Pendiente») y el OK del usuario.
+> Estado: **cerrada** (`v1.4`, OK del usuario el 2026-10-18). Las tres pruebas manuales con servicios reales quedan pendientes y anotadas (ver «Pendiente»).
 
 ## Tests automáticos
 ```
@@ -80,8 +80,8 @@ Además, la revisión de los bloques anteriores y los tests destaparon: la venta
   - `httpx` ya es dependencia de la app (antes solo de desarrollo).
 
 ## Cierre
-- [ ] Pruebas manuales con servicios reales (GitHub, Claude Code, red)
-- [ ] OK del usuario
-- [ ] Merge a `main` (`--no-ff`)
-- [ ] Tag `v1.4`
-- [ ] `docs/roadmap.md` actualizado
+- [ ] Pruebas manuales con servicios reales (GitHub, Claude Code, red): **pendientes**, a hacer por el usuario
+- [x] OK del usuario
+- [x] Merge a `main` (`--no-ff`)
+- [x] Tag `v1.4`
+- [x] `docs/roadmap.md` actualizado
