@@ -417,7 +417,7 @@ class Scheduler:
             if manual is not None:
                 task_ops.stage_completed(db, task, manual, run.id, manual=True)
             elif run.status == RunStatus.COMPLETED and run.verdict == Verdict.REJECTED:
-                task_ops.stage_rejected(db, task, run.summary or "", run.id)
+                task_ops.stage_rejected(db, task, run.summary or "", run.id, run.reject_to_stage_id)
             elif run.status == RunStatus.COMPLETED:
                 task_ops.stage_completed(db, task, run.summary or "", run.id)
             else:

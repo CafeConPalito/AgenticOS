@@ -1,7 +1,16 @@
 from datetime import datetime
 from enum import StrEnum
 
-from sqlalchemy import CheckConstraint, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    CheckConstraint,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from agentic_os.db.base import Base, IdMixin, TimestampMixin, UTCDateTime, WorkspaceMixin, utcnow
@@ -15,6 +24,9 @@ class TaskStatus(StrEnum):
     REVIEW = "review"
     DONE = "done"
     CANCELLED = "cancelled"
+    # Only a task that forked (phase 13): it has no agent and no queue place, its lanes work for it.
+    DECIDING = "deciding"  # the branches of its fork are being chosen
+    FORKED = "forked"  # waiting for the lanes it started
 
 
 FINISHED_TASK_STATUSES = (TaskStatus.DONE, TaskStatus.CANCELLED)
@@ -45,6 +57,9 @@ class WaitingReason(StrEnum):
     # The agent asked (request_human) and its CLI is gone: the answer starts a new run.
     QUESTION_PENDING = "question_pending"
     QUOTA = "quota"  # the CLI ran out of its account quota (phase 07)
+    CHOOSE_BRANCH = "choose_branch"  # nobody could pick the branches of a fork (phase 13)
+    JOIN_CONFLICT = "join_conflict"  # the lanes' git branches clash where they meet
+    LANES_CANCELLED = "lanes_cancelled"  # every lane of a fork was cancelled
 
 
 def _in(column: str, enum: type[StrEnum]) -> str:
@@ -57,7 +72,8 @@ class Task(IdMixin, WorkspaceMixin, TimestampMixin, Base):
 
     __tablename__ = "tasks"
     __table_args__ = (
-        UniqueConstraint("workspace_id", "number", name="uq_tasks_workspace_number"),
+        # A lane (phase 13) shares the number of the task that forked: T-142, T-142·backend…
+        UniqueConstraint("workspace_id", "number", "lane_key", name="uq_tasks_workspace_number"),
         CheckConstraint(_in("status", TaskStatus), name="status"),
         CheckConstraint(_in("priority", Priority), name="priority"),
     )
@@ -98,9 +114,31 @@ class Task(IdMixin, WorkspaceMixin, TimestampMixin, Base):
         String(36), ForeignKey("tasks.id", ondelete="SET NULL"), nullable=True, index=True
     )
 
+    # Lanes of a forked task (phase 13): each branch taken is a task of its own, a child of the
+    # one that forked, that goes through the branch's stages (ADR 0020).
+    lane_of_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("tasks.id", ondelete="CASCADE"), nullable=True, index=True
+    )
+    lane_link_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("stage_links.id", ondelete="SET NULL"), nullable=True
+    )
+    fork_stage_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("stages.id", ondelete="SET NULL"), nullable=True
+    )
+    lane_key: Mapped[str] = mapped_column(String(80), nullable=False, default="")
+    # Branches fixed by hand when the task was created: {fork stage id: [link id, …]}.
+    preset_lanes: Mapped[dict[str, list[str]]] = mapped_column(JSON, nullable=False, default=dict)
+
     @property
     def code(self) -> str:
-        return f"T-{self.number}"
+        base = f"T-{self.number}"
+        return f"{base}·{self.lane_key}" if self.lane_key else base
+
+    @property
+    def ref_name(self) -> str:
+        """The code as a git branch or folder name (no «·»)."""
+        base = f"T-{self.number}"
+        return f"{base}-{self.lane_key.replace('.', '-')}" if self.lane_key else base
 
 
 class TaskEventKind(StrEnum):
@@ -122,6 +160,12 @@ class TaskEventKind(StrEnum):
     SUBTASK = "subtask"  # the agent created a subtask
     GIT = "git"  # a run did something with git (commits, branches, pushes)
     INTEGRATED = "integrated"  # the task's branches were brought into their bases
+    DECISION = "decision"  # the branches of a fork were chosen (phase 13)
+    LANE_STARTED = "lane_started"
+    LANE_FINISHED = "lane_finished"
+    LANE_ADDED = "lane_added"  # the user added a branch to a running fork
+    LANE_CANCELLED = "lane_cancelled"
+    JOINED = "joined"  # the lanes met again
 
 
 class TaskEvent(IdMixin, Base):
@@ -142,3 +186,35 @@ class TaskEvent(IdMixin, Base):
     agent_name: Mapped[str | None] = mapped_column(String(80), nullable=True)
     run_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     detail: Mapped[str] = mapped_column(Text, nullable=False, default="")
+
+
+class DecisionBy(StrEnum):
+    MODEL = "model"  # the decider
+    USER = "user"
+    ALWAYS = "always"  # every branch was «always»
+    PRESET = "preset"  # fixed when the task was created
+
+
+class BranchDecision(IdMixin, Base):
+    """Which branches a task took at a fork, who decided and why."""
+
+    __tablename__ = "branch_decisions"
+    __table_args__ = (CheckConstraint(_in("decided_by", DecisionBy), name="decided_by"),)
+
+    task_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("tasks.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    fork_stage_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("stages.id", ondelete="CASCADE"), nullable=False
+    )
+    # The decider's run (its usage), when the model decided.
+    run_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("runs.id", ondelete="SET NULL"), nullable=True
+    )
+    at: Mapped[datetime] = mapped_column(UTCDateTime(), nullable=False, default=utcnow)
+    decided_by: Mapped[str] = mapped_column(String(8), nullable=False)
+    # Proposed: waits for the person to confirm it (Stage.confirm_decision).
+    proposed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    chosen: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)  # link ids
+    reasons: Mapped[dict[str, str]] = mapped_column(JSON, nullable=False, default=dict)
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)

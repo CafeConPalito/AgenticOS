@@ -217,6 +217,16 @@ class Graph:
     def path_of(self, stage: str) -> Path:
         return self._paths[stage]
 
+    def can_send_back(self, stage: str, target: str) -> bool:
+        """Whether a task at `stage` may go back to `target` (the stage itself included): an
+        earlier stage of its own path, or, after a join, one of the joined branches."""
+        if stage == target:
+            return True
+        if stage not in self.forward(target):
+            return False
+        mine, theirs = self._paths.get(stage), self._paths.get(target)
+        return mine is not None and theirs is not None and theirs[: len(mine)] == mine
+
     def layout(self) -> dict[str, tuple[int, int]]:
         """A readable default place for every stage: columns by depth, rows in editor order."""
         depth: dict[str, int] = {}

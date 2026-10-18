@@ -208,6 +208,7 @@ def save(db: Session, project: Project, payload: PipelineWrite) -> Pipeline:
     if any(in_use.values()):
         raise ApiError(409, "stage_in_use", "a removed stage still has tasks", "stages")
 
+    _check_links_in_use(db, pipeline, payload)
     pipeline.name = payload.name
     pipeline.max_rejections = payload.max_rejections
     pipeline.decider_cli = payload.decider_cli
@@ -247,6 +248,29 @@ def save(db: Session, project: Project, payload: PipelineWrite) -> Pipeline:
     db.flush()
     db.expire(pipeline, ["stages", "links"])
     return pipeline
+
+
+def _check_links_in_use(db: Session, pipeline: Pipeline, payload: PipelineWrite) -> None:
+    """A branch a lane is going through (or will come back to) cannot lose its link."""
+    ids = [s.id for s in payload.stages]
+    kept = {
+        (ids[link.source], ids[link.target])
+        for link in _links_of(payload)
+        if ids[link.source] and ids[link.target]
+    }
+    dropped = [x.id for x in pipeline.links if (x.from_stage_id, x.to_stage_id) not in kept]
+    if not dropped:
+        return
+    busy = db.scalar(
+        select(func.count())
+        .select_from(Task)
+        .where(
+            Task.lane_link_id.in_(dropped),
+            Task.status.notin_([s.value for s in FINISHED_TASK_STATUSES]),
+        )
+    )
+    if busy:
+        raise ApiError(409, "link_in_use", "a branch still has a lane in progress", "links")
 
 
 def _save_links(db: Session, pipeline: Pipeline, rows: list[Stage], links: list[LinkWrite]) -> None:

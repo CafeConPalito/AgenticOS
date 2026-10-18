@@ -282,14 +282,14 @@ Scripts en `spikes/scenarios/decider.py` y `spikes/git_lanes_probe.py`; evidenci
 Cada bloque se cierra con sus tests en verde y un commit (o varios) en `phase/13-pipelines-ramas`.
 
 0. [x] **Spikes S1–S3** con sus evidencias; ajustar el plan si algo cambia.
-1. [ ] **Grafo y migración**:
+1. [x] **Grafo y migración**:
    - `StageLink` y los campos nuevos;
    - `pipeline_graph` con todas las reglas;
    - guardar y validar en `pipelines.py`;
    - migración `0015`.
    
    Los pipelines lineales siguen igual: los tests de la fase 05 en verde.
-2. [ ] **Motor de vías sin LLM**:
+2. [x] **Motor de vías sin LLM**:
    - campos de vía en `Task` y estados internos;
    - `lanes.fork/try_join/add_lane/cancel_lane`;
    - `advance`, rechazos y revisión sobre el grafo;

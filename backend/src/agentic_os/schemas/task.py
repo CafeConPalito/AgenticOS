@@ -24,6 +24,9 @@ class TaskCreate(BaseModel):
     agent_id: str | None = None
     # False: the task stays in the backlog until it is queued.
     enqueue: bool = True
+    # Branches fixed by hand for the forks of the pipeline: {fork stage id: [link id, …]}; the
+    # decider is not asked about those forks (phase 13).
+    preset_lanes: dict[str, list[str]] = Field(default_factory=dict)
 
 
 class TaskUpdate(BaseModel):
@@ -37,6 +40,23 @@ class TaskUpdate(BaseModel):
     _no_nulls = field_validator("title", "description", "priority", "agent_id", mode="before")(
         reject_null
     )
+
+
+class LaneRead(BaseModel):
+    """A branch a task took at a fork: a task of its own (phase 13)."""
+
+    id: str
+    code: str  # T-142·backend
+    lane_key: str
+    name: str  # the branch's name
+    status: TaskStatus
+    stage_id: str | None
+    stage_name: str | None
+    agent_name: str | None
+    agent_color: str | None
+    waiting_reason: WaitingReason | None
+    link_id: str | None
+    fork_stage_id: str | None
 
 
 class TaskRead(BaseModel):
@@ -83,6 +103,13 @@ class TaskRead(BaseModel):
     subtasks_total: int = 0
     # Every run of the task, its subagents included (phase 07).
     usage: UsageTotals = Field(default_factory=UsageTotals)
+    # Branches (phase 13). A task that forked shows the state of its most pressing lane in
+    # `status`; `phase` says it is "deciding" its branches or has "forked" into `lanes`.
+    phase: str | None = None
+    lane_of_id: str | None = None
+    lane_name: str | None = None
+    fork_stage_id: str | None = None
+    lanes: list[LaneRead] = Field(default_factory=list)
 
 
 class TaskEventRead(BaseModel):
@@ -114,6 +141,34 @@ class ReviewRequest(BaseModel):
     action: ReviewAction
     reason: Annotated[str, StringConstraints(strip_whitespace=True, max_length=8_000)] = ""
     target_stage_id: str | None = None
+
+
+class DecisionRequest(BaseModel):
+    """The person picks the branches of a fork (by the ids of its links)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    chosen: Annotated[list[str], Field(min_length=1, max_length=30)]
+
+
+class AddLaneRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    link_id: str
+
+
+class DecisionRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    at: datetime
+    fork_stage_id: str
+    decided_by: str
+    proposed: bool
+    chosen: list[str]
+    reasons: dict[str, str]
+    error: str | None
+    run_id: str | None
 
 
 class QueueOrder(BaseModel):
