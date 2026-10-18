@@ -20,6 +20,8 @@ from agentic_os.models import (
     Agent,
     BranchDecision,
     DecisionBy,
+    InboxItem,
+    InboxKind,
     Project,
     Run,
     Stage,
@@ -174,7 +176,14 @@ def test_without_a_decider_the_person_chooses_and_the_join_waits_only_for_those_
         lanes.decide(db, task, [ids["links"]["Frontend"]])
         db.commit()
     scheduler.step()
-    assert task_row(db_factory).status == "forked"
+    mother = task_row(db_factory)
+    assert mother.status == "forked"
+    assert mother.waiting_reason is None  # what it waited for is over
+    with db_factory() as db:  # and so is the request that said so
+        pending = db.scalars(
+            select(InboxItem).where(InboxItem.task_id == mother.id, InboxItem.status == "pending")
+        )
+        assert list(pending) == []
     assert task_row(db_factory, key="frontend").status == "running"
     with db_factory() as db:
         assert db.scalar(select(Task).where(Task.lane_key == "backend")) is None
@@ -475,3 +484,35 @@ def test_a_rejection_names_the_stage_when_there_are_several(db_factory, schedule
         assert target is None and "«Backend», «Frontend»" in problem
         backend = db.get(Stage, ids["stages"]["Backend"])
         assert pick(db, backend, "") == (None, None)  # nothing to choose
+
+
+def test_branches_that_never_meet_finish_the_task_when_the_last_one_ends(
+    db_factory, scheduler, launcher
+):
+    with db_factory() as db:
+        agents = [make_agent(db, n) for n in ("Ana", "Bea", "Fran")]
+        project = make_project(db, "web", WorkspaceMode.WORKTREE)
+        payload = PipelineWrite(
+            stages=[
+                StageWrite(name=n, agent_id=a.id)
+                for n, a in zip(("Req", "Back", "Front"), agents, strict=True)
+            ],
+            links=[
+                LinkWrite(source=0, target=1, name="Backend", always=True),
+                LinkWrite(source=0, target=2, name="Frontend", always=True),
+            ],
+        )
+        pipelines.save(db, project, payload)
+        task_ops.create_task(db, project, "Dos entregas")
+        db.commit()
+    scheduler.step()
+    finish_stage(db_factory, scheduler, launcher, "T-1")
+    finish_stage(db_factory, scheduler, launcher, "T-1·backend", "api")
+    assert task_row(db_factory).status == "forked"
+    finish_stage(db_factory, scheduler, launcher, "T-1·frontend", "ui")
+
+    mother = task_row(db_factory)
+    assert (mother.status, mother.finished_at is not None) == ("done", True)
+    with db_factory() as db:
+        delivery = db.scalar(select(InboxItem).where(InboxItem.task_id == mother.id))
+        assert delivery is not None and delivery.kind == InboxKind.DELIVERY

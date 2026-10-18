@@ -222,3 +222,47 @@ describe('Pipeline editor', () => {
     expect(await screen.findByRole('note')).toHaveTextContent(es.pipeline.directWarning)
   })
 })
+
+describe('Pipeline editor with several forks', () => {
+  it('offers to try each fork on its own', async () => {
+    const { dev, tienda } = seed()
+    // A → (B | C) → D → (E | F) → G
+    const stageIds = ['a', 'b', 'c', 'd', 'e', 'f', 'g']
+    const pipeline = makePipeline(
+      tienda.id,
+      stageIds.map((id) => ({ id, name: id.toUpperCase(), agent_id: dev.id })),
+      {
+        links: [
+          ['a', 'b'],
+          ['a', 'c'],
+          ['b', 'd'],
+          ['c', 'd'],
+          ['d', 'e'],
+          ['d', 'f'],
+          ['e', 'g'],
+          ['f', 'g'],
+        ].map(([from, to], i) => ({
+          id: `l${i}`,
+          from_stage_id: from,
+          to_stage_id: to,
+          name: to.toUpperCase(),
+          condition: 'x',
+          always: false,
+          position: i % 2,
+        })),
+      },
+    )
+    createFakeBackend({ agents: [dev], projects: [tienda], pipelines: { [tienda.id]: pipeline } })
+    const user = userEvent.setup()
+    renderApp(`/proyectos/${tienda.id}/pipeline`)
+
+    const second = await screen.findByRole('button', {
+      name: es.pipeline.tryFork.replace('{{name}}', 'D'),
+    })
+    expect(
+      screen.getByRole('button', { name: es.pipeline.tryFork.replace('{{name}}', 'A') }),
+    ).toBeVisible()
+    await user.click(second)
+    expect(await screen.findByRole('dialog')).toHaveTextContent('Probar las ramas de D')
+  })
+})

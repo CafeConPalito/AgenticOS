@@ -942,6 +942,7 @@
     "deciderModel": "Modelo",
     "deciderModelPlaceholder": "El más barato del CLI",
     "try": "Probar las condiciones",
+    "tryFork": "Probar las ramas de {{name}}",
     "tryTitle": "Probar las ramas de {{name}}",
     "tryHelp": "Describe una tarea de ejemplo y mira qué ramas tomaría. Es una llamada real al modelo.",
     "tryTask": "Tarea de ejemplo",

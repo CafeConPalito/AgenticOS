@@ -295,10 +295,15 @@ export function BranchPanel({
 export function SettingsPanel({
   draft,
   onChange,
-  hasFork,
+  forks,
   direct,
   onTry,
-}: PanelProps & { hasFork: boolean; direct: boolean; onTry: () => void }) {
+}: PanelProps & {
+  /** The stages that fork: each one’s branches can be tried. */
+  forks: { key: string; name: string }[]
+  direct: boolean
+  onTry: (fork: string) => void
+}) {
   const { t } = useTranslation()
   return (
     <section aria-label={t('pipeline.settings')} className="grid gap-3">
@@ -317,7 +322,7 @@ export function SettingsPanel({
           className="h-8 w-20"
         />
       </Field>
-      {hasFork && (
+      {forks.length > 0 && (
         <>
           <h3 className="text-[13px] font-medium">{t('pipeline.decider')}</h3>
           <p className="text-[12.5px] text-muted-foreground">{t('pipeline.deciderHelp')}</p>
@@ -350,9 +355,11 @@ export function SettingsPanel({
               onChange={(e) => onChange((d) => ({ ...d, deciderModel: e.target.value }))}
             />
           </Field>
-          <Button variant="outline" size="sm" onClick={onTry}>
-            {t('pipeline.try')}
-          </Button>
+          {forks.map((fork) => (
+            <Button key={fork.key} variant="outline" size="sm" onClick={() => onTry(fork.key)}>
+              {forks.length > 1 ? t('pipeline.tryFork', { name: fork.name }) : t('pipeline.try')}
+            </Button>
+          ))}
           {direct && (
             <p role="note" className="text-[12.5px] text-muted-foreground">
               {t('pipeline.directWarning')}

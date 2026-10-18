@@ -306,3 +306,32 @@ describe('A task that forked', () => {
     expect(link).toHaveAttribute('href', `/tablero/tareas/${mother.id}`)
   })
 })
+
+describe('Actions of a task that forked', () => {
+  it('are done on its lanes: the task itself offers none of the stage actions', async () => {
+    const { dev, tienda, pipeline } = seed()
+    const task = makeTask({
+      project_id: tienda.id,
+      status: 'review', // the state of its lane in review
+      stage_id: 'req',
+      phase: 'forked',
+      lanes: [lane({ status: 'review' })],
+    })
+    createFakeBackend({
+      agents: [dev],
+      projects: [tienda],
+      tasks: [task],
+      pipelines: { [tienda.id]: pipeline },
+    })
+    renderApp(`/tablero/tareas/${task.id}`)
+    await screen.findByText(es.tasks.lanes.phase.forked)
+    for (const name of [
+      es.tasks.actions.approve,
+      es.tasks.actions.reject,
+      es.tasks.actions.retry,
+      es.tasks.actions.complete,
+    ])
+      expect(screen.queryByRole('button', { name })).toBeNull()
+    expect(screen.getByRole('button', { name: es.tasks.actions.cancel })).toBeVisible()
+  })
+})

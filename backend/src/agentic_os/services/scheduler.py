@@ -176,12 +176,17 @@ class Scheduler:
             except Exception:  # never let the scheduler die: the next tick retries
                 log.exception("scheduler step failed")
             now = time.monotonic()
-            if self.housekeeping is not None and now - self._last_housekeeping > HOUSEKEEPING:
+            if now - self._last_housekeeping > HOUSEKEEPING:
                 self._last_housekeeping = now
                 try:
-                    self.housekeeping()
+                    self.release_orphans()
                 except Exception:
-                    log.exception("scheduler housekeeping failed")
+                    log.exception("could not release the workspaces of finished tasks")
+                if self.housekeeping is not None:
+                    try:
+                        self.housekeeping()
+                    except Exception:
+                        log.exception("scheduler housekeeping failed")
 
     def step(self) -> None:
         """One round: apply the decisions that arrived, process the ended runs, then start
@@ -576,6 +581,23 @@ class Scheduler:
                 created += 1
             db.commit()
         return created
+
+    def release_orphans(self) -> int:
+        """Finished tasks that still hold a workspace: they ended outside a run end (a join
+        resolved afterwards, a crash) and nobody released them. Returns how many were tried."""
+        with self._db() as db:
+            tasks = list(
+                db.scalars(
+                    select(Task).where(
+                        Task.status.in_([TaskStatus.DONE, TaskStatus.CANCELLED]),
+                        Task.worktree_path.is_not(None),
+                    )
+                )
+            )
+            for task in tasks:
+                self._release_when_idle(db, task)
+            db.commit()
+            return len(tasks)
 
     def release_finished(self, db: Session, task: Task) -> None:
         """For tasks finished outside a run end (cancelled, approved in review…)."""

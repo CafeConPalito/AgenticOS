@@ -26,7 +26,15 @@ import structlog
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from agentic_os.models import Project, ProjectRepo, Task, TaskEventKind, TaskRepo, WorkspaceMode
+from agentic_os.models import (
+    FINISHED_TASK_STATUSES,
+    Project,
+    ProjectRepo,
+    Task,
+    TaskEventKind,
+    TaskRepo,
+    WorkspaceMode,
+)
 from agentic_os.services import git, repos
 from agentic_os.services import tasks as task_ops
 from agentic_os.services.trust import TrustCleaner
@@ -213,7 +221,7 @@ class Worktrees:
         work = task.worktree_path
         rows = [row for row in _task_rows(db, task) if row.worktree_path]
         try:
-            self._release_rows(db, task, project, rows)
+            self._release_rows(db, task, project, rows, final=self._can_drop_branches(db, task))
         except git.GitError as error:
             log.warning("could not remove the worktree", task=task.code, error=str(error))
             task_ops.add_event(db, task, TaskEventKind.WORKSPACE, f"worktree not removed: {error}")
@@ -233,9 +241,18 @@ class Worktrees:
         if self._trust is not None:
             self._trust.forget(work)
 
+    @staticmethod
+    def _can_drop_branches(db: Session, task: Task) -> bool:
+        """Empty branches go when the task is over, or has no lanes still working from them."""
+        if task.status in FINISHED_TASK_STATUSES:
+            return True
+        return db.scalar(select(Task.id).where(Task.lane_of_id == task.id).limit(1)) is None
+
     def _release_rows(
-        self, db: Session, task: Task, project: Project, rows: list[TaskRepo]
+        self, db: Session, task: Task, project: Project, rows: list[TaskRepo], final: bool = True
     ) -> None:
+        """`final`: the task is over, so a branch with nothing in it can go. A task that only
+        lets go of its folders (its lanes are still working) keeps every branch."""
         if not rows:  # a task from before the repository rows: the work folder is the worktree
             path = task.worktree_path or ""
             if Path(path).is_dir():
@@ -255,7 +272,7 @@ class Worktrees:
             self._commit_leftovers(task, path, nested)
             self._remove(repo.path, path)
             row.worktree_path = None
-        if len(rows) > 1:
+        if final and len(rows) > 1:
             self._drop_untouched_branches(db, project, rows)
 
     @staticmethod

@@ -50,8 +50,7 @@ export function PipelineEditor({
   const [trying, setTrying] = useState<string | null>(null)
   const dirty = !pipeline || JSON.stringify(draft) !== JSON.stringify(toDraft(pipeline))
 
-  const graph = graphOf(draft)
-  const issues = useMemo(() => validateGraph(graph), [graph])
+  const issues = useMemo(() => validateGraph(graphOf(draft)), [draft])
   const emptyNames = draft.stages.some((s) => !s.name.trim())
   const forks = draft.stages.filter((s) => linksFrom(draft, s.key).length > 1)
 
@@ -176,9 +175,9 @@ export function PipelineEditor({
             <SettingsPanel
               draft={draft}
               onChange={change}
-              hasFork={forks.length > 0}
+              forks={forks.map((s) => ({ key: s.key, name: s.name }))}
               direct={project.workspace_mode === 'direct'}
-              onTry={() => setTrying(forks[0]?.key ?? null)}
+              onTry={setTrying}
             />
           )}
         </aside>

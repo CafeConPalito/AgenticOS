@@ -21,6 +21,7 @@ from test_lanes import (  # noqa: F401 - fixtures
 )
 
 from agentic_os.db.base import DEFAULT_WORKSPACE
+from agentic_os.errors import ApiError
 from agentic_os.models import (
     Project,
     Run,
@@ -30,7 +31,7 @@ from agentic_os.models import (
     TaskStatus,
     WorkspaceMode,
 )
-from agentic_os.services import lane_git
+from agentic_os.services import changes, lane_git
 from agentic_os.services import lanes as lane_ops
 from agentic_os.services import tasks as task_ops
 from agentic_os.services.gitx.runner import Repo
@@ -128,6 +129,12 @@ def test_the_lanes_are_merged_into_the_task_where_they_meet(db_factory, schedule
 
     finish_stage(db_factory, scheduler, launcher, "T-1", "todo bien")
     assert task_row(db_factory).status == "done"
+    # the task's diff (phase 11) holds the work of all its lanes
+    with db_factory() as db:
+        (diff,) = changes.task_ranges(db, db.scalar(select(Task).where(Task.lane_key == "")))
+        assert diff.usable
+        names = sh(web, "diff", "--name-only", diff.old or "", diff.new or "").split()
+        assert {"api.py", "ui.tsx", "req.txt"} <= set(names)
     # every folder is gone, every branch stays: the lanes' are part of the task's now
     assert not (work.parent / "T-1-backend").exists() and not work.exists()
     branches = sh(web, "branch", "--list", "agentic/*", "--format=%(refname:short)").split()
@@ -191,7 +198,7 @@ def test_the_conflict_can_be_resolved_in_a_scratch_worktree_and_the_join_goes_on
 
 
 def test_an_agent_can_resolve_the_join_on_the_tasks_branch(db_factory, scheduler, launcher, setup):
-    _, web = setup
+    ids, web = setup
     reach_the_lanes(db_factory, scheduler, launcher)
     commit_in(cwd_of(db_factory, launcher, "T-1·backend"), "shared.txt", "versión backend\n")
     commit_in(cwd_of(db_factory, launcher, "T-1·frontend"), "shared.txt", "versión frontend\n")
@@ -218,10 +225,10 @@ def test_an_agent_can_resolve_the_join_on_the_tasks_branch(db_factory, scheduler
     finish_stage(db_factory, scheduler, launcher, "T-2", "resuelto")
 
     deadline = time.monotonic() + 15  # approving it joins the lanes on a background thread
-    while time.monotonic() < deadline and task_row(db_factory).waiting_reason == "join_conflict":
+    while time.monotonic() < deadline and task_row(db_factory).stage_id != ids["stages"]["QA"]:
         time.sleep(0.1)
     after = task_row(db_factory)
-    assert after.waiting_reason != "join_conflict" and after.status in ("queued", "running")
+    assert after.stage_id == ids["stages"]["QA"] and after.status in ("queued", "running")
     assert sh(web, "show", "agentic/T-1:shared.txt") == "mezcla del agente"
 
 
@@ -305,3 +312,39 @@ def test_the_task_branch_naming_has_no_dots_or_middle_dots(db_factory):
             branch_for(lane) == "agentic/T-7-backend-api-2" and branch_for(mother) == "agentic/T-7"
         )
         _ = (Repo, StageLink)
+
+
+def test_only_one_agent_resolves_a_join_at_a_time(db_factory, scheduler, launcher, setup):
+    reach_the_lanes(db_factory, scheduler, launcher)
+    commit_in(cwd_of(db_factory, launcher, "T-1·backend"), "shared.txt", "versión backend\n")
+    commit_in(cwd_of(db_factory, launcher, "T-1·frontend"), "shared.txt", "versión frontend\n")
+    finish_stage(db_factory, scheduler, launcher, "T-1·backend")
+    finish_stage(db_factory, scheduler, launcher, "T-1·frontend")
+    with db_factory() as db:
+        mother = db.scalar(select(Task).where(Task.lane_key == ""))
+        project = db.get(Project, mother.project_id)
+        agent = make_agent(db, "Resolutor")
+        found = lane_git.clashes(db, mother, lane_ops.lanes_of(db, mother, mother.stage_id))
+        lane_git.resolution_task(db, mother, project, agent.id, found)
+        with pytest.raises(ApiError) as caught:
+            lane_git.resolution_task(db, mother, project, agent.id, found)
+        assert caught.value.code == "resolution_exists"
+
+
+def test_a_finished_task_that_nobody_released_gets_its_folder_back(
+    db_factory, scheduler, launcher, setup
+):
+    """A join resolved after the lanes ended can finish the task outside any run end."""
+    scheduler.step()
+    work = cwd_of(db_factory, launcher, "T-1")
+    assert work.is_dir()
+    with db_factory() as db:
+        run = db.get(Run, launched(launcher, "T-1"))
+        run.status = "completed"
+        task = db.get(Task, run.task_id)
+        task.status = TaskStatus.DONE
+        db.commit()
+    assert scheduler.release_orphans() == 1
+    assert not work.exists()
+    assert task_row(db_factory).worktree_path is None
+    assert scheduler.release_orphans() == 0

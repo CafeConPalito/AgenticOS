@@ -187,6 +187,8 @@ def try_join(db: Session, parent: Task) -> None:
         return
     from agentic_os.services import lane_git
 
+    # Merging takes seconds: not while holding SQLite's write lock (the state so far is whole).
+    db.commit()
     problem = lane_git.integrate(db, parent, live)
     if problem is not None:
         task_ops.wait_for_human(db, parent, WaitingReason.JOIN_CONFLICT, problem)
@@ -369,10 +371,17 @@ def decide(db: Session, task: Task, link_ids: list[str]) -> None:
     take(db, task, fork, link_ids, DecisionBy.USER)
 
 
-def _fork_into(db: Session, task: Task, fork: Stage, chosen: list[StageLink]) -> None:
+def _forked_at(db: Session, task: Task, stage_id: str) -> None:
+    """The task waits for its lanes at `stage_id`: whatever it waited for before is over."""
     task.status = TaskStatus.FORKED
-    task.stage_id = fork.id
+    task.stage_id = stage_id
     task.agent_id = None
+    task.waiting_reason = task.waiting_detail = None
+    inbox.resolve_pending(db, Resolution.DISMISSED, task_id=task.id, kinds=task_ops.ATTENTION_KINDS)
+
+
+def _fork_into(db: Session, task: Task, fork: Stage, chosen: list[StageLink]) -> None:
+    _forked_at(db, task, fork.id)
     wanted = {link.id for link in chosen}
     existing = {lane.lane_link_id: lane for lane in lanes_of(db, task, fork.id)}
     for link_id, lane in existing.items():  # branches of an earlier round not taken now
@@ -478,9 +487,7 @@ def _reopen(db: Session, parent: Task, graph: Graph, path, target: Stage, reason
     link = db.get(StageLink, link_id)
     fork = db.get(Stage, fork_id)
     assert link is not None and fork is not None
-    parent.status = TaskStatus.FORKED
-    parent.stage_id = fork_id
-    parent.agent_id = None
+    _forked_at(db, parent, fork_id)
     lane = next((x for x in lanes_of(db, parent, fork_id) if x.lane_link_id == link_id), None)
     if lane is None:
         lane = _new_lane(db, parent, fork, link, [])

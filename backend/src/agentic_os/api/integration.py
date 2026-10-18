@@ -161,6 +161,8 @@ def finish_join_editor(
         if not left:
             task_ops.retry(db, task)
             joined = True
+            if task.status == TaskStatus.DONE:
+                scheduler.release_finished(db, task)
     db.commit()
     scheduler.poke()
     return {"conflicts": files, "joined": joined}

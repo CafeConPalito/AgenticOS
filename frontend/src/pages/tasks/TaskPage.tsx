@@ -112,18 +112,23 @@ function TaskDetail({ task }: { task: Task }) {
     }
   }
 
+  // A task that forked shows the state of its most pressing lane: that lane is where those
+  // actions are done, and the server would refuse them on the task itself.
+  const forked = task.phase !== null
   const can = {
-    enqueue: task.status === 'backlog',
+    enqueue: !forked && task.status === 'backlog',
     // Not while its CLI is alive (a question or a permission waits): that would duplicate it.
     retry:
+      !forked &&
       task.status === 'waiting_human' &&
       task.waiting_reason !== 'human_request' &&
       task.waiting_reason !== 'permission',
     // A task that waits at a fork or to join its branches is retried, not finished by hand.
     complete:
+      !forked &&
       (task.status === 'running' || task.status === 'waiting_human') &&
       !['choose_branch', 'join_conflict', 'lanes_cancelled'].includes(task.waiting_reason ?? ''),
-    review: task.status === 'review',
+    review: !forked && task.status === 'review',
     cancel: !['done', 'cancelled'].includes(task.status),
   }
 

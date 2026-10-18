@@ -486,6 +486,8 @@ def open_worktree(task_id: str, db: DbSession) -> None:
 def retry_task(task_id: str, db: DbSession, scheduler: SchedulerDep) -> TaskRead:
     task = _get(db, task_id)
     task_ops.retry(db, task)
+    if task.status == TaskStatus.DONE:  # retrying a join can finish the task
+        scheduler.release_finished(db, task)
     db.commit()
     scheduler.poke()
     return read_task(db, task)

@@ -492,3 +492,19 @@ def test_preview_asks_without_a_task_and_records_its_usage(db_factory):
         assert result.chosen == ["0"] and result.reasons["1"] == "sin UI"
         run = db.scalar(select(Run).where(Run.kind == RunKind.DECISION))
         assert run.task_id is None and run.project_id == project.id and run.cost_usd == 0.0004
+
+
+def test_a_call_stays_in_flight_until_its_answer_is_applied(db_factory):
+    """Between the worker finishing and the scheduler applying the answer, the task must not be
+    asked about again (that would pay for a second call)."""
+    arrived: list = []
+    service = DecisionService(OVERRIDES, fake_runner(claude_output(take("b1"))))
+    service.on_result = lambda req, res: arrived.append((req, res))
+    asked = request()
+    service.pending.add(asked.task_id)
+    service._work(asked)
+    assert arrived and asked.task_id in service.pending
+    with db_factory() as db:
+        service.apply(db, *arrived[0])  # the task is gone: nothing to apply, but the call is over
+    assert asked.task_id not in service.pending
+    service.stop()

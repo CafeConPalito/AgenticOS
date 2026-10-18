@@ -22,7 +22,9 @@ from pathlib import Path
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from agentic_os.errors import ApiError
 from agentic_os.models import (
+    FINISHED_TASK_STATUSES,
     Project,
     ProjectRepo,
     Task,
@@ -261,6 +263,14 @@ def resolution_task(
 ) -> Task:
     """A task for an agent to resolve the conflicts of the join: it works on the parent's
     branch, only in the repositories that clash."""
+    open_one = db.scalar(
+        select(Task.id).where(
+            Task.resolves_task_id == parent.id,
+            Task.status.notin_([s.value for s in FINISHED_TASK_STATUSES]),
+        )
+    )
+    if open_one is not None:
+        raise ApiError(409, "resolution_exists", "an agent is already resolving this join")
     listing = "\n".join(
         f"- {c.name}: vía `agentic/{_lane_ref(parent, c.lane)}` → "
         + ", ".join(f"`{f}`" for f in c.files)

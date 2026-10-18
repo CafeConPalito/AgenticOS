@@ -353,13 +353,23 @@ class DecisionService:
             if result.error is None:
                 break
             log.warning("branch decision failed", task=request.task_id, error=result.error)
-        with self._lock:
-            self.pending.discard(request.task_id)
-        if self.on_result is not None:
+        if self.on_result is None:
+            self.forget(request.task_id)
+        else:  # the scheduler applies it, and only then is the question closed
             self.on_result(request, result)
+
+    def forget(self, task_id: str) -> None:
+        with self._lock:
+            self.pending.discard(task_id)
 
     # Scheduler thread, when the answer arrives ------------------------------------------
     def apply(self, db: Session, request: DecisionRequest, result: DecisionResult) -> None:
+        try:
+            self._apply(db, request, result)
+        finally:
+            self.forget(request.task_id)
+
+    def _apply(self, db: Session, request: DecisionRequest, result: DecisionResult) -> None:
         task = db.get(Task, request.task_id)
         fork = db.get(Stage, request.fork_stage_id)
         if task is None or fork is None or task.stage_id != fork.id:
