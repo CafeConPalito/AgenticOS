@@ -34,6 +34,7 @@ from agentic_os.models import (
     Resolution,
     Run,
     RunStatus,
+    Stage,
     Task,
     TaskStatus,
     Verdict,
@@ -42,7 +43,9 @@ from agentic_os.models import (
 )
 from agentic_os.services import accounts as account_ops
 from agentic_os.services import inbox, integration
+from agentic_os.services import lanes as lane_ops
 from agentic_os.services import tasks as task_ops
+from agentic_os.services.decider import DecisionRequest, DecisionResult, DecisionService
 from agentic_os.services.usage import limits as usage_limits
 from agentic_os.services.usage import switching
 
@@ -85,6 +88,8 @@ class _Inbox:
     ended: deque[str] = field(default_factory=deque)
     # run id → summary: the user finished the stage by hand while this run was alive.
     manual: dict[str, str] = field(default_factory=dict)
+    # Answers of the branch decider, made on a worker thread.
+    decisions: deque[tuple[DecisionRequest, DecisionResult]] = field(default_factory=deque)
 
 
 class Scheduler:
@@ -108,6 +113,8 @@ class Scheduler:
         self.probe_account: Callable[[Session, CliAccount], object] | None = None
         self._probing: set[str] = set()  # accounts being checked right now
         self._integrating: set[str] = set()  # tasks being integrated after their approval
+        # Picks the branches of the forks (phase 13); without it the person does.
+        self.deciders: DecisionService | None = None
         # Slow periodic chores (e.g. pending folder-trust cleanups), every HOUSEKEEPING seconds.
         self.housekeeping: Callable[[], None] | None = None
         self._last_housekeeping = 0.0
@@ -142,6 +149,12 @@ class Scheduler:
             self._inbox.ended.append(run_id)
         self.poke()
 
+    def decision_ready(self, request: DecisionRequest, result: DecisionResult) -> None:
+        """DecisionService.on_result: called from a worker thread."""
+        with self._lock:
+            self._inbox.decisions.append((request, result))
+        self.poke()
+
     def complete_manually(self, run_id: str, summary: str) -> None:
         """The user ends the stage of a running task: its run is stopped, and when *that run*
         ends the stage counts as approved with this summary."""
@@ -163,15 +176,22 @@ class Scheduler:
             except Exception:  # never let the scheduler die: the next tick retries
                 log.exception("scheduler step failed")
             now = time.monotonic()
-            if self.housekeeping is not None and now - self._last_housekeeping > HOUSEKEEPING:
+            if now - self._last_housekeeping > HOUSEKEEPING:
                 self._last_housekeeping = now
                 try:
-                    self.housekeeping()
+                    self.release_orphans()
                 except Exception:
-                    log.exception("scheduler housekeeping failed")
+                    log.exception("could not release the workspaces of finished tasks")
+                if self.housekeeping is not None:
+                    try:
+                        self.housekeeping()
+                    except Exception:
+                        log.exception("scheduler housekeeping failed")
 
     def step(self) -> None:
-        """One round: process the ended runs, then start what can start. Public for tests."""
+        """One round: apply the decisions that arrived, process the ended runs, then start
+        what can start. Public for tests."""
+        self._apply_decisions()
         while True:
             with self._lock:
                 if not self._inbox.ended:
@@ -181,7 +201,45 @@ class Scheduler:
                 self._handle_run_end(run_id)
             except Exception:
                 log.exception("could not process the end of a run", run_id=run_id)
+        if not self.paused:
+            self._decide_pending()
         self.tick()
+
+    # ------------------------------------------------------------------ branch decisions
+    def _decide_pending(self) -> None:
+        """Asks for the branches of every task that reached a fork and has none yet."""
+        with self._db() as db:
+            tasks = list(db.scalars(select(Task).where(Task.status == TaskStatus.DECIDING)))
+            for task in tasks:
+                fork = db.get(Stage, task.stage_id) if task.stage_id else None
+                if fork is None:
+                    continue
+                if self.deciders is None:
+                    DecisionService.give_up(db, task, "no hay decisor configurado")
+                    continue
+                if task.id in self.deciders.pending:
+                    continue
+                undecided, always = lane_ops.open_links(db, fork)
+                try:
+                    self.deciders.request(db, task, fork, undecided, always)
+                except Exception as error:  # the person picks instead
+                    log.exception("could not ask the branch decider", task=task.code)
+                    DecisionService.give_up(db, task, str(error))
+            db.commit()
+
+    def _apply_decisions(self) -> None:
+        while True:
+            with self._lock:
+                if not self._inbox.decisions:
+                    return
+                request, result = self._inbox.decisions.popleft()
+            try:
+                with self._db() as db:
+                    if self.deciders is not None:
+                        self.deciders.apply(db, request, result)
+                    db.commit()
+            except Exception:
+                log.exception("could not apply a branch decision", task=request.task_id)
 
     # ------------------------------------------------------------------ pause
     @property
@@ -417,7 +475,7 @@ class Scheduler:
             if manual is not None:
                 task_ops.stage_completed(db, task, manual, run.id, manual=True)
             elif run.status == RunStatus.COMPLETED and run.verdict == Verdict.REJECTED:
-                task_ops.stage_rejected(db, task, run.summary or "", run.id)
+                task_ops.stage_rejected(db, task, run.summary or "", run.id, run.reject_to_stage_id)
             elif run.status == RunStatus.COMPLETED:
                 task_ops.stage_completed(db, task, run.summary or "", run.id)
             else:
@@ -428,7 +486,15 @@ class Scheduler:
                 task_ops.wait_for_human(db, task, reason, detail, run.id)
             if task.status in (TaskStatus.DONE, TaskStatus.CANCELLED):
                 self._release_when_idle(db, task)
+            self._release_root(db, task)
             db.commit()
+
+    def _release_root(self, db: Session, task: Task) -> None:
+        """A lane that arrived may have finished the task it belongs to (a join with nothing
+        after it): that one's workspace goes now."""
+        root = lane_ops.root_of(db, task)
+        if root.id != task.id and root.status in (TaskStatus.DONE, TaskStatus.CANCELLED):
+            self._release_when_idle(db, root)
 
     def _release_when_idle(self, db: Session, task: Task) -> None:
         """Releases a finished task's workspace once none of its runs (main or subagents) is
@@ -447,7 +513,8 @@ class Scheduler:
         except Exception:
             log.exception("could not release the workspace", task=task.code)
             return
-        if task.status == TaskStatus.DONE and task.id not in self._integrating:
+        done = task.status == TaskStatus.DONE and task.lane_of_id is None
+        if done and task.id not in self._integrating:
             self._integrating.add(task.id)
             threading.Thread(
                 target=self._after_approval, args=(task.id,), name="integrate", daemon=True
@@ -515,11 +582,31 @@ class Scheduler:
             db.commit()
         return created
 
+    def release_orphans(self) -> int:
+        """Finished tasks that still hold a workspace: they ended outside a run end (a join
+        resolved afterwards, a crash) and nobody released them. Returns how many were tried."""
+        with self._db() as db:
+            tasks = list(
+                db.scalars(
+                    select(Task).where(
+                        Task.status.in_([TaskStatus.DONE, TaskStatus.CANCELLED]),
+                        Task.worktree_path.is_not(None),
+                    )
+                )
+            )
+            for task in tasks:
+                self._release_when_idle(db, task)
+            db.commit()
+            return len(tasks)
+
     def release_finished(self, db: Session, task: Task) -> None:
         """For tasks finished outside a run end (cancelled, approved in review…)."""
         project = db.get(Project, task.project_id)
         if project is not None:
             self._release(db, task, project)
+            root = lane_ops.root_of(db, task)
+            if root.id != task.id and root.status in (TaskStatus.DONE, TaskStatus.CANCELLED):
+                self._release(db, root, project)
 
 
 def blocked_reason(db: Session, task: Task, project: Project) -> str | None:

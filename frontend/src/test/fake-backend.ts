@@ -39,10 +39,14 @@ import {
   type AgentTemplate,
   type CliInfo,
   type MemoryNote,
+  type BranchDecision,
+  type JoinClash,
   type Pipeline,
+  type PreviewResult,
   type Project,
   type Run,
   type RunEvent,
+  type Stage,
   type RunUsage,
   type InboxItem,
   type Breakdown,
@@ -395,6 +399,62 @@ export function makeTask(overrides: Partial<Task> = {}): Task {
       cache_creation_tokens: 0,
       cost_usd: null,
     },
+    phase: null,
+    lane_of_id: null,
+    lane_name: null,
+    fork_stage_id: null,
+    lanes: [],
+    ...overrides,
+  }
+}
+
+export function makeStage(overrides: Partial<Stage> = {}): Stage {
+  seq += 1
+  return {
+    id: `stage-${seq}`,
+    position: 0,
+    name: 'Etapa',
+    agent_id: null,
+    agent_name: null,
+    agent_color: null,
+    requires_review: false,
+    reject_to_stage_id: null,
+    reject_extra_stage_ids: [],
+    x: 0,
+    y: 0,
+    confirm_decision: false,
+    join_stage_id: null,
+    active_tasks: 0,
+    ...overrides,
+  }
+}
+
+/** A pipeline of `stages`; without `links` it is a chain. */
+export function makePipeline(
+  projectId: string,
+  stages: Partial<Stage>[],
+  overrides: Partial<Pipeline> = {},
+): Pipeline {
+  seq += 1
+  const made = stages.map((s, i) => makeStage({ position: i, x: i * 280, ...s }))
+  return {
+    id: `pipeline-${seq}`,
+    project_id: projectId,
+    name: 'Pipeline',
+    max_rejections: 3,
+    decider_cli: null,
+    decider_account_id: null,
+    decider_model: null,
+    stages: made,
+    links: made.slice(1).map((s, i) => ({
+      id: `link-${seq}-${i}`,
+      from_stage_id: made[i].id,
+      to_stage_id: s.id,
+      name: s.name,
+      condition: '',
+      always: false,
+      position: 0,
+    })),
     ...overrides,
   }
 }
@@ -698,7 +758,13 @@ export function createFakeBackend(
     notes?: Record<string, MemoryNote[]>
     tasks?: Task[]
     taskEvents?: Record<string, TaskEvent[]>
+    /** What GET /api/tasks/:id/decisions answers, by task id (phase 13). */
+    decisions?: Record<string, BranchDecision[]>
+    /** What GET /api/tasks/:id/join answers: the branches that clash. */
+    join?: JoinClash[]
     pipelines?: Record<string, Pipeline>
+    /** What «Probar» answers (default: the first branch is taken). */
+    preview?: PreviewResult
     paused?: boolean
     inbox?: InboxItem[]
     trees?: Record<string, TreeNode[]>
@@ -1014,7 +1080,9 @@ export function createFakeBackend(
   }
   const tasks = [...(seed.tasks ?? [])]
   const taskEvents = { ...(seed.taskEvents ?? {}) }
+  const decisions = { ...(seed.decisions ?? {}) }
   const pipelines: Record<string, Pipeline | null> = { ...(seed.pipelines ?? {}) }
+  const previewResult = seed.preview
   const scheduler = { paused: seed.paused ?? false }
   let switchThreshold = 90
   const agents = [...(seed.agents ?? [])]
@@ -1127,13 +1195,35 @@ export function createFakeBackend(
         queued: mine.filter((t) => t.status === 'queued'),
       })
     }
-    const pipelineMatch = path.match(/^\/api\/projects\/([^/]+)\/pipeline(\/template)?$/)
+    const pipelineMatch = path.match(
+      /^\/api\/projects\/([^/]+)\/pipeline(\/template|\/validate|\/decide-preview)?$/,
+    )
     if (pipelineMatch) {
       const projectId = pipelineMatch[1]
+      const sub = pipelineMatch[2]
       if (method === 'GET') return json(200, pipelines[projectId] ?? null)
       if (method === 'DELETE') {
         pipelines[projectId] = null
         return json(204, null)
+      }
+      if (sub === '/validate') return json(200, [])
+      if (sub === '/decide-preview') {
+        const branches = (body.branches as { name: string }[]).map((b, i) => ({
+          name: b.name,
+          take: i === 0,
+          reason: i === 0 ? 'Encaja con la condición' : 'No aplica',
+        }))
+        return json(
+          200,
+          previewResult ?? {
+            branches,
+            cli: 'claude',
+            model: 'claude-haiku-5-5',
+            cost_usd: 0.0003,
+            seconds: 1.2,
+            error: null,
+          },
+        )
       }
       type StageBody = {
         id?: string | null
@@ -1141,20 +1231,64 @@ export function createFakeBackend(
         agent_id: string | null
         requires_review: boolean
         reject_to: number | null
+        reject_also?: number[]
+        x?: number | null
+        y?: number | null
+        confirm_decision?: boolean
       }
-      const stages: StageBody[] = pipelineMatch[2]
-        ? [
-            { name: 'Requisitos', agent_id: null, requires_review: false, reject_to: null },
-            { name: 'Desarrollo', agent_id: null, requires_review: false, reject_to: null },
-            { name: 'QA', agent_id: null, requires_review: false, reject_to: 1 },
-          ]
-        : (body.stages as StageBody[])
+      type LinkBody = {
+        source: number
+        target: number
+        name: string
+        condition: string
+        always: boolean
+      }
+      const stages: StageBody[] =
+        sub === '/template'
+          ? body.template === 'web_split'
+            ? [
+                { name: 'Requisitos', agent_id: null, requires_review: false, reject_to: null },
+                { name: 'Dev backend', agent_id: null, requires_review: false, reject_to: null },
+                { name: 'Dev frontend', agent_id: null, requires_review: false, reject_to: null },
+                {
+                  name: 'QA',
+                  agent_id: null,
+                  requires_review: false,
+                  reject_to: 1,
+                  reject_also: [2],
+                },
+              ]
+            : [
+                { name: 'Requisitos', agent_id: null, requires_review: false, reject_to: null },
+                { name: 'Desarrollo', agent_id: null, requires_review: false, reject_to: null },
+                { name: 'QA', agent_id: null, requires_review: false, reject_to: 1 },
+              ]
+          : (body.stages as StageBody[])
+      const links: LinkBody[] =
+        sub === '/template' && body.template === 'web_split'
+          ? [
+              { source: 0, target: 1, name: 'Backend', condition: 'Toca la API', always: false },
+              { source: 0, target: 2, name: 'Frontend', condition: 'Toca la UI', always: false },
+              { source: 1, target: 3, name: 'QA', condition: '', always: false },
+              { source: 2, target: 3, name: 'QA', condition: '', always: false },
+            ]
+          : ((body.links as LinkBody[] | null | undefined) ??
+            stages.slice(1).map((st, i) => ({
+              source: i,
+              target: i + 1,
+              name: st.name,
+              condition: '',
+              always: false,
+            })))
       const ids = stages.map((st, i) => st.id || `stage-${projectId}-${i}`)
       const pipeline: Pipeline = {
         id: `pipeline-${projectId}`,
         project_id: projectId,
-        name: pipelineMatch[2] ? 'Desarrollo web' : String(body.name ?? ''),
-        max_rejections: pipelineMatch[2] ? 3 : Number(body.max_rejections ?? 3),
+        name: sub === '/template' ? 'Desarrollo web' : String(body.name ?? ''),
+        max_rejections: sub === '/template' ? 3 : Number(body.max_rejections ?? 3),
+        decider_cli: (body.decider_cli as Pipeline['decider_cli']) ?? null,
+        decider_account_id: (body.decider_account_id as string | null) ?? null,
+        decider_model: (body.decider_model as string | null) ?? null,
         stages: stages.map((st, i) => {
           const agent = agents.find((a) => a.id === st.agent_id)
           return {
@@ -1166,12 +1300,26 @@ export function createFakeBackend(
             agent_color: agent?.color ?? null,
             requires_review: st.requires_review,
             reject_to_stage_id: st.reject_to === null ? null : ids[st.reject_to],
+            reject_extra_stage_ids: (st.reject_also ?? []).map((n) => ids[n]),
+            x: st.x ?? i * 280,
+            y: st.y ?? 0,
+            confirm_decision: st.confirm_decision ?? false,
+            join_stage_id: null,
             active_tasks: 0,
           }
         }),
+        links: links.map((l, i) => ({
+          id: `link-${projectId}-${i}`,
+          from_stage_id: ids[l.source],
+          to_stage_id: ids[l.target],
+          name: l.name,
+          condition: l.condition,
+          always: l.always,
+          position: links.slice(0, i).filter((x) => x.source === l.source).length,
+        })),
       }
       pipelines[projectId] = pipeline
-      return json(pipelineMatch[2] ? 201 : 200, pipeline)
+      return json(sub === '/template' ? 201 : 200, pipeline)
     }
     if (path === '/api/home') return json(200, homeFor())
     if (path === '/api/tasks') {
@@ -1194,7 +1342,11 @@ export function createFakeBackend(
                 (!query.get('agent_id') || t.agent_id === query.get('agent_id')) &&
                 (!query.get('parent_task_id') ||
                   t.parent_task_id === query.get('parent_task_id')) &&
-                (statuses.length === 0 || statuses.includes(t.status)),
+                (statuses.length === 0 || statuses.includes(t.status)) &&
+                // the lanes of a forked task are listed on their own only when asked (or for an agent)
+                (query.get('lanes') === 'include' ||
+                  Boolean(query.get('agent_id')) ||
+                  t.lane_of_id === null),
             )
             .slice(0, Number(query.get('limit')) || undefined),
         )
@@ -1223,6 +1375,38 @@ export function createFakeBackend(
     }
     const treeMatch = path.match(/^\/api\/tasks\/([^/]+)\/tree$/)
     if (treeMatch) return json(200, trees[treeMatch[1]] ?? [])
+    const forkMatch = path.match(
+      /^\/api\/tasks\/([^/]+)\/(decisions|decision|lanes|join(?:\/editor(?:\/finish)?|\/agent)?)$/,
+    )
+    if (forkMatch) {
+      const forked = tasks.find((t) => t.id === forkMatch[1])
+      if (!forked) return apiError(404, 'task_not_found')
+      switch (forkMatch[2]) {
+        case 'decisions':
+          return json(200, decisions[forked.id] ?? [])
+        case 'decision':
+          Object.assign(forked, { status: 'running', phase: 'forked', waiting_reason: null })
+          return json(200, forked)
+        case 'lanes':
+          return json(201, forked)
+        case 'join':
+          return json(200, seed.join ?? [])
+        case 'join/editor':
+          return json(
+            200,
+            (seed.join ?? []).map((c) => ({
+              repo_id: c.repo_id,
+              name: c.name,
+              path: `D:\\work\\join-${c.name}`,
+              conflicts: c.files,
+            })),
+          )
+        case 'join/editor/finish':
+          return json(200, { conflicts: [], joined: true })
+        default:
+          return json(201, makeTask({ title: 'Resolver conflictos', status: 'queued' }))
+      }
+    }
     const taskMatch = path.match(/^\/api\/tasks\/([^/]+)(?:\/([a-z-]+))?$/)
     if (!taskMatch) return null
     const task = tasks.find((t) => t.id === taskMatch[1])

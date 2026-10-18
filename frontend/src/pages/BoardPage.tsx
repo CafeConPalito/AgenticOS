@@ -69,7 +69,8 @@ export default function BoardPage() {
   const [projectId, setProjectId] = useState<string | null>(null)
   const [agentId, setAgentId] = useState<string | null>(null)
   const openNewTask = useDialogs((s) => s.openNewTask)
-  const tasks = useTasks()
+  // The lanes of forked tasks come too: «Por etapa» and the queues show them as tasks.
+  const tasks = useTasks({ lanes: true })
   const projects = useProjects().data ?? []
   const agents = (useAgents().data ?? []).filter((a) => a.status !== 'draft')
 
@@ -178,8 +179,12 @@ export default function BoardPage() {
         </div>
       </div>
       <div className="min-h-0 flex-1 overflow-auto p-5">
-        {view === 'status' && <StatusColumns tasks={visible} />}
-        {view === 'stage' && <StageColumns tasks={visible} />}
+        {/* By state a forked task counts once, with the state of its most pressing lane. */}
+        {view === 'status' && <StatusColumns tasks={visible.filter((task) => !task.lane_of_id)} />}
+        {/* By stage it is its lanes that sit in the columns of their stages. */}
+        {view === 'stage' && (
+          <StageColumns tasks={visible.filter((task) => task.phase !== 'forked')} />
+        )}
         {view === 'queues' && (
           <AgentQueues
             agents={agentId ? agents.filter((a) => a.id === agentId) : agents}
@@ -564,7 +569,9 @@ function QueueCard({
         {task.title}
       </Link>
       <div className="text-[11.5px] text-muted-foreground">
-        {task.stage_name ?? t('tasks.noStage')} · <PriorityLabel priority={task.priority} />
+        {task.stage_name ?? t('tasks.noStage')}
+        {task.lane_name && ` · ${t('tasks.lanes.laneTag', { name: task.lane_name })}`} ·{' '}
+        <PriorityLabel priority={task.priority} />
         {task.blocked && (
           <span className="text-status-waiting">
             {' '}

@@ -2,7 +2,7 @@ import json
 import re
 import unicodedata
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Query, Request, status
 from sqlalchemy import func, select
@@ -16,18 +16,24 @@ from agentic_os.errors import ApiError, NotFound
 from agentic_os.models import (
     ACTIVE_STATUSES,
     Agent,
+    BranchDecision,
     Project,
     Run,
     RunEvent,
+    RunKind,
     Stage,
+    StageLink,
     Task,
     TaskEvent,
-    TaskEventKind,
     TaskStatus,
 )
 from agentic_os.schemas.task import (
+    AddLaneRequest,
     AgentQueue,
     CompleteRequest,
+    DecisionRead,
+    DecisionRequest,
+    LaneRead,
     QueueOrder,
     ReviewAction,
     ReviewRequest,
@@ -40,6 +46,7 @@ from agentic_os.schemas.task import (
 )
 from agentic_os.schemas.usage import UsageTotals
 from agentic_os.services import accounts as account_ops
+from agentic_os.services import lanes as lane_ops
 from agentic_os.services import tasks as task_ops
 from agentic_os.services.proc import open_in_file_manager
 from agentic_os.services.runs.manager import RunManager
@@ -87,6 +94,7 @@ def read_tasks(db: Session, tasks: list[Task]) -> list[TaskRead]:
         db.execute(
             select(Run.task_id, Run.id).where(
                 Run.task_id.in_(ids),
+                Run.kind == RunKind.AGENT,
                 Run.parent_run_id.is_(None),  # the task's own runs, not its subagents
                 Run.status.in_([s.value for s in ACTIVE_STATUSES]),
             )
@@ -94,7 +102,7 @@ def read_tasks(db: Session, tasks: list[Task]) -> list[TaskRead]:
     )
     last_rows = db.execute(
         select(Run.task_id, Run.id, Run.created_at)
-        .where(Run.task_id.in_(ids), Run.parent_run_id.is_(None))
+        .where(Run.task_id.in_(ids), Run.kind == RunKind.AGENT, Run.parent_run_id.is_(None))
         .order_by(Run.created_at)
     ).all()
     last = {task_id: run_id for task_id, run_id, _ in last_rows}
@@ -117,6 +125,43 @@ def read_tasks(db: Session, tasks: list[Task]) -> list[TaskRead]:
             done_total[0] += count
 
     usage = task_usage(db, ids)
+    lane_rows = list(db.scalars(select(Task).where(Task.lane_of_id.in_(ids))))
+    link_ids = {x.lane_link_id for x in [*tasks, *lane_rows] if x.lane_link_id}
+    link_names = {
+        link.id: link.name
+        for link in db.scalars(select(StageLink).where(StageLink.id.in_(link_ids)))
+    }
+    lane_agents = {
+        a.id: a
+        for a in db.scalars(
+            select(Agent).where(Agent.id.in_({x.agent_id for x in lane_rows if x.agent_id}))
+        )
+    }
+    stage_names = {
+        st.id: st.name
+        for st in db.scalars(
+            select(Stage).where(Stage.id.in_({x.stage_id for x in lane_rows if x.stage_id}))
+        )
+    }
+    lanes_by_parent: dict[str, list[LaneRead]] = {}
+    for lane in sorted(lane_rows, key=lambda x: x.created_at):
+        lane_agent = lane_agents.get(lane.agent_id) if lane.agent_id else None
+        lanes_by_parent.setdefault(lane.lane_of_id or "", []).append(
+            LaneRead(
+                id=lane.id,
+                code=lane.code,
+                lane_key=lane.lane_key,
+                name=link_names.get(lane.lane_link_id or "", lane.lane_key),
+                status=lane.status,
+                stage_id=lane.stage_id,
+                stage_name=stage_names.get(lane.stage_id or ""),
+                agent_name=lane_agent.name if lane_agent else None,
+                agent_color=lane_agent.color if lane_agent else None,
+                waiting_reason=lane.waiting_reason,
+                link_id=lane.lane_link_id,
+                fork_stage_id=lane.fork_stage_id,
+            )
+        )
     # Queued tasks of an account over its daily limit, out of quota or logged out wait
     # (phases 07 and 10).
     gates: dict[str, str | None] = {}
@@ -140,6 +185,7 @@ def read_tasks(db: Session, tasks: list[Task]) -> list[TaskRead]:
             blocked = blocked_reason(db, task, project) or decision or gate
             if gate is not None and blocked == gate and account is not None:
                 blocked_by = account_ops.display_name(account)
+        shown, phase = lane_ops.view_status(db, task)
         result.append(
             TaskRead(
                 id=task.id,
@@ -151,7 +197,12 @@ def read_tasks(db: Session, tasks: list[Task]) -> list[TaskRead]:
                 title=task.title,
                 description=task.description,
                 priority=task.priority,
-                status=task.status,
+                status=shown,
+                phase=phase,
+                lane_of_id=task.lane_of_id,
+                lane_name=link_names.get(task.lane_link_id or ""),
+                fork_stage_id=task.fork_stage_id,
+                lanes=lanes_by_parent.get(task.id, []),
                 stage_id=task.stage_id,
                 stage_name=stage.name if stage else None,
                 stage_index=(project_stages.index(stage) + 1) if stage else 0,
@@ -219,8 +270,13 @@ def list_tasks(
     parent_task_id: str | None = None,
     q: Annotated[str | None, Query(max_length=200)] = None,
     limit: Annotated[int | None, Query(ge=1, le=MAX_SEARCH)] = None,
+    lanes: Annotated[Literal["include"] | None, Query()] = None,
 ) -> list[TaskRead]:
+    """The lanes of a forked task are tasks too, but they only show on their own with
+    `?lanes=include` or when asking for an agent's tasks."""
     query = select(Task).where(Task.workspace_id == DEFAULT_WORKSPACE)
+    if lanes != "include" and not agent_id:
+        query = query.where(Task.lane_of_id.is_(None))
     if parent_task_id:
         query = query.where(Task.parent_task_id == parent_task_id)
     if project_id:
@@ -251,6 +307,7 @@ def create_task(payload: TaskCreate, db: DbSession, scheduler: SchedulerDep) -> 
         payload.priority,
         payload.agent_id,
         enqueue_now=payload.enqueue,
+        preset_lanes=payload.preset_lanes,
     )
     db.commit()
     scheduler.poke()
@@ -277,6 +334,9 @@ def update_task(
     if "agent_id" in changes:
         get_agent_row(db, changes["agent_id"])
         task_ops.set_agent(db, task, changes["agent_id"])
+    for lane in lane_ops.descendants(db, task):  # the lanes read their task's text and priority
+        lane.title, lane.description = task.title, task.description
+        task_ops.change_priority(db, lane, task.priority)
     db.commit()
     scheduler.poke()
     return read_task(db, task)
@@ -307,7 +367,11 @@ def task_tree(task_id: str, db: DbSession) -> list[TreeNode]:
     Agentic OS (runs) and the CLI's native subagents (from the hooks, ADR 0010)."""
     _get(db, task_id)
     runs = list(
-        db.scalars(select(Run).where(Run.task_id == task_id).order_by(Run.created_at.desc()))
+        db.scalars(
+            select(Run)
+            .where(Run.task_id == task_id, Run.kind == RunKind.AGENT)
+            .order_by(Run.created_at.desc())
+        )
     )
     stages = {
         s.id: s.name
@@ -366,7 +430,40 @@ def task_tree(task_id: str, db: DbSession) -> list[TreeNode]:
     return [node(run) for run in runs if run.parent_run_id is None]
 
 
+@router.get("/tasks/{task_id}/decisions")
+def task_decisions(task_id: str, db: DbSession) -> list[DecisionRead]:
+    _get(db, task_id)
+    rows = db.scalars(
+        select(BranchDecision).where(BranchDecision.task_id == task_id).order_by(BranchDecision.at)
+    )
+    return [DecisionRead.model_validate(r) for r in rows]
+
+
 # ---------------------------------------------------------------------- actions
+@router.post("/tasks/{task_id}/decision")
+def decide_branches(
+    task_id: str, payload: DecisionRequest, db: DbSession, scheduler: SchedulerDep
+) -> TaskRead:
+    """The person picks the branches of a task that waits at a fork."""
+    task = _get(db, task_id)
+    lane_ops.decide(db, task, payload.chosen)
+    db.commit()
+    scheduler.poke()
+    return read_task(db, task)
+
+
+@router.post("/tasks/{task_id}/lanes", status_code=status.HTTP_201_CREATED)
+def add_lane(
+    task_id: str, payload: AddLaneRequest, db: DbSession, scheduler: SchedulerDep
+) -> TaskRead:
+    """Adds a branch to a task that already forked: it starts now and the join waits for it."""
+    task = _get(db, task_id)
+    lane = lane_ops.add_lane(db, task, payload.link_id)
+    db.commit()
+    scheduler.poke()
+    return read_task(db, lane)
+
+
 @router.post("/tasks/{task_id}/enqueue")
 def enqueue_task(task_id: str, db: DbSession, scheduler: SchedulerDep) -> TaskRead:
     task = _get(db, task_id)
@@ -389,6 +486,8 @@ def open_worktree(task_id: str, db: DbSession) -> None:
 def retry_task(task_id: str, db: DbSession, scheduler: SchedulerDep) -> TaskRead:
     task = _get(db, task_id)
     task_ops.retry(db, task)
+    if task.status == TaskStatus.DONE:  # retrying a join can finish the task
+        scheduler.release_finished(db, task)
     db.commit()
     scheduler.poke()
     return read_task(db, task)
@@ -417,6 +516,8 @@ def complete_task(
     is closed first; the task moves on when it has ended."""
     task = _get(db, task_id)
     task_ops.check_status(task, task_ops.CAN_COMPLETE, "complete")
+    if task.waiting_reason in lane_ops.FORK_WAITS:
+        raise ApiError(409, "task_status", "the task waits at a fork: choose or retry", "status")
     run = _active_run(db, task)
     if run is not None and manager.get(run.id) is not None:
         # Tied to this run: if it ends on its own first, the summary is not applied elsewhere.
@@ -452,17 +553,24 @@ def review_task(
 def cancel_task(
     task_id: str, db: DbSession, scheduler: SchedulerDep, manager: ManagerDep
 ) -> TaskRead:
+    """Cancels the task and, if it forked, its lanes. Cancelling a lane leaves the others: the
+    join stops waiting for it."""
     task = _get(db, task_id)
     task_ops.check_status(task, task_ops.CAN_CANCEL, "cancel")
-    run = _active_run(db, task)
-    task_ops.finish(db, task, TaskStatus.CANCELLED, TaskEventKind.CANCELLED)
-    # Committed before the run is stopped: its end (on the scheduler thread) must find the task
-    # cancelled, and the API must not hold the SQLite write lock meanwhile.
+    if task.lane_of_id is not None:
+        cancelled = lane_ops.cancel_lane(db, task)
+    else:
+        cancelled = lane_ops.cancel_tree(db, task)
+    runs = {t.id: _active_run(db, t) for t in cancelled}
+    # Committed before the runs are stopped: their end (on the scheduler thread) must find the
+    # tasks cancelled, and the API must not hold the SQLite write lock meanwhile.
     db.commit()
-    if run is None or not manager.stop(run.id):
-        scheduler.release_finished(db, task)
-        db.commit()
-    # else: its workspace is released when the run has ended (Scheduler._handle_run_end)
+    for item in cancelled:
+        run = runs[item.id]
+        if run is None or not manager.stop(run.id):
+            scheduler.release_finished(db, item)
+        # else: its workspace is released when the run has ended (Scheduler._handle_run_end)
+    db.commit()
     scheduler.poke()
     return read_task(db, task)
 

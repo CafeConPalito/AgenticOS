@@ -69,6 +69,8 @@ function NewTaskForm({ onClose, init }: { onClose: () => void; init: NewTaskInit
   const [details, setDetails] = useState(false)
   const [description, setDescription] = useState('')
   const [priority, setPriority] = useState<Priority>('normal')
+  const [manual, setManual] = useState(false)
+  const [presets, setPresets] = useState<Record<string, string[]>>({})
   const [error, setError] = useState<string | null>(null)
 
   const known = (list: { id: string }[], id: string | undefined) =>
@@ -77,6 +79,20 @@ function NewTaskForm({ onClose, init }: { onClose: () => void; init: NewTaskInit
     known(projects, pickedProject) || known(projects, last?.projectId) || (projects[0]?.id ?? '')
   const pipeline = usePipeline(project, Boolean(project))
   const firstStage = project ? pipeline.data?.stages[0] : undefined
+  // The forks of the pipeline: stages with several links, each of which is a branch.
+  const forks = (pipeline.data?.stages ?? [])
+    .map((stage) => ({
+      stage,
+      branches: (pipeline.data?.links ?? [])
+        .filter((l) => l.from_stage_id === stage.id)
+        .sort((a, b) => a.position - b.position),
+    }))
+    .filter((f) => f.branches.length > 1)
+  const fixed = Object.fromEntries(
+    Object.entries(presets).filter(
+      ([stageId, ids]) => ids.length > 0 && forks.some((f) => f.stage.id === stageId),
+    ),
+  )
   // With a pipeline the first stage decides the agent; without one the person picks it.
   const needsAgent = Boolean(project) && pipeline.isSuccess && !firstStage
   const agent = known(agents, pickedAgent) || known(agents, last?.agentId) || (agents[0]?.id ?? '')
@@ -110,6 +126,7 @@ function NewTaskForm({ onClose, init }: { onClose: () => void; init: NewTaskInit
         priority,
         agent_id: needsAgent ? agent : null,
         enqueue,
+        ...(manual && Object.keys(fixed).length ? { preset_lanes: fixed } : {}),
       })
       // Remember only an agent that was really used: with a pipeline the stage decided it.
       const usedAgent = needsAgent ? agent : (firstStage?.agent_id ?? '')
@@ -252,6 +269,54 @@ function NewTaskForm({ onClose, init }: { onClose: () => void; init: NewTaskInit
                   </SelectContent>
                 </Select>
               </Field>
+            </div>
+          )}
+          {forks.length > 0 && (
+            <div className="flex flex-col gap-2">
+              <button
+                type="button"
+                aria-expanded={manual}
+                onClick={() => setManual((v) => !v)}
+                className="flex w-fit items-center gap-1.5 text-[12.5px] text-muted-foreground hover:text-foreground"
+              >
+                <ChevronDown
+                  className={cn('size-3.5 transition-transform', manual && 'rotate-180')}
+                />
+                {t('tasks.lanes.manual')}
+              </button>
+              {manual && (
+                <div className="flex flex-col gap-2.5">
+                  <p className="text-xs text-muted-foreground">{t('tasks.lanes.manualHelp')}</p>
+                  {forks.map(({ stage, branches }) => (
+                    <fieldset
+                      key={stage.id}
+                      className="grid gap-1.5 rounded-[10px] border px-3 py-2"
+                    >
+                      <legend className="px-1 text-[12.5px] font-medium">{stage.name}</legend>
+                      {branches.map((link) => (
+                        <label key={link.id} className="flex items-center gap-2 text-[13px]">
+                          <input
+                            type="checkbox"
+                            checked={presets[stage.id]?.includes(link.id) ?? false}
+                            onChange={(e) =>
+                              setPresets((current) => {
+                                const now = current[stage.id] ?? []
+                                return {
+                                  ...current,
+                                  [stage.id]: e.target.checked
+                                    ? [...now, link.id]
+                                    : now.filter((x) => x !== link.id),
+                                }
+                              })
+                            }
+                          />
+                          {link.name}
+                        </label>
+                      ))}
+                    </fieldset>
+                  ))}
+                </div>
+              )}
             </div>
           )}
           {overridden && (

@@ -296,3 +296,30 @@ def test_a_linked_repository_goes_to_an_at_folder(db_factory, tmp_path: Path):  
         assert (work / ".git").exists()  # the root repository: the work folder itself
         assert (work / "@Shared lib" / "README.md").exists()
         assert sh(work / "@Shared lib", "branch", "--show-current") == "agentic/T-1"
+
+
+def test_a_task_that_lets_go_of_its_folders_while_its_lanes_work_keeps_every_branch(
+    db_factory,  # noqa: F811
+    tmp_path: Path,
+):
+    """The join editor closes the folders of a task that forked: the repository only a lane
+    worked in must keep the task's branch, or the lane's work could never be merged."""
+    from gitrepos import make_repo as repo_in
+
+    folder = tmp_path / "shop"
+    backend = repo_in(folder / "backend")
+    docs = repo_in(folder / "docs")
+    with db_factory() as db:
+        project, task = make_task(db, folder)
+        worktrees = Worktrees()
+        work = Path(worktrees.prepare(db, task, project))
+        (work / "backend" / "api.py").write_text("x = 1\n", "utf-8")
+        db.add(Task(workspace_id=task.workspace_id, number=task.number, project_id=project.id,
+                    title="t", lane_of_id=task.id, lane_key="docs"))  # fmt: skip
+        db.flush()
+        worktrees.release(db, task, project)
+
+        assert not work.exists()
+        assert git.branch_exists(str(backend), "agentic/T-1")
+        assert git.branch_exists(str(docs), "agentic/T-1")  # untouched, but a lane still needs it
+        assert db.query(TaskRepo).filter_by(task_id=task.id).count() == 2

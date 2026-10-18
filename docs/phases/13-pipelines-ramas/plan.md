@@ -31,6 +31,17 @@
 | S2 | ¿`agy -p` con `--output-format json` o `stream-json` devuelve el texto de la respuesta con algún modelo? ¿Trae el consumo? | Mismo script, `evidencias/s2-agy-decider.md` | El decisor solo admite Claude Code; el editor no ofrece agy y lo explica |
 | S3 | Ramas de las vías: ¿se puede crear `agentic/T-142-backend` desde `agentic/T-142` con este ya activo en otro worktree, hacer merge de las dos vías en el worktree de la tarea y reabrir una vía (llevar su rama al nuevo extremo de la de la tarea) sin chocar con el worktree que la tiene activa? | `spikes/git_lanes_probe.py` con un repo temporal; `evidencias/s3-git-lanes.md` | Ajustar los pasos de `services/lanes.py` |
 
+## Resultados de los spikes (bloque 0, 2026-10-18)
+Scripts en `spikes/scenarios/decider.py` y `spikes/git_lanes_probe.py`; evidencias en `evidencias/`.
+
+- **S1 · Claude Code 2.1.302** (`haiku`): con `--json-schema`, `--tools ""`, `--strict-mcp-config`, `--no-session-persistence` y `--max-budget-usd 0.05`, 5 de 5 decisiones correctas, todas con `structured_output` válido, en **3–4,5 s** y a **~0,0003–0,001 USD**. Sin ficheros en la carpeta y sin cambios en la configuración global. Una tarea sin ninguna rama aplicable devuelve todas con `take: false`: la app lo trata como fallo (spec §2).
+- **S2 · agy 1.4.2** (`gemini-3.8-flash-low`, `-p --output-format json`): 5 de 5 correctas en **5–8 s**. Devuelve el texto en `result.response` (JSON dentro del texto, sin modo de esquema) y los tokens en `result.usage` (~11 800 de entrada por llamada, sin coste, como en la fase 07). El `response` vacío del spike de la fase 01 se debía a que aquel prompt pedía escribir un fichero y `-p` lo deniega. **agy sirve como decisor**; su salida se extrae del texto.
+- **S3 · git**: `agentic/T-1/backend` no puede existir junto a `agentic/T-1` (confirmado) → ramas `agentic/T-1-backend`. Se pueden crear los worktrees de las vías desde la rama de la tarea mientras esta está activa en su carpeta. La unión desde el worktree de la tarea funciona: *fast-forward* de la primera vía y `--no-ff` de la segunda; un conflicto devuelve código 1 y `merge --abort` deja el worktree limpio. Reabrir una vía: `branch -f` al extremo de la tarea sin worktree, o `merge --ff-only` desde la tarea con el worktree vivo; ambos dejan la vía sin commits propios.
+
+### Cambios al diseño por los spikes
+- §3 `HeadlessDecider` ya tiene **dos adaptadores**: Claude Code (salida estructurada) y agy (JSON extraído del texto, con un reintento si no es válido). El editor ofrece los dos.
+- Sin otros cambios: el diseño de §4 se confirma tal cual.
+
 ## Diseño ([ADR 0020](../../adr/0020-branching-pipelines.md), nuevo)
 
 ### 1. El grafo del pipeline
@@ -69,7 +80,8 @@
 - **Migración de los pipelines lineales**: una conexión de cada etapa a la siguiente por `position`, y `x`/`y` de la colocación automática.
 
 **Guardar** (`services/pipelines.py`)
-- `PipelineWrite` pasa a llevar `stages` (con `key` local, `x`, `y`, `confirm_decision` y `reject_to` como `key`) y `links` (`from`, `to`, `name`, `condition`, `always`).
+- `PipelineWrite` pasa a llevar `stages` (con `x`, `y`, `confirm_decision`, `reject_to` y `reject_also`, todos los destinos como índice de la lista) y `links` (`source` y `target` como índice, `name`, `condition`, `always`). Sin `links`, el pipeline es una cadena (compatible con el editor anterior).
+- **Varios destinos de rechazo** (hueco de la spec, resuelto en el bloque 1): para que QA pueda rechazar a Dev backend **o** a Dev frontend, una etapa tiene un destino por defecto (`reject_to_stage_id`) y destinos extra (`Stage.reject_extra_ids`, JSON). Al rechazar, el agente indica cuál con un parámetro nuevo de `complete_task` (obligatorio si hay varios, el error le lista las opciones); el usuario lo elige en la revisión, que ya admitía destino.
 - Se valida con `pipeline_graph` (422 con la lista de errores) y además:
   - no se puede quitar una etapa con tareas o vías activas (como hoy);
   - **no se puede quitar una conexión por la que va o volverá una vía activa**: una vía en curso necesita su conexión hasta la unión. Error 409 `link_in_use` con la etapa.
@@ -149,7 +161,8 @@
 - **Ejecución**: nunca en el hilo del scheduler.
   1. `advance` deja la madre en `deciding` y avisa al servicio de decisiones.
   2. Un hilo (`decisions-worker`) hace la llamada y escribe el resultado.
-  3. El scheduler, en su siguiente paso, llama a `apply_decision`, que bifurca o deja la tarea esperando. Así todos los cambios de estado de las tareas siguen siendo del scheduler.
+  3. El scheduler, en su siguiente paso, aplica el resultado (`DecisionService.apply`), que bifurca o deja la tarea esperando. Así todos los cambios de estado de las tareas siguen siendo del scheduler.
+  4. **Sin gancho global** (cambio durante el desarrollo): una tarea que llega a una bifurcación con ramas por decidir queda en `deciding` y el scheduler, en cada paso, pide la decisión de las que no tienen una en curso (`Scheduler._decide_pending`). Eso cubre también el reintento y el arranque de la app sin código aparte.
 - **Ramas «Siempre» y fijadas** (`preset_lanes`): se aplican sin llamar al LLM. Si quedan ramas por decidir, el LLM solo ve esas, y las «Siempre» se suman a su elección.
 - **Fallos**: un reintento. Después, la madre queda `waiting_human` con `choose_branch` y la petición «Hay que elegir la rama» en la Inbox (fase 06), con notificación. Cuentan como fallo:
   - la cuenta bloqueada (límite diario, sin cuota o sin sesión), comprobada antes de llamar con `usage_limits.blocked_all`;
@@ -269,15 +282,15 @@
 ## Tareas (en orden)
 Cada bloque se cierra con sus tests en verde y un commit (o varios) en `phase/13-pipelines-ramas`.
 
-0. [ ] **Spikes S1–S3** con sus evidencias; ajustar el plan si algo cambia.
-1. [ ] **Grafo y migración**:
+0. [x] **Spikes S1–S3** con sus evidencias; ajustar el plan si algo cambia.
+1. [x] **Grafo y migración**:
    - `StageLink` y los campos nuevos;
    - `pipeline_graph` con todas las reglas;
    - guardar y validar en `pipelines.py`;
    - migración `0015`.
    
    Los pipelines lineales siguen igual: los tests de la fase 05 en verde.
-2. [ ] **Motor de vías sin LLM**:
+2. [x] **Motor de vías sin LLM**:
    - campos de vía en `Task` y estados internos;
    - `lanes.fork/try_join/add_lane/cancel_lane`;
    - `advance`, rechazos y revisión sobre el grafo;
@@ -286,33 +299,33 @@ Cada bloque se cierra con sus tests en verde y un commit (o varios) en `phase/13
    - `display_status` y la API de tareas con vías.
    
    Todo con tareas en carpeta directa y el CLI falso.
-3. [ ] **Decisor**:
+3. [x] **Decisor**:
    - `Run.kind` y los filtros;
    - `Decider`, `FakeDecider` y `HeadlessDecider` (y agy, según S2);
    - hilo de decisiones y `apply_decision`;
    - fallos y `choose_branch`, confirmar la decisión, peticiones de la Inbox;
    - `decide-preview`;
    - recuperación al arrancar.
-4. [ ] **Worktrees de las vías**:
+4. [x] **Worktrees de las vías**:
    - ramas y carpetas de las vías;
    - integración en la unión;
    - conflictos (editor y agente);
    - reabrir una vía;
    - nombres de rama en la pestaña Git;
    - diffs de la madre con sus vías.
-5. [ ] **Contexto**: `TaskContext` con la vía y la unión, `get_context` y `$RAMA`.
-6. [ ] **Editor del grafo**:
+5. [x] **Contexto**: `TaskContext` con la vía y la unión, `get_context` y `$RAMA`.
+6. [x] **Editor del grafo**:
    - `@xyflow/react`, nodos, aristas y paneles;
    - validación en vivo y «Ordenar»;
    - «Probar»;
    - plantilla `web_split`;
    - aviso de carpeta directa.
-7. [ ] **Seguimiento en la UI**:
+7. [x] **Seguimiento en la UI**:
    - camino de la tarea, panel de vías y bloque de decisión;
    - Nueva tarea con ramas a mano;
    - tablero y colas;
    - peticiones nuevas.
-8. [ ] **e2e y cierre**:
+8. [x] **e2e y cierre**:
    - `test_e2e_branching.py` (CA1, CA7);
    - prueba manual con el decisor real (Claude Code) y la plantilla;
    - ADR 0020, README;

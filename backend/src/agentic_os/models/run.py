@@ -35,6 +35,11 @@ class Activity(StrEnum):
     IDLE = "idle"
 
 
+class RunKind(StrEnum):
+    AGENT = "agent"  # an agent's CLI session in a terminal
+    DECISION = "decision"  # a call that picked the branches of a fork (phase 13): no terminal
+
+
 class Run(IdMixin, WorkspaceMixin, TimestampMixin, Base):
     """One execution of an agent CLI in a pseudo-terminal (a CLI session)."""
 
@@ -51,6 +56,7 @@ class Run(IdMixin, WorkspaceMixin, TimestampMixin, Base):
         ),
     )
 
+    kind: Mapped[str] = mapped_column(String(8), nullable=False, default=RunKind.AGENT)
     agent_id: Mapped[str | None] = mapped_column(
         String(36), ForeignKey("agents.id", ondelete="SET NULL"), nullable=True, index=True
     )
@@ -88,6 +94,9 @@ class Run(IdMixin, WorkspaceMixin, TimestampMixin, Base):
         String(36), ForeignKey("stages.id", ondelete="SET NULL"), nullable=True
     )
     verdict: Mapped[str | None] = mapped_column(String(8), nullable=True)  # from complete_task
+    # With a «rejected» verdict, the stage the agent sends the task back to (phase 13): a stage
+    # can have several reject targets. Null: the stage's default one.
+    reject_to_stage_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     # A subagent of Agentic OS (spawn_subagent): the run that launched it.
     parent_run_id: Mapped[str | None] = mapped_column(
         String(36), ForeignKey("runs.id", ondelete="SET NULL"), nullable=True, index=True

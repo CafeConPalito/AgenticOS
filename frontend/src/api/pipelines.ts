@@ -1,7 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { taskKeys } from './tasks'
-import type { Pipeline, PipelineWrite } from './types'
+import type {
+  GraphIssue,
+  Pipeline,
+  PipelineTemplateId,
+  PipelineWrite,
+  PreviewRequest,
+  PreviewResult,
+} from './types'
 
 export const pipelineKeys = {
   project: (projectId: string) => ['pipeline', projectId] as const,
@@ -36,7 +43,7 @@ export function useSavePipeline(projectId: string) {
 export function usePipelineFromTemplate(projectId: string) {
   const set = useSetPipeline(projectId)
   return useMutation({
-    mutationFn: (template: 'web') =>
+    mutationFn: (template: PipelineTemplateId) =>
       api.post<Pipeline>(`/api/projects/${projectId}/pipeline/template`, { template }),
     onSuccess: (pipeline) => set(pipeline),
   })
@@ -46,7 +53,7 @@ export function usePipelineFromTemplate(projectId: string) {
 export function useApplyPipelineTemplate() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ projectId, template }: { projectId: string; template: 'web' }) =>
+    mutationFn: ({ projectId, template }: { projectId: string; template: PipelineTemplateId }) =>
       api.post<Pipeline>(`/api/projects/${projectId}/pipeline/template`, { template }),
     onSuccess: (pipeline, { projectId }) => {
       queryClient.setQueryData(pipelineKeys.project(projectId), pipeline)
@@ -60,5 +67,21 @@ export function useDeletePipeline(projectId: string) {
   return useMutation({
     mutationFn: () => api.delete(`/api/projects/${projectId}/pipeline`),
     onSuccess: () => set(null),
+  })
+}
+
+/** The problems the server finds in a pipeline as edited, without saving it. */
+export function useValidatePipeline(projectId: string) {
+  return useMutation({
+    mutationFn: (body: PipelineWrite) =>
+      api.post<GraphIssue[]>(`/api/projects/${projectId}/pipeline/validate`, body),
+  })
+}
+
+/** «Probar»: what the decider would choose for an example task (it costs a real call). */
+export function usePreviewDecision(projectId: string) {
+  return useMutation({
+    mutationFn: (body: PreviewRequest) =>
+      api.post<PreviewResult>(`/api/projects/${projectId}/pipeline/decide-preview`, body),
   })
 }

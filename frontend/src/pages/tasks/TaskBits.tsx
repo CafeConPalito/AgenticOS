@@ -81,6 +81,16 @@ export function TaskCard({
       <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
         <ProjectChip name={task.project_name} color={task.project_color} />
         {task.stage_name && <span className="truncate">{task.stage_name}</span>}
+        {task.lane_name && (
+          <span className="truncate rounded-full border px-1.5 text-[10.5px]">
+            {t('tasks.lanes.laneTag', { name: task.lane_name })}
+          </span>
+        )}
+        {task.phase === 'forked' && (
+          <span className="rounded-full border px-1.5 text-[10.5px]">
+            {t('tasks.lanes.lanesTag', { count: task.lanes.length })}
+          </span>
+        )}
         <span className="ml-auto font-mono">{task.code}</span>
       </div>
       <div className="mt-1.5 line-clamp-2 text-[13.5px] font-medium">{task.title}</div>

@@ -222,6 +222,7 @@ export interface ProjectMemory {
   limit: number
 }
 
+/** What the person sees. A task that forked shows the state of its most pressing lane. */
 export type TaskStatus =
   'backlog' | 'queued' | 'running' | 'waiting_human' | 'review' | 'done' | 'cancelled'
 
@@ -248,6 +249,27 @@ export type WaitingReason =
   | 'permission'
   | 'question_pending'
   | 'quota'
+  | 'choose_branch'
+  | 'join_conflict'
+  | 'lanes_cancelled'
+
+/** A branch a task took at a fork: a task of its own (phase 13). */
+export interface Lane {
+  id: string
+  /** T-142·backend */
+  code: string
+  lane_key: string
+  /** The branch's name. */
+  name: string
+  status: TaskStatus
+  stage_id: string | null
+  stage_name: string | null
+  agent_name: string | null
+  agent_color: string | null
+  waiting_reason: WaitingReason | null
+  link_id: string | null
+  fork_stage_id: string | null
+}
 
 export interface Task {
   id: string
@@ -291,6 +313,12 @@ export interface Task {
   subtasks_total: number
   /** Every run of the task, its subagents included. */
   usage: UsageTotals
+  /** `deciding`: its branches are being chosen; `forked`: it waits for its `lanes`. */
+  phase: 'deciding' | 'forked' | null
+  lane_of_id: string | null
+  lane_name: string | null
+  fork_stage_id: string | null
+  lanes: Lane[]
 }
 
 export type TaskEventKind =
@@ -312,6 +340,35 @@ export type TaskEventKind =
   | 'subtask'
   | 'integrated'
   | 'git'
+  | 'decision'
+  | 'lane_started'
+  | 'lane_finished'
+  | 'lane_added'
+  | 'lane_cancelled'
+  | 'joined'
+
+/** Which branches a task took at a fork, who decided and why (phase 13). */
+export interface BranchDecision {
+  id: string
+  at: string
+  fork_stage_id: string
+  decided_by: 'model' | 'user' | 'always' | 'preset'
+  /** Waits for the person to confirm it. */
+  proposed: boolean
+  /** Ids of the links taken. */
+  chosen: string[]
+  reasons: Record<string, string>
+  error: string | null
+  run_id: string | null
+}
+
+/** A lane whose branch cannot be merged into its parent's in one repository. */
+export interface JoinClash {
+  repo_id: string
+  name: string
+  lane: string
+  files: string[]
+}
 
 export interface TaskEvent {
   id: string
@@ -346,15 +403,38 @@ export interface Stage {
   agent_color: string | null
   requires_review: boolean
   reject_to_stage_id: string | null
+  /** Other stages it can also send tasks back to (after a join, the branch that failed). */
+  reject_extra_stage_ids: string[]
+  x: number
+  y: number
+  confirm_decision: boolean
+  /** For a fork: the stage where its branches meet. */
+  join_stage_id: string | null
   active_tasks: number
 }
+
+export interface PipelineLink {
+  id: string
+  from_stage_id: string
+  to_stage_id: string
+  name: string
+  condition: string
+  always: boolean
+  position: number
+}
+
+export type DeciderCli = 'claude' | 'agy'
 
 export interface Pipeline {
   id: string
   project_id: string
   name: string
   max_rejections: number
+  decider_cli: DeciderCli | null
+  decider_account_id: string | null
+  decider_model: string | null
   stages: Stage[]
+  links: PipelineLink[]
 }
 
 export interface StageWrite {
@@ -364,12 +444,55 @@ export interface StageWrite {
   requires_review: boolean
   /** Index, in the same list, of an earlier stage the task goes back to on rejection. */
   reject_to: number | null
+  reject_also?: number[]
+  x?: number | null
+  y?: number | null
+  confirm_decision?: boolean
+}
+
+/** A link between two stages of the same save, by their index in `stages`. */
+export interface LinkWrite {
+  source: number
+  target: number
+  name: string
+  condition: string
+  always: boolean
 }
 
 export interface PipelineWrite {
   name: string
   max_rejections: number
   stages: StageWrite[]
+  links?: LinkWrite[] | null
+  decider_cli?: DeciderCli | null
+  decider_account_id?: string | null
+  decider_model?: string | null
+}
+
+export type PipelineTemplateId = 'web' | 'web_split'
+
+export interface GraphIssue {
+  code: string
+  stage: number | null
+  link: number | null
+}
+
+export interface PreviewRequest {
+  title: string
+  description: string
+  branches: { name: string; condition: string }[]
+  decider_cli?: DeciderCli | null
+  decider_account_id?: string | null
+  decider_model?: string | null
+}
+
+export interface PreviewResult {
+  branches: { name: string; take: boolean; reason: string }[]
+  cli: string | null
+  model: string | null
+  cost_usd: number | null
+  seconds: number
+  error: string | null
 }
 
 export type InboxKind =

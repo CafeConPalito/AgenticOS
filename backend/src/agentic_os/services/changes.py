@@ -30,6 +30,7 @@ from agentic_os.models import (
     Project,
     ProjectRepo,
     Run,
+    RunKind,
     RunRepo,
     RunStatus,
     Stage,
@@ -237,7 +238,11 @@ def _had_diff(run: Run) -> bool:
 
 def _task_runs(db: Session, task: Task) -> list[Run]:
     return list(
-        db.scalars(select(Run).where(Run.task_id == task.id).order_by(Run.created_at, Run.id))
+        db.scalars(
+            select(Run)
+            .where(Run.task_id == task.id, Run.kind == RunKind.AGENT)
+            .order_by(Run.created_at, Run.id)
+        )
     )
 
 

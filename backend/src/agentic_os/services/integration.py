@@ -36,6 +36,7 @@ from agentic_os.models import (
     Task,
     TaskEventKind,
     TaskRepo,
+    WaitingReason,
 )
 from agentic_os.services import inbox, repos
 from agentic_os.services import tasks as task_ops
@@ -525,6 +526,7 @@ def resolution_task(
             code=task.code, title=task.title, branch=task.branch or "", repos=listing
         ),
         agent_id=agent_id,
+        standalone=True,
     )
     created.resolves_task_id = task.id
     return created
@@ -538,6 +540,11 @@ def resolving_repos(db: Session, task: Task, project: Project) -> list[str] | No
     original = db.get(Task, task.resolves_task_id)
     if original is None:
         return None
+    if original.waiting_reason == WaitingReason.JOIN_CONFLICT:  # the lanes of a fork clash
+        from agentic_os.services import lane_git, lanes
+
+        found = lane_git.clashes(db, original, lanes.lanes_of(db, original, original.stage_id))
+        return list(dict.fromkeys(c.repo_id for c in found)) or None
     checked = check(db, original, project)
     wanted = [c.repo_id for c in checked.repos if c.state == "conflicts"]
     return wanted or [c.repo_id for c in checked.repos if c.ahead]
@@ -549,6 +556,9 @@ def after_approval(db: Session, task: Task, project: Project) -> None:
     not change the task: it leaves a request with the reason."""
     if task.resolves_task_id:
         original = db.get(Task, task.resolves_task_id)
+        if original is not None and original.waiting_reason == WaitingReason.JOIN_CONFLICT:
+            task_ops.retry(db, original)  # the lanes are merged now: the join goes on
+            return
         if original is not None:
             inbox.create(
                 db,

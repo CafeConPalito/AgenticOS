@@ -75,7 +75,7 @@ def repos_section(repos: Sequence[RepoLine], cwd: str) -> str | None:
 
 
 # $VARIABLES the agent's instructions may use (shown in the agent editor, design 03c).
-VARIABLES = ("$PROYECTO", "$ETAPA", "$TAREA", "$MEMORIA", "$WORKSPACE")
+VARIABLES = ("$PROYECTO", "$ETAPA", "$TAREA", "$MEMORIA", "$WORKSPACE", "$RAMA")
 
 
 def substitute(text: str, values: dict[str, str]) -> str:
@@ -97,6 +97,19 @@ def task_section(task: TaskContext) -> str:
         )
     if task.description.strip():
         lines += ["", task.description.strip()]
+    if task.lane:
+        lines += ["", f"## Rama: {task.lane}"]
+        lines.append(
+            "La tarea se reparte en ramas que avanzan a la vez y se unen después: trabajas solo "
+            "en la tuya y tu carpeta es independiente de las demás."
+        )
+        if task.lane_reason:
+            lines.append(f"Se tomó esta rama porque: {task.lane_reason}")
+        if task.siblings:
+            lines += ["Las otras ramas:", *(f"- {line}" for line in task.siblings)]
+    if task.joined:
+        lines += ["", "## Ramas unidas", "Las ramas terminaron y su trabajo está ya en tu rama:"]
+        lines.append(task.joined)
     if task.rejection:
         lines += ["", "## Vuelve a ti porque se rechazó", task.rejection]
     if task.history:
@@ -125,6 +138,7 @@ def build_instructions(
         "$TAREA": f"{task.code} · {task.title}" if task else "",
         "$MEMORIA": memory,
         "$WORKSPACE": cwd,
+        "$RAMA": (task.lane or "") if task else "",
     }
     parts: list[str] = []
     if agent is not None:
@@ -153,6 +167,12 @@ def build_instructions(
     parts.append(AGENTIC_OS_RULES)
     if task is not None and task.can_reject and subagent is None:
         parts.append(VERDICT_RULES)
+        if task.reject_targets:
+            options = ", ".join(f"«{name}»" for name in task.reject_targets)
+            parts.append(
+                f"Puedes devolver la tarea a más de una etapa: {options}. Al rechazar, di a "
+                "cuál con `reject_to` (el nombre de la etapa); la primera es la habitual."
+            )
     return "\n\n".join(parts).strip() + "\n"
 
 

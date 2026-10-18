@@ -23,11 +23,12 @@ import {
   useOpenWorktree,
   useTask,
   useTaskAction,
+  useTaskDecisions,
   useTaskEvents,
   useSubtasks,
   useTaskTree,
 } from '@/api/tasks'
-import type { Run, Stage, Task, TreeNode } from '@/api/types'
+import type { Pipeline, Run, Stage, Task, TreeNode } from '@/api/types'
 import { AgentAvatar, ProjectChip } from '@/components/agentic/primitives'
 import { ChangesBar } from '@/components/changes/ChangesBar'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
@@ -61,6 +62,11 @@ import { ResumeTaskSession } from '@/pages/runs/ResumeSession'
 import { RunEventsPanel } from '@/pages/runs/RunEventsPanel'
 import { RunStatusBadge } from '@/pages/runs/RunStatusBadge'
 import { IntegrationBlock } from './IntegrationBlock'
+import { DecisionBlock } from './lanes/DecisionBlock'
+import { JoinBlock } from './lanes/JoinBlock'
+import { LanesPanel } from './lanes/LanesPanel'
+import { TaskPathGraph } from './lanes/TaskPathGraph'
+import { hasFork } from './task-path'
 import { SessionFactsLine } from './SessionFactsLine'
 import { PriorityLabel, TaskStatusBadge } from './TaskBits'
 
@@ -106,15 +112,23 @@ function TaskDetail({ task }: { task: Task }) {
     }
   }
 
+  // A task that forked shows the state of its most pressing lane: that lane is where those
+  // actions are done, and the server would refuse them on the task itself.
+  const forked = task.phase !== null
   const can = {
-    enqueue: task.status === 'backlog',
+    enqueue: !forked && task.status === 'backlog',
     // Not while its CLI is alive (a question or a permission waits): that would duplicate it.
     retry:
+      !forked &&
       task.status === 'waiting_human' &&
       task.waiting_reason !== 'human_request' &&
       task.waiting_reason !== 'permission',
-    complete: task.status === 'running' || task.status === 'waiting_human',
-    review: task.status === 'review',
+    // A task that waits at a fork or to join its branches is retried, not finished by hand.
+    complete:
+      !forked &&
+      (task.status === 'running' || task.status === 'waiting_human') &&
+      !['choose_branch', 'join_conflict', 'lanes_cancelled'].includes(task.waiting_reason ?? ''),
+    review: !forked && task.status === 'review',
     cancel: !['done', 'cancelled'].includes(task.status),
   }
 
@@ -126,6 +140,11 @@ function TaskDetail({ task }: { task: Task }) {
           {task.title}
         </h1>
         <TaskStatusBadge status={task.status} />
+        {task.phase && (
+          <span className="rounded-full border px-2 py-0.5 text-[11.5px] text-muted-foreground">
+            {t(`tasks.lanes.phase.${task.phase}`)}
+          </span>
+        )}
         <ProjectChip name={task.project_name} color={task.project_color} />
         {task.agent_name && (
           <span className="inline-flex items-center gap-2 text-[12.5px] text-muted-foreground">
@@ -196,7 +215,7 @@ function TaskDetail({ task }: { task: Task }) {
         </div>
       </header>
       <div className="grid min-h-0 flex-1 grid-cols-[300px_minmax(0,1fr)_316px] grid-rows-[minmax(0,1fr)]">
-        <TaskSidePanel task={task} stages={stages} />
+        <TaskSidePanel task={task} stages={stages} pipeline={pipeline.data ?? undefined} />
         <div className="flex min-h-0 flex-col gap-2 p-3.5">
           {run ? (
             <>
@@ -422,8 +441,17 @@ function TreeItem({
   )
 }
 
-function TaskSidePanel({ task, stages }: { task: Task; stages: Stage[] }) {
+function TaskSidePanel({
+  task,
+  stages,
+  pipeline,
+}: {
+  task: Task
+  stages: Stage[]
+  pipeline: Pipeline | undefined
+}) {
   const { t } = useTranslation()
+  const decisions = useTaskDecisions(task.id, Boolean(pipeline && hasFork(pipeline))).data ?? []
   const events = useTaskEvents(task.id, isMoving(task)).data ?? []
   const runs = useRuns({ taskId: task.id }).data ?? []
   const requests = (useInbox('pending').data ?? []).filter((item) => item.task_id === task.id)
@@ -458,6 +486,21 @@ function TaskSidePanel({ task, stages }: { task: Task; stages: Stage[] }) {
       {requests.map((item) => (
         <RequestItem key={item.id} item={item} />
       ))}
+      {task.lane_of_id && (
+        <Link
+          to={`/tablero/tareas/${task.lane_of_id}`}
+          className="text-xs text-ring hover:underline"
+        >
+          {t('tasks.lanes.lanePrefix', { code: task.code.split('·')[0] })}
+        </Link>
+      )}
+      {pipeline && hasFork(pipeline) && (
+        <>
+          <JoinBlock task={task} />
+          <DecisionBlock task={task} pipeline={pipeline} />
+          <LanesPanel task={task} pipeline={pipeline} />
+        </>
+      )}
       {task.parent_task_id && (
         <Link
           to={`/tablero/tareas/${task.parent_task_id}`}
@@ -483,7 +526,11 @@ function TaskSidePanel({ task, stages }: { task: Task; stages: Stage[] }) {
       {stages.length > 0 && (
         <section>
           <h2 className="mb-2 text-[12.5px] text-muted-foreground">{t('tasks.detail.stages')}</h2>
-          <StageStepper task={task} stages={stages} />
+          {pipeline && hasFork(pipeline) ? (
+            <TaskPathGraph pipeline={pipeline} task={task} decisions={decisions} />
+          ) : (
+            <StageStepper task={task} stages={stages} />
+          )}
         </section>
       )}
       {task.subtasks_total > 0 && <Subtasks task={task} />}

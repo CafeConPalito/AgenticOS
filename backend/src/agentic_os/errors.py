@@ -9,8 +9,16 @@ from fastapi.responses import JSONResponse
 
 
 class ApiError(Exception):
-    def __init__(self, status: int, code: str, message: str, field: str | None = None) -> None:
+    def __init__(
+        self,
+        status: int,
+        code: str,
+        message: str,
+        field: str | None = None,
+        extra: dict | None = None,
+    ) -> None:
         super().__init__(message)
+        self.extra = extra or {}
         self.status = status
         self.code = code
         self.message = message
@@ -32,7 +40,9 @@ def _body(code: str, message: str, field: str | None = None, **extra) -> dict:
 def register_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(ApiError)
     async def _api_error(_: Request, exc: ApiError) -> JSONResponse:
-        return JSONResponse(_body(exc.code, exc.message, exc.field), status_code=exc.status)
+        return JSONResponse(
+            _body(exc.code, exc.message, exc.field, **exc.extra), status_code=exc.status
+        )
 
     @app.exception_handler(RequestValidationError)
     async def _validation(_: Request, exc: RequestValidationError) -> JSONResponse:

@@ -800,7 +800,11 @@ class RunManager:
         self.add_event(run_id, EventKind.MCP, "report_status", message)
 
     def complete_task(
-        self, run_id: str, summary: str, verdict: Verdict = Verdict.APPROVED
+        self,
+        run_id: str,
+        summary: str,
+        verdict: Verdict = Verdict.APPROVED,
+        reject_to: str = "",
     ) -> str | None:
         """Records the end of the agent's work. Returns an error for the model (and records
         nothing) when it rejects outside a stage that can reject."""
@@ -808,6 +812,7 @@ class RunManager:
             run = db.get(Run, run_id)
             if run is None:
                 return None
+            target: str | None = None
             if verdict == Verdict.REJECTED:
                 stage = db.get(Stage, run.stage_id) if run.stage_id else None
                 if stage is None or stage.reject_to_stage_id is None:
@@ -815,8 +820,12 @@ class RunManager:
                         "Esta etapa no puede rechazar. Si has terminado, llama a complete_task "
                         'con verdict="approved" y cuenta en el resumen lo que no esté bien.'
                     )
+                target, problem = self._reject_target(db, stage, reject_to)
+                if problem:
+                    return problem
             run.summary = summary
             run.verdict = verdict
+            run.reject_to_stage_id = target
             db.commit()
         detail = summary if verdict == Verdict.APPROVED else f"[rechazada] {summary}"
         self.add_event(run_id, EventKind.MCP, "complete_task", detail)
@@ -824,6 +833,25 @@ class RunManager:
         if session is not None:
             session.mark_completed()
         return None
+
+    @staticmethod
+    def _reject_target(db: Session, stage: Stage, wanted: str) -> tuple[str | None, str | None]:
+        """(the stage a rejection goes back to, an error for the model). The target is None
+        for the stage's default one; the error says what to call again with."""
+        ids = [i for i in [stage.reject_to_stage_id, *stage.reject_extra_ids] if i]
+        names = {i: (st.name if (st := db.get(Stage, i)) else "") for i in ids}
+        options = ", ".join(f"«{n}»" for n in names.values())
+        if not wanted:
+            if len(ids) > 1:
+                return (
+                    None,
+                    f"¿A qué etapa devuelves la tarea? Vuelve a llamar con reject_to: {options}.",
+                )
+            return None, None
+        for stage_id, name in names.items():
+            if name.casefold() == wanted.casefold():
+                return (None if stage_id == stage.reject_to_stage_id else stage_id), None
+        return None, f"¿Qué etapa es «{wanted}»? Opciones de reject_to: {options}."
 
     def write_project_memory(self, run_id: str, note: str) -> None:
         with self._db() as db:
