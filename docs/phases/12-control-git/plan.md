@@ -492,8 +492,18 @@ La fase se desarrolla en **7 bloques**. Cada bloque termina con sus tests en ver
 
 **Bloque 6: pull requests y credenciales**
 
-20. [ ] `services/forges` (GitHub y GitLab, token por `git credential`), claves SSH y «Probar conexión»; API.
-21. [ ] Frontend: Pull requests (repo y tarea) y Ajustes › Git; prueba manual con un repo real de GitHub (CA3).
+20. [x] `services/forges` (GitHub y GitLab, token por `git credential`), claves SSH y «Probar conexión»; API.
+21. [x] Frontend: Pull requests (repo y tarea) y Ajustes › Git; prueba manual con un repo real de GitHub (CA3). **La prueba manual con GitHub real queda pendiente de hacerla el usuario** (no hay forma de probarla aquí sin credenciales): los tests usan un transporte HTTP simulado.
+
+**Notas del bloque 6 (cambios respecto a lo planeado)**
+- `httpx` pasa de dependencia de desarrollo a dependencia de la app.
+- `services/forges/` (`base`, `github`, `gitlab`, `http`, `remoteurl`): un `Forge` común con `list`, `get`, `create`, `merge`, `describe` (cambiar la descripción, para enlazar entre sí los pull requests de una tarea), `close`, `reopen` y `update_branch`. Errores de la API como códigos estables (`auth_failed`, `rate_limited`, `not_found`, `conflict`, `forge_failed`, `network`, `timeout`).
+- El token sale de `git credential fill` y el pegado entra con `git credential approve` (`gitx/credentials.py`); la app no guarda ningún secreto. Los tests usan el *helper* `store` de git sobre un fichero temporal y aíslan la configuración global.
+- GitLab: «rebase» al fusionar es primero `PUT …/rebase` y después `merge`; el borrador es el prefijo `Draft: `.
+- Un pull request desde una tarea hace *push* de la rama y abre uno por repo; con varios, las descripciones se enlazan. Si falla uno, los demás siguen. `Project.on_approve = pull_request` lo hace al aprobar y deja una petición si algo falla.
+- Claves SSH (`gitx/ssh.py`): listar `~/.ssh/*.pub` con su huella, generar ed25519 sin sobrescribir nunca (nombre validado), «Probar conexión» con `BatchMode`. Se usa el `ssh` de Git for Windows.
+- Frontend: sección Pull requests del repo (lista, detalle con checks, revisiones y comentarios, fusionar con confirmación, cerrar, reabrir, actualizar rama y crear), «Abrir pull request» en la tarea, «Servicio» por repo en los ajustes del proyecto y la sección Ajustes › Git (configuración global, claves SSH, tokens por host).
+- El inicio de sesión OAuth de Git Credential Manager solo se dispara al crear un pull request o desde la tarea (acciones del usuario); las lecturas no abren ventanas.
 
 **Bloque 7: agentes**
 

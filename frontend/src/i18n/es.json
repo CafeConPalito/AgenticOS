@@ -419,7 +419,13 @@
       "participates": "Participa en las tareas",
       "remove": "Quitar",
       "removeTitle": "¿Quitar el repositorio {{name}}?",
-      "removeDescription": "Se quita de la lista del proyecto. La carpeta y sus archivos no se tocan."
+      "removeDescription": "Se quita de la lista del proyecto. La carpeta y sus archivos no se tocan.",
+      "forge": "Servicio",
+      "forgeAuto": "Detectar por la URL",
+      "forges": {
+        "github": "GitHub",
+        "gitlab": "GitLab"
+      }
     },
     "gitSettings": {
       "title": "Git",
@@ -429,7 +435,8 @@
       "onApproveOptions": {
         "none": "No hacer nada",
         "integrate": "Integrar en las bases",
-        "integrate_push": "Integrar y subir"
+        "integrate_push": "Integrar y subir",
+        "pull_request": "Abrir un pull request"
       },
       "agentsGit": "Autorizar git a los agentes",
       "agentsGitHelp": "Pueden hacer commit, ramas, rebase o push sin pedir permiso."
@@ -767,7 +774,13 @@
       "agent": "Agente",
       "chooseAgent": "Elegir agente…",
       "handToAgent": "Pasar a un agente",
-      "createdTask": "Tarea {{code}} creada"
+      "createdTask": "Tarea {{code}} creada",
+      "openPull": "Abrir pull request",
+      "pulls": "Pull requests de la tarea",
+      "pullsOpened": "Pull requests abiertos",
+      "pullsFailed_one": "{{count}} repositorio no pudo abrir su pull request",
+      "pullsFailed_other": "{{count}} repositorios no pudieron abrir su pull request",
+      "pullLink": "{{name}} · #{{number}}"
     }
   },
   "board": {
@@ -999,8 +1012,34 @@
       "general": "General",
       "notifications": "Notificaciones",
       "limits": "Límites diarios",
+      "git": "Git",
       "cleanup": "Limpieza",
       "about": "Acerca de"
+    },
+    "git": {
+      "title": "Git",
+      "global": "Configuración global",
+      "globalHelp": "Lo que heredan todos los repositorios que no lo cambian. Un valor vacío lo quita.",
+      "keys": "Claves SSH",
+      "noKeys": "No hay claves SSH en tu carpeta ~/.ssh.",
+      "orphan": "sin clave privada",
+      "copy": "Copiar",
+      "copied": "Clave pública copiada",
+      "copyFailed": "No se pudo copiar al portapapeles",
+      "generate": "Generar clave",
+      "generated": "Clave «{{name}}» generada",
+      "generateSubmit": "Generar",
+      "keyName": "Nombre de la clave",
+      "email": "Correo (comentario de la clave)",
+      "passphrase": "Frase de paso (opcional)",
+      "testTitle": "Probar conexión por SSH",
+      "test": "Probar",
+      "connected": "Conectado como {{user}}",
+      "notConnected": "No se pudo conectar: {{message}}",
+      "accounts": "Cuentas de GitHub y GitLab",
+      "accountsHelp": "Los tokens se guardan en el almacén de credenciales de git, no en Agentic OS. Si ya iniciaste sesión con Git Credential Manager, aparecen aquí.",
+      "hasToken": "con token",
+      "noToken": "sin token"
     }
   },
   "usage": {
@@ -1469,7 +1508,8 @@
       "advanced": "Avanzado",
       "maintenance": "Mantenimiento",
       "settings": "Ajustes",
-      "terminal": "Terminal"
+      "terminal": "Terminal",
+      "pulls": "Pull requests"
     },
     "operation": {
       "merge": "Hay un merge a medias",
@@ -1565,7 +1605,17 @@
       "invalid_key": "Ese nombre de ajuste no es válido.",
       "no_repo": "Hace falta un repositorio para ese ajuste.",
       "no_branches": "Esta tarea no tiene ramas que integrar.",
-      "no_conflicts": "Integrar esta tarea no da conflictos."
+      "no_conflicts": "Integrar esta tarea no da conflictos.",
+      "rate_limited": "El servicio ha limitado las peticiones: espera un poco.",
+      "not_found": "No se encontró en el servicio.",
+      "conflict": "El servicio rechazó el cambio (¿ya existe, o hay conflictos?).",
+      "forge_failed": "El servicio respondió con un error.",
+      "forge_unknown": "Este remoto no es de GitHub ni de GitLab: elige cuál en los ajustes del repositorio.",
+      "invalid_token": "Ese token no es válido.",
+      "key_exists": "Ya hay una clave con ese nombre.",
+      "invalid_name": "Ese nombre no es válido.",
+      "invalid_host": "Ese servidor no es válido.",
+      "ssh_missing": "SSH no está instalado en este equipo."
     },
     "changes": {
       "conflicts": "Conflictos",
@@ -1934,6 +1984,65 @@
       "label": "Terminal git",
       "running": "En curso",
       "exited": "La terminal ha terminado"
+    },
+    "pulls": {
+      "noForgeTitle": "Este remoto no es de GitHub ni de GitLab",
+      "noForge": "Si es un servidor propio, elige de cuál de los dos es en Ajustes del proyecto › Repositorios.",
+      "noToken": "Git no tiene ningún token para {{host}}. Pega uno personal (se guarda en el almacén de git).",
+      "token": "Token personal",
+      "saveToken": "Guardar token",
+      "tokenSaved": "Token de {{host}} guardado",
+      "filter": "Estado",
+      "filters": {
+        "open": "Abiertos",
+        "closed": "Cerrados",
+        "all": "Todos"
+      },
+      "empty": "No hay pull requests",
+      "draft": "borrador",
+      "state": {
+        "open": "abierto",
+        "closed": "cerrado",
+        "merged": "fusionado"
+      },
+      "detail": "Pull request {{number}}",
+      "open": "Abrir en el navegador",
+      "notMergeable": "El servicio dice que no se puede fusionar (conflictos o checks pendientes).",
+      "checks": "Checks",
+      "noChecks": "Sin checks",
+      "checkState": {
+        "success": "bien",
+        "failure": "fallo",
+        "pending": "en curso",
+        "neutral": "omitido"
+      },
+      "reviews": "Revisiones",
+      "review": {
+        "approved": "aprobó",
+        "changes_requested": "pidió cambios",
+        "commented": "comentó"
+      },
+      "comments": "Comentarios",
+      "method": "Cómo fusionar",
+      "merge": "Fusionar",
+      "mergeTitle": "¿Fusionar el pull request {{number}}?",
+      "mergeDescription": "Se fusionará en el servicio con {{method}}. No se puede deshacer desde aquí.",
+      "merged": "Pull request fusionado",
+      "updateBranch": "Actualizar rama",
+      "updated": "Rama actualizada",
+      "close": "Cerrar",
+      "closed": "Pull request cerrado",
+      "reopen": "Reabrir",
+      "reopened": "Pull request reabierto",
+      "create": "Crear pull request",
+      "head": "Rama de origen",
+      "chooseBranch": "Elegir rama…",
+      "base": "Rama destino",
+      "title": "Título",
+      "body": "Descripción",
+      "asDraft": "como borrador",
+      "submit": "Crear",
+      "created": "Pull request #{{number}} creado"
     }
   }
 }

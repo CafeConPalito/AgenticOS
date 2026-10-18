@@ -9,6 +9,7 @@ source = { editable = "." }
 dependencies = [
     { name = "alembic" },
     { name = "fastapi" },
+    { name = "httpx" },
     { name = "mcp" },
     { name = "ptyprocess", marker = "sys_platform != 'win32'" },
     { name = "pydantic-settings" },
@@ -22,7 +23,6 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
-    { name = "httpx" },
     { name = "pyinstaller" },
     { name = "pytest" },
     { name = "ruff" },
@@ -32,6 +32,7 @@ dev = [
 requires-dist = [
     { name = "alembic", specifier = ">=1.20" },
     { name = "fastapi", specifier = ">=0.143" },
+    { name = "httpx", specifier = ">=0.28" },
     { name = "mcp", specifier = ">=2.3" },
     { name = "ptyprocess", marker = "sys_platform != 'win32'", specifier = ">=0.7" },
     { name = "pydantic-settings", specifier = ">=2.15" },
@@ -45,7 +46,6 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "httpx", specifier = ">=0.28" },
     { name = "pyinstaller", specifier = ">=6.22" },
     { name = "pytest", specifier = ">=9.1" },
     { name = "ruff", specifier = ">=0.16" },

@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 import { toast } from 'sonner'
 import { useAgents } from '@/api/agents'
+import { type RepoPull, useTaskPulls } from '@/api/forges'
 import {
   type IntegrationMode,
   type RepoCheck,
@@ -31,6 +32,9 @@ export function IntegrationBlock({ task }: { task: Task }) {
   const check = useIntegration(task.id)
   const integrate = useIntegrate(task.id)
   const undo = useUndoIntegration(task.id)
+  const pulls = useTaskPulls(task.id)
+  const [opened, setOpened] = useState<RepoPull[]>([])
+  const [asDraft, setAsDraft] = useState(false)
   const [mode, setMode] = useState<IntegrationMode | ''>('')
   const [push, setPush] = useState(false)
   const [removeBranches, setRemoveBranches] = useState(false)
@@ -56,6 +60,18 @@ export function IntegrationBlock({ task }: { task: Task }) {
           t('tasks.integration.stopped', { name: problem.name, count: result.integrated }),
         )
       else toast.success(t('tasks.integration.done', { count: result.integrated }))
+    } catch (error) {
+      toast.error(gitErrorText(error, t))
+    }
+  }
+
+  async function onPulls() {
+    try {
+      const results = await pulls.mutateAsync({ draft: asDraft })
+      setOpened(results)
+      const failed = results.filter((r) => r.status === 'failed')
+      if (failed.length) toast.warning(t('tasks.integration.pullsFailed', { count: failed.length }))
+      else toast.success(t('tasks.integration.pullsOpened'))
     } catch (error) {
       toast.error(gitErrorText(error, t))
     }
@@ -123,6 +139,19 @@ export function IntegrationBlock({ task }: { task: Task }) {
         >
           {t('tasks.integration.integrate')}
         </Button>
+        <label className="flex items-center gap-1.5 text-xs">
+          <input type="checkbox" checked={asDraft} onChange={(e) => setAsDraft(e.target.checked)} />
+          {t('git.pulls.asDraft')}
+        </label>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          disabled={check.data.pending === 0 || pulls.isPending}
+          onClick={() => void onPulls()}
+        >
+          {t('tasks.integration.openPull')}
+        </Button>
         {anyIntegrated && (
           <Button type="button" size="sm" variant="outline" onClick={() => setConfirmUndo(true)}>
             <Undo2 />
@@ -130,6 +159,32 @@ export function IntegrationBlock({ task }: { task: Task }) {
           </Button>
         )}
       </div>
+      {opened.length > 0 && (
+        <ul aria-label={t('tasks.integration.pulls')} className="mt-3 flex flex-col gap-1 text-xs">
+          {opened.map((item) => (
+            <li key={item.repo_id}>
+              {item.pull ? (
+                <a
+                  href={item.pull.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-primary hover:underline"
+                >
+                  {t('tasks.integration.pullLink', { name: item.name, number: item.pull.number })}
+                </a>
+              ) : item.status === 'failed' ? (
+                <span className="text-status-failed">
+                  {item.name}: {t(`git.errors.${item.error_code ?? 'git_failed'}`, item.message)}
+                </span>
+              ) : (
+                <span className="text-muted-foreground">
+                  {item.name}: {t('tasks.integration.state.nothing')}
+                </span>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
       {conflicting.length > 0 && <ConflictHelp task={task} repos={conflicting} />}
       <ConfirmDialog
         open={confirmUndo}

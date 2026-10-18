@@ -17,6 +17,7 @@ import type {
   StatusFile,
 } from '@/api/git'
 import type { ConflictFile, OpResult, OperationRead } from '@/api/git-integration'
+import type { ForgeInfo, PullDetail, PullRequest, RepoPull, SshKey } from '@/api/forges'
 import type { IntegrationCheck, IntegrationResult, Resolution } from '@/api/integration'
 import type {
   CleanPreview,
@@ -681,6 +682,9 @@ export interface FakeRepoGit {
   worktrees?: WorktreeInfo[]
   clean?: CleanPreview
   config?: CommonConfig
+  forge?: ForgeInfo
+  pulls?: PullRequest[]
+  pullDetails?: Record<number, PullDetail>
 }
 
 export function createFakeBackend(
@@ -730,6 +734,13 @@ export function createFakeBackend(
     integrateResult?: IntegrationResult
     /** What starting a resolution answers. */
     resolution?: Resolution
+    /** What POST /api/tasks/:id/pulls answers. */
+    taskPulls?: RepoPull[]
+    sshKeys?: SshKey[]
+    /** Hosts git already has a token for. */
+    tokens?: string[]
+    /** The global git configuration (key → value). */
+    globalConfig?: Record<string, string>
   } = {},
 ) {
   const usage: FakeUsage = { ...emptyUsage(), ...(seed.usage ?? {}) }
@@ -1466,6 +1477,9 @@ export function createFakeBackend(
     return null
   }
 
+  const sshKeys: SshKey[] = structuredClone(seed.sshKeys ?? [])
+  const tokens = new Set(seed.tokens ?? [])
+  const globalConfig: Record<string, string> = { ...(seed.globalConfig ?? {}) }
   const gitState: Record<string, Required<FakeRepoGit>> = {}
   for (const [id, value] of Object.entries(seed.git ?? {}))
     gitState[id] = structuredClone({
@@ -1489,6 +1503,9 @@ export function createFakeBackend(
       worktrees: [],
       clean: { files: [], folders: [] },
       config: {},
+      forge: { kind: 'github', host: 'github.com', remote: 'origin', has_token: true },
+      pulls: [],
+      pullDetails: {},
       ...value,
     })
 
@@ -1582,6 +1599,51 @@ export function createFakeBackend(
       if (rest === 'resolve-conflicts')
         return json(201, { ...makeTask({ title: 'Resolver conflictos' }) })
     }
+    if (path === '/api/git/ssh-keys') {
+      if (method === 'GET') return json(200, sshKeys)
+      const key: SshKey = {
+        name: String(body.name),
+        path: `~/.ssh/${String(body.name)}`,
+        type: 'ssh-ed25519',
+        comment: String(body.email),
+        fingerprint: 'SHA256:abc',
+        public: `ssh-ed25519 AAAA ${String(body.email)}`,
+        orphan: false,
+      }
+      if (sshKeys.some((k) => k.name === key.name)) return apiError(409, 'key_exists')
+      sshKeys.push(key)
+      return json(201, key)
+    }
+    if (path === '/api/git/test-connection' && method === 'POST')
+      return json(200, {
+        ok: body.host === 'github.com',
+        user: 'ana',
+        message: 'Permission denied',
+      })
+    if (path === '/api/git/forge-token') {
+      if (method === 'GET') return json(200, { has_token: tokens.has(params.get('host') ?? '') })
+      tokens.add(String(body.host))
+      return json(204, null)
+    }
+    if (path === '/api/git/config') {
+      if (method === 'GET')
+        return json(
+          200,
+          Object.fromEntries(
+            ['user.name', 'user.email', 'init.defaultBranch'].map((key) => [
+              key,
+              { global: globalConfig[key] ?? null },
+            ]),
+          ),
+        )
+      if (method === 'PUT') {
+        if (body.value === null) delete globalConfig[String(body.key)]
+        else globalConfig[String(body.key)] = String(body.value)
+        return json(204, null)
+      }
+    }
+    const taskPulls = path.match(/^\/api\/tasks\/([^/]+)\/pulls$/)
+    if (taskPulls && method === 'POST') return json(200, seed.taskPulls ?? [])
     const batch = path.match(/^\/api\/projects\/([^/]+)\/git\/batch$/)
     if (batch && method === 'POST') {
       const ids = (body.repo_ids as string[]) ?? []
@@ -1639,6 +1701,13 @@ export function createFakeBackend(
       if (rest === 'branches') return json(200, repo.branches)
       if (rest === 'remotes') return json(200, repo.remotes)
       if (rest === 'stashes') return json(200, repo.stashes)
+      if (rest === 'forge') return json(200, repo.forge)
+      if (rest === 'pulls') return json(200, repo.pulls)
+      const pull = rest.match(/^pulls\/(\d+)$/)
+      if (pull)
+        return repo.pullDetails[Number(pull[1])]
+          ? json(200, repo.pullDetails[Number(pull[1])])
+          : apiError(404, 'not_found')
       if (rest === 'tags') return json(200, repo.tags)
       if (rest === 'submodules') return json(200, repo.submodules)
       if (rest === 'lfs') return json(200, repo.lfs)
@@ -1741,6 +1810,21 @@ export function createFakeBackend(
         })
         return json(200, { stored: true })
       }
+      if (rest === 'pulls')
+        return json(201, {
+          number: 9,
+          title: String(body.title),
+          state: 'open',
+          draft: Boolean(body.draft),
+          author: 'ana',
+          head: String(body.head),
+          base: String(body.base),
+          url: 'https://github.com/ana/shop/pull/9',
+          created_at: now(),
+          updated_at: now(),
+          mergeable: true,
+        })
+      if (/^pulls\/\d+\/(merge|close|reopen|update-branch)$/.test(rest)) return json(204, null)
       if (rest === 'stashes/apply') return json(200, repo.opResult)
       if (rest === 'stashes/drop') {
         repo.stashes = repo.stashes.filter((entry) => entry.ref !== body.ref)

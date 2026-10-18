@@ -123,6 +123,9 @@ def _members(db: Session, task: Task, project: Project) -> list[_Member]:
     return sorted(found, key=lambda m: order.get(m.repo.id, 0))
 
 
+members = _members  # the task's repositories, for the services that build on this one
+
+
 def _count(repo: Repo, spec: str) -> int:
     return int((repo.attempt("rev-list", "--count", spec) or "0").strip() or 0)
 
@@ -555,6 +558,9 @@ def after_approval(db: Session, task: Task, project: Project) -> None:
                 task=original,
             )
         return
+    if project.on_approve == "pull_request":
+        _open_pull_requests(db, task, project)
+        return
     if project.on_approve not in ("integrate", "integrate_push"):
         return
     result = run(
@@ -584,3 +590,20 @@ def after_approval(db: Session, task: Task, project: Project) -> None:
         "No se pudo integrar: " + "; ".join(reasons),
         task=task,
     )
+
+
+def _open_pull_requests(db: Session, task: Task, project: Project) -> None:
+    """`on_approve = pull_request`: a pull request per repository instead of integrating here.
+    What could not be opened is left as a request with the reason."""
+    from agentic_os.services import pulls  # it builds on this module
+
+    failed = [r for r in pulls.create_for_task(db, task, project) if r.status == "failed"]
+    if failed:
+        reasons = "; ".join(f"{r.name}: {r.message or r.error_code}" for r in failed)
+        inbox.create(
+            db,
+            InboxKind.DELIVERY,
+            f"No se pudo abrir el pull request de {task.code}",
+            f"No se pudo abrir el pull request: {reasons}",
+            task=task,
+        )

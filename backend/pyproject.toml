@@ -15,6 +15,7 @@ dependencies = [
     "pyte>=0.8",
     "websockets>=15",
     "mcp>=2.3",
+    "httpx>=0.28",
 ]
 
 [project.scripts]
@@ -23,7 +24,6 @@ agentic-os-backend = "agentic_os.__main__:main"
 [dependency-groups]
 dev = [
     "pytest>=9.1",
-    "httpx>=0.28",
     "ruff>=0.16",
     "pyinstaller>=6.22",
 ]

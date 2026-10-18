@@ -23,6 +23,7 @@ import { HistorySection } from './HistorySection'
 import { JobsPanel } from './JobsPanel'
 import { MaintenanceSection } from './MaintenanceSection'
 import { OperationBar } from './OperationBar'
+import { PullsSection } from './PullsSection'
 import { RemotesSection } from './RemotesSection'
 import { SettingsSection } from './SettingsSection'
 import { StashSection } from './StashSection'
@@ -37,6 +38,7 @@ export const SECTIONS = [
   'stash',
   'tags',
   'remotes',
+  'pulls',
   'advanced',
   'maintenance',
   'settings',
@@ -196,6 +198,7 @@ export function RepoView({
       {section === 'stash' && <StashSection repoId={repo.repo_id} />}
       {section === 'tags' && <TagsSection repoId={repo.repo_id} />}
       {section === 'remotes' && <RemotesSection repoId={repo.repo_id} />}
+      {section === 'pulls' && <PullsSection repoId={repo.repo_id} base={repo.base_branch} />}
       {section === 'advanced' && <AdvancedSection repoId={repo.repo_id} />}
       {section === 'maintenance' && <MaintenanceSection repoId={repo.repo_id} />}
       {section === 'settings' && <SettingsSection repoId={repo.repo_id} />}

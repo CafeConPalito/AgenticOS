@@ -146,7 +146,12 @@ function RepoRow({
   onRemove,
 }: {
   repo: ProjectRepo
-  onChange: (body: { base_branch?: string; participates?: boolean; pull_mode?: PullMode }) => void
+  onChange: (body: {
+    base_branch?: string
+    participates?: boolean
+    pull_mode?: PullMode
+    forge?: 'github' | 'gitlab' | null
+  }) => void
   onRemove: () => void
 }) {
   const { t } = useTranslation()
@@ -213,6 +218,21 @@ function RepoRow({
                 {t(`projects.repos.pullMode.${mode}`)}
               </option>
             ))}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+          {t('projects.repos.forge')}
+          <select
+            value={repo.forge ?? ''}
+            onChange={(e) =>
+              onChange({ forge: (e.target.value || null) as 'github' | 'gitlab' | null })
+            }
+            aria-label={`${t('projects.repos.forge')} ${repo.name}`}
+            className="h-8 rounded-md border border-input bg-background px-2 text-[13px] text-foreground"
+          >
+            <option value="">{t('projects.repos.forgeAuto')}</option>
+            <option value="github">{t('projects.repos.forges.github')}</option>
+            <option value="gitlab">{t('projects.repos.forges.gitlab')}</option>
           </select>
         </label>
         <label className="flex items-center gap-2 pb-1 text-[13px]">

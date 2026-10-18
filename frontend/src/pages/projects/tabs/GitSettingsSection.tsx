@@ -6,7 +6,7 @@ import { Switch } from '@/components/ui/switch'
 import { errorMessage } from '@/lib/form-errors'
 
 const MODES: IntegrationModeSetting[] = ['merge', 'squash', 'rebase']
-const ON_APPROVE = ['none', 'integrate', 'integrate_push'] as const
+const ON_APPROVE = ['none', 'integrate', 'integrate_push', 'pull_request'] as const
 
 /** How the project brings the branches of its tasks into their bases, what happens when a task
  * is approved and whether agents may use git freely. Each change is saved as it is made. */
@@ -50,7 +50,7 @@ export function GitSettingsSection({ project }: { project: Project }) {
       <label className="flex flex-col gap-1 text-sm">
         {t('projects.gitSettings.onApprove')}
         <select
-          value={project.on_approve === 'pull_request' ? 'none' : project.on_approve}
+          value={project.on_approve}
           onChange={(e) => void save({ on_approve: e.target.value as OnApprove })}
           className="h-9 w-64 rounded-md border border-input bg-background px-2"
         >

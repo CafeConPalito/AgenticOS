@@ -203,6 +203,62 @@ describe('Integration block of a task', () => {
   })
 })
 
+describe('Pull requests of a task', () => {
+  it('opens one per repository and links to them, saying what failed', async () => {
+    const created = {
+      number: 4,
+      title: 'T',
+      state: 'open' as const,
+      draft: true,
+      author: 'ana',
+      head: 'agentic/T-9',
+      base: 'main',
+      url: 'https://github.com/ana/shop/pull/4',
+      created_at: null,
+      updated_at: null,
+      mergeable: null,
+    }
+    const { task, backend } = setup([repo(), repo({ repo_id: 'r2', name: 'frontend' })], {
+      taskPulls: [
+        {
+          repo_id: 'r1',
+          name: 'backend',
+          status: 'created',
+          pull: created,
+          error_code: null,
+          message: '',
+        },
+        {
+          repo_id: 'r2',
+          name: 'frontend',
+          status: 'failed',
+          pull: null,
+          error_code: 'auth_failed',
+          message: '',
+        },
+      ],
+    })
+    const user = userEvent.setup()
+    renderApp(`/tablero/tareas/${task.id}`)
+    const section = await block()
+
+    await user.click(within(section).getByRole('checkbox', { name: es.git.pulls.asDraft }))
+    await user.click(within(section).getByRole('button', { name: es.tasks.integration.openPull }))
+    await waitFor(() =>
+      expect(backend.callsTo('POST', `/api/tasks/${task.id}/pulls`)[0].body).toEqual({
+        draft: true,
+        push: true,
+      }),
+    )
+    const list = await within(section).findByRole('list', { name: es.tasks.integration.pulls })
+    expect(within(list).getByRole('link', { name: 'backend · #4' })).toHaveAttribute(
+      'href',
+      'https://github.com/ana/shop/pull/4',
+    )
+    expect(within(list).getByText(/frontend:/)).toBeVisible()
+  })
+})
+
 describe('Git settings of a project', () => {
   it('saves the way of integrating, what happens on approval and the agents’ git', async () => {
     const project = makeProject({ workspace_mode: 'worktree' })
