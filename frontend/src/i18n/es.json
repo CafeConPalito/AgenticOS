@@ -425,7 +425,10 @@
       "forges": {
         "github": "GitHub",
         "gitlab": "GitLab"
-      }
+      },
+      "init": "Inicializar repositorio",
+      "initBranch": "Rama inicial",
+      "initDone": "Repositorio creado en la carpeta del proyecto"
     },
     "gitSettings": {
       "title": "Git",

@@ -340,9 +340,3 @@ export function useClone() {
       api.post<CloneStarted>('/api/git/clone', body),
   })
 }
-
-export function useInitRepo(projectId: string) {
-  return useRepoMutation(projectId, (body: { branch: string; path?: string }) =>
-    api.post<{ path: string }>(`/api/projects/${projectId}/repos/init`, body),
-  )
-}

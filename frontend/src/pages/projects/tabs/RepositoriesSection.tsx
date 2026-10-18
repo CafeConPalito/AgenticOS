@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import {
   type ProjectRepo,
   type PullMode,
+  useInitRepo,
   useLinkRepo,
   useRemoveRepo,
   useRepos,
@@ -29,6 +30,8 @@ export function RepositoriesSection({ projectId }: { projectId: string }) {
   const repos = useRepos(projectId)
   const scan = useScanRepos(projectId)
   const link = useLinkRepo(projectId)
+  const init = useInitRepo(projectId)
+  const [initBranch, setInitBranch] = useState('main')
   const update = useUpdateRepo(projectId)
   const remove = useRemoveRepo(projectId)
   const [linking, setLinking] = useState(false)
@@ -108,9 +111,33 @@ export function RepositoriesSection({ projectId }: { projectId: string }) {
           {t('projects.repos.error')}
         </p>
       ) : repos.data.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-sep p-4 text-[13px] text-muted-foreground">
-          {t('projects.repos.none')}
-        </p>
+        <div className="flex flex-col gap-3 rounded-lg border border-dashed border-sep p-4 text-[13px]">
+          <p className="text-muted-foreground">{t('projects.repos.none')}</p>
+          <form
+            aria-label={t('projects.repos.init')}
+            className="flex flex-wrap items-end gap-2"
+            onSubmit={(event) => {
+              event.preventDefault()
+              void run(
+                init.mutateAsync({ branch: initBranch.trim() || 'main' }),
+                t('projects.repos.initDone'),
+              )
+            }}
+          >
+            <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+              {t('projects.repos.initBranch')}
+              <Input
+                value={initBranch}
+                onChange={(e) => setInitBranch(e.target.value)}
+                className="h-8 w-40 font-mono text-[12.5px]"
+              />
+            </label>
+            <Button type="submit" size="sm" disabled={init.isPending}>
+              <FolderGit2 />
+              {t('projects.repos.init')}
+            </Button>
+          </form>
+        </div>
       ) : (
         <ul className="overflow-hidden rounded-lg border border-sep bg-card">
           {repos.data.map((repo) => (

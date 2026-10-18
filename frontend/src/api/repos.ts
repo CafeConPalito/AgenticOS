@@ -71,6 +71,16 @@ export function useLinkRepo(projectId: string) {
   })
 }
 
+/** «Inicializar repositorio»: makes the project's folder (or a subfolder) a git repository. */
+export function useInitRepo(projectId: string) {
+  const refresh = useRefresh(projectId)
+  return useMutation({
+    mutationFn: (body: { branch: string; path?: string }) =>
+      api.post<{ path: string }>(`/api/projects/${projectId}/repos/init`, body),
+    onSuccess: () => refresh(),
+  })
+}
+
 export function useUpdateRepo(projectId: string) {
   const refresh = useRefresh(projectId)
   return useMutation({

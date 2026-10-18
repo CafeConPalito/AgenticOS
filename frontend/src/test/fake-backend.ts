@@ -1446,6 +1446,22 @@ export function createFakeBackend(
   const repos: Record<string, ProjectRepo[]> = structuredClone(seed.repos ?? {})
 
   function handleRepos(method: string, path: string, body: Record<string, unknown>) {
+    const init = path.match(/^\/api\/projects\/([^/]+)\/repos\/init$/)
+    if (init && method === 'POST') {
+      const items = (repos[init[1]] ??= [])
+      const project = projects.find((p) => p.id === init[1])
+      items.push(
+        makeRepo({
+          project_id: init[1],
+          path: project?.path ?? '',
+          name: 'repo',
+          rel_path: '',
+          base_branch: String(body.branch),
+          position: items.length,
+        }),
+      )
+      return json(200, { path: project?.path ?? '' })
+    }
     const list = path.match(/^\/api\/projects\/([^/]+)\/repos(\/scan)?$/)
     if (list) {
       const items = (repos[list[1]] ??= [])

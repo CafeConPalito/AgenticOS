@@ -4,6 +4,50 @@ import es from '@/i18n/es.json'
 import { createFakeBackend, makeProject, makeRepo } from '@/test/fake-backend'
 import { renderApp } from '@/test/render'
 
+describe('Initialising a repository', () => {
+  it('offers it in a project with none, with the initial branch, and lists the new repository', async () => {
+    const project = makeProject()
+    const backend = createFakeBackend({ projects: [project], repos: { [project.id]: [] } })
+    const user = userEvent.setup()
+    renderApp(`/proyectos/${project.id}/settings`)
+
+    const section = await screen.findByRole('region', { name: es.projects.repos.title })
+    const form = within(await within(section).findByRole('form', { name: es.projects.repos.init }))
+    const branch = form.getByLabelText(es.projects.repos.initBranch)
+    expect(branch).toHaveValue('main')
+    await user.clear(branch)
+    await user.type(branch, 'trunk')
+    await user.click(form.getByRole('button', { name: es.projects.repos.init }))
+
+    await waitFor(() =>
+      expect(backend.callsTo('POST', `/api/projects/${project.id}/repos/init`)[0].body).toEqual({
+        branch: 'trunk',
+      }),
+    )
+    // The list is read again: the form gives way to the repository.
+    await waitFor(() =>
+      expect(
+        within(section).queryByRole('form', { name: es.projects.repos.init }),
+      ).not.toBeInTheDocument(),
+    )
+    expect(within(section).getByLabelText(`${es.projects.repos.base} repo`)).toHaveValue('trunk')
+  })
+
+  it('is not offered when the project already has a repository', async () => {
+    const project = makeProject()
+    createFakeBackend({
+      projects: [project],
+      repos: { [project.id]: [makeRepo({ project_id: project.id, name: 'web' })] },
+    })
+    renderApp(`/proyectos/${project.id}/settings`)
+    const section = await screen.findByRole('region', { name: es.projects.repos.title })
+    await within(section).findByText('web')
+    expect(
+      within(section).queryByRole('form', { name: es.projects.repos.init }),
+    ).not.toBeInTheDocument()
+  })
+})
+
 describe('Repositories of a project', () => {
   it('lists them in the settings with their base branch and where they are', async () => {
     const project = makeProject()
