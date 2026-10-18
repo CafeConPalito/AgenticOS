@@ -1,6 +1,6 @@
 # Fase 13: Pipelines con ramas · Validación
 
-> Estado: **pendiente del OK del usuario**. Tres comprobaciones con servicios o pantallas reales quedan anotadas (ver «Pendiente»).
+> Estado: **cerrada** (`v1.5`, OK del usuario el 2026-10-18). Tres comprobaciones con servicios o pantallas reales quedan anotadas (ver «Pendiente»).
 
 ## Tests automáticos
 ```
@@ -77,7 +77,7 @@ Diez hallazgos; los diez corregidos.
   - Etapas que solo deciden (sin agente) y bifurcar al principio del pipeline quedan para una fase futura.
 
 ## Cierre
-- [ ] OK del usuario
-- [ ] Merge a `main` (`--no-ff`)
-- [ ] Tag `v1.5`
-- [ ] `docs/roadmap.md` actualizado
+- [x] OK del usuario
+- [x] Merge a `main` (`--no-ff`)
+- [x] Tag `v1.5`
+- [x] `docs/roadmap.md` actualizado
