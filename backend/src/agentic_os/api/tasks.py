@@ -20,6 +20,7 @@ from agentic_os.models import (
     Project,
     Run,
     RunEvent,
+    RunKind,
     Stage,
     StageLink,
     Task,
@@ -93,6 +94,7 @@ def read_tasks(db: Session, tasks: list[Task]) -> list[TaskRead]:
         db.execute(
             select(Run.task_id, Run.id).where(
                 Run.task_id.in_(ids),
+                Run.kind == RunKind.AGENT,
                 Run.parent_run_id.is_(None),  # the task's own runs, not its subagents
                 Run.status.in_([s.value for s in ACTIVE_STATUSES]),
             )
@@ -100,7 +102,7 @@ def read_tasks(db: Session, tasks: list[Task]) -> list[TaskRead]:
     )
     last_rows = db.execute(
         select(Run.task_id, Run.id, Run.created_at)
-        .where(Run.task_id.in_(ids), Run.parent_run_id.is_(None))
+        .where(Run.task_id.in_(ids), Run.kind == RunKind.AGENT, Run.parent_run_id.is_(None))
         .order_by(Run.created_at)
     ).all()
     last = {task_id: run_id for task_id, run_id, _ in last_rows}
@@ -365,7 +367,11 @@ def task_tree(task_id: str, db: DbSession) -> list[TreeNode]:
     Agentic OS (runs) and the CLI's native subagents (from the hooks, ADR 0010)."""
     _get(db, task_id)
     runs = list(
-        db.scalars(select(Run).where(Run.task_id == task_id).order_by(Run.created_at.desc()))
+        db.scalars(
+            select(Run)
+            .where(Run.task_id == task_id, Run.kind == RunKind.AGENT)
+            .order_by(Run.created_at.desc())
+        )
     )
     stages = {
         s.id: s.name

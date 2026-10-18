@@ -21,6 +21,7 @@ from agentic_os.models import (
     Project,
     ProjectRepo,
     Run,
+    RunKind,
     RunRepo,
     Task,
     TaskRepo,
@@ -220,6 +221,7 @@ def purge_logs(db: Session, runs_dir: Path, days: int | None) -> tuple[int, int]
     runs = list(
         db.scalars(
             select(Run).where(
+                Run.kind == RunKind.AGENT,
                 Run.status.not_in([s.value for s in ACTIVE_STATUSES]),
                 Run.log_purged.is_(False),
                 Run.ended_at.is_not(None),

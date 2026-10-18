@@ -12,7 +12,16 @@ from agentic_os.api.terminal import serve_terminal
 from agentic_os.db.base import DEFAULT_WORKSPACE
 from agentic_os.db.session import get_session
 from agentic_os.errors import ApiError, NotFound
-from agentic_os.models import ACTIVE_STATUSES, CliAccount, Run, RunEvent, RunStatus, Stage, Task
+from agentic_os.models import (
+    ACTIVE_STATUSES,
+    CliAccount,
+    Run,
+    RunEvent,
+    RunKind,
+    RunStatus,
+    Stage,
+    Task,
+)
 from agentic_os.schemas.run import (
     ControlAction,
     ControlRequest,
@@ -102,7 +111,7 @@ def list_runs(
     active: bool | None = None,
     limit: Annotated[int, Query(ge=1, le=500)] = 200,
 ) -> list[RunRead]:
-    query = select(Run).where(Run.workspace_id == DEFAULT_WORKSPACE)
+    query = select(Run).where(Run.workspace_id == DEFAULT_WORKSPACE, Run.kind == RunKind.AGENT)
     if agent_id:
         query = query.where(Run.agent_id == agent_id)
     if task_id:

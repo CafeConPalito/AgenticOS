@@ -75,6 +75,43 @@ class GraphIssue(BaseModel):
     link: int | None = None
 
 
+class PreviewBranch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: BranchName
+    condition: Annotated[str, StringConstraints(strip_whitespace=True, max_length=500)]
+
+
+class PreviewRequest(BaseModel):
+    """«Probar»: an example task and the branches of a fork as they are being edited."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    title: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
+    description: Annotated[str, StringConstraints(max_length=5_000)] = ""
+    branches: Annotated[list[PreviewBranch], Field(min_length=2, max_length=MAX_STAGES)]
+    decider_cli: Literal["claude", "agy"] | None = None
+    decider_account_id: str | None = None
+    decider_model: (
+        Annotated[str, StringConstraints(strip_whitespace=True, max_length=80)] | None
+    ) = None
+
+
+class PreviewBranchResult(BaseModel):
+    name: str
+    take: bool
+    reason: str
+
+
+class PreviewRead(BaseModel):
+    branches: list[PreviewBranchResult]
+    cli: str | None
+    model: str | None
+    cost_usd: float | None
+    seconds: float
+    error: str | None
+
+
 class StageRead(BaseModel):
     id: str
     position: int

@@ -22,6 +22,7 @@ from agentic_os.services import accounts as account_ops
 from agentic_os.services import housekeeping
 from agentic_os.services.accounts_login import AccountLogins
 from agentic_os.services.clis import CliCatalog
+from agentic_os.services.decider import DecisionService
 from agentic_os.services.gitx.events import GitEvents
 from agentic_os.services.gitx.jobs import JobManager
 from agentic_os.services.gitx.shell import ShellSessions
@@ -113,6 +114,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         )
         manager.usage.on_updated = lambda run_id: scheduler.check_limits()
         manager.on_run_ended = scheduler.run_ended
+        deciders = DecisionService(settings.cli_command_overrides)
+        deciders.on_result = scheduler.decision_ready
+        scheduler.deciders = deciders
         manager.on_quota_changed = scheduler.check_limits
         manager.on_tasks_changed = scheduler.poke
         scheduler.recover()
@@ -166,6 +170,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             # The scheduler stops first: the runs closed by the shutdown are not "stopped by the
             # user"; their tasks are found interrupted on the next start.
             scheduler.stop()
+            deciders.stop()
             manager.on_run_ended = None
             try:
                 await asyncio.to_thread(manager.shutdown)

@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -13,10 +13,13 @@ from agentic_os.schemas.pipeline import (
     LinkRead,
     PipelineRead,
     PipelineWrite,
+    PreviewBranchResult,
+    PreviewRead,
+    PreviewRequest,
     StageRead,
     TemplateRequest,
 )
-from agentic_os.services import pipelines
+from agentic_os.services import decider, pipelines
 from agentic_os.services import tasks as task_ops
 
 router = APIRouter(tags=["pipelines"])
@@ -96,6 +99,46 @@ def validate_pipeline(project_id: str, payload: PipelineWrite, db: DbSession) ->
     """The problems of a pipeline as edited, without saving it."""
     get_project_or_404(db, project_id)
     return pipelines.check(payload)
+
+
+@router.post("/projects/{project_id}/pipeline/decide-preview")
+def preview_decision(
+    project_id: str, payload: PreviewRequest, db: DbSession, request: Request
+) -> PreviewRead:
+    """«Probar»: what the decider would choose for an example task. It costs a real call."""
+    project = get_project_or_404(db, project_id)
+    transient = Pipeline(
+        decider_cli=payload.decider_cli,
+        decider_account_id=payload.decider_account_id,
+        decider_model=payload.decider_model,
+    )
+    views = [
+        decider.BranchView(id=str(i), name=b.name, condition=b.condition)
+        for i, b in enumerate(payload.branches)
+    ]
+    result, asked = decider.preview(
+        db,
+        project,
+        transient,
+        views,
+        payload.title,
+        payload.description,
+        request.app.state.settings.cli_command_overrides,
+    )
+    db.commit()
+    return PreviewRead(
+        branches=[
+            PreviewBranchResult(
+                name=b.name, take=result.taken.get(b.id, False), reason=result.reasons.get(b.id, "")
+            )
+            for b in views
+        ],
+        cli=asked.cli.value if asked else None,
+        model=result.model or (asked.model if asked else None),
+        cost_usd=result.usage.cost_usd,
+        seconds=round(result.seconds, 1),
+        error=result.error,
+    )
 
 
 @router.post("/projects/{project_id}/pipeline/template", status_code=status.HTTP_201_CREATED)

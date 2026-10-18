@@ -34,6 +34,7 @@ from agentic_os.models import (
     Resolution,
     Run,
     RunStatus,
+    Stage,
     Task,
     TaskStatus,
     Verdict,
@@ -42,7 +43,9 @@ from agentic_os.models import (
 )
 from agentic_os.services import accounts as account_ops
 from agentic_os.services import inbox, integration
+from agentic_os.services import lanes as lane_ops
 from agentic_os.services import tasks as task_ops
+from agentic_os.services.decider import DecisionRequest, DecisionResult, DecisionService
 from agentic_os.services.usage import limits as usage_limits
 from agentic_os.services.usage import switching
 
@@ -85,6 +88,8 @@ class _Inbox:
     ended: deque[str] = field(default_factory=deque)
     # run id → summary: the user finished the stage by hand while this run was alive.
     manual: dict[str, str] = field(default_factory=dict)
+    # Answers of the branch decider, made on a worker thread.
+    decisions: deque[tuple[DecisionRequest, DecisionResult]] = field(default_factory=deque)
 
 
 class Scheduler:
@@ -108,6 +113,8 @@ class Scheduler:
         self.probe_account: Callable[[Session, CliAccount], object] | None = None
         self._probing: set[str] = set()  # accounts being checked right now
         self._integrating: set[str] = set()  # tasks being integrated after their approval
+        # Picks the branches of the forks (phase 13); without it the person does.
+        self.deciders: DecisionService | None = None
         # Slow periodic chores (e.g. pending folder-trust cleanups), every HOUSEKEEPING seconds.
         self.housekeeping: Callable[[], None] | None = None
         self._last_housekeeping = 0.0
@@ -142,6 +149,12 @@ class Scheduler:
             self._inbox.ended.append(run_id)
         self.poke()
 
+    def decision_ready(self, request: DecisionRequest, result: DecisionResult) -> None:
+        """DecisionService.on_result: called from a worker thread."""
+        with self._lock:
+            self._inbox.decisions.append((request, result))
+        self.poke()
+
     def complete_manually(self, run_id: str, summary: str) -> None:
         """The user ends the stage of a running task: its run is stopped, and when *that run*
         ends the stage counts as approved with this summary."""
@@ -171,7 +184,9 @@ class Scheduler:
                     log.exception("scheduler housekeeping failed")
 
     def step(self) -> None:
-        """One round: process the ended runs, then start what can start. Public for tests."""
+        """One round: apply the decisions that arrived, process the ended runs, then start
+        what can start. Public for tests."""
+        self._apply_decisions()
         while True:
             with self._lock:
                 if not self._inbox.ended:
@@ -181,7 +196,45 @@ class Scheduler:
                 self._handle_run_end(run_id)
             except Exception:
                 log.exception("could not process the end of a run", run_id=run_id)
+        if not self.paused:
+            self._decide_pending()
         self.tick()
+
+    # ------------------------------------------------------------------ branch decisions
+    def _decide_pending(self) -> None:
+        """Asks for the branches of every task that reached a fork and has none yet."""
+        with self._db() as db:
+            tasks = list(db.scalars(select(Task).where(Task.status == TaskStatus.DECIDING)))
+            for task in tasks:
+                fork = db.get(Stage, task.stage_id) if task.stage_id else None
+                if fork is None:
+                    continue
+                if self.deciders is None:
+                    DecisionService.give_up(db, task, "no hay decisor configurado")
+                    continue
+                if task.id in self.deciders.pending:
+                    continue
+                undecided, always = lane_ops.open_links(db, fork)
+                try:
+                    self.deciders.request(db, task, fork, undecided, always)
+                except Exception as error:  # the person picks instead
+                    log.exception("could not ask the branch decider", task=task.code)
+                    DecisionService.give_up(db, task, str(error))
+            db.commit()
+
+    def _apply_decisions(self) -> None:
+        while True:
+            with self._lock:
+                if not self._inbox.decisions:
+                    return
+                request, result = self._inbox.decisions.popleft()
+            try:
+                with self._db() as db:
+                    if self.deciders is not None:
+                        self.deciders.apply(db, request, result)
+                    db.commit()
+            except Exception:
+                log.exception("could not apply a branch decision", task=request.task_id)
 
     # ------------------------------------------------------------------ pause
     @property

@@ -177,6 +177,9 @@ def _tasks_and_decisions() -> None:
         )
     with op.batch_alter_table("runs", schema=None) as batch_op:
         batch_op.add_column(sa.Column("reject_to_stage_id", sa.String(length=36), nullable=True))
+        batch_op.add_column(
+            sa.Column("kind", sa.String(length=8), nullable=False, server_default="agent")
+        )
 
 
 def _chain_existing_pipelines() -> None:
@@ -225,6 +228,7 @@ def downgrade() -> None:
         sa.text("UPDATE tasks SET status = 'running' WHERE status IN ('deciding', 'forked')")
     )
     with op.batch_alter_table("runs", schema=None) as batch_op:
+        batch_op.drop_column("kind")
         batch_op.drop_column("reject_to_stage_id")
     with op.batch_alter_table("task_events", schema=None) as batch_op:
         batch_op.drop_constraint(op.f("ck_task_events_kind"), type_="check")

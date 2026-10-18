@@ -15,7 +15,7 @@ import re
 import unicodedata
 from collections.abc import Callable
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from agentic_os.db.base import utcnow
@@ -24,6 +24,7 @@ from agentic_os.models import (
     FINISHED_TASK_STATUSES,
     BranchDecision,
     DecisionBy,
+    InboxKind,
     Pipeline,
     Project,
     Resolution,
@@ -48,12 +49,6 @@ FORK_WAITS = (
 
 # A lane in one of these is working or waiting for someone: the fork is not over.
 IDLE_LANE = (TaskStatus.DONE, TaskStatus.CANCELLED, TaskStatus.BACKLOG)
-
-# Who picks the branches when they are not all fixed. Set by the decider service (block 3);
-# without it the task waits for the person. Receives the task at its fork stage, the fork's
-# links that need a decision and the ids of the «always» ones.
-DecisionHook = Callable[[Session, Task, Stage, list[StageLink], list[str]], None]
-request_decision: DecisionHook | None = None
 
 # Brings the git branches of the lanes together before the task goes on (block 4). Returns
 # why it could not (conflicts), or None.
@@ -230,14 +225,16 @@ def start_fork(db: Session, task: Task, fork: Stage) -> None:
         chosen = {*preset, *always}
         take(db, task, fork, [link.id for link in links if link.id in chosen], DecisionBy.PRESET)
         return
-    undecided = [link for link in links if not link.always]
-    if not undecided:
+    if not [link for link in links if not link.always]:
         take(db, task, fork, always, DecisionBy.ALWAYS)
-        return
-    if request_decision is not None:
-        request_decision(db, task, fork, undecided, always)
-        return
-    task_ops.wait_for_human(db, task, WaitingReason.CHOOSE_BRANCH, fork.name)
+    # else the task stays `deciding`: the scheduler asks the decider (or the person) for it
+
+
+def open_links(db: Session, fork: Stage) -> tuple[list[StageLink], list[str]]:
+    """The links of a fork that need a decision, and the ids of the «always» ones."""
+    links = list(db.scalars(select(StageLink).where(StageLink.from_stage_id == fork.id)))
+    links.sort(key=lambda link: link.position)
+    return [x for x in links if not x.always], [x.id for x in links if x.always]
 
 
 def take(
@@ -257,6 +254,13 @@ def take(
     if not link_ids or any(i not in links for i in link_ids):
         raise ApiError(422, "invalid_branches", "choose at least one branch of the fork")
     reasons = reasons or {}
+    db.execute(  # a proposal that waited for confirmation is replaced by what was decided
+        delete(BranchDecision).where(
+            BranchDecision.task_id == task.id,
+            BranchDecision.fork_stage_id == fork.id,
+            BranchDecision.proposed.is_(True),
+        )
+    )
     db.add(
         BranchDecision(
             task_id=task.id,
@@ -277,16 +281,96 @@ def take(
     _fork_into(db, task, fork, [links[i] for i in link_ids])
 
 
+def pending_proposal(db: Session, task: Task) -> BranchDecision | None:
+    """The decision of a fork that waits for the person to confirm it."""
+    if task.status != TaskStatus.REVIEW or task.stage_id is None:
+        return None
+    return db.scalar(
+        select(BranchDecision).where(
+            BranchDecision.task_id == task.id,
+            BranchDecision.fork_stage_id == task.stage_id,
+            BranchDecision.proposed.is_(True),
+        )
+    )
+
+
+def propose(
+    db: Session,
+    task: Task,
+    fork: Stage,
+    link_ids: list[str],
+    reasons: dict[str, str],
+    run_id: str | None,
+) -> None:
+    """The decider picked branches but the fork asks to confirm them: the task waits in review."""
+    db.add(
+        BranchDecision(
+            task_id=task.id,
+            fork_stage_id=fork.id,
+            run_id=run_id,
+            decided_by=DecisionBy.MODEL,
+            proposed=True,
+            chosen=list(link_ids),
+            reasons=reasons,
+        )
+    )
+    names = {
+        x.id: x.name
+        for x in db.scalars(select(StageLink).where(StageLink.from_stage_id == fork.id))
+    }
+    text = "\n".join(
+        f"{'✓' if i in link_ids else '✗'} {names[i]}" + (f": {r}" if (r := reasons.get(i)) else "")
+        for i in names
+    )
+    task.status = TaskStatus.REVIEW
+    task.stage_id = fork.id
+    task_ops.add_event(db, task, TaskEventKind.DECISION, f"[propuesta]\n{text}", run_id)
+    inbox.create(
+        db,
+        InboxKind.REVIEW,
+        f"{task.code} · {task.title}",
+        f"Confirma las ramas: {fork.name}\n{text}",
+        task=task,
+    )
+
+
+def review_proposal(db: Session, task: Task, proposal: BranchDecision, approve: bool, reason: str):
+    """The person confirms the proposed branches, or sends the decision back to be made by
+    hand."""
+    fork = db.get(Stage, proposal.fork_stage_id)
+    assert fork is not None
+    if approve:
+        inbox.resolve_pending(db, Resolution.APPROVED, task_id=task.id, kinds=(InboxKind.REVIEW,))
+        take(
+            db,
+            task,
+            fork,
+            list(proposal.chosen),
+            DecisionBy.MODEL,
+            proposal.reasons,
+            proposal.run_id,
+        )
+        return
+    inbox.resolve_pending(
+        db, Resolution.REJECTED, task_id=task.id, kinds=(InboxKind.REVIEW,), response=reason
+    )
+    proposal.proposed = False
+    proposal.error = f"rechazada: {reason}".strip(": ")
+    task_ops.wait_for_human(db, task, WaitingReason.CHOOSE_BRANCH, reason)
+
+
 def decide(db: Session, task: Task, link_ids: list[str]) -> None:
-    """The person picks the branches of a task that waits for it."""
-    if (
-        task.status != TaskStatus.WAITING_HUMAN
-        or task.waiting_reason != WaitingReason.CHOOSE_BRANCH
-    ):
+    """The person picks the branches of a task that waits for it (or changes a proposal)."""
+    waiting = (
+        task.status == TaskStatus.WAITING_HUMAN
+        and task.waiting_reason == WaitingReason.CHOOSE_BRANCH
+    )
+    if not waiting and pending_proposal(db, task) is None:
         raise ApiError(409, "task_status", "the task is not waiting for a branch", "status")
     fork = db.get(Stage, task.stage_id) if task.stage_id else None
     if fork is None:
         raise ApiError(409, "task_status", "the task is not at a fork", "status")
+    inbox.resolve_pending(db, Resolution.APPROVED, task_id=task.id, kinds=(InboxKind.REVIEW,))
     take(db, task, fork, link_ids, DecisionBy.USER)
 
 

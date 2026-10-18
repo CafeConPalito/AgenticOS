@@ -447,6 +447,12 @@ def review(
     from agentic_os.services import lanes
 
     check_status(task, CAN_REVIEW, "review")
+    proposal = lanes.pending_proposal(db, task)
+    if proposal is not None:  # the review is of the branches a fork chose, not of a stage
+        if not approve and not reason.strip():
+            raise ApiError(422, "reason_required", "a rejection needs a reason", "reason")
+        lanes.review_proposal(db, task, proposal, approve, reason.strip())
+        return
     if approve:
         add_event(db, task, TaskEventKind.REVIEW_APPROVED, reason)
         inbox.resolve_pending(db, Resolution.APPROVED, task_id=task.id, kinds=(InboxKind.REVIEW,))

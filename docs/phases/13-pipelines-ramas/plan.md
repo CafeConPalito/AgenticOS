@@ -161,7 +161,8 @@ Scripts en `spikes/scenarios/decider.py` y `spikes/git_lanes_probe.py`; evidenci
 - **Ejecución**: nunca en el hilo del scheduler.
   1. `advance` deja la madre en `deciding` y avisa al servicio de decisiones.
   2. Un hilo (`decisions-worker`) hace la llamada y escribe el resultado.
-  3. El scheduler, en su siguiente paso, llama a `apply_decision`, que bifurca o deja la tarea esperando. Así todos los cambios de estado de las tareas siguen siendo del scheduler.
+  3. El scheduler, en su siguiente paso, aplica el resultado (`DecisionService.apply`), que bifurca o deja la tarea esperando. Así todos los cambios de estado de las tareas siguen siendo del scheduler.
+  4. **Sin gancho global** (cambio durante el desarrollo): una tarea que llega a una bifurcación con ramas por decidir queda en `deciding` y el scheduler, en cada paso, pide la decisión de las que no tienen una en curso (`Scheduler._decide_pending`). Eso cubre también el reintento y el arranque de la app sin código aparte.
 - **Ramas «Siempre» y fijadas** (`preset_lanes`): se aplican sin llamar al LLM. Si quedan ramas por decidir, el LLM solo ve esas, y las «Siempre» se suman a su elección.
 - **Fallos**: un reintento. Después, la madre queda `waiting_human` con `choose_branch` y la petición «Hay que elegir la rama» en la Inbox (fase 06), con notificación. Cuentan como fallo:
   - la cuenta bloqueada (límite diario, sin cuota o sin sesión), comprobada antes de llamar con `usage_limits.blocked_all`;
@@ -298,7 +299,7 @@ Cada bloque se cierra con sus tests en verde y un commit (o varios) en `phase/13
    - `display_status` y la API de tareas con vías.
    
    Todo con tareas en carpeta directa y el CLI falso.
-3. [ ] **Decisor**:
+3. [x] **Decisor**:
    - `Run.kind` y los filtros;
    - `Decider`, `FakeDecider` y `HeadlessDecider` (y agy, según S2);
    - hilo de decisiones y `apply_decision`;

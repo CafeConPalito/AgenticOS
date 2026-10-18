@@ -379,27 +379,6 @@ def test_a_lane_with_a_review_gate_waits_in_review_and_the_mother_shows_it(
     assert task_row(db_factory, key="frontend").status == "running"
 
 
-def test_retry_decides_again_when_nobody_could_pick_the_branches(db_factory, scheduler, launcher):
-    setup_split(db_factory)
-    new_task(db_factory)
-    scheduler.step()
-    finish_stage(db_factory, scheduler, launcher, "T-1")
-    waiting = task_row(db_factory)
-    calls = []
-    lanes.request_decision = lambda db, task, fork, undecided, always: calls.append(
-        (task.code, fork.name, [x.name for x in undecided])
-    )
-    try:
-        with db_factory() as db:
-            task_ops.retry(db, db.get(Task, waiting.id))
-            db.commit()
-    finally:
-        lanes.request_decision = None
-    assert calls == [("T-1", "Requisitos", ["Backend", "Frontend"])]
-    with db_factory() as db:
-        assert db.get(Task, waiting.id).status == TaskStatus.DECIDING
-
-
 def test_a_link_a_lane_is_using_cannot_be_removed(db_factory, scheduler, launcher):
     setup_split(db_factory, mode=WorkspaceMode.WORKTREE, always=True)
     new_task(db_factory)
