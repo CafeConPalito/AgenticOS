@@ -80,7 +80,8 @@ Scripts en `spikes/scenarios/decider.py` y `spikes/git_lanes_probe.py`; evidenci
 - **Migración de los pipelines lineales**: una conexión de cada etapa a la siguiente por `position`, y `x`/`y` de la colocación automática.
 
 **Guardar** (`services/pipelines.py`)
-- `PipelineWrite` pasa a llevar `stages` (con `key` local, `x`, `y`, `confirm_decision` y `reject_to` como `key`) y `links` (`from`, `to`, `name`, `condition`, `always`).
+- `PipelineWrite` pasa a llevar `stages` (con `x`, `y`, `confirm_decision`, `reject_to` y `reject_also`, todos los destinos como índice de la lista) y `links` (`source` y `target` como índice, `name`, `condition`, `always`). Sin `links`, el pipeline es una cadena (compatible con el editor anterior).
+- **Varios destinos de rechazo** (hueco de la spec, resuelto en el bloque 1): para que QA pueda rechazar a Dev backend **o** a Dev frontend, una etapa tiene un destino por defecto (`reject_to_stage_id`) y destinos extra (`Stage.reject_extra_ids`, JSON). Al rechazar, el agente indica cuál con un parámetro nuevo de `complete_task` (obligatorio si hay varios, el error le lista las opciones); el usuario lo elige en la revisión, que ya admitía destino.
 - Se valida con `pipeline_graph` (422 con la lista de errores) y además:
   - no se puede quitar una etapa con tareas o vías activas (como hoy);
   - **no se puede quitar una conexión por la que va o volverá una vía activa**: una vía en curso necesita su conexión hasta la unión. Error 409 `link_in_use` con la etapa.

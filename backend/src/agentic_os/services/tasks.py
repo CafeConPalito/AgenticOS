@@ -24,6 +24,7 @@ from agentic_os.models import (
     Project,
     Resolution,
     Stage,
+    StageLink,
     Task,
     TaskEvent,
     TaskEventKind,
@@ -111,6 +112,22 @@ def stages_of(db: Session, project_id: str) -> list[Stage]:
 
 
 def next_stage(db: Session, stage: Stage) -> Stage | None:
+    """The stage after this one: where its first link goes. A pipeline with no links at all
+    (rows made by hand) is a chain by position."""
+    link = db.scalar(
+        select(StageLink)
+        .where(StageLink.from_stage_id == stage.id)
+        .order_by(StageLink.position)
+        .limit(1)
+    )
+    if link is not None:
+        return db.get(Stage, link.to_stage_id)
+    if db.scalar(
+        select(func.count())
+        .select_from(StageLink)
+        .where(StageLink.pipeline_id == stage.pipeline_id)
+    ):
+        return None
     return db.scalar(
         select(Stage)
         .where(Stage.pipeline_id == stage.pipeline_id, Stage.position > stage.position)

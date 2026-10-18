@@ -3,7 +3,7 @@ from agentic_os.models.agent import Agent, AgentStatus, Cli, PermissionMode, Too
 from agentic_os.models.app_state import NOTIFICATIONS, SCHEDULER_PAUSED, USAGE_LIMITS, AppState
 from agentic_os.models.inbox import InboxItem, InboxKind, InboxStatus, Resolution
 from agentic_os.models.memory import AuthorKind, MemoryNote
-from agentic_os.models.pipeline import DEFAULT_MAX_REJECTIONS, Pipeline, Stage
+from agentic_os.models.pipeline import DEFAULT_MAX_REJECTIONS, Pipeline, Stage, StageLink
 from agentic_os.models.project import IntegrationMode, OnApprove, Project, WorkspaceMode
 from agentic_os.models.repo import (
     CommitAttribution,
@@ -72,6 +72,7 @@ __all__ = [
     "RunStatus",
     "SessionState",
     "Stage",
+    "StageLink",
     "Task",
     "TaskEvent",
     "TaskEventKind",
