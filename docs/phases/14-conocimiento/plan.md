@@ -1,7 +1,7 @@
 # Fase 14: Conocimiento · Plan técnico
 
 - **Spec**: [spec.md](spec.md)
-- **Estado**: aprobado (2026-10-18) · en desarrollo (bloque 0 hecho)
+- **Estado**: aprobado (2026-10-18) · en desarrollo (bloques 0 y 1 hechos; sigue el 2)
 
 ## Lo que ya se sabe (revisado al escribir el plan)
 - **Contexto** (`services/context.py`): `build_instructions` monta las instrucciones por secciones (rol, proyecto, repos, git, memoria, tarea, subagente, reglas). El conocimiento es una sección más, después de la memoria. `get_context` devuelve lo mismo.
@@ -248,7 +248,7 @@ Los tokens se estiman como caracteres ÷ 4. La UI de cada nivel avisa cuando el 
 Cada bloque se cierra con sus tests en verde y un commit (o varios) en `phase/14-conocimiento`.
 
 0. [x] **Spikes S1–S9** con sus evidencias; ajustar el plan si algo cambia. (S9, el visor de PDF y la CSP, se completa con la prueba manual del bloque 8.)
-1. [ ] **Documentos por referencia**:
+1. [x] **Documentos por referencia**:
    - modelo y migración `0016`;
    - añadir, editar, mover, quitar, presencia, reubicar, `original`, `open` y `reveal`;
    - API sin procesado (los documentos se quedan en cola).
@@ -277,6 +277,36 @@ Cada bloque se cierra con sus tests en verde y un commit (o varios) en `phase/14
     - ADR 0021, README;
     - `/code-review`;
     - `validacion.md`.
+
+## Estado del desarrollo (traspaso, 2026-10-18)
+**Hecho**: bloque 0 (commit `40ff7f8`) y bloque 1. **Siguiente**: bloque 2 (pipeline y conversión).
+
+### Bloque 1 · qué hay y qué se decidió al hacerlo
+- **Código nuevo** (`backend/src/agentic_os/`): `models/knowledge.py` (`KnowledgeDoc`, `KnowledgeChunk`, `KnowledgeImage` y sus enums), migración `0016_knowledge`, `services/knowledge/{formats,config,docs}.py`, `schemas/knowledge.py` y `api/knowledge.py` (registrado en `api/__init__.py`). Cambios menores: `RunKind.DESCRIBE`, la clave `KNOWLEDGE` de `app_state`, `reveal_in_file_manager` en `services/proc.py`.
+- **API ya disponible** (`/api/knowledge/docs`): listar con filtros de nivel (comprueba la presencia de cada original), leer uno, añadir ficheros (`/files`, devuelve un resultado por ruta) y URL (`/url`), editar y mover de nivel (`PATCH`), borrar, `relocate`, `markdown`, `original` (para el visor), `open` y `reveal`. **Aún no hay** `reprocess` ni cola: los documentos se quedan en `queued` (bloque 2).
+- **Tests**: `tests/test_migration_0016.py` y `tests/test_knowledge_docs.py` (31 tests). El ayudante `process()` de este último imita lo que hará la pipeline (huella del original y Markdown) para probar presencia, reubicación y borrado.
+- **Desviaciones del diseño** (por qué):
+  1. **`knowledge_fts` es una tabla FTS5 normal**, no «sin contenido»: columnas `text`, `chunk_id UNINDEXED` y `doc_id UNINDEXED`. Así se puede borrar por documento sin enlazar con un `rowid` que `VACUUM` podría renumerar. El texto de un trozo queda en el índice además de en el Markdown del documento (los trozos solo guardan `start`/`end`). Si el volumen molesta, se revisa.
+  2. **La huella se rellena en dos tiempos**: al añadir se guardan `size` y `source_mtime` (provisionales); `sha256` solo lo pone la pipeline al procesar. Antes de procesar un documento **nunca** se marca «Ha cambiado».
+  3. **Un formato no admitido** se crea ya como `failed` con `error_code = unsupported`. `empty` (fichero vacío o sin texto) lo decide la pipeline.
+  4. **Ajustes**: `services/knowledge/config.py` lee y guarda el JSON `app_state.knowledge` (límite de tamaño 100 MB, presupuesto 8 000 tokens, documento pequeño 2 000, concurrencia, hilos, descripción de imágenes). La API de Ajustes llega en el bloque 9.
+  5. `GET …/original` responde con `Content-Disposition: inline; filename=…` y `X-Content-Type-Options: nosniff`; los textos y el código se sirven como `text/plain` (un `.html` se ve como código, nunca se ejecuta).
+  6. `runs.kind` es `String(8)` sin `CHECK`: «describe» (8 letras) cabe y **no hizo falta tocar `runs`**. Las listas y los diffs ya filtran por `kind == agent`.
+
+### Cómo retomar: bloque 2 (pipeline y conversión)
+1. **Dependencias** (`backend/pyproject.toml`): `markitdown[docx,pptx]`, `openpyxl`, `pypdfium2`, `trafilatura`, `numpy`, `onnxruntime`, `tokenizers`, `rapidocr`, `psutil` (lista del plan, sin `pandas` ni `pdfminer`). Empaquetado: las banderas de PyInstaller que funcionaron en S1 están en `spikes/knowledge/s1_build.sh` y la variante recortada es: `--collect-submodules markitdown --collect-data markitdown --collect-all magika --collect-submodules rapidocr` + `config.yaml` y `default_models.yaml` de `rapidocr` como datos, `--collect-data pptx --collect-data docx --collect-all pypdfium2 --collect-all pypdfium2_raw` y `--exclude-module pandas --exclude-module pdfminer`. Las rutas de `--add-data` deben ser **relativas** (Git Bash pasa `/d/…` y PyInstaller no lo entiende).
+2. **Esqueleto del trabajador**: `spikes/knowledge/probe_worker.py` (proceso relanzado con `--worker`, líneas JSON, prioridad `BELOW_NORMAL`, **UTF-8 forzado** en `stdin`/`stdout`). En el producto el modo es `--knowledge-worker` en `packaging/entry.py`. En los tests, `InlineWorker` (mismo proceso).
+3. **Piezas de los spikes que se llevan al producto**: `s2_pdf.py` (PDF por páginas, detección de escaneadas, render, imágenes incrustadas), `s3_ocr.py` (RapidOCR latino; los modelos se pedirán al gestor de modelos del bloque 3 — hasta entonces, en desarrollo, pueden salir de `spikes/knowledge/.venv/…/rapidocr/models`), `s1_urls.py` (`trafilatura`) y `s5_fts.py`/`s4_embed_eval.py` (FTS5 y *embeddings*, para el bloque 5).
+4. **Orden sugerido**: (a) `convert.py` con los conversores registrados en MarkItDown y tests con el corpus (`spikes/knowledge/make_corpus.py` lo genera; copiar versiones pequeñas a `backend/tests/knowledge/corpus/`); (b) `pipeline.py` por pasos con `KnowledgeError(code, mensaje)` y progreso; (c) cola y trabajador, pausa y recuperación al arrancar; (d) `events.py` (patrón de `gitx/events.py`) y `/knowledge/events`; (e) `POST …/reprocess`, `POST /knowledge/queue/pause|resume`; (f) `system_stats.py` (S8: `s8_gpu.py` ya lee la GPU por PDH).
+5. **Ganchos existentes**: `app.py` crea los servicios en el `lifespan` (ver `GitEvents`, `DecisionService`); `services/decider.py` es el modelo de «hilo + `Run` de consumo» para el describidor del bloque 7.
+
+### Entorno y trampas
+- **Material de los spikes** (ignorado por git, **11 GB**): `spikes/knowledge/models/` (e5-small, EmbeddingGemma 2, bge-m3, Qwen3.5-2B/4B, Gemma 4 E2B y `llama.cpp` b11720), `spikes/knowledge/.venv` y `out/`. Sirve para probar con modelos reales; se puede borrar sin perder nada que no se pueda volver a bajar (`s4_download.py`, `s6_download.py`). Hugging Face además guarda caché en `~/.cache/huggingface`.
+- **Suite completa del backend**: tarda más de 10 minutos; lanzarla en segundo plano. Para el bloque: `cd backend && uv run pytest tests/test_knowledge_docs.py tests/test_migration_0016.py`.
+- **Git Bash**: los heredocs largos con comillas fallan sin ejecutar nada; escribir los ficheros con la herramienta de escritura. Los `.py` del repo pueden ser CRLF (un `str.replace` con `\n` no encuentra nada).
+- **`husky` + `lint-staged`** formatean y ejecutan `ruff` al commitear y **bloquean** el commit si queda algún aviso (incluida la carpeta `spikes/`; `spikes/pyproject.toml` ya exime a `spikes/knowledge/*.py` de E501 y similares).
+- La consola de Windows imprime en cp1252: forzar UTF-8 en los scripts que impriman tildes o `→`.
+- **Pendientes que no son de un bloque concreto**: FTS5 dentro del ejecutable empaquetado del backend (comprobar en `npm run test:packaged`); el visor de PDF y la CSP en una ventana real (bloque 8); repetir el test de calidad de búsqueda con documentos reales en la validación.
 
 ## Tests previstos
 | Test | Cubre |
