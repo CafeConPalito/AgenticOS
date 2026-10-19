@@ -1,6 +1,6 @@
 from datetime import datetime
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
@@ -151,6 +151,7 @@ class ImageRead(BaseModel):
     height: int
     ocr_text: str
     description: str
+    described_by: str  # "claude:haiku", "local:gemma-4-e2b" or ""
 
 
 class SearchRequest(BaseModel):
@@ -182,6 +183,36 @@ class SearchRead(BaseModel):
     # "hybrid" (by meaning, plus words for identifiers) or "words" (no model of embeddings).
     mode: str
     model: str | None
+
+
+class KnowledgeSettingsRead(BaseModel):
+    max_file_mb: int
+    context_budget: int
+    small_doc_tokens: int
+    concurrency: int  # documents processed at once; a change applies on the next start
+    threads: int  # 0: half of the cores
+    describe_images: bool
+    describer: str  # cli | local
+    describer_cli: str  # "" (the first CLI with a session), claude or agy
+    describer_account: str
+    describer_model: str
+
+
+class KnowledgeSettingsWrite(BaseModel):
+    """Only the sent fields change. Out-of-range values are refused, not clamped."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    max_file_mb: int | None = Field(default=None, ge=1, le=2048)
+    context_budget: int | None = Field(default=None, ge=500, le=200_000)
+    small_doc_tokens: int | None = Field(default=None, ge=100, le=50_000)
+    concurrency: int | None = Field(default=None, ge=1, le=4)
+    threads: int | None = Field(default=None, ge=0, le=64)
+    describe_images: bool | None = None
+    describer: Literal["cli", "local"] | None = None
+    describer_cli: Literal["", "claude", "agy"] | None = None
+    describer_account: str | None = Field(default=None, max_length=80)
+    describer_model: str | None = Field(default=None, max_length=80)
 
 
 class MarkdownRead(BaseModel):

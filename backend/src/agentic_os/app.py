@@ -146,6 +146,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             Path(settings.data_dir),
             knowledge_events,
             mode=settings.knowledge_processing,
+            cli_overrides=settings.cli_command_overrides,
         )
         app.state.knowledge_events, app.state.knowledge = knowledge_events, knowledge
         manager.knowledge = knowledge  # the agents' search_knowledge uses its search

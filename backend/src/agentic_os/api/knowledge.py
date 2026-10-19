@@ -3,6 +3,7 @@
 import asyncio
 import contextlib
 import webbrowser
+from dataclasses import asdict
 from pathlib import Path
 from typing import Annotated
 
@@ -23,6 +24,8 @@ from agentic_os.schemas.knowledge import (
     DocUpdate,
     HitRead,
     ImageRead,
+    KnowledgeSettingsRead,
+    KnowledgeSettingsWrite,
     MarkdownRead,
     Relocate,
     RelocateRead,
@@ -229,6 +232,20 @@ def reveal_doc(doc_id: str, db: DbSession) -> None:
     path = docs.original_path(db, docs.get_doc(db, doc_id))
     db.commit()
     reveal_path(str(path))
+
+
+# -------------------------------------------------------------------------- settings
+@router.get("/settings/knowledge")
+def get_settings(db: DbSession) -> KnowledgeSettingsRead:
+    return KnowledgeSettingsRead(**asdict(knowledge_config.load(db)))
+
+
+@router.put("/settings/knowledge")
+def put_settings(payload: KnowledgeSettingsWrite, db: DbSession) -> KnowledgeSettingsRead:
+    values = payload.model_dump(exclude_unset=True)
+    saved = knowledge_config.save(db, {k: v for k, v in values.items() if v is not None})
+    db.commit()
+    return KnowledgeSettingsRead(**asdict(saved))
 
 
 # ---------------------------------------------------------------------------- search

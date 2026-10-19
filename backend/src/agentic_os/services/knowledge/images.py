@@ -104,10 +104,23 @@ def quoted(text: str) -> str:
     return head + "".join(f"\n> {line}" for line in lines[1:])
 
 
-def compose(markdown: str, images: list[dict], texts: dict[int, str]) -> tuple[str, list[dict]]:
-    """Puts what the OCR read into the Markdown. Returns it and the pictures worth keeping.
+def described(text: str) -> str:
+    """What an AI said a picture shows, as a block quote marked as generated."""
+    flat = " ".join(text.split())
+    return f"\n\n> Descripción generada: {flat}" if flat else ""
 
-    - A picture of a document keeps its reference and gets its text below as a quote.
+
+def compose(
+    markdown: str,
+    images: list[dict],
+    texts: dict[int, str],
+    descriptions: dict[int, str] | None = None,
+) -> tuple[str, list[dict]]:
+    """Puts what the OCR read (and, if asked, what an AI says it shows) into the Markdown.
+    Returns it and the pictures worth keeping.
+
+    - A picture of a document keeps its reference and gets its text below as a quote, then its
+      description.
     - A scanned page that was read *is* its text: the picture is replaced and not kept.
     - A scanned page nobody could read (a photo, a drawing) stays as a picture.
     - A reference to a picture we do not have disappears."""
@@ -127,7 +140,10 @@ def compose(markdown: str, images: list[dict], texts: dict[int, str]) -> tuple[s
             return match.group(0)
         first = number not in kept
         kept[number] = image
-        return match.group(0) + (quoted(text) if first and text else "")
+        extra = ""
+        if first:
+            extra = quoted(text) + described((descriptions or {}).get(number, ""))
+        return match.group(0) + extra
 
     return _REF.sub(replace, markdown), [kept[n] for n in sorted(kept)]
 

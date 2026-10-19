@@ -23,7 +23,7 @@ from agentic_os.models import DocStatus, KnowledgeDoc
 from agentic_os.schemas.knowledge import read_doc
 from agentic_os.services.knowledge import config as knowledge_config
 from agentic_os.services.knowledge import context as knowledge_context
-from agentic_os.services.knowledge import embeddings, search
+from agentic_os.services.knowledge import describe, embeddings, search
 from agentic_os.services.knowledge.docs import IN_PROGRESS
 from agentic_os.services.knowledge.errors import KnowledgeError
 from agentic_os.services.knowledge.events import KnowledgeEvents
@@ -31,6 +31,7 @@ from agentic_os.services.knowledge.pipeline import Pipeline, model_spec
 from agentic_os.services.knowledge.worker import InlineWorker, ProcessWorker, Worker
 from agentic_os.services.localmodels import catalog, selection
 from agentic_os.services.localmodels.catalog import CatalogEntry
+from agentic_os.services.localmodels.llama import LlamaServer
 from agentic_os.services.system_stats import Sampler, SamplerThread
 
 log = structlog.get_logger()
@@ -51,6 +52,7 @@ class KnowledgeService:
         events: KnowledgeEvents,
         mode: str = "subprocess",
         worker_factory: Callable[[], Worker] | None = None,
+        cli_overrides: dict[str, list[str]] | None = None,
     ) -> None:
         self.sessions = sessions
         self.data_dir = Path(data_dir)
@@ -69,9 +71,31 @@ class KnowledgeService:
         self._sampler: Sampler | None = None
         self._sampling: SamplerThread | None = None
         self._query_worker: Worker | None = None
+        self._llama: LlamaServer | None = None
+        # Picks the describer for the pictures; tests put a fake one here.
+        self.describers: describe.Factory = describe.default_factory(
+            self.data_dir, cli_overrides, self._llama_for
+        )
         self._query_lock = threading.Lock()
         self._reindexing = False
         self._reindex_again = False
+
+    def _llama_for(self, engine: CatalogEntry, vision: CatalogEntry, threads: int) -> LlamaServer:
+        """The `llama-server` for this vision model: one at a time, kept between documents."""
+        with self._lock:
+            if self._llama is None or self._llama.vision.id != vision.id:
+                if self._llama is not None:
+                    self._llama.stop()
+                self._llama = LlamaServer(self.data_dir, engine, vision, threads)
+            return self._llama
+
+    def _make_describer(self, db: Session, limits):
+        return self.describers(db, limits)
+
+    def pipeline(self, worker: Worker) -> Pipeline:
+        return Pipeline(
+            self.sessions, self.data_dir, worker, self.events, describers=self._make_describer
+        )
 
     # ------------------------------------------------------------------ life cycle
     def start(self) -> None:
@@ -90,7 +114,7 @@ class KnowledgeService:
             self._workers.append(worker)
             thread = threading.Thread(
                 target=self._loop,
-                args=(Pipeline(self.sessions, self.data_dir, worker, self.events),),
+                args=(self.pipeline(worker),),
                 name=f"knowledge-{number}",
                 daemon=True,
             )
@@ -112,6 +136,9 @@ class KnowledgeService:
                 with contextlib.suppress(Exception):
                     self._query_worker.close()
                 self._query_worker = None
+        if self._llama is not None:
+            self._llama.stop()
+            self._llama = None
         if self._sampling:
             self._sampling.stop()
             self._sampling = None
@@ -235,7 +262,7 @@ class KnowledgeService:
         if entry is None or not ids:
             return 0
         own = worker or self._factory()
-        pipeline = Pipeline(self.sessions, self.data_dir, own, self.events)
+        pipeline = self.pipeline(own)
         done = 0
         try:
             for position, doc_id in enumerate(ids, 1):
@@ -340,7 +367,7 @@ class KnowledgeService:
         """Processes every queued document here and now (the tests; the threads are not used).
         Returns how many were processed."""
         own = worker or self._factory()
-        pipeline = Pipeline(self.sessions, self.data_dir, own, self.events)
+        pipeline = self.pipeline(own)
         done = 0
         try:
             while not self._paused and (doc_id := self.claim_next()) is not None:

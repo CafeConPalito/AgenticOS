@@ -32,7 +32,14 @@ from agentic_os import __version__
 from agentic_os.db.base import utcnow
 from agentic_os.models import DocStatus, KnowledgeDoc, KnowledgeImage, Presence, SourceKind
 from agentic_os.schemas.knowledge import read_doc
-from agentic_os.services.knowledge import chunking, docs, embeddings, formats, index
+from agentic_os.services.knowledge import (
+    chunking,
+    describe,
+    docs,
+    embeddings,
+    formats,
+    index,
+)
 from agentic_os.services.knowledge import config as knowledge_config
 from agentic_os.services.knowledge.chunking import Chunk
 from agentic_os.services.knowledge.errors import KnowledgeError
@@ -71,6 +78,8 @@ class Outcome:
     markdown: str
     kept: list[dict]  # pictures worth keeping
     texts: dict[int, str]  # what the OCR read, by picture number
+    descriptions: dict[int, str]  # what an AI says the pictures show
+    described_by: dict[int, str]
     notice: str | None
     chunks: list[Chunk]
     vectors: np.ndarray | None
@@ -101,7 +110,9 @@ class Pipeline:
         worker: Worker,
         events: KnowledgeEvents,
         http: Callable[[], httpx.Client] | None = None,
+        describers: describe.Factory | None = None,
     ) -> None:
+        self._describers = describers
         self.sessions = sessions
         self.data_dir = Path(data_dir)
         self.worker = worker
@@ -149,15 +160,28 @@ class Pipeline:
                 raise KnowledgeError(answer.get("code", "convert_error"), answer.get("message", ""))
             images = answer.get("images") or []
             texts, notice = self._read_images(doc_id, images, workdir, limits.threads)
-            markdown, kept = compose(answer.get("markdown", ""), images, texts)
             title = self._title(current_title, origin[2], answer.get("title"))
+            descriptions, described_by, describe_notice = self._describe(
+                doc_id, images, workdir, limits, title
+            )
+            markdown, kept = compose(answer.get("markdown", ""), images, texts, descriptions)
             chunks = chunking.chunk(markdown)
             vectors, model, embed_notice = self._embed(doc_id, title, chunks, limits.threads)
             self._finish(
                 doc_id,
                 source,
                 title,
-                Outcome(markdown, kept, texts, notice or embed_notice, chunks, vectors, model),
+                Outcome(
+                    markdown,
+                    kept,
+                    texts,
+                    descriptions,
+                    described_by,
+                    notice or describe_notice or embed_notice,
+                    chunks,
+                    vectors,
+                    model,
+                ),
                 workdir,
             )
         except Cancelled:
@@ -302,7 +326,12 @@ class Pipeline:
         return texts, "ocr_failed" if everything_failed else None
 
     def _store_images(
-        self, db: Session, doc: KnowledgeDoc, kept: list[dict], texts: dict[int, str], folder: Path
+        self,
+        db: Session,
+        doc: KnowledgeDoc,
+        kept: list[dict],
+        outcome: Outcome,
+        folder: Path,
     ) -> list[str]:
         """Replaces the document's pictures by the ones kept. Returns the files the old ones used,
         to delete those nobody else needs."""
@@ -336,11 +365,58 @@ class Pipeline:
                     location=image["location"],
                     width=image["width"],
                     height=image["height"],
-                    ocr_text=texts.get(image["n"], ""),
+                    ocr_text=outcome.texts.get(image["n"], ""),
+                    description=outcome.descriptions.get(image["n"], ""),
+                    described_by=outcome.described_by.get(image["n"], ""),
                 )
             )
         doc.image_count = len(kept)
         return old
+
+    # ------------------------------------------------- step 2b': describing pictures (optional)
+    def _describe(
+        self, doc_id: str, images: list[dict], workdir: Path, limits, title: str
+    ) -> tuple[dict[int, str], dict[int, str], str | None]:
+        """What an AI says the pictures show, if the document (or the settings) ask for it:
+        ({number: description}, {number: who described it}, notice)."""
+        candidates = [image for image in images if image["kind"] != "page"]
+        with self.sessions() as db:
+            doc = db.get(KnowledgeDoc, doc_id)
+            if doc is None:
+                raise Cancelled
+            flag = doc.describe_images
+            wanted = limits.describe_images if flag is None else flag
+            if not wanted or not candidates or self._describers is None:
+                return {}, {}, None
+            describer, notice = self._describers(db, limits)
+        if describer is None:
+            return {}, {}, notice
+
+        def entering(doc: KnowledgeDoc) -> None:
+            doc.status = DocStatus.DESCRIBING
+            doc.progress_done, doc.progress_total = 0, len(candidates)
+
+        self._write(doc_id, entering)
+        progress = self._progress(doc_id)
+        found: dict[int, str] = {}
+        failures = 0
+        for done, image in enumerate(candidates, 1):
+            place = f" ({image['location']})" if image["location"] else ""
+            result = describer.describe(workdir / "images" / image["file"], f"«{title}»{place}")
+            with self.sessions() as db:
+                doc = db.get(KnowledgeDoc, doc_id)
+                if doc is None:
+                    raise Cancelled
+                describe.record_run(db, doc, describer, result)
+                db.commit()
+            if result.error is None and result.text:
+                found[image["n"]] = result.text
+            else:
+                failures += 1
+                log.warning("knowledge_describe_failed", doc_id=doc_id, error=result.error)
+            progress({"done": done, "total": len(candidates)})
+        who = {n: describer.name for n in found}
+        return found, who, (describe.FAILED if failures == len(candidates) else None)
 
     # ----------------------------------------------------------------- step 3: the result
     @staticmethod
@@ -387,12 +463,12 @@ class Pipeline:
     def _finish(
         self, doc_id: str, source: Source, title: str, outcome: Outcome, workdir: Path
     ) -> None:
-        markdown, kept, texts = outcome.markdown, outcome.kept, outcome.texts
+        markdown, kept = outcome.markdown, outcome.kept
         stale: list[str] = []
 
         def change(doc: KnowledgeDoc) -> None:
             db = object_session(doc)
-            stale.extend(self._store_images(db, doc, kept, texts, workdir / "images"))
+            stale.extend(self._store_images(db, doc, kept, outcome, workdir / "images"))
             index.replace(db, doc, outcome.chunks, outcome.vectors, outcome.model)
             doc.notice = outcome.notice
             doc.markdown = markdown

@@ -19,6 +19,10 @@ class KnowledgeSettings:
     threads: int = 0  # CPU threads for OCR and embeddings; 0: half of the cores
     describe_images: bool = False  # describe pictures with AI (a CLI or llama.cpp)
     describer: str = "cli"  # «cli» or «local»
+    # The CLI describer: empty means the first CLI with a session, its cheapest model.
+    describer_cli: str = ""  # "", "claude" or "agy"
+    describer_account: str = ""  # a CLI account id, or "" for the CLI's default
+    describer_model: str = ""
 
     @property
     def max_file_bytes(self) -> int:
@@ -57,6 +61,10 @@ def normalized(base: KnowledgeSettings, values: dict) -> KnowledgeSettings:
             result.describe_images = value
         elif field.name == "describer" and value in ("cli", "local"):
             result.describer = value
+        elif field.name == "describer_cli" and value in ("", "claude", "agy"):
+            result.describer_cli = value
+        elif field.name in ("describer_account", "describer_model") and isinstance(value, str):
+            setattr(result, field.name, value.strip()[:80])
     return result
 
 
