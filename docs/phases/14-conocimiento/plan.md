@@ -1,7 +1,7 @@
 # Fase 14: Conocimiento · Plan técnico
 
 - **Spec**: [spec.md](spec.md)
-- **Estado**: aprobado (2026-10-18) · en desarrollo (bloques 0 a 4 hechos; sigue el 5)
+- **Estado**: aprobado (2026-10-18) · en desarrollo (bloques 0 a 5 hechos; sigue el 6)
 
 ## Lo que ya se sabe (revisado al escribir el plan)
 - **Contexto** (`services/context.py`): `build_instructions` monta las instrucciones por secciones (rol, proyecto, repos, git, memoria, tarea, subagente, reglas). El conocimiento es una sección más, después de la memoria. `get_context` devuelve lo mismo.
@@ -260,7 +260,7 @@ Cada bloque se cierra con sus tests en verde y un commit (o varios) en `phase/14
    - `system_stats`.
 3. [x] **Modelos locales**: catálogo, descargas, selección, *token* de Hugging Face y API.
 4. [x] **Imágenes y OCR**: extracción, deduplicación, marcas `kimg:`, OCR de imágenes y de páginas escaneadas.
-5. [ ] **Índice y búsqueda**: troceado, FTS5, *embeddings*, búsqueda híbrida, `reindex` al cambiar de modelo y búsqueda de prueba.
+5. [x] **Índice y búsqueda**: troceado, FTS5, *embeddings*, búsqueda híbrida, `reindex` al cambiar de modelo y búsqueda de prueba.
 6. [ ] **Contexto y MCP**:
    - sección de conocimiento con el presupuesto;
    - `search_knowledge` y `read_knowledge` con sus eventos;
@@ -279,7 +279,7 @@ Cada bloque se cierra con sus tests en verde y un commit (o varios) en `phase/14
     - `validacion.md`.
 
 ## Estado del desarrollo (traspaso, 2026-10-19)
-**Hecho**: bloques 0 a 4. **Siguiente**: bloque 5 (índice y búsqueda híbrida).
+**Hecho**: bloques 0 a 5. **Siguiente**: bloque 6 (contexto y MCP).
 
 ### Bloque 1 · qué hay y qué se decidió al hacerlo
 - **Código nuevo** (`backend/src/agentic_os/`): `models/knowledge.py` (`KnowledgeDoc`, `KnowledgeChunk`, `KnowledgeImage` y sus enums), migración `0016_knowledge`, `services/knowledge/{formats,config,docs}.py`, `schemas/knowledge.py` y `api/knowledge.py` (registrado en `api/__init__.py`). Cambios menores: `RunKind.DESCRIBE`, la clave `KNOWLEDGE` de `app_state`, `reveal_in_file_manager` en `services/proc.py`.
@@ -344,14 +344,24 @@ Cada bloque se cierra con sus tests en verde y un commit (o varios) en `phase/14
 - **Empaquetado**: `build-backend.ps1` incluye `rapidocr` y sus ficheros de configuración (sin sus modelos). El *sidecar* pasa a **149 MB** (102,8 antes): RapidOCR con OpenCV añade ~46 MB. Con la ruta explícita de modelos, RapidOCR no descarga nada.
 - **Desviaciones del diseño**: (1) la referencia de imagen es **el número dentro del documento** (`kimg:3`), no un id global; (2) el texto de la imagen se guarda también en `KnowledgeImage.ocr_text`; (3) la descripción con IA (bloque 7) añadirá `description` a esa misma fila.
 
-### Cómo retomar: bloque 5 (índice y búsqueda híbrida)
-1. **Troceado** (`chunking.py`): por títulos y párrafos de Markdown (respetando bloques de código, tablas y citas), unos 400 tokens con unos 50 de solapamiento, un título nuevo abre trozo si el actual ya tiene cuerpo; cada trozo guarda `heading`, `location` (la última marca de página, diapositiva u hoja) y `start`/`end` en el Markdown. Lo que se codifica lleva delante «título del documento › apartado».
-2. **Embeddings**: operación `embed` del trabajador (`embeddings.py`, de `s4_embed_eval.py`: `onnxruntime` + `tokenizers`, *pooling* y prefijos del `usage` del catálogo, normalizado, por lotes ordenados por longitud, `float32`). Un trabajador **aparte para las consultas** (no esperar a una indexación larga).
-3. **Índice**: en la pipeline, entre las imágenes y el resultado: trocear, calcular vectores (estado `indexing`, progreso por lotes) y guardar trozos, vectores y filas FTS en la misma transacción. Sin modelo de *embeddings*, solo palabras (`embed_model = ""`).
-4. **Búsqueda** (`search.py`): visibilidad por niveles; palabras **solo con identificadores** + vector, RRF (vector 1, palabras 2); sin vectores, palabras con todos los términos y sin palabras vacías. Caché de la matriz de vectores invalidada con un contador.
-5. **Reindexar** cuando cambia el modelo elegido o termina de descargarse el elegido: un hilo que recorre los documentos, sin cambiar su estado; mientras tanto el trozo con otro modelo cuenta solo por palabras.
-6. **API**: `POST /knowledge/search` (la búsqueda de prueba: lo que vería un agente de ese proyecto y ese agente).
-7. **Tests**: troceado, FTS con acentos, `FakeEmbedder` por palabras, RRF, visibilidad, reindexado y, con el modelo real (cache temporal, se salta sin red), las 30 preguntas de S4.
+### Bloque 5 · qué hay y qué se decidió al hacerlo
+- **Código nuevo** (`services/knowledge/`): `chunking.py` (troceado), `embeddings.py` (`OnnxEmbedder` en el trabajador, operación `embed`, y el cliente por lotes), `index.py` (guarda trozos, vectores y filas FTS), `search.py` (visibilidad, canal de palabras, canal de significado, fusión, caché de vectores) y, en `service.py`, la búsqueda (`search`, `embed_query`) y el reindexado. `POST /knowledge/search` es la búsqueda de prueba (lo que vería un agente de ese proyecto y ese agente). Dependencias explícitas: `numpy`, `onnxruntime`, `tokenizers`.
+- **Pipeline**: entre las imágenes y el resultado, el estado `indexing` (progreso por trozos); el índice se guarda en la **misma transacción** que el Markdown y las imágenes. Sin modelo de *embeddings*, el documento se indexa solo por palabras (`embed_model = ""`); si el modelo falla, queda `ready` con el aviso `embed_failed`.
+- **Troceado**: bloques de Markdown (títulos, párrafos, citas, tablas y código; un bloque que cabe no se parte), unos 400 tokens, un título de nivel 1-3 abre trozo cuando el actual ya tiene cuerpo, **solapamiento de unos 50 tokens** (las últimas frases del trozo anterior; si no hay puntos, las últimas palabras), `location` de las marcas de página, diapositiva u hoja («p. 3-4» si abarca dos). Un bloque de más de 520 tokens se parte por frases o líneas y, si no hay, por tamaño.
+- **Búsqueda** (cambios respecto a lo planeado, por los spikes y los tests):
+  1. el canal de palabras usa **solo identificadores** cuando hay vectores (RRF: vector 1, palabras 2);
+  2. **un documento sin vectores del modelo elegido** (se está reindexando, falló el cálculo o no había modelo cuando se procesó) **se busca por palabras con todos los términos significativos**, para que nunca quede invisible;
+  3. sin modelo, solo palabras (`mode: "words"`).
+- **Reindexado**: `service.reindex()` en un hilo cuando cambia la elección del modelo (`PUT /settings/local-models`), cuando termina de descargarse un modelo de *embeddings* (`DownloadManager.on_ready`) y al arrancar. Los documentos **siguen `ready`** (se buscan por palabras) y el progreso sale como evento `reindex` (`{done, total, model}`) y como `reindexing` en `GET /knowledge/queue`.
+- **Consulta**: se vectoriza en un **trabajador aparte** (`ProcessWorker` que aguanta 5 minutos), para no esperar a una indexación larga.
+- **Tests**: `test_knowledge_chunking.py` (12), `test_knowledge_search.py` (30, con un modelo falso que entiende sinónimos: indexado, búsqueda por significado y por identificador, visibilidad por niveles, fallos, reindexado y caché) y `test_knowledge_quality.py` con **el modelo real**: 30 preguntas entre 127 pasajes (97 casi idénticos), de extremo a extremo por la pipeline y la API. Resultado medido: acierto en los 5 primeros **0,93** (0,87 en las preguntas con otras palabras), primer puesto **1,00** con identificadores y **0,73** en conjunto (el spike S4 daba 0,90, 0,80, 1,00 y 0,80 con el mismo modelo; aquí hay menos de lo último porque el título entra en el texto que se vectoriza). El e2e hace la misma búsqueda con el trabajador real, también en el binario empaquetado.
+
+### Cómo retomar: bloque 6 (contexto y MCP)
+1. **Sección «Conocimiento»** (`services/knowledge/context.py`, la llama `RunManager._instructions` y por tanto también `get_context`): el **índice** de los documentos visibles (título, nivel, descripción, modo, tamaño y un identificador corto), el **texto entero** de los de modo «siempre en contexto» y de los «automático» pequeños hasta el presupuesto (`knowledge.context_budget` 8 000, `small_doc_tokens` 2 000: primero los de modo contexto, luego los pequeños de menor a mayor), y cómo usar las herramientas. Los que no caben pasan a «solo búsqueda».
+2. **Imágenes**: `![…](kimg:N)` pasa a la **ruta** del fichero (las extraídas están en `<datos>/knowledge/images`; la imagen que el usuario añadió se **copia** a `<datos>/knowledge/run-images/<run_id>/`, borrada al acabar la ejecución y al arrancar). Las dos carpetas se añaden a `extra_dirs` del adaptador (`--add-dir`).
+3. **MCP**: `search_knowledge(query, limit)` y `read_knowledge(document, location, part)` en `mcp_server.py` y en `AgentBackend`; la lógica en `services/knowledge/agent_tools.py`, que usa `RunManager` (que recibe el servicio con `manager.knowledge = …`). Un subagente ve lo de su agente y lo del agente padre. Cada llamada deja un evento `mcp` con la consulta y los documentos devueltos.
+4. **Reglas de Agentic OS** (`context.AGENTIC_OS_RULES`) y plantillas (Redactor, Comercial, Analista): mencionan el conocimiento.
+5. **Tests**: la sección (presupuesto, modos, orden, imágenes), las herramientas (búsqueda, lectura por página, hoja o apartado, por partes, documento ambiguo o inexistente), eventos, visibilidad por proyecto y agente, la limpieza de `run-images`, y un e2e con el CLI falso que llama a `search_knowledge` (CA1).
 
 ### Entorno y trampas
 - **Material de los spikes** (ignorado por git, **11 GB**): `spikes/knowledge/models/` (e5-small, EmbeddingGemma 2, bge-m3, Qwen3.5-2B/4B, Gemma 4 E2B y `llama.cpp` b11720), `spikes/knowledge/.venv` y `out/`. Sirve para probar con modelos reales; se puede borrar sin perder nada que no se pueda volver a bajar (`s4_download.py`, `s6_download.py`). Hugging Face además guarda caché en `~/.cache/huggingface`.

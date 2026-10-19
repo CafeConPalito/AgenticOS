@@ -23,6 +23,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 import httpx
+import numpy as np
 import structlog
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session, object_session, sessionmaker
@@ -31,8 +32,9 @@ from agentic_os import __version__
 from agentic_os.db.base import utcnow
 from agentic_os.models import DocStatus, KnowledgeDoc, KnowledgeImage, Presence, SourceKind
 from agentic_os.schemas.knowledge import read_doc
+from agentic_os.services.knowledge import chunking, docs, embeddings, formats, index
 from agentic_os.services.knowledge import config as knowledge_config
-from agentic_os.services.knowledge import docs, formats
+from agentic_os.services.knowledge.chunking import Chunk
 from agentic_os.services.knowledge.errors import KnowledgeError
 from agentic_os.services.knowledge.events import KnowledgeEvents
 from agentic_os.services.knowledge.images import compose
@@ -60,6 +62,19 @@ EXTENSION_OF_MIME = {
 
 class Cancelled(Exception):
     """The document was deleted while it was being processed: nothing is left to write."""
+
+
+@dataclass
+class Outcome:
+    """What the steps produced, to be kept in one transaction."""
+
+    markdown: str
+    kept: list[dict]  # pictures worth keeping
+    texts: dict[int, str]  # what the OCR read, by picture number
+    notice: str | None
+    chunks: list[Chunk]
+    vectors: np.ndarray | None
+    model: str
 
 
 @dataclass
@@ -115,6 +130,7 @@ class Pipeline:
                 if doc is None:
                     return
                 origin = (doc.source_kind, doc.path, doc.url)
+                current_title = doc.title
                 limits = knowledge_config.load(db)
             workdir.mkdir(parents=True, exist_ok=True)
             source = self._source(*origin, workdir=workdir, max_bytes=limits.max_file_bytes)
@@ -133,7 +149,17 @@ class Pipeline:
                 raise KnowledgeError(answer.get("code", "convert_error"), answer.get("message", ""))
             images = answer.get("images") or []
             texts, notice = self._read_images(doc_id, images, workdir, limits.threads)
-            self._finish(doc_id, source, answer, images, texts, notice, workdir)
+            markdown, kept = compose(answer.get("markdown", ""), images, texts)
+            title = self._title(current_title, origin[2], answer.get("title"))
+            chunks = chunking.chunk(markdown)
+            vectors, model, embed_notice = self._embed(doc_id, title, chunks, limits.threads)
+            self._finish(
+                doc_id,
+                source,
+                title,
+                Outcome(markdown, kept, texts, notice or embed_notice, chunks, vectors, model),
+                workdir,
+            )
         except Cancelled:
             log.info("knowledge_doc_gone", doc_id=doc_id)
         except KnowledgeError as error:
@@ -317,37 +343,64 @@ class Pipeline:
         return old
 
     # ----------------------------------------------------------------- step 3: the result
+    @staticmethod
+    def _title(current: str, url: str | None, page_title: str | None) -> str:
+        """A web address takes its page's title, unless the user already named the document."""
+        page = (page_title or "").strip()
+        if url and page.lower() not in GENERIC_TITLES and current == docs.default_url_title(url):
+            return page[: docs.TITLE_MAX]
+        return current
+
+    # ----------------------------------------------------------- step 2c: the search index
+    def _embed(
+        self, doc_id: str, title: str, chunks: list[Chunk], threads: int
+    ) -> tuple[np.ndarray | None, str, str | None]:
+        """The vectors of the chunks with the chosen model: (vectors, model id, notice). Without
+        the model (or if it fails) there are no vectors and the document is searched by words."""
+        if not chunks:
+            return None, "", None
+        with self.sessions() as db:
+            entry = selection.active(db, self.data_dir, catalog.EMBEDDING)
+        if entry is None:
+            return None, "", None
+
+        def entering(doc: KnowledgeDoc) -> None:
+            doc.status = DocStatus.INDEXING
+            doc.progress_done, doc.progress_total = 0, len(chunks)
+
+        self._write(doc_id, entering)
+        progress = self._progress(doc_id)
+        try:
+            vectors = embeddings.embed(
+                self.worker,
+                model_spec(self.data_dir, entry),
+                [c.for_embedding(title) for c in chunks],
+                "passage",
+                threads,
+                lambda done, total: progress({"done": done, "total": total}),
+            )
+        except KnowledgeError as error:
+            log.warning("knowledge_embed_failed", doc_id=doc_id, message=error.message)
+            return None, "", "embed_failed"
+        return vectors, entry.id, None
+
     def _finish(
-        self,
-        doc_id: str,
-        source: Source,
-        answer: dict,
-        images: list[dict],
-        texts: dict[int, str],
-        notice: str | None,
-        workdir: Path,
+        self, doc_id: str, source: Source, title: str, outcome: Outcome, workdir: Path
     ) -> None:
-        markdown, kept = compose(answer.get("markdown", ""), images, texts)
-        title = (answer.get("title") or "").strip()
+        markdown, kept, texts = outcome.markdown, outcome.kept, outcome.texts
         stale: list[str] = []
 
         def change(doc: KnowledgeDoc) -> None:
-            stale.extend(
-                self._store_images(object_session(doc), doc, kept, texts, workdir / "images")
-            )
-            doc.notice = notice
+            db = object_session(doc)
+            stale.extend(self._store_images(db, doc, kept, texts, workdir / "images"))
+            index.replace(db, doc, outcome.chunks, outcome.vectors, outcome.model)
+            doc.notice = outcome.notice
             doc.markdown = markdown
             doc.md_tokens = estimate_tokens(markdown)
             if source.sha256 is not None:  # the fingerprint of what was converted
                 doc.size, doc.source_mtime, doc.sha256 = source.size, source.mtime, source.sha256
                 doc.presence = Presence.OK
-            if (
-                doc.source_kind == SourceKind.URL
-                and title.lower() not in GENERIC_TITLES
-                and doc.url
-                and doc.title == docs.default_url_title(doc.url)
-            ):
-                doc.title = title[: docs.TITLE_MAX]
+            doc.title = title
             doc.status = DocStatus.READY
             doc.progress_done = doc.progress_total = max(doc.progress_total, 1)
             doc.error_code = doc.error_message = None
@@ -358,6 +411,42 @@ class Pipeline:
         if stale:  # the pictures of the previous run that nobody uses any more
             with self.sessions() as db:
                 docs.prune_image_files(db, stale, self.data_dir / "knowledge" / "images")
+
+    def reindex(self, doc_id: str) -> bool:
+        """Indexes a ready document again with the chosen model, from its stored Markdown. The
+        document stays ready (and searchable by words) meanwhile. False: nothing to do or failed."""
+        with self.sessions() as db:
+            doc = db.get(KnowledgeDoc, doc_id)
+            if doc is None or doc.status != DocStatus.READY or not doc.markdown:
+                return False
+            title, markdown = doc.title, doc.markdown
+            threads = knowledge_config.load(db).threads
+            entry = selection.active(db, self.data_dir, catalog.EMBEDDING)
+        if entry is None:
+            return False
+        chunks = chunking.chunk(markdown)
+        vectors = None
+        if chunks:
+            try:
+                vectors = embeddings.embed(
+                    self.worker,
+                    model_spec(self.data_dir, entry),
+                    [c.for_embedding(title) for c in chunks],
+                    "passage",
+                    threads,
+                )
+            except KnowledgeError as error:
+                log.warning("knowledge_reindex_failed", doc_id=doc_id, message=error.message)
+                return False
+
+        def change(doc: KnowledgeDoc) -> None:
+            index.replace(object_session(doc), doc, chunks, vectors, entry.id if chunks else "")
+
+        try:
+            self._write(doc_id, change)
+        except Cancelled:
+            return False
+        return True
 
     def _fail(self, doc_id: str, error: KnowledgeError) -> None:
         log.info("knowledge_doc_failed", doc_id=doc_id, code=error.code, message=error.message)
@@ -370,3 +459,12 @@ class Pipeline:
 
         with contextlib.suppress(Cancelled):
             self._write(doc_id, change)
+
+
+def model_spec(data_dir: Path, entry) -> dict:
+    """What the worker needs to run an embedding model: its files and its recipe."""
+    return {
+        "model": str(store.file_path(data_dir, entry, entry.usage["model"])),
+        "tokenizer": str(store.file_path(data_dir, entry, entry.usage["tokenizer"])),
+        "usage": dict(entry.usage),
+    }

@@ -125,6 +125,8 @@ def put_selection(payload: Selection, request: Request, db: DbSession) -> Select
     db.commit()
     after = selection.chosen(db)
     changed = after[catalog.EMBEDDING] != before[catalog.EMBEDDING]
+    if changed:
+        request.app.state.knowledge.reindex()
     return SelectionRead(**after, reindex=changed)
 
 

@@ -1,0 +1,212 @@
+[
+ {
+  "id": "f01",
+  "title": "Cancelación de la suscripción",
+  "body": "Para cancelar la suscripción, abra Cuenta > Plan y pulse Dar de baja. La baja se aplica al final del periodo ya pagado y no se devuelve el importe del mes en curso. Los datos se conservan 90 días por si se quiere reactivar.",
+  "q": "¿Cómo dejo de pagar el servicio?",
+  "kind": "paraphrase"
+ },
+ {
+  "id": "f02",
+  "title": "Copia de seguridad automática",
+  "body": "Aurora guarda una copia cifrada de todas las facturas cada noche a las 03:00 (hora peninsular). Se conservan las últimas 14 copias. La restauración desde una copia tarda entre 5 y 20 minutos según el volumen.",
+  "q": "¿Cada cuánto se hace un respaldo de mis datos?",
+  "kind": "paraphrase"
+ },
+ {
+  "id": "f03",
+  "title": "Recuperar la contraseña",
+  "body": "Si olvida su contraseña, pulse ¿Has olvidado tu contraseña? en la pantalla de acceso. Recibirá un enlace por correo que caduca a las 24 horas. Tras cinco intentos fallidos la cuenta se bloquea durante 15 minutos.",
+  "q": "No me acuerdo de mi clave de entrada, ¿qué hago?",
+  "kind": "paraphrase"
+ },
+ {
+  "id": "f04",
+  "title": "Facturas rectificativas",
+  "body": "Una factura emitida no se puede borrar. Para corregirla se genera una factura rectificativa desde el menú de la factura original, indicando el motivo. La rectificativa lleva su propia serie, con prefijo R.",
+  "q": "Me equivoqué en un importe ya enviado al cliente, ¿cómo lo arreglo?",
+  "kind": "paraphrase"
+ },
+ {
+  "id": "f05",
+  "title": "Impuestos por país",
+  "body": "El tipo de IVA se aplica según el país del cliente. En España el general es del 21 %, el reducido del 10 % y el superreducido del 4 %. Para clientes de la UE con NIF-IVA válido la factura se emite sin impuesto por inversión del sujeto pasivo.",
+  "q": "¿Qué porcentaje de gravamen se aplica a una venta en territorio español?",
+  "kind": "paraphrase"
+ },
+ {
+  "id": "f06",
+  "title": "Usuarios y permisos",
+  "body": "Hay tres roles: Administrador, Contable y Lector. Solo el Administrador puede invitar usuarios o cambiar el plan. El Contable crea y envía facturas; el Lector solo consulta.",
+  "q": "¿Quién puede añadir a un compañero a la empresa?",
+  "kind": "paraphrase"
+ },
+ {
+  "id": "f07",
+  "title": "Importar clientes desde una hoja de cálculo",
+  "body": "En Clientes > Importar se acepta un fichero CSV con las columnas nombre, nif, email y dirección. El límite es de 5 000 filas por importación. Las filas con un NIF repetido se omiten y se listan en un informe de errores.",
+  "q": "Tengo mi cartera de compradores en Excel, ¿puedo subirla de golpe?",
+  "kind": "paraphrase"
+ },
+ {
+  "id": "f08",
+  "title": "Recordatorios de cobro",
+  "body": "Aurora puede enviar un recordatorio automático por correo 3 días antes del vencimiento y otro 7 días después si la factura sigue sin cobrar. El texto de los avisos se personaliza en Ajustes > Plantillas.",
+  "q": "¿Se avisa solo a quien me debe dinero?",
+  "kind": "paraphrase"
+ },
+ {
+  "id": "f09",
+  "title": "Exportar para la gestoría",
+  "body": "Desde Informes > Cierre trimestral se descarga un ZIP con los libros de facturas emitidas y recibidas en formato XLSX y un resumen PDF. Está pensado para entregarlo a la gestoría sin más trabajo.",
+  "q": "Mi asesor fiscal necesita los datos del trimestre, ¿de dónde los saco?",
+  "kind": "paraphrase"
+ },
+ {
+  "id": "f10",
+  "title": "Series de numeración",
+  "body": "Cada serie tiene su propio contador correlativo que no se puede saltar ni reiniciar durante el ejercicio. Se pueden crear series distintas por tienda o por tipo de documento. Al cambiar de año el contador vuelve a uno.",
+  "q": "¿Puedo empezar los números de factura desde cero a mitad de año?",
+  "kind": "paraphrase"
+ },
+ {
+  "id": "f11",
+  "title": "Aplicación móvil",
+  "body": "La app para iOS y Android permite consultar facturas y registrar gastos con una foto del ticket. Requiere iOS 16 o Android 11 como mínimo. No permite emitir facturas rectificativas.",
+  "q": "¿Existe algo para usar desde el teléfono?",
+  "kind": "paraphrase"
+ },
+ {
+  "id": "f12",
+  "title": "Seguridad de la cuenta",
+  "body": "Se recomienda activar el segundo factor con una aplicación de códigos temporales. Una vez activado, el acceso pide el código de seis cifras además de la contraseña. Los códigos de recuperación se descargan una sola vez.",
+  "q": "¿Cómo protejo mejor mi acceso frente a robos de cuenta?",
+  "kind": "paraphrase"
+ },
+ {
+  "id": "f13",
+  "title": "Moneda extranjera",
+  "body": "Las facturas pueden emitirse en dólares, libras o francos suizos. El tipo de cambio se toma del Banco Central Europeo del día de la factura y se muestra en el pie. El libro contable siempre se lleva en euros.",
+  "q": "Vendo a Reino Unido, ¿puedo cobrar en su divisa?",
+  "kind": "paraphrase"
+ },
+ {
+  "id": "f14",
+  "title": "Plazos de soporte",
+  "body": "El soporte responde por correo en menos de 24 horas laborables en el plan Básico y en menos de 4 horas en el plan Empresa. El teléfono solo está disponible para Empresa, de lunes a viernes de 9 a 18.",
+  "q": "¿En cuánto tiempo me contestan si tengo un problema?",
+  "kind": "paraphrase"
+ },
+ {
+  "id": "f15",
+  "title": "Límites del plan Básico",
+  "body": "El plan Básico incluye hasta 100 facturas al mes, un usuario y 1 GB de adjuntos. Superado el límite de facturas, Aurora no bloquea la emisión pero cobra 0,15 euros por factura adicional.",
+  "q": "¿Qué pasa si emito más documentos de los que cubre mi tarifa más barata?",
+  "kind": "paraphrase"
+ },
+ {
+  "id": "f16",
+  "title": "Error ERR_4012",
+  "body": "El código ERR_4012 aparece cuando el NIF del cliente no supera la validación. Compruebe que no tiene espacios ni guiones y que la letra de control es correcta. Si el cliente es extranjero, active la casilla Documento no español.",
+  "q": "ERR_4012",
+  "kind": "exact"
+ },
+ {
+  "id": "f17",
+  "title": "Error ERR_5103",
+  "body": "ERR_5103 indica que el servicio de firma electrónica no está disponible. El estado del servicio se consulta en status.aurora.example. Las facturas quedan en borrador y se firman solas al restablecerse el servicio.",
+  "q": "qué significa ERR_5103",
+  "kind": "exact"
+ },
+ {
+  "id": "f18",
+  "title": "API: endpoint /v2/invoices",
+  "body": "El endpoint POST /v2/invoices crea una factura. Requiere la cabecera Authorization con un token Bearer y admite hasta 60 peticiones por minuto. La respuesta devuelve el campo invoice_id con el identificador de la nueva factura.",
+  "q": "POST /v2/invoices",
+  "kind": "exact"
+ },
+ {
+  "id": "f19",
+  "title": "API: webhooks",
+  "body": "Los webhooks se configuran en Ajustes > Integraciones. El evento invoice.paid se envía cuando una factura se marca como cobrada. Cada petición lleva la cabecera X-Aurora-Signature para verificar el origen.",
+  "q": "evento invoice.paid",
+  "kind": "exact"
+ },
+ {
+  "id": "f20",
+  "title": "Variable de entorno AURORA_PROXY",
+  "body": "En la versión de escritorio, la variable AURORA_PROXY permite indicar un proxy HTTP corporativo con el formato http://usuario:clave@host:puerto. Sin ella se usa la configuración del sistema.",
+  "q": "AURORA_PROXY",
+  "kind": "exact"
+ },
+ {
+  "id": "f21",
+  "title": "Plantilla PLT-FACTURA-ES",
+  "body": "La plantilla PLT-FACTURA-ES es la predeterminada para facturas en español. Incluye logotipo, datos fiscales, desglose de IVA y un pie legal. Se puede duplicar para crear variantes sin tocar la original.",
+  "q": "PLT-FACTURA-ES",
+  "kind": "exact"
+ },
+ {
+  "id": "f22",
+  "title": "Atajos de teclado",
+  "body": "Ctrl+Alt+N crea una factura nueva desde cualquier pantalla. Ctrl+K abre el buscador global. Con Ctrl+Mayús+E se exporta la lista actual a CSV.",
+  "q": "Ctrl+Alt+N",
+  "kind": "exact"
+ },
+ {
+  "id": "f23",
+  "title": "Modelo 303 y modelo 390",
+  "body": "Aurora prepara el borrador del modelo 303 de IVA trimestral y del modelo 390 de resumen anual. Los importes se calculan con las facturas emitidas y recibidas del periodo, y el fichero se sube a la sede electrónica desde el propio programa.",
+  "q": "modelo 390",
+  "kind": "exact"
+ },
+ {
+  "id": "f24",
+  "title": "Formato Facturae 3.2.2",
+  "body": "Para facturar a la administración pública Aurora genera ficheros Facturae versión 3.2.2 firmados con XAdES. Se envían a FACe indicando los tres códigos DIR3 de oficina contable, órgano gestor y unidad tramitadora.",
+  "q": "Facturae 3.2.2",
+  "kind": "exact"
+ },
+ {
+  "id": "f25",
+  "title": "Servidor SMTP propio",
+  "body": "Para enviar las facturas desde su dominio, configure el servidor SMTP en Ajustes > Correo. Use el puerto 587 con STARTTLS o el 465 con SSL. Aurora prueba la conexión al guardar y muestra el error exacto del servidor.",
+  "q": "puerto 587 STARTTLS",
+  "kind": "exact"
+ },
+ {
+  "id": "f26",
+  "title": "Versión 4.18: novedades",
+  "body": "La versión 4.18 añade conciliación bancaria con ficheros Norma 43, mejora la velocidad del listado de facturas y corrige el redondeo en descuentos con tres decimales. Se publicó el 12 de marzo.",
+  "q": "versión 4.18",
+  "kind": "exact"
+ },
+ {
+  "id": "f27",
+  "title": "Comando de línea aurora-cli sync",
+  "body": "La herramienta aurora-cli sync --since 2024-01-01 descarga las facturas modificadas desde esa fecha a una carpeta local. El código de salida 3 indica que el token ha caducado.",
+  "q": "aurora-cli sync",
+  "kind": "exact"
+ },
+ {
+  "id": "f28",
+  "title": "Protección de datos: RGPD",
+  "body": "Aurora actúa como encargado del tratamiento. Los datos se alojan en centros de datos de la Unión Europea, concretamente en Fráncfort y Dublín. Puede solicitar el contrato de encargado desde Ajustes > Legal.",
+  "q": "centro de datos Fráncfort Dublín",
+  "kind": "exact"
+ },
+ {
+  "id": "f29",
+  "title": "Código de descuento BIENVENIDA25",
+  "body": "El código BIENVENIDA25 aplica un 25 % de descuento en los tres primeros meses del plan Empresa. Solo es válido para cuentas nuevas y no se acumula con otras promociones.",
+  "q": "BIENVENIDA25",
+  "kind": "exact"
+ },
+ {
+  "id": "f30",
+  "title": "Tiempo de espera 504",
+  "body": "Si una exportación grande devuelve el estado HTTP 504, divida el periodo en tramos más cortos. El límite de ejecución de una exportación es de 120 segundos. Las exportaciones superiores a 50 000 facturas deben solicitarse al soporte.",
+  "q": "HTTP 504 exportación",
+  "kind": "exact"
+ }
+]

@@ -77,7 +77,9 @@ class DownloadManager:
         events: KnowledgeEvents,
         http: Callable[[], httpx.Client] | None = None,
         token: Callable[[], str | None] | None = None,
+        on_ready: Callable[[CatalogEntry], None] | None = None,
     ) -> None:
+        self.on_ready = on_ready  # called when a model has been downloaded and checked
         self.data_dir = Path(data_dir)
         self.events = events
         self._http = http or self._default_client
@@ -185,6 +187,8 @@ class DownloadManager:
             log.info("local_model_ready", id=entry.id)
             with self._lock:
                 self._live.pop(entry.id, None)
+            if self.on_ready is not None:
+                self.on_ready(entry)
         except Cancelled:
             log.info("local_model_cancelled", id=entry.id)
             with self._lock:

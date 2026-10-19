@@ -291,6 +291,7 @@ def test_pausing_stops_new_documents_and_resuming_continues(client: TestClient, 
         "queued": 1,
         "active": [],
         "mode": "off",
+        "reindexing": False,
     }
     assert client.post("/api/knowledge/queue/pause").json()["paused"] is True
     assert run(client) == 0

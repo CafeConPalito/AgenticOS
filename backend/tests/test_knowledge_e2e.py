@@ -89,3 +89,49 @@ def test_the_ocr_models_ship_inside_the_packaged_app(tmp_path: Path):
         # The rest is downloaded on demand, as always.
         assert (models["e5-small"]["state"], models["e5-small"]["bundled"]) == ("absent", False)
         assert not (tmp_path / "data" / "models").exists()  # nothing was copied to the data folder
+
+
+def test_search_by_meaning_works_with_the_real_model(tmp_path: Path):
+    """The embedding worker (ONNX Runtime + tokenizers) in a real process: in the packaged app,
+    the sidecar itself."""
+    import tempfile
+
+    from agentic_os.services.localmodels import catalog, store
+    from agentic_os.services.localmodels.stage import stage
+
+    entry = catalog.entry("e5-small")
+    cache = Path(tempfile.gettempdir()) / "agentic-os-test-models"
+    if not stage(cache, [entry], log=lambda _: None):
+        pytest.skip("the embedding model cannot be downloaded (no network?)")
+    target = tmp_path / "data" / "models" / "e5-small"
+    shutil.copytree(store.downloaded_folder(cache, entry), target)
+    folder = tmp_path / "docs"
+    folder.mkdir()
+    texts = {
+        "baja.md": "# Cancelación\n\nPara dar de baja el servicio pulse Cancelar suscripción.",
+        "copias.md": "# Copias\n\nCada noche se hace una copia de seguridad cifrada.",
+        "errores.md": "# Errores\n\nEl código ERR_5103 indica que la firma no está disponible.",
+    }
+    for name, text in texts.items():
+        (folder / name).write_text(text, encoding="utf-8")
+    with live_server(settings_for(tmp_path)) as server:
+        api = Api(server)
+        api.post(
+            "/api/knowledge/docs/files",
+            {"scope": "general", "paths": [str(folder / name) for name in texts]},
+        )
+        assert wait_until(
+            lambda: {d["status"] for d in api.get("/api/knowledge/docs")} == {"ready"}, timeout=180
+        )
+        assert {d["embed_model"] for d in api.get("/api/knowledge/docs")} == {"e5-small"}
+
+        def ask(query: str) -> dict:
+            return api.post("/api/knowledge/search", {"query": query})
+
+        answer = ask("¿Cómo dejo de pagar el servicio?")
+        assert (answer["mode"], answer["model"]) == ("hybrid", "e5-small")
+        assert answer["hits"][0]["title"] == "baja.md"
+        assert (
+            ask("¿Cada cuánto hacen un respaldo de mis datos?")["hits"][0]["title"] == "copias.md"
+        )
+        assert ask("ERR_5103")["hits"][0]["title"] == "errores.md"

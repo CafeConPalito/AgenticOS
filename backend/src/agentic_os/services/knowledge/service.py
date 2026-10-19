@@ -13,6 +13,7 @@ import threading
 from collections.abc import Callable
 from pathlib import Path
 
+import numpy as np
 import structlog
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session, sessionmaker
@@ -21,16 +22,21 @@ from agentic_os.db.base import DEFAULT_WORKSPACE
 from agentic_os.models import DocStatus, KnowledgeDoc
 from agentic_os.schemas.knowledge import read_doc
 from agentic_os.services.knowledge import config as knowledge_config
+from agentic_os.services.knowledge import embeddings, search
 from agentic_os.services.knowledge.docs import IN_PROGRESS
+from agentic_os.services.knowledge.errors import KnowledgeError
 from agentic_os.services.knowledge.events import KnowledgeEvents
-from agentic_os.services.knowledge.pipeline import Pipeline
+from agentic_os.services.knowledge.pipeline import Pipeline, model_spec
 from agentic_os.services.knowledge.worker import InlineWorker, ProcessWorker, Worker
+from agentic_os.services.localmodels import catalog, selection
+from agentic_os.services.localmodels.catalog import CatalogEntry
 from agentic_os.services.system_stats import Sampler, SamplerThread
 
 log = structlog.get_logger()
 
 POLL_SECONDS = 2.0  # how often an idle thread looks for documents nobody poked it about
 MODES = ("subprocess", "inline", "off")
+QUERY_IDLE_SECONDS = 300.0  # the worker that embeds questions stays ready for this long
 
 
 class KnowledgeService:
@@ -61,6 +67,10 @@ class KnowledgeService:
         self._workers: list[Worker] = []
         self._sampler: Sampler | None = None
         self._sampling: SamplerThread | None = None
+        self._query_worker: Worker | None = None
+        self._query_lock = threading.Lock()
+        self._reindexing = False
+        self._reindex_again = False
 
     # ------------------------------------------------------------------ life cycle
     def start(self) -> None:
@@ -69,6 +79,7 @@ class KnowledgeService:
             return
         with self.sessions() as db:
             count = knowledge_config.load(db).concurrency
+        self.reindex()  # documents indexed with another model (or none) than the chosen one
         # The machine's load, once a second while there is work.
         self._sampling = SamplerThread(self.events.publish, lambda: bool(self._active))
         self._sampling.start()
@@ -94,6 +105,11 @@ class KnowledgeService:
             thread.join(timeout=5)
         self._threads.clear()
         self._workers.clear()
+        with self._query_lock:
+            if self._query_worker is not None:
+                with contextlib.suppress(Exception):
+                    self._query_worker.close()
+                self._query_worker = None
         if self._sampling:
             self._sampling.stop()
             self._sampling = None
@@ -136,7 +152,127 @@ class KnowledgeService:
             )
         with self._lock:
             active = sorted(self._active)
-        return {"paused": self._paused, "queued": waiting or 0, "active": active, "mode": self.mode}
+        return {
+            "paused": self._paused,
+            "queued": waiting or 0,
+            "active": active,
+            "mode": self.mode,
+            "reindexing": self._reindexing,
+        }
+
+    # ------------------------------------------------------------------- search
+    def embedding_model(self) -> CatalogEntry | None:
+        """The model of embeddings in use: the chosen one, if it is downloaded."""
+        with self.sessions() as db:
+            return selection.active(db, self.data_dir, catalog.EMBEDDING)
+
+    def embed_query(self, query: str) -> np.ndarray | None:
+        """The vector of a question, or None when there is no model (or it fails). Runs in a
+        worker of its own, so it never waits for a long indexing."""
+        entry = self.embedding_model()
+        if entry is None:
+            return None
+        with self._query_lock:
+            if self._query_worker is None:
+                self._query_worker = (
+                    ProcessWorker(idle_seconds=QUERY_IDLE_SECONDS)
+                    if self.mode == "subprocess"
+                    else self._factory()
+                )
+            try:
+                vectors = embeddings.embed(
+                    self._query_worker, model_spec(self.data_dir, entry), [query], "query"
+                )
+            except KnowledgeError as error:
+                log.warning("knowledge_query_embedding_failed", message=error.message)
+                return None
+        return vectors[0]
+
+    def search(
+        self,
+        db: Session,
+        query: str,
+        project_id: str | None,
+        agent_ids: list[str],
+        limit: int = search.DEFAULT_LIMIT,
+    ) -> list[search.Hit]:
+        """What an agent of `project_id` (and `agent_ids`) finds for `query`."""
+        entry = self.embedding_model()
+        return search.search(
+            db,
+            query,
+            search.visible_docs(db, project_id, agent_ids),
+            limit=limit,
+            embed_query=self.embed_query if entry else None,
+            model=entry.id if entry else None,
+        )
+
+    # ----------------------------------------------------------------------- reindex
+    def stale_docs(self) -> list[str]:
+        """Ready documents whose vectors are not the chosen model's (or that have none)."""
+        entry = self.embedding_model()
+        if entry is None:
+            return []
+        with self.sessions() as db:
+            return list(
+                db.scalars(
+                    select(KnowledgeDoc.id).where(
+                        KnowledgeDoc.workspace_id == DEFAULT_WORKSPACE,
+                        KnowledgeDoc.status == DocStatus.READY,
+                        KnowledgeDoc.markdown != "",
+                        KnowledgeDoc.embed_model != entry.id,
+                    )
+                )
+            )
+
+    def reindex_now(self, worker: Worker | None = None) -> int:
+        """Indexes again, here and now, every document that is not indexed with the chosen model.
+        The documents stay ready (searchable by words) meanwhile. Returns how many were done."""
+        entry = self.embedding_model()
+        ids = self.stale_docs()
+        if entry is None or not ids:
+            return 0
+        own = worker or self._factory()
+        pipeline = Pipeline(self.sessions, self.data_dir, own, self.events)
+        done = 0
+        try:
+            for position, doc_id in enumerate(ids, 1):
+                if self._stop.is_set():
+                    break
+                if pipeline.reindex(doc_id):
+                    done += 1
+                self.events.reindex({"done": position, "total": len(ids), "model": entry.id})
+        finally:
+            if worker is None:
+                own.close()
+        return done
+
+    def reindex(self) -> None:
+        """Starts re-indexing in the background (if already running, it checks again when it
+        ends, in case the model changed meanwhile). Nothing runs by itself in mode «off»."""
+        if self.mode == "off":
+            return
+        with self._lock:
+            if self._reindexing:
+                self._reindex_again = True
+                return
+            self._reindexing = True
+        threading.Thread(target=self._reindex_loop, name="knowledge-reindex", daemon=True).start()
+
+    def _reindex_loop(self) -> None:
+        try:
+            while True:
+                self.reindex_now()
+                with self._lock:
+                    if not self._reindex_again:
+                        self._reindexing = False
+                        break
+                    self._reindex_again = False
+        except Exception:
+            log.exception("knowledge_reindex_crashed")
+            with self._lock:
+                self._reindexing = False
+        self.events.queue(self.state())
 
     def system(self) -> dict:
         """The machine's load now. The first reading of a rate is 0: ask again a second later."""

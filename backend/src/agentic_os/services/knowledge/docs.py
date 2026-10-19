@@ -30,7 +30,7 @@ from agentic_os.models import (
     Project,
     SourceKind,
 )
-from agentic_os.services.knowledge import formats
+from agentic_os.services.knowledge import formats, search
 from agentic_os.services.knowledge.config import KnowledgeSettings
 from agentic_os.services.paths import normalize
 
@@ -332,6 +332,7 @@ def remove(db: Session, doc: KnowledgeDoc, images_dir: Path | None = None) -> No
         if name
     ]
     db.execute(text("DELETE FROM knowledge_fts WHERE doc_id = :doc"), {"doc": doc.id})
+    search.cache.bump()
     db.delete(doc)
     db.flush()  # the chunks and image rows go with it (ON DELETE CASCADE)
     if images_dir is not None:

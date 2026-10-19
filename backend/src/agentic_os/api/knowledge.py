@@ -21,10 +21,13 @@ from agentic_os.schemas.knowledge import (
     AddUrl,
     DocRead,
     DocUpdate,
+    HitRead,
     ImageRead,
     MarkdownRead,
     Relocate,
     RelocateRead,
+    SearchRead,
+    SearchRequest,
     read_doc,
 )
 from agentic_os.services.knowledge import config as knowledge_config
@@ -226,6 +229,35 @@ def reveal_doc(doc_id: str, db: DbSession) -> None:
     path = docs.original_path(db, docs.get_doc(db, doc_id))
     db.commit()
     reveal_path(str(path))
+
+
+# ---------------------------------------------------------------------------- search
+@router.post("/knowledge/search")
+def search_library(payload: SearchRequest, request: Request, db: DbSession) -> SearchRead:
+    """The search test: what an agent of that project would get for that question."""
+    knowledge = service(request)
+    model = knowledge.embedding_model()
+    agents = [payload.agent_id] if payload.agent_id else []
+    hits = knowledge.search(db, payload.query, payload.project_id, agents, payload.limit)
+    return SearchRead(
+        hits=[
+            HitRead(
+                doc_id=hit.doc.id,
+                title=hit.doc.title,
+                scope=hit.doc.scope,
+                chunk=hit.chunk.ord,
+                heading=hit.chunk.heading,
+                location=hit.chunk.location,
+                text=hit.text,
+                score=round(hit.score, 5),
+                found_by=hit.found_by,
+                images=hit.images,
+            )
+            for hit in hits
+        ],
+        mode="hybrid" if model else "words",
+        model=model.id if model else None,
+    )
 
 
 # ------------------------------------------------------------------------------ the queue

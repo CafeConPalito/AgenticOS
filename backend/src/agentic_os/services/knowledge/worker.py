@@ -82,12 +82,20 @@ def handle(request: dict, emit: Emit) -> dict:
                 reading,
             )
             return {"ok": True, "texts": {str(n): t for n, t in texts.items()}, "failed": failed}
+        if op == "embed":
+            from agentic_os.services.knowledge import embeddings
+
+            vectors = embeddings.embedder(request["model"], int(request.get("threads", 0))).encode(
+                request["texts"], request["kind"]
+            )
+            return {"ok": True, "vectors": embeddings.pack(vectors), "count": len(vectors)}
         return KnowledgeError("convert_error", f"unknown operation {op!r}").as_dict()
     except KnowledgeError as error:
         return error.as_dict()
     except Exception as error:
         log.exception("knowledge_worker_failed", op=request.get("op"))
-        return KnowledgeError("convert_error", f"{type(error).__name__}: {error}"[:300]).as_dict()
+        code = "embed_error" if request.get("op") == "embed" else "convert_error"
+        return KnowledgeError(code, f"{type(error).__name__}: {error}"[:300]).as_dict()
 
 
 def serve() -> None:

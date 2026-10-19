@@ -18,6 +18,10 @@ class KnowledgeEvents(GitEvents):
     def queue(self, payload: dict) -> None:
         self.publish({"type": "queue", **payload})
 
+    def reindex(self, payload: dict) -> None:
+        """The documents are being indexed again with another model: `{done, total, model}`."""
+        self.publish({"type": "reindex", **payload})
+
     def model(self, payload: dict) -> None:
         """A local model's download changed: `{id, state, done, total, error_code…}`."""
         self.publish({"type": "model", **payload})

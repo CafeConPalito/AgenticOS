@@ -153,6 +153,37 @@ class ImageRead(BaseModel):
     description: str
 
 
+class SearchRequest(BaseModel):
+    """What an agent working in `project_id` (and being `agent_id`) would find."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    query: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=1000)]
+    project_id: str | None = None
+    agent_id: str | None = None
+    limit: int = Field(default=8, ge=1, le=20)
+
+
+class HitRead(BaseModel):
+    doc_id: str
+    title: str
+    scope: KnowledgeScope
+    chunk: int  # the chunk's number inside the document
+    heading: str
+    location: str  # "p. 12", "diapositiva 3", "hoja Ventas", or ""
+    text: str
+    score: float
+    found_by: str  # meaning | words | both
+    images: list[int]  # numbers of the pictures it shows
+
+
+class SearchRead(BaseModel):
+    hits: list[HitRead]
+    # "hybrid" (by meaning, plus words for identifiers) or "words" (no model of embeddings).
+    mode: str
+    model: str | None
+
+
 class MarkdownRead(BaseModel):
     title: str
     markdown: str

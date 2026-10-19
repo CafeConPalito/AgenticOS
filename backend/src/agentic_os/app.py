@@ -29,6 +29,7 @@ from agentic_os.services.gitx.shell import ShellSessions
 from agentic_os.services.knowledge.events import KnowledgeEvents
 from agentic_os.services.knowledge.service import KnowledgeService
 from agentic_os.services.localmodels import hf_token
+from agentic_os.services.localmodels.catalog import EMBEDDING
 from agentic_os.services.localmodels.downloads import DownloadManager
 from agentic_os.services.mcp_server import mount_app
 from agentic_os.services.runs.manager import RunManager
@@ -148,7 +149,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         )
         app.state.knowledge_events, app.state.knowledge = knowledge_events, knowledge
         knowledge.start()
-        models = DownloadManager(Path(settings.data_dir), knowledge_events, token=hf_token.token)
+        models = DownloadManager(
+            Path(settings.data_dir),
+            knowledge_events,
+            token=hf_token.token,
+            # A model of embeddings that arrives: the documents get indexed with it.
+            on_ready=lambda entry: knowledge.reindex() if entry.kind == EMBEDDING else None,
+        )
         app.state.models = models
         if settings.check_sessions_at_startup:
             threading.Thread(
