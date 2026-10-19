@@ -16,6 +16,7 @@ import type { Agent } from '@/api/types'
 import { AgentAvatar, StatusBadge } from '@/components/agentic/primitives'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { EmptyState } from '@/components/EmptyState'
+import { KnowledgeLibrary } from '@/components/knowledge/KnowledgeLibrary'
 import { ComingSoonTab, PageContainer, RouteTabs } from '@/components/page'
 import { UnsavedChangesGuard } from '@/components/UnsavedChangesGuard'
 import { Button } from '@/components/ui/button'
@@ -241,11 +242,12 @@ function AgentEditor({ agent, tab }: { agent: Agent; tab: Tab }) {
         {tab === 'general' && <GeneralTab />}
         {tab === 'instructions' && <InstructionsTab />}
         {tab === 'execution' && <ExecutionTab />}
-        {tab === 'knowledge' && <ComingSoonTab icon={BookOpen} />}
         {tab === 'skills' && <ComingSoonTab icon={Puzzle} />}
         {tab === 'history' && <HistoryTab agentId={agent.id} />}
         {tab === 'changes' && <ChangesTab agentId={agent.id} />}
       </form>
+      {/* Outside the form: the library has forms of its own. */}
+      {tab === 'knowledge' && <KnowledgeLibrary level={{ scope: 'agent', agentId: agent.id }} />}
       <ConfirmDialog
         open={confirmDelete}
         onOpenChange={setConfirmDelete}

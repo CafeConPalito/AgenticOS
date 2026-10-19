@@ -16,6 +16,7 @@ import BoardPage from '@/pages/BoardPage'
 import ClisPage from '@/pages/clis/ClisPage'
 import HomePage from '@/pages/home/HomePage'
 import InboxPage from '@/pages/InboxPage'
+import KnowledgePage from '@/pages/knowledge/KnowledgePage'
 import ProjectDetailPage from '@/pages/projects/ProjectDetailPage'
 import ProjectsPage from '@/pages/projects/ProjectsPage'
 import RunPage from '@/pages/runs/RunPage'
@@ -109,6 +110,11 @@ export const routes: RouteObject[] = [
         path: 'clis',
         element: <ClisPage />,
         handle: crumb(() => <TextCrumb i18nKey="nav.clis" />),
+      },
+      {
+        path: 'conocimiento',
+        element: <KnowledgePage />,
+        handle: crumb(() => <TextCrumb i18nKey="nav.knowledge" />),
       },
       {
         path: 'ajustes',
