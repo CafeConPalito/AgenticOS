@@ -333,7 +333,7 @@ Cada bloque se cierra con sus tests en verde y un commit (o varios) en `phase/14
   - `CatalogEntry.bundled` (solo `ocr-latin`). `services/localmodels/stage.py` descarga y verifica sus ficheros, con los mismos hashes fijados, en `backend/build/bundled/models/<id>/` durante `scripts/build-backend.ps1`, y PyInstaller los añade como `bundled_models`. Si la preparación falla, la construcción se detiene.
   - En tiempo de ejecución, `store.bundled_folder` los busca en `sys._MEIPASS/bundled_models` (o en la carpeta de `AGENTIC_OS_BUNDLED_MODELS`, para los tests). Si están completos, el modelo cuenta como instalado y **se lee en el sitio**: nada se copia a la carpeta de datos. En desarrollo no hay paquete y se descarga como los demás.
   - `GET /local-models` marca `bundled: true` (listo, no se puede borrar: `DELETE` da 409 `bundled`). Si el paquete estuviera dañado, vuelve a descargarlo.
-  - El *sidecar* crece unos 18 MB (ver el tamaño final en el cierre del bloque).
+  - **Tamaño del *sidecar*: 102,8 MB** (30,5 MB antes de la fase; 87 MB tras el bloque 2). El e2e contra el binario real confirma que `ocr-latin` sale `ready` y `bundled` sin tocar la carpeta de datos.
 
 ### Cómo retomar: bloque 4 (imágenes y OCR)
 1. **Dependencias**: `rapidocr` (trae OpenCV y `onnxruntime`; añadir al `pyproject.toml` y a las banderas de PyInstaller: `--collect-submodules rapidocr` más `config.yaml` y `default_models.yaml` como datos, **sin** sus modelos, como en la variante recortada de S1). Ojo: el backend lleva `onnxruntime` 1.20.1 (lo fija `magika`); RapidOCR funcionó con 1.31 en los spikes, hay que comprobarlo con 1.20.1.
