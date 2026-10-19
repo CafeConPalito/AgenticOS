@@ -1,7 +1,7 @@
 # Fase 14: Conocimiento · Plan técnico
 
 - **Spec**: [spec.md](spec.md)
-- **Estado**: aprobado (2026-10-18) · en desarrollo (bloques 0 a 5 hechos; sigue el 6)
+- **Estado**: aprobado (2026-10-18) · en desarrollo (bloques 0 a 6 hechos; sigue el 7)
 
 ## Lo que ya se sabe (revisado al escribir el plan)
 - **Contexto** (`services/context.py`): `build_instructions` monta las instrucciones por secciones (rol, proyecto, repos, git, memoria, tarea, subagente, reglas). El conocimiento es una sección más, después de la memoria. `get_context` devuelve lo mismo.
@@ -261,7 +261,7 @@ Cada bloque se cierra con sus tests en verde y un commit (o varios) en `phase/14
 3. [x] **Modelos locales**: catálogo, descargas, selección, *token* de Hugging Face y API.
 4. [x] **Imágenes y OCR**: extracción, deduplicación, marcas `kimg:`, OCR de imágenes y de páginas escaneadas.
 5. [x] **Índice y búsqueda**: troceado, FTS5, *embeddings*, búsqueda híbrida, `reindex` al cambiar de modelo y búsqueda de prueba.
-6. [ ] **Contexto y MCP**:
+6. [x] **Contexto y MCP**:
    - sección de conocimiento con el presupuesto;
    - `search_knowledge` y `read_knowledge` con sus eventos;
    - carpetas de imágenes en `extra_dirs` y copias temporales;
@@ -279,7 +279,7 @@ Cada bloque se cierra con sus tests en verde y un commit (o varios) en `phase/14
     - `validacion.md`.
 
 ## Estado del desarrollo (traspaso, 2026-10-19)
-**Hecho**: bloques 0 a 5. **Siguiente**: bloque 6 (contexto y MCP).
+**Hecho**: bloques 0 a 6. **Siguiente**: bloque 7 (describir imágenes con IA).
 
 ### Bloque 1 · qué hay y qué se decidió al hacerlo
 - **Código nuevo** (`backend/src/agentic_os/`): `models/knowledge.py` (`KnowledgeDoc`, `KnowledgeChunk`, `KnowledgeImage` y sus enums), migración `0016_knowledge`, `services/knowledge/{formats,config,docs}.py`, `schemas/knowledge.py` y `api/knowledge.py` (registrado en `api/__init__.py`). Cambios menores: `RunKind.DESCRIBE`, la clave `KNOWLEDGE` de `app_state`, `reveal_in_file_manager` en `services/proc.py`.
@@ -356,12 +356,21 @@ Cada bloque se cierra con sus tests en verde y un commit (o varios) en `phase/14
 - **Consulta**: se vectoriza en un **trabajador aparte** (`ProcessWorker` que aguanta 5 minutos), para no esperar a una indexación larga.
 - **Tests**: `test_knowledge_chunking.py` (12), `test_knowledge_search.py` (30, con un modelo falso que entiende sinónimos: indexado, búsqueda por significado y por identificador, visibilidad por niveles, fallos, reindexado y caché) y `test_knowledge_quality.py` con **el modelo real**: 30 preguntas entre 127 pasajes (97 casi idénticos), de extremo a extremo por la pipeline y la API. Resultado medido: acierto en los 5 primeros **0,93** (0,87 en las preguntas con otras palabras), primer puesto **1,00** con identificadores y **0,73** en conjunto (el spike S4 daba 0,90, 0,80, 1,00 y 0,80 con el mismo modelo; aquí hay menos de lo último porque el título entra en el texto que se vectoriza). El e2e hace la misma búsqueda con el trabajador real, también en el binario empaquetado.
 
-### Cómo retomar: bloque 6 (contexto y MCP)
-1. **Sección «Conocimiento»** (`services/knowledge/context.py`, la llama `RunManager._instructions` y por tanto también `get_context`): el **índice** de los documentos visibles (título, nivel, descripción, modo, tamaño y un identificador corto), el **texto entero** de los de modo «siempre en contexto» y de los «automático» pequeños hasta el presupuesto (`knowledge.context_budget` 8 000, `small_doc_tokens` 2 000: primero los de modo contexto, luego los pequeños de menor a mayor), y cómo usar las herramientas. Los que no caben pasan a «solo búsqueda».
-2. **Imágenes**: `![…](kimg:N)` pasa a la **ruta** del fichero (las extraídas están en `<datos>/knowledge/images`; la imagen que el usuario añadió se **copia** a `<datos>/knowledge/run-images/<run_id>/`, borrada al acabar la ejecución y al arrancar). Las dos carpetas se añaden a `extra_dirs` del adaptador (`--add-dir`).
-3. **MCP**: `search_knowledge(query, limit)` y `read_knowledge(document, location, part)` en `mcp_server.py` y en `AgentBackend`; la lógica en `services/knowledge/agent_tools.py`, que usa `RunManager` (que recibe el servicio con `manager.knowledge = …`). Un subagente ve lo de su agente y lo del agente padre. Cada llamada deja un evento `mcp` con la consulta y los documentos devueltos.
-4. **Reglas de Agentic OS** (`context.AGENTIC_OS_RULES`) y plantillas (Redactor, Comercial, Analista): mencionan el conocimiento.
-5. **Tests**: la sección (presupuesto, modos, orden, imágenes), las herramientas (búsqueda, lectura por página, hoja o apartado, por partes, documento ambiguo o inexistente), eventos, visibilidad por proyecto y agente, la limpieza de `run-images`, y un e2e con el CLI falso que llama a `search_knowledge` (CA1).
+### Bloque 6 · qué hay y qué se decidió al hacerlo
+- **Código nuevo**: `services/knowledge/context.py` (la sección «Conocimiento», la resolución de imágenes y las carpetas de la ejecución) y `services/knowledge/agent_tools.py` (`search_knowledge` y `read_knowledge`). Cambios: `mcp_server.py` (protocolo y dos herramientas), `RunManager` (`knowledge`, `_instructions`, `search_knowledge`, `read_knowledge`, `extra_dirs` y limpieza al terminar), `context.build_instructions(knowledge=…)`, las reglas de Agentic OS y las plantillas (`_COMMON_RULES`, que usan los cinco agentes de ejemplo).
+- **Sección «Conocimiento»**: índice de los documentos visibles (título, identificador corto, nivel, `completo`/`solo búsqueda`, tokens, imágenes y descripción) y el texto de los que van enteros: primero los de modo «siempre» (aunque se pasen del presupuesto), luego los «automático» de hasta `small_doc_tokens` de menor a mayor, mientras quepan en `context_budget`. Los que no caben pasan a «solo búsqueda». Sin documentos, la sección no existe. También se rehace en cada `get_context`.
+- **Quién ve qué**: general, proyecto y agente propio; un **subagente** ve además lo del agente padre. Solo documentos `ready` y no apagados.
+- **Imágenes**: `![…](kimg:N)` se convierte en la **ruta** del fichero: las extraídas, en `<datos>/knowledge/images/`; la que añadió el usuario se **copia** a `<datos>/knowledge/run-images/<run_id>/` (si el original ya no está, el agente lee «[nombre: no disponible]»). Las dos carpetas se pasan al CLI como `--add-dir` en todas las ejecuciones; la copia se borra al terminar la ejecución y todas al arrancar la app.
+- **Herramientas**: `search_knowledge(query, limit)` devuelve los pasajes con su documento, apartado, lugar, identificador corto y rutas de imágenes; `read_knowledge(document, location, part)` lee un documento por **título (o parte del título) o identificador**, y una **página** (`12`, `p. 12`, `1-3`), **diapositiva**, **hoja** o **apartado**; los documentos de más de 6 000 tokens se leen **por partes**. Todo error se contesta **con palabras** (documento ambiguo o inexistente con la lista de los que puede leer, ubicación inexistente con lo que sí hay, nada encontrado, biblioteca vacía) para que el agente se corrija. Cada llamada deja un evento `mcp` con la consulta y los documentos devueltos.
+- **Tests**: `test_knowledge_context.py` (14), `test_mcp_knowledge.py` (9, con el cliente MCP oficial contra un backend real) y, en `test_knowledge_e2e.py`, el criterio principal de la fase (**CA1**): una tarea cuya respuesta solo está en un PDF del proyecto; el CLI falso (con un cliente MCP de verdad) ve el documento en su contexto, lo busca y lo lee, y la ejecución registra las dos consultas. El CLI falso gana las directivas `BUSCA:` y `LEE:` y conoce `--add-dir`.
+- **Hallazgo**: el CLI falso tomaba la carpeta de `--add-dir` como el *prompt*, lo que rompía los tests de `agy` en cuanto todas las ejecuciones llevaban carpetas adicionales; el CLI real sí sabe que es una opción con valor.
+
+### Cómo retomar: bloque 7 (describir imágenes con IA, opcional)
+1. **Ajustes**: ya existen `describe_images` y `describer` («cli» o «local»); falta `describer_cli`, `describer_account` y `describer_model` (por defecto, como el decisor: el primer CLI con sesión y su modelo más barato) y `GET/PUT /settings/knowledge`.
+2. **`services/knowledge/describe.py`**: `Describer` (protocolo) con `CliDescriber` (de `spikes/scenarios/knowledge_describe.py` y `services/decider.py`: `claude -p … --tools Read --allowedTools Read --strict-mcp-config --no-session-persistence --max-budget-usd 0.10` o `agy -p … --output-format json`, con la imagen copiada a una carpeta temporal; comprueba `usage_limits.blocked` antes; registra una `Run` `kind=describe` por imagen) y `LlamaDescriber`.
+3. **`services/localmodels/llama.py`**: `LlamaServer` arranca `llama-server` (motor `llama-cpp` + modelo de visión y `mmproj` elegidos, `-c 4096 -t <hilos> --host 127.0.0.1 --port <libre> --no-webui -ngl 0 --jinja`), espera `/health`, comprueba que hay memoria libre (modelo + proyector + margen), lo para tras 60 s sin trabajo y al cerrar la app; `POST /v1/chat/completions` con la imagen como *data URI* y `chat_template_kwargs: {"enable_thinking": false}`.
+4. **Paso `describing` en la pipeline** (tras el OCR y antes del índice): solo imágenes de documento y de fichero (no páginas escaneadas), según `doc.describe_images` o el ajuste; progreso «n de m»; la descripción va bajo la imagen como `> Descripción generada: …` y en `KnowledgeImage.description`/`described_by`. Si la cuenta está bloqueada o falla todo: avisos `describe_blocked` y `describe_failed`, documento `ready`.
+5. **Tests**: parseo con ejecutores falsos, `Run` registrada y contada, bloqueo por límite diario, un servidor falso compatible con OpenAI para el ciclo de vida de `llama-server` (arranque, parada por inactividad, poca memoria, no arranca), el paso en la pipeline con descriptor falso y el reprocesado que quita las descripciones.
 
 ### Entorno y trampas
 - **Material de los spikes** (ignorado por git, **11 GB**): `spikes/knowledge/models/` (e5-small, EmbeddingGemma 2, bge-m3, Qwen3.5-2B/4B, Gemma 4 E2B y `llama.cpp` b11720), `spikes/knowledge/.venv` y `out/`. Sirve para probar con modelos reales; se puede borrar sin perder nada que no se pueda volver a bajar (`s4_download.py`, `s6_download.py`). Hugging Face además guarda caché en `~/.cache/huggingface`.

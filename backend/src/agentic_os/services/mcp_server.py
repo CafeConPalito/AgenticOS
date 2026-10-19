@@ -64,6 +64,8 @@ class AgentBackend(Protocol):
         self, run_id: str, summary: str, verdict: Verdict, reject_to: str = ""
     ) -> str | None: ...
     def write_project_memory(self, run_id: str, note: str) -> None: ...
+    def search_knowledge(self, run_id: str, query: str, limit: int) -> str: ...
+    def read_knowledge(self, run_id: str, document: str, location: str, part: int) -> str: ...
     def request_human(self, run_id: str, title: str, detail: str, options: list[str]) -> str: ...
     def spawn_subagent(self, run_id: str, prompt: str, agent_name: str) -> str: ...
     def create_subtask(self, run_id: str, title: str, description: str, agent_name: str) -> str: ...
@@ -213,6 +215,25 @@ def build_mcp(backend: AgentBackend) -> MCPServer:
         que debe hacerse después o que hará otro agente (`agent`, por su nombre)."""
         return await call(
             backend.create_subtask, _run_id(ctx), _clip(title)[:200], _clip(description), agent
+        )
+
+    @server.tool()
+    async def search_knowledge(query: str, ctx: Context, limit: int = 8) -> str:
+        """Busca en los documentos de conocimiento que la persona te ha dado (manuales,
+        especificaciones, páginas web, hojas de cálculo, imágenes…). `query`: una pregunta
+        o un código exacto (`ERR_4012`, `/v2/facturas`); devuelve los pasajes más
+        relevantes, con su documento y su lugar. `limit`: cuántos (1 a 20)."""
+        return await call(backend.search_knowledge, _run_id(ctx), _clip(query), limit)
+
+    @server.tool()
+    async def read_knowledge(document: str, ctx: Context, location: str = "", part: int = 1) -> str:
+        """Lee un documento de conocimiento. `document`: su título o el identificador que
+        aparece entre corchetes. `location` (opcional): una página (`12`), una diapositiva
+        (`diapositiva 3`), una hoja (`hoja Ventas`) o el título de un apartado. Los
+        documentos largos se leen por partes: `part` indica cuál (la respuesta dice cuántas
+        hay)."""
+        return await call(
+            backend.read_knowledge, _run_id(ctx), _clip(document), _clip(location), part
         )
 
     @server.tool()

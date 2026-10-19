@@ -127,7 +127,7 @@ def parse_argv(argv: list[str]) -> tuple[str, dict[str, list[str]]]:
         if current in VALUE_OPTIONS and not options[current]:
             options[current].append(arg)
             current = None
-        elif current == "--allowedTools":
+        elif current in ("--allowedTools", "--add-dir"):  # variadic: every value is theirs
             options[current].append(arg)
         elif current == "-i":
             positional.append(arg)
@@ -442,6 +442,17 @@ def use_tools(text: str) -> int | None:
             continue
         if keyword == "PERMISO":
             out(f"● permission {'granted' if permission_dialog(value) else 'denied'}: {value}")
+            continue
+        if keyword == "BUSCA" and MCP_URL is not None:  # phase 14: `BUSCA: consulta|archivo`
+            query, _, target = value.rpartition("|")
+            Path(target).write_text(mcp("search_knowledge", {"query": query}), "utf-8")
+            out(f"● MCP search_knowledge: {query}")
+            continue
+        if keyword == "LEE" and MCP_URL is not None:  # `LEE: documento|ubicación|archivo`
+            document, location, target = [*value.split("|"), "", ""][:3]
+            args_r = {"document": document, "location": location}
+            Path(target or location).write_text(mcp("read_knowledge", args_r), "utf-8")
+            out(f"● MCP read_knowledge: {document}")
             continue
         if keyword == "CONTEXTO" and MCP_URL is not None:
             Path(value).write_text(mcp("get_context", {}), "utf-8")

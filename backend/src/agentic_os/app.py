@@ -148,6 +148,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             mode=settings.knowledge_processing,
         )
         app.state.knowledge_events, app.state.knowledge = knowledge_events, knowledge
+        manager.knowledge = knowledge  # the agents' search_knowledge uses its search
         knowledge.start()
         models = DownloadManager(
             Path(settings.data_dir),

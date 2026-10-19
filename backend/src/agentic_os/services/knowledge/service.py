@@ -22,6 +22,7 @@ from agentic_os.db.base import DEFAULT_WORKSPACE
 from agentic_os.models import DocStatus, KnowledgeDoc
 from agentic_os.schemas.knowledge import read_doc
 from agentic_os.services.knowledge import config as knowledge_config
+from agentic_os.services.knowledge import context as knowledge_context
 from agentic_os.services.knowledge import embeddings, search
 from agentic_os.services.knowledge.docs import IN_PROGRESS
 from agentic_os.services.knowledge.errors import KnowledgeError
@@ -75,6 +76,7 @@ class KnowledgeService:
     # ------------------------------------------------------------------ life cycle
     def start(self) -> None:
         self.recover()
+        knowledge_context.clean_all(self.data_dir)  # no run is alive yet
         if self.mode == "off":
             return
         with self.sessions() as db:

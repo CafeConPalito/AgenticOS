@@ -135,3 +135,44 @@ def test_search_by_meaning_works_with_the_real_model(tmp_path: Path):
             ask("¿Cada cuánto hacen un respaldo de mis datos?")["hits"][0]["title"] == "copias.md"
         )
         assert ask("ERR_5103")["hits"][0]["title"] == "errores.md"
+
+
+def test_an_agent_uses_a_pdf_of_the_project_to_answer(tmp_path: Path):
+    """CA1: a task whose answer is only in a PDF of the project. The agent (the fake CLI, with a
+    real MCP client) sees the document in its context, searches it and reads a page."""
+    from test_hitl_e2e import setup
+
+    manual = tmp_path / "docs" / "manual.pdf"
+    manual.parent.mkdir()
+    shutil.copy(FIXTURES / "manual.pdf", manual)
+    project_folder = tmp_path / "web-claude"
+    with live_server(settings_for(tmp_path)) as server:
+        api = Api(server)
+        agent, project = setup(api, tmp_path, "claude")
+        api.post(
+            "/api/knowledge/docs/files",
+            {"scope": "project", "project_id": project, "paths": [str(manual)]},
+        )
+        assert wait_until(
+            lambda: {d["status"] for d in api.get("/api/knowledge/docs")} == {"ready"}, timeout=120
+        )
+        title = (
+            "cómo darse de baja; CONTEXTO: ctx.txt; BUSCA: dar de baja la suscripción|busca.txt; "
+            "LEE: manual||pagina.txt; TERMINA: respondido"
+        )
+        task = api.post("/api/tasks", {"project_id": project, "agent_id": agent, "title": title})
+        done = api.wait_status(task["id"], "done")
+
+        context = (project_folder / "ctx.txt").read_text("utf-8")
+        assert "## Conocimiento" in context and "**manual.pdf**" in context
+        answer = (project_folder / "busca.txt").read_text("utf-8")
+        assert "manual.pdf" in answer and "Cancelación de la suscripción" in answer
+        assert "pulse Dar de baja" in answer
+        whole = (project_folder / "pagina.txt").read_text("utf-8")
+        assert "Cancelación de la suscripción" in whole  # the whole PDF, by pages
+
+        events = api.get(f"/api/runs/{done['last_run_id']}/events")
+        names = [e["name"] for e in events if e["kind"] == "mcp"]
+        assert "search_knowledge" in names and "read_knowledge" in names
+        detail = next(e["detail"] for e in events if e["name"] == "search_knowledge")
+        assert "manual.pdf" in detail  # the run says which documents it consulted
