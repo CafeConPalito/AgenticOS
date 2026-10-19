@@ -1,6 +1,6 @@
 # Fase 15: Ampliación del conocimiento · Spec
 
-- **Estado**: borrador
+- **Estado**: aprobada
 - **Rama**: `phase/15-ampliacion-conocimiento`
 
 ## Objetivo
@@ -77,9 +77,10 @@ Que la biblioteca de conocimiento **crezca con el trabajo de los agentes** y que
 - **Coste del cálculo de relaciones**: comparar todos con todos es cuadrático. Se usan **vectores medios por documento** y vecinos más próximos con tope; hay que medir con 300–1 000 documentos y con el cambio de modelo (recalcular todo).
 - **Calidad del parecido**: un umbral mal puesto llena el grafo de aristas inútiles o lo deja vacío. Se calibra con el corpus de prueba y se deja ajustable; los documentos sin vectores (sin modelo de significado) solo tienen aristas de procedencia.
 - **Rendimiento del dibujo**: `@xyflow/react` con cientos de nodos y un *layout* de fuerzas necesita cuidado (cálculo fuera del hilo principal o por lotes, agrupación por nivel, ocultar aristas débiles al alejar). Posible spike al inicio.
-- **Preguntas para decidir en el plan** (con la recomendación entre paréntesis):
-  1. ¿El agente puede **sugerir el nivel** o lo decide siempre el usuario? (sugiere, decide el usuario).
-  2. ¿La propuesta es una **petición de la Inbox** (como una aprobación) o solo una lista en la biblioteca con un aviso? (ambas: aviso en la Inbox y revisión en la biblioteca, sin bloquear la tarea).
-  3. ¿Una **versión nueva** de lo propuesto reemplaza o convive con la anterior? (convive hasta que el usuario elija «Reemplazar»).
-  4. ¿El grafo global mezcla **todos los proyectos** o se filtra por proyecto por defecto? (por defecto lo visible desde el contexto actual; opción «todo»).
-  5. ¿Se guarda en el Markdown propuesto el **bloque de procedencia** (para que sobreviva si se exporta) o solo en la base de datos? (solo en la base de datos y en la ficha; el Markdown queda limpio).
+
+## Decisiones tomadas (al aprobar la spec, 2026-10-19)
+1. **Nivel**: el agente puede **sugerirlo**; lo decide siempre el usuario al aceptar (por defecto, el del documento de origen).
+2. **Dónde se revisa**: **ambos sitios**. Aviso en la Inbox y revisión en la biblioteca (filtro «Propuestos»), sin bloquear la tarea del agente.
+3. **Versión nueva de lo propuesto**: **convive** con la anterior hasta que el usuario elija «Reemplazar».
+4. **Alcance del grafo**: por defecto, lo **visible desde el contexto actual** (general + el proyecto o agente abiertos); opción «Todo» para ver toda la biblioteca.
+5. **Procedencia**: solo en la **base de datos** y en la ficha; el Markdown propuesto queda limpio.
