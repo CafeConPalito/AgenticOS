@@ -1,10 +1,12 @@
 """Knowledge library (phase 14): documents by reference."""
 
+import asyncio
+import contextlib
 import webbrowser
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, Request, status
+from fastapi import APIRouter, Depends, Query, Request, WebSocket, WebSocketDisconnect, status
 from fastapi.responses import FileResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -26,12 +28,17 @@ from agentic_os.schemas.knowledge import (
 )
 from agentic_os.services.knowledge import config as knowledge_config
 from agentic_os.services.knowledge import docs, formats
+from agentic_os.services.knowledge.service import KnowledgeService
 from agentic_os.services.proc import open_in_file_manager as open_path
 from agentic_os.services.proc import reveal_in_file_manager as reveal_path
 
 router = APIRouter(tags=["knowledge"])
 DbSession = Annotated[Session, Depends(get_session)]
 LEVEL_FIELDS = {"scope", "project_id", "agent_id"}
+
+
+def service(request: Request) -> KnowledgeService:
+    return request.app.state.knowledge
 
 
 def images_dir(request: Request) -> Path:
@@ -70,7 +77,7 @@ def get_doc(doc_id: str, db: DbSession) -> DocRead:
 
 # --------------------------------------------------------------------------- adding
 @router.post("/knowledge/docs/files", status_code=status.HTTP_201_CREATED)
-def add_files(payload: AddFiles, db: DbSession) -> list[AddItem]:
+def add_files(payload: AddFiles, request: Request, db: DbSession) -> list[AddItem]:
     results = docs.add_files(
         db,
         payload.scope,
@@ -80,6 +87,7 @@ def add_files(payload: AddFiles, db: DbSession) -> list[AddItem]:
         knowledge_config.load(db),
     )
     db.commit()
+    service(request).poke()
     return [
         AddItem(
             path=r.path,
@@ -92,9 +100,10 @@ def add_files(payload: AddFiles, db: DbSession) -> list[AddItem]:
 
 
 @router.post("/knowledge/docs/url", status_code=status.HTTP_201_CREATED)
-def add_url(payload: AddUrl, db: DbSession) -> DocRead:
+def add_url(payload: AddUrl, request: Request, db: DbSession) -> DocRead:
     doc = docs.add_url(db, payload.scope, payload.project_id, payload.agent_id, payload.url)
     db.commit()
+    service(request).poke()
     return read_doc(doc)
 
 
@@ -118,14 +127,28 @@ def update_doc(doc_id: str, payload: DocUpdate, db: DbSession) -> DocRead:
 def delete_doc(doc_id: str, request: Request, db: DbSession) -> None:
     docs.remove(db, docs.get_doc(db, doc_id), images_dir(request))
     db.commit()
+    request.app.state.knowledge_events.doc_removed(doc_id)
 
 
 @router.post("/knowledge/docs/{doc_id}/relocate")
-def relocate_doc(doc_id: str, payload: Relocate, db: DbSession) -> RelocateRead:
+def relocate_doc(doc_id: str, payload: Relocate, request: Request, db: DbSession) -> RelocateRead:
     doc = docs.get_doc(db, doc_id)
     reprocess = docs.relocate(db, doc, payload.path, knowledge_config.load(db), payload.confirm)
     db.commit()
+    if reprocess:
+        service(request).poke()
     return RelocateRead(doc=read_doc(doc), reprocess=reprocess)
+
+
+@router.post("/knowledge/docs/{doc_id}/reprocess")
+def reprocess_doc(doc_id: str, request: Request, db: DbSession) -> DocRead:
+    """Converts and indexes the document again (after a failure, a change of the original…)."""
+    doc = docs.get_doc(db, doc_id)
+    docs.reprocess(doc)
+    db.commit()
+    service(request).poke()
+    request.app.state.knowledge_events.doc(read_doc(doc).model_dump(mode="json"))
+    return read_doc(doc)
 
 
 # ---------------------------------------------------------------------- the content
@@ -169,3 +192,56 @@ def reveal_doc(doc_id: str, db: DbSession) -> None:
     path = docs.original_path(db, docs.get_doc(db, doc_id))
     db.commit()
     reveal_path(str(path))
+
+
+# ------------------------------------------------------------------------------ the queue
+@router.get("/knowledge/queue")
+def get_queue(request: Request) -> dict:
+    """`{paused, queued, active: [doc ids], mode}`."""
+    return service(request).state()
+
+
+@router.get("/knowledge/system")
+def get_system(request: Request) -> dict:
+    """`{cpu, memory, gpu}` of the machine and the app's share of each (`gpu: null` if it cannot
+    be read). The same figures arrive as `system` events while documents are processed."""
+    return service(request).system()
+
+
+@router.post("/knowledge/queue/pause")
+def pause_queue(request: Request) -> dict:
+    service(request).pause()
+    return service(request).state()
+
+
+@router.post("/knowledge/queue/resume")
+def resume_queue(request: Request) -> dict:
+    service(request).resume()
+    return service(request).state()
+
+
+@router.websocket("/knowledge/events")
+async def events(websocket: WebSocket) -> None:
+    """`{"type": "doc", "doc": …}` as a document changes, `{"type": "doc_removed", "id": …}` and
+    `{"type": "queue", paused, queued, active}`."""
+    await websocket.accept()
+    hub = websocket.app.state.knowledge_events
+    queue = hub.subscribe()
+    listening = asyncio.ensure_future(websocket.receive_text())  # only to notice the client leaving
+    try:
+        while True:
+            getting = asyncio.ensure_future(queue.get())
+            done, _ = await asyncio.wait({getting, listening}, return_when=asyncio.FIRST_COMPLETED)
+            if listening in done:
+                getting.cancel()
+                listening.result()  # raises WebSocketDisconnect when the client left
+                listening = asyncio.ensure_future(websocket.receive_text())
+                continue
+            await websocket.send_json(getting.result())
+    except WebSocketDisconnect:
+        pass
+    finally:
+        hub.unsubscribe(queue)
+        listening.cancel()
+        with contextlib.suppress(Exception):
+            await websocket.close()

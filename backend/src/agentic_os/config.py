@@ -62,6 +62,9 @@ class Settings(BaseSettings):
     # Asks each CLI at startup whether its accounts are logged in (phase 10). Tests turn it off:
     # it would run the real CLIs.
     check_sessions_at_startup: bool = True
+    # Where the knowledge library converts documents (phase 14): "subprocess" (a low-priority
+    # worker process), "inline" (inside the backend) or "off" (nothing runs by itself: tests).
+    knowledge_processing: str = "subprocess"
 
 
 @lru_cache

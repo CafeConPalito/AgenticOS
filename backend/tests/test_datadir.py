@@ -60,6 +60,13 @@ def test_disk_usage_by_kind(tmp_path: Path):
     assert usage.logs == len("log")
     assert usage.database > 0
     assert usage.total == usage.database + usage.sessions + usage.logs
+    # The knowledge library and the downloaded models have their own share (phase 14).
+    for folder, size in (("knowledge/images", 5), ("models/e5", 7), ("engines/llama", 11)):
+        (tmp_path / folder).mkdir(parents=True)
+        (tmp_path / folder / "f").write_bytes(b"x" * size)
+    again = datadir.disk_usage(tmp_path)
+    assert (again.knowledge, again.models) == (5, 18)
+    assert again.total == usage.total + 23
 
 
 # ---------------------------------------------------------------- request
@@ -155,6 +162,7 @@ def test_api_shows_the_folder_and_its_size(client: TestClient, settings):
     data = client.get("/api/settings/data-dir", params={"refresh": True}).json()
     assert data["path"] == str(settings.data_dir)
     assert data["sessions_bytes"] == len("terminal")
+    assert (data["knowledge_bytes"], data["models_bytes"]) == (0, 0)
     assert data["total_bytes"] >= data["database_bytes"] > 0
 
 

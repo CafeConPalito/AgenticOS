@@ -35,6 +35,7 @@ from agentic_os.services.knowledge.config import KnowledgeSettings
 from agentic_os.services.paths import normalize
 
 TITLE_MAX = 200
+IN_PROGRESS = (DocStatus.CONVERTING, DocStatus.IMAGES, DocStatus.DESCRIBING, DocStatus.INDEXING)
 
 
 @dataclass
@@ -181,6 +182,12 @@ def add_files(
     return results
 
 
+def default_url_title(url: str) -> str:
+    """What a web address is called until its page gives a title: host and path."""
+    parts = urlparse(url)
+    return _title_of(parts.netloc + parts.path.rstrip("/"))
+
+
 def add_url(
     db: Session, scope: str, project_id: str | None, agent_id: str | None, url: str
 ) -> KnowledgeDoc:
@@ -191,12 +198,11 @@ def add_url(
         raise ApiError(422, "invalid_url", "use a full http(s) address", "url")
     if url in _keys_at_level(db, scope, project_id, agent_id):
         raise ApiError(409, "already_added", "the address is already in the level", "url")
-    tail = parts.path.rstrip("/")
     doc = KnowledgeDoc(
         scope=scope,
         project_id=project_id,
         agent_id=agent_id,
-        title=_title_of(parts.netloc + tail),
+        title=default_url_title(url),
         source_kind=SourceKind.URL,
         url=url,
         checked_at=utcnow(),
@@ -277,6 +283,16 @@ def relocate(
         doc.status = DocStatus.QUEUED
         doc.error_code = doc.error_message = None
     return not same
+
+
+def reprocess(doc: KnowledgeDoc) -> None:
+    """Puts the document back in the queue. What it had (its Markdown) stays until the new run
+    succeeds."""
+    if doc.status in IN_PROGRESS:
+        raise ApiError(409, "processing", "the document is being processed right now")
+    doc.status = DocStatus.QUEUED
+    doc.progress_done = doc.progress_total = 0
+    doc.error_code = doc.error_message = None
 
 
 def move(

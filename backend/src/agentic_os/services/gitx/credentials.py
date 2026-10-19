@@ -49,5 +49,15 @@ def store(host: str, token: str) -> None:
         raise GitxError("git_failed", "git could not store the token", result.stderr)
 
 
+def forget(host: str) -> None:
+    """Removes the token git keeps for `host`."""
+    token = token_for(host)
+    if token:
+        _git(
+            ["credential", "reject"],
+            f"protocol=https\nhost={host}\nusername={USERNAME}\npassword={token}\n\n",
+        )
+
+
 def has_token(host: str) -> bool:
     return token_for(host) is not None
