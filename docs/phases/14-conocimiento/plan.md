@@ -1,7 +1,7 @@
 # Fase 14: Conocimiento · Plan técnico
 
 - **Spec**: [spec.md](spec.md)
-- **Estado**: aprobado (2026-10-18) · en desarrollo (bloques 0 y 1 hechos; sigue el 2)
+- **Estado**: aprobado (2026-10-18) · en desarrollo (bloques 0 a 3 hechos; sigue el 4)
 
 ## Lo que ya se sabe (revisado al escribir el plan)
 - **Contexto** (`services/context.py`): `build_instructions` monta las instrucciones por secciones (rol, proyecto, repos, git, memoria, tarea, subagente, reglas). El conocimiento es una sección más, después de la memoria. `get_context` devuelve lo mismo.
@@ -99,7 +99,7 @@ No hay copias de los originales ni ficheros intermedios. El Markdown y el índic
    
    `pdfminer` y `pandas` no se empaquetan (S1).
 3. **Imágenes** (paso común, `images.py`): recorre los *data URI* del Markdown y, para cada uno:
-   - descarta los pequeños (menos de 64×64 px o de 4 KB) y los repetidos (`sha256`);
+   - descarta los pequeños (de menos de 64 px de lado) y los repetidos (`sha256`);
    - guarda el fichero en `images/` y sustituye el *data URI* por `![Figura, p. 12](kimg:<id>)`;
    - le pasa el OCR y escribe el texto debajo como bloque citado (`> Texto de la imagen: …`);
    - si toca describir (§7), añade la descripción marcada como «Descripción generada».
@@ -252,13 +252,13 @@ Cada bloque se cierra con sus tests en verde y un commit (o varios) en `phase/14
    - modelo y migración `0016`;
    - añadir, editar, mover, quitar, presencia, reubicar, `original`, `open` y `reveal`;
    - API sin procesado (los documentos se quedan en cola).
-2. [ ] **Pipeline y conversión**:
+2. [x] **Pipeline y conversión**:
    - proceso de trabajo, cola, pausa y recuperación al arrancar;
    - MarkItDown y el plugin de PDF;
    - progreso, fallos con su código, reprocesar;
    - `KnowledgeEvents` y el WebSocket;
    - `system_stats`.
-3. [ ] **Modelos locales**: catálogo, descargas, selección, *token* de Hugging Face y API.
+3. [x] **Modelos locales**: catálogo, descargas, selección, *token* de Hugging Face y API.
 4. [ ] **Imágenes y OCR**: extracción, deduplicación, marcas `kimg:`, OCR de imágenes y de páginas escaneadas.
 5. [ ] **Índice y búsqueda**: troceado, FTS5, *embeddings*, búsqueda híbrida, `reindex` al cambiar de modelo y búsqueda de prueba.
 6. [ ] **Contexto y MCP**:
@@ -278,8 +278,8 @@ Cada bloque se cierra con sus tests en verde y un commit (o varios) en `phase/14
     - `/code-review`;
     - `validacion.md`.
 
-## Estado del desarrollo (traspaso, 2026-10-18)
-**Hecho**: bloque 0 (commit `40ff7f8`) y bloque 1. **Siguiente**: bloque 2 (pipeline y conversión).
+## Estado del desarrollo (traspaso, 2026-10-19)
+**Hecho**: bloque 0 (commit `40ff7f8`), bloque 1 (`f0dd7de`), bloque 2 y bloque 3. **Siguiente**: bloque 4 (imágenes y OCR).
 
 ### Bloque 1 · qué hay y qué se decidió al hacerlo
 - **Código nuevo** (`backend/src/agentic_os/`): `models/knowledge.py` (`KnowledgeDoc`, `KnowledgeChunk`, `KnowledgeImage` y sus enums), migración `0016_knowledge`, `services/knowledge/{formats,config,docs}.py`, `schemas/knowledge.py` y `api/knowledge.py` (registrado en `api/__init__.py`). Cambios menores: `RunKind.DESCRIBE`, la clave `KNOWLEDGE` de `app_state`, `reveal_in_file_manager` en `services/proc.py`.
@@ -293,16 +293,59 @@ Cada bloque se cierra con sus tests en verde y un commit (o varios) en `phase/14
   5. `GET …/original` responde con `Content-Disposition: inline; filename=…` y `X-Content-Type-Options: nosniff`; los textos y el código se sirven como `text/plain` (un `.html` se ve como código, nunca se ejecuta).
   6. `runs.kind` es `String(8)` sin `CHECK`: «describe» (8 letras) cabe y **no hizo falta tocar `runs`**. Las listas y los diffs ya filtran por `kind == agent`.
 
-### Cómo retomar: bloque 2 (pipeline y conversión)
-1. **Dependencias** (`backend/pyproject.toml`): `markitdown[docx,pptx]`, `openpyxl`, `pypdfium2`, `trafilatura`, `numpy`, `onnxruntime`, `tokenizers`, `rapidocr`, `psutil` (lista del plan, sin `pandas` ni `pdfminer`). Empaquetado: las banderas de PyInstaller que funcionaron en S1 están en `spikes/knowledge/s1_build.sh` y la variante recortada es: `--collect-submodules markitdown --collect-data markitdown --collect-all magika --collect-submodules rapidocr` + `config.yaml` y `default_models.yaml` de `rapidocr` como datos, `--collect-data pptx --collect-data docx --collect-all pypdfium2 --collect-all pypdfium2_raw` y `--exclude-module pandas --exclude-module pdfminer`. Las rutas de `--add-data` deben ser **relativas** (Git Bash pasa `/d/…` y PyInstaller no lo entiende).
-2. **Esqueleto del trabajador**: `spikes/knowledge/probe_worker.py` (proceso relanzado con `--worker`, líneas JSON, prioridad `BELOW_NORMAL`, **UTF-8 forzado** en `stdin`/`stdout`). En el producto el modo es `--knowledge-worker` en `packaging/entry.py`. En los tests, `InlineWorker` (mismo proceso).
-3. **Piezas de los spikes que se llevan al producto**: `s2_pdf.py` (PDF por páginas, detección de escaneadas, render, imágenes incrustadas), `s3_ocr.py` (RapidOCR latino; los modelos se pedirán al gestor de modelos del bloque 3 — hasta entonces, en desarrollo, pueden salir de `spikes/knowledge/.venv/…/rapidocr/models`), `s1_urls.py` (`trafilatura`) y `s5_fts.py`/`s4_embed_eval.py` (FTS5 y *embeddings*, para el bloque 5).
-4. **Orden sugerido**: (a) `convert.py` con los conversores registrados en MarkItDown y tests con el corpus (`spikes/knowledge/make_corpus.py` lo genera; copiar versiones pequeñas a `backend/tests/knowledge/corpus/`); (b) `pipeline.py` por pasos con `KnowledgeError(code, mensaje)` y progreso; (c) cola y trabajador, pausa y recuperación al arrancar; (d) `events.py` (patrón de `gitx/events.py`) y `/knowledge/events`; (e) `POST …/reprocess`, `POST /knowledge/queue/pause|resume`; (f) `system_stats.py` (S8: `s8_gpu.py` ya lee la GPU por PDH).
-5. **Ganchos existentes**: `app.py` crea los servicios en el `lifespan` (ver `GitEvents`, `DecisionService`); `services/decider.py` es el modelo de «hilo + `Run` de consumo» para el describidor del bloque 7.
+### Bloque 2 · qué hay y qué se decidió al hacerlo
+- **Código nuevo** (`backend/src/agentic_os/services/knowledge/`):
+  - `convert.py`: MarkItDown con solo los conversores que queremos (Word y PowerPoint de MarkItDown) más los propios, con prioridad -1: `PdfPagesConverter` (`pypdfium2`), `XlsxConverter` (`openpyxl`), `HtmlMainConverter` (`trafilatura`, con el HTML genérico de respaldo), `ImageFileConverter` y `TextConverter` (texto y código; el código va en un bloque con vallas para que un `# comentario` no sea un título).
+  - `images.py` (`ImageCollector`, `extract_data_uris`), `errors.py` (`KnowledgeError` con los códigos), `worker.py` (protocolo, `InlineWorker`, `ProcessWorker`, `serve`), `pipeline.py`, `service.py` (la cola), `events.py`.
+  - `services/system_stats.py` (CPU, memoria y GPU por PDH) y `packaging/entry.py` (`--knowledge-worker`).
+- **API nueva**: `POST …/{id}/reprocess`, `GET /knowledge/queue`, `POST /knowledge/queue/pause|resume`, `GET /knowledge/system`, y el WebSocket `/knowledge/events` (`doc`, `doc_removed`, `queue` y `system`).
+- **Ajuste nuevo** `Settings.knowledge_processing`: `subprocess` (por defecto), `inline` u `off` (los tests: nada corre solo y llaman a `service.run_pending()`).
+- **Tests** (`backend/tests/`): `test_knowledge_convert.py` (21), `test_knowledge_pipeline.py` (35), `test_system_stats.py` (8) y `test_knowledge_e2e.py`, que también sirve con el binario empaquetado (`AGENTIC_OS_E2E_BINARY`). Corpus pequeño en `tests/fixtures/knowledge/`.
+- **Empaquetado**: `scripts/build-backend.ps1` incluye las librerías nuevas. El *sidecar* pasa de 30,5 a **87 MB** (aún sin OCR ni *embeddings*). El e2e con el binario real convierte los 9 formatos con su propio trabajador. **FTS5 existe en el SQLite empaquetado**: la migración `0016` lo usa al arrancar.
+- **Desviaciones del diseño** (por qué):
+  1. **MarkItDown sin sus conversores genéricos y con una sola pista de formato** (`MarkItDown(enable_builtins=False)` + `_convert(stream_info_guesses=[info])`, método interno: la versión está fijada en `uv.lock`). Con el comportamiento normal, un `.docx` dañado que fuera texto «se convertía» como texto plano, porque MarkItDown reintenta con lo que adivina del contenido (`magika`). Lo cubre `test_a_failure_is_marked_with_its_reason`.
+  2. **Codificación del texto**: UTF-8, luego Windows-1252 y solo después el detector; se ignora la pista de `charset` de MarkItDown, que acierta mal en textos cortos en español (leía `ñ` como `ń`). En HTML se usa el decodificador de `trafilatura`, que lee la codificación declarada en la página.
+  3. **Se quitó el filtro de imágenes por bytes** (4 KB): descartaba diagramas sencillos de colores planos. Basta el lado mínimo de 64 px (iconos, viñetas y separadores).
+  4. **Las imágenes se encuentran y se miden, pero aún no se guardan**: salen del conversor a una carpeta de trabajo y el Markdown lleva `![alt](kimg:N)`; la carpeta se borra al acabar. El documento queda `ready` tras convertir. Hasta el **bloque 4** esas referencias no apuntan a nada.
+  5. **El título de un PDF o de un fichero no sustituye al nombre**; solo una URL toma el título de su página (y solo si el usuario no lo cambió). `trafilatura` prefiere el `<h1>` al `<title>`.
+  6. **La cola es la base de datos**: reclamar un documento es un `UPDATE … WHERE status = 'queued'` (dos hilos nunca cogen el mismo) y al arrancar lo que estaba a medias vuelve a `queued`. La **pausa vive en memoria** (no sobrevive a un reinicio). La **concurrencia** (`knowledge.concurrency`) se lee al arrancar: cambiarla pide reiniciar.
+  7. **El trabajador** sale a los 60 s sin trabajo (libera su memoria), muere si una petición pasa de 20 minutos, y un trabajador que se cae es un `convert_error` («prueba otra vez»), nunca un cuelgue. Los avisos de progreso se escriben como mucho cada 0,25 s por documento.
+  8. **`onnxruntime` del backend es la 1.20.1** (la fija `magika`), no la 1.31 de los spikes. Hay que comprobarlo con EmbeddingGemma 2 y bge-m3 en el bloque 5.
+
+### Bloque 3 · qué hay y qué se decidió al hacerlo
+- **Código nuevo** (`backend/src/agentic_os/services/localmodels/`):
+  - `catalog.py`: las 8 entradas (`e5-small`, `embeddinggemma-2`, `bge-m3`, `ocr-latin`, `gemma4-e2b`, `qwen3.5-2b`, `qwen3.5-4b` y `llama-cpp`), cada fichero con URL, tamaño y `sha256`;
+  - `_pins.py`: los datos de Hugging Face, **generados** por `spikes/knowledge/s10_emit_catalog.py` a partir de `s10_catalog_hashes.py` (revisión exacta del repositorio y hash de cada fichero, comprobado contra el de LFS). No se teclea ningún hash a mano;
+  - `store.py` (carpeta de cada modelo, `manifest.json`, «está instalado», uso de disco), `downloads.py` (`DownloadManager`), `selection.py` (qué modelo hace cada trabajo) y `hf_token.py`.
+- **API nueva** (`api/local_models.py`): `GET /local-models` (todas las entradas con su estado y el disco usado y libre), `POST /local-models/{id}/download|cancel`, `DELETE /local-models/{id}`, `GET|PUT /settings/local-models` (la elección; devuelve `reindex: true` si cambia el modelo de *embeddings*) y `GET|PUT /settings/huggingface-token`. Evento `model` en `/knowledge/events`.
+- **Tests**: `test_local_models.py` (26): catálogo fijado, descarga completa, hash incorrecto, reanudación tras cortes y con un servidor que ignora `Range`, cancelar, espejo de respaldo, errores HTTP, falta de espacio, desempaquetado seguro del motor, *token* solo a Hugging Face, elección y API. También se amplió `test_datadir.py`.
+- **Comprobado con las fuentes reales** ([evidencia](evidencias/m3-descargas-reales.md)): OCR desde `modelscope.cn` (18,4 MB), `llama.cpp` desde GitHub (19,7 MB, desempaquetado: `llama-server.exe` queda en `engines/llama-cpp/bin/`) y e5-small desde Hugging Face, cancelado al 37 % y reanudado.
+- **Desviaciones del diseño** (por qué):
+  1. **Descarga de e5-small: 135 MB, no 118**: el modelo (118 MB) más su `tokenizer.json` (17 MB). Con los demás pasa igual (EmbeddingGemma 2: 207 MB, bge-m3: 587 MB).
+  2. **Cada fichero se fija a una revisión exacta** (`resolve/<sha de 40 letras>/…`, nunca `main`), y los dos `config.json` que no son LFS se comprobaron contra lo probado en los spikes. Los `config.json` no se descargan porque la app no los usa.
+  3. **La reanudación se verifica al final de cada fichero** (un paso extra de lectura para el `sha256`, unos segundos para los más grandes) en lugar de ir calculándolo mientras se descarga, porque así vale también para lo que quedó a medias de otro intento.
+  4. **Un fallo se recuerda solo durante la ejecución actual**: tras reiniciar la app, un modelo a medias vuelve a verse como «parcial» (con los bytes que ya tiene) y se reanuda con un clic.
+  5. **Las descargas de modelos distintos son independientes y pueden ir a la vez**; no hay límite global. La UI del bloque 9 las pide de una en una.
+  6. **El motor `llama.cpp` ocupa 50 MB desempaquetado** (el zip, 20 MB, se borra). Solo hay build para Windows (`platforms=("win32",)`); `GET /local-models` marca `available: false` en otros sistemas.
+  7. **`reindex` es informativo hasta el bloque 5**: avisa de que cambia el modelo de *embeddings*; el reindexado real lo hace el índice.
+  8. `GET /settings/data-dir` incluye ahora `knowledge_bytes` y `models_bytes` (la UI de Ajustes › General, en el bloque 9).
+- **Decisión tomada (2026-10-19): los modelos de OCR van dentro del instalador.** Solo existen en `modelscope.cn` (sin espejo) y el OCR debe funcionar sin configurar nada ni tener internet. Cómo se hizo:
+  - `CatalogEntry.bundled` (solo `ocr-latin`). `services/localmodels/stage.py` descarga y verifica sus ficheros, con los mismos hashes fijados, en `backend/build/bundled/models/<id>/` durante `scripts/build-backend.ps1`, y PyInstaller los añade como `bundled_models`. Si la preparación falla, la construcción se detiene.
+  - En tiempo de ejecución, `store.bundled_folder` los busca en `sys._MEIPASS/bundled_models` (o en la carpeta de `AGENTIC_OS_BUNDLED_MODELS`, para los tests). Si están completos, el modelo cuenta como instalado y **se lee en el sitio**: nada se copia a la carpeta de datos. En desarrollo no hay paquete y se descarga como los demás.
+  - `GET /local-models` marca `bundled: true` (listo, no se puede borrar: `DELETE` da 409 `bundled`). Si el paquete estuviera dañado, vuelve a descargarlo.
+  - El *sidecar* crece unos 18 MB (ver el tamaño final en el cierre del bloque).
+
+### Cómo retomar: bloque 4 (imágenes y OCR)
+1. **Dependencias**: `rapidocr` (trae OpenCV y `onnxruntime`; añadir al `pyproject.toml` y a las banderas de PyInstaller: `--collect-submodules rapidocr` más `config.yaml` y `default_models.yaml` como datos, **sin** sus modelos, como en la variante recortada de S1). Ojo: el backend lleva `onnxruntime` 1.20.1 (lo fija `magika`); RapidOCR funcionó con 1.31 en los spikes, hay que comprobarlo con 1.20.1.
+2. **OCR** (`services/knowledge/ocr.py`): `RapidOCR(params={"Det.model_path": …, "Cls.model_path": …, "Rec.model_path": …, "Rec.lang_type": "latin", …})` apuntando a los ficheros de `selection.active(db, data_dir, "ocr")` (`store.file_path(...)` ya devuelve la copia incluida en el paquete cuando la hay), con hilos limitados según `knowledge.threads`. Sin el modelo: las imágenes se procesan sin texto y el documento avisa (`ocr_missing` es un aviso, no un fallo).
+3. **Paso «images» de la pipeline**: tras convertir, el trabajador devuelve las imágenes en `workdir/images`; el backend las guarda (`<datos>/knowledge/images/<sha256>.<ext>`, una vez por contenido), crea las filas `KnowledgeImage`, **reescribe `kimg:N` → `kimg:<id>`** en el Markdown, pasa el OCR (en el trabajador, con progreso «imagen n de m») y escribe el texto debajo de cada imagen como bloque citado (`> Texto de la imagen: …`). Las páginas escaneadas sustituyen su marca por el texto del OCR. El estado pasa por `images`.
+4. **Imágenes sueltas** (`source_kind = image`): la propia imagen no se copia (se queda por referencia); su fila `KnowledgeImage` lleva `file = None` y el OCR.
+5. Cuando exista el paso, el documento queda `ready` al final de él y la cola lo cuenta en `progress`.
+6. **Tests**: OCR real con `captura_error.png` y `manual_escaneado.pdf` (los modelos, con `AGENTIC_OS_BUNDLED_MODELS` apuntando a una carpeta con `ocr-latin/` preparada con `stage`, o los de `spikes/knowledge/.venv/…/rapidocr/models`), el paso con un OCR falso, deduplicación entre documentos, borrado de imágenes al quitar el documento, y el e2e empaquetado.
 
 ### Entorno y trampas
 - **Material de los spikes** (ignorado por git, **11 GB**): `spikes/knowledge/models/` (e5-small, EmbeddingGemma 2, bge-m3, Qwen3.5-2B/4B, Gemma 4 E2B y `llama.cpp` b11720), `spikes/knowledge/.venv` y `out/`. Sirve para probar con modelos reales; se puede borrar sin perder nada que no se pueda volver a bajar (`s4_download.py`, `s6_download.py`). Hugging Face además guarda caché en `~/.cache/huggingface`.
-- **Suite completa del backend**: tarda más de 10 minutos; lanzarla en segundo plano. Para el bloque: `cd backend && uv run pytest tests/test_knowledge_docs.py tests/test_migration_0016.py`.
+- **Suite completa del backend**: tarda más de 10 minutos; lanzarla en segundo plano. Para el conocimiento: `cd backend && uv run pytest tests/test_knowledge_*.py tests/test_migration_0016.py tests/test_system_stats.py`. Con el binario empaquetado: `npm run build:backend` y luego `AGENTIC_OS_E2E_BINARY=<ruta del sidecar> uv run pytest tests/test_knowledge_e2e.py`.
 - **Git Bash**: los heredocs largos con comillas fallan sin ejecutar nada; escribir los ficheros con la herramienta de escritura. Los `.py` del repo pueden ser CRLF (un `str.replace` con `\n` no encuentra nada).
 - **`husky` + `lint-staged`** formatean y ejecutan `ruff` al commitear y **bloquean** el commit si queda algún aviso (incluida la carpeta `spikes/`; `spikes/pyproject.toml` ya exime a `spikes/knowledge/*.py` de E501 y similares).
 - La consola de Windows imprime en cp1252: forzar UTF-8 en los scripts que impriman tildes o `→`.

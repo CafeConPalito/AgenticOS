@@ -94,3 +94,4 @@ Flujo de cada fase: ver `CLAUDE.md` (Spec → Plan → Desarrollo → Validació
 | 2026-10-18 | Spec de la fase 14 aprobada (ficheros por referencia, una sola pipeline con MarkItDown, búsqueda híbrida, OCR local y descripción de imágenes opcional con un CLI o `llama.cpp`). Fase 14 en plan. |
 | 2026-10-18 | Plan de la fase 14 aprobado (imágenes sueltas por copia temporal, describidor bloqueado sin fallo, reprocesar conserva lo anterior). Fase 14 en dev. |
 | 2026-10-18 | Fase 14 en dev: bloque 0 (spikes S1–S9, con cambios al diseño aprobados) y bloque 1 (documentos por referencia, migración `0016` y su API). Sigue el bloque 2 (pipeline y conversión). |
+| 2026-10-19 | Fase 14, bloque 2: pipeline de conversión (MarkItDown con conversores propios), trabajador en un proceso de baja prioridad, cola, reprocesar, eventos en vivo y monitor de recursos; el sidecar pasa a 87 MB. Sigue el bloque 3 (modelos locales). |
