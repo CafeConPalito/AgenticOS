@@ -12,7 +12,7 @@ Que los agentes trabajen con **la documentación que les damos**: manuales, espe
 - **MCP `agentic-os`** (`services/mcp_server.py`): `get_context`, `report_status`, `complete_task`, `request_human`, `spawn_subagent`, `create_subtask` y `write_project_memory`, con token por ejecución.
 - **UI**: la pestaña «Conocimiento» ya existe, vacía («Próximamente»), en el detalle del proyecto y en el editor del agente.
 - **Empaquetado** (fase 08): el backend es un *sidecar* de PyInstaller. Lo que se añada (librerías de conversión, motor de *embeddings*) aumenta su tamaño y hay que validarlo en el instalador.
-- **No hay modelos locales**: hoy todo lo que es LLM lo hacen los CLIs. Esta fase introduce el primero (*embeddings*), y la fase 15 (Whisper) reutilizará su gestión.
+- **No hay modelos locales**: hoy todo lo que es LLM lo hacen los CLIs. Esta fase introduce el primero (*embeddings*), y la fase 16 (Whisper) reutilizará su gestión.
 
 ## Alcance
 ### Dentro
@@ -107,7 +107,7 @@ Que los agentes trabajen con **la documentación que les damos**: manuales, espe
 - Si el modelo de OCR no está (una compilación sin él), las imágenes y las páginas escaneadas se procesan sin su texto y se avisa con un enlace a Ajustes, donde se puede descargar.
 - Si falta el modelo de *embeddings*, los documentos se convierten igual y la búsqueda funciona **solo por palabras**. Se avisa con un enlace a Ajustes.
 - Cambiar de modelo vuelve a indexar todos los documentos, en segundo plano y con su progreso.
-- La gestión se diseña para que la fase 15 añada los modelos de Whisper sin rehacerla.
+- La gestión se diseña para que la fase 16 añada los modelos de Whisper sin rehacerla.
 
 #### 7. Transversal
 - **Almacenamiento**: la referencia al original, el Markdown, los trozos y el índice, en SQLite (migración de Alembic); las imágenes extraídas de los documentos, en la carpeta de datos. No se guardan copias de los originales. El tamaño ocupado aparece en Ajustes › General, junto a los demás datos.
@@ -123,13 +123,13 @@ Que los agentes trabajen con **la documentación que les damos**: manuales, espe
 - Uso de GPU para *embeddings*, OCR o `llama.cpp` (se puede añadir más adelante).
 - Usar `llama.cpp` para algo que no sea describir imágenes (p. ej. como CLI de agente o para los *embeddings*).
 - Rastrear sitios web enteros, actualizar URLs de forma periódica o sincronizar carpetas del disco con la biblioteca.
-- Conectores a servicios (Google Drive, Notion, Confluence…); encajan mejor con Conexiones MCP (fase 17).
+- Conectores a servicios (Google Drive, Notion, Confluence…); encajan mejor con Conexiones MCP (fase 18).
 - Audio y vídeo.
 - *Embeddings* o reranking con APIs externas.
 - Que los agentes **escriban** en el conocimiento (para eso está `write_project_memory`).
 - Permisos por documento más finos que el nivel.
 - Vigilar el disco para detectar al momento que un original se ha movido o ha cambiado (se comprueba al abrir la página y antes de cada acción).
-- Subir ficheros con copia al servidor (hará falta en el modo servidor, fase 21).
+- Subir ficheros con copia al servidor (hará falta en el modo servidor, fase 22).
 
 ## Historias de usuario
 - Como usuario, quiero subir el PDF de la especificación al proyecto para que los agentes la consulten sin pegarla en cada tarea.

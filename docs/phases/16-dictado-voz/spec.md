@@ -1,13 +1,13 @@
-# Fase 15: Dictado por voz · Spec
+# Fase 16: Dictado por voz · Spec
 
 - **Estado**: borrador
-- **Rama**: `phase/15-dictado-voz`
+- **Rama**: `phase/16-dictado-voz`
 
 ## Objetivo
 Poder **dictar en lugar de escribir** en los campos donde se escribe mucho (descripción de una tarea, instrucciones de un agente, motivo de un rechazo…). La transcripción la hace **Whisper en local**, en el backend: el audio no sale de la máquina y funciona sin conexión una vez descargado el modelo. El texto aparece donde está el cursor, listo para corregirlo.
 
 ## Punto de partida
-- **Campos de texto largos**: `NewTaskDialog` y `TaskPage` (descripción y motivo de rechazo), las instrucciones del agente (`MarkdownEditor`), la memoria del proyecto (`MemoryTab`), las respuestas de la Inbox y el diálogo de lanzar una ejecución (`LaunchRunDialog`). El Arquitecto (fase 18) todavía no existe.
+- **Campos de texto largos**: `NewTaskDialog` y `TaskPage` (descripción y motivo de rechazo), las instrucciones del agente (`MarkdownEditor`), la memoria del proyecto (`MemoryTab`), las respuestas de la Inbox y el diálogo de lanzar una ejecución (`LaunchRunDialog`). El Arquitecto (fase 19) todavía no existe.
 - **Modelos locales** (fase 14): Ajustes › Modelos locales descarga, lista y borra modelos en la carpeta de datos. Esta fase añade los de Whisper.
 - **Tauri + WebView2** (fase 08): la CSP de `tauri.conf.json` no contempla audio. Nunca se ha pedido el micrófono, y el permiso de WebView2 en una app Tauri hay que comprobarlo.
 - **Atajos de teclado** (fase 09, ADR 0013): hay un sistema de atajos globales al que se añade el del dictado.
@@ -17,7 +17,7 @@ Poder **dictar en lugar de escribir** en los campos donde se escribe mucho (desc
 
 #### 1. Dictado en los campos
 - **Botón de micrófono** en los campos de texto largo: descripción de la tarea (al crearla y al editarla), motivo de rechazo, instrucciones del agente, memoria del proyecto, respuesta a una petición de la Inbox y prompt de una ejecución manual.
-- Un **componente reutilizable** con el que cualquier campo nuevo (p. ej. la conversación con el Arquitecto en la fase 18) pueda tener dictado añadiendo una línea.
+- Un **componente reutilizable** con el que cualquier campo nuevo (p. ej. la conversación con el Arquitecto en la fase 19) pueda tener dictado añadiendo una línea.
 - **Dos formas de dictar**:
   - **Pulsar para empezar y para terminar**: clic en el micrófono;
   - **Mantener pulsado**: un atajo de teclado (configurable; por defecto se fija en el plan) graba mientras está pulsado, en el campo que tiene el foco.
@@ -51,7 +51,7 @@ Poder **dictar en lugar de escribir** en los campos donde se escribe mucho (desc
 - Dictar dentro de la terminal de una ejecución (xterm.js).
 - Leer en voz alta (texto a voz).
 - Uso de GPU (solo CPU; se puede añadir más adelante si el spike muestra que merece la pena).
-- Transcribir en el servidor o en el cliente cuando la app se despliegue en un servidor (fase 21).
+- Transcribir en el servidor o en el cliente cuando la app se despliegue en un servidor (fase 22).
 - Que un LLM reescriba o resuma el texto dictado.
 
 ## Historias de usuario

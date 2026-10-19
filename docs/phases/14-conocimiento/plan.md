@@ -160,7 +160,7 @@ Los tokens se estiman como caracteres ÷ 4. La UI de cada nivel avisa cuando el 
 - **Estado**: se deduce del disco (`manifest.json` por modelo, escrito al terminar). La selección vive en `AppState`: `models.embedding`, `models.ocr` y `models.vision`.
 - **Cuenta de Hugging Face**: para los modelos que la piden, el *token* sale de `HF_TOKEN`, del fichero de `huggingface_hub` (`~/.cache/huggingface/token`) o de `git credential fill` con `host=huggingface.co`. Si la persona lo pega en Ajustes, se guarda con `git credential approve`, igual que en el ADR 0018: la app no guarda secretos propios.
 - **Cambio de modelo de *embeddings***: encola `reindex` de todos los documentos (solo el paso 5) y la búsqueda usa FTS hasta que terminan.
-- **Ajustes de dictado** (fase 15): el catálogo admite `kind = "speech"` sin cambios de estructura.
+- **Ajustes de dictado** (fase 16): el catálogo admite `kind = "speech"` sin cambios de estructura.
 
 ### 7. Describir imágenes (opcional, `services/knowledge/describe.py`)
 - **Ajustes**: `knowledge.describe` (desactivado por defecto) y `knowledge.describer` (`cli` con CLI, cuenta y modelo, o `local` con el modelo de visión). Cada documento puede forzarlo con `describe_images`.
@@ -436,5 +436,5 @@ Cada bloque se cierra con sus tests en verde y un commit (o varios) en `phase/14
 - **Concreciones tras el bloque 0** (para aprobar):
   - la parte de palabras de la búsqueda híbrida **solo se activa con términos tipo identificador**; el resto lo resuelve el vector (los spikes muestran que usar todas las palabras empeora el resultado);
   - modelo de *embeddings* por defecto `multilingual-e5-small` y de visión por defecto Gemma 4 E2B, con las demás opciones en Ajustes;
-  - **instalador**: el motor de conocimiento (conversión, OCR y *embeddings*) va **dentro del *sidecar*** (~140 MB en total, frente a 30,5 MB hoy), sin descargas obligatorias salvo los modelos. La alternativa, un ejecutable aparte que se descarga bajo demanda, exige alojar y firmar ese artefacto, y se revisará en la fase 20 (instaladores firmados) si el tamaño molesta.
-- **Fuera de esta fase**, anotado para el futuro: GPU para ONNX y `llama.cpp`, binarios de `llama.cpp` para macOS y Linux (fase 20), reranking local.
+  - **instalador**: el motor de conocimiento (conversión, OCR y *embeddings*) va **dentro del *sidecar*** (~140 MB en total, frente a 30,5 MB hoy), sin descargas obligatorias salvo los modelos. La alternativa, un ejecutable aparte que se descarga bajo demanda, exige alojar y firmar ese artefacto, y se revisará en la fase 21 (instaladores firmados) si el tamaño molesta.
+- **Fuera de esta fase**, anotado para el futuro: GPU para ONNX y `llama.cpp`, binarios de `llama.cpp` para macOS y Linux (fase 21), reranking local.
