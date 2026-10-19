@@ -1111,7 +1111,8 @@
         "light": "Claro"
       },
       "singleKey": "Atajos de una tecla",
-      "singleKeyHelp": "N para una tarea nueva y ? para la ayuda, sin pulsar Ctrl. Se ignoran al escribir, en la terminal y con un diálogo abierto. Ctrl+K siempre funciona."
+      "singleKeyHelp": "N para una tarea nueva y ? para la ayuda, sin pulsar Ctrl. Se ignoran al escribir, en la terminal y con un diálogo abierto. Ctrl+K siempre funciona.",
+      "dataDirKnowledge": "biblioteca {{knowledge}} · modelos {{models}}"
     },
     "cleanup": {
       "title": "Limpieza",
@@ -1160,6 +1161,8 @@
       "notifications": "Notificaciones",
       "limits": "Límites diarios",
       "git": "Git",
+      "knowledge": "Conocimiento",
+      "models": "Modelos locales",
       "cleanup": "Limpieza",
       "about": "Acerca de"
     },
@@ -1187,6 +1190,40 @@
       "accountsHelp": "Los tokens se guardan en el almacén de credenciales de git, no en Agentic OS. Si ya iniciaste sesión con Git Credential Manager, aparecen aquí.",
       "hasToken": "con token",
       "noToken": "sin token"
+    },
+    "knowledge": {
+      "title": "Conocimiento",
+      "range": "Entre {{min}} y {{max}}",
+      "fields": {
+        "max_file_mb": "Tamaño máximo por fichero (MB)",
+        "context_budget": "Presupuesto de contexto (tokens)",
+        "small_doc_tokens": "Documento pequeño (tokens)",
+        "concurrency": "Documentos a la vez",
+        "threads": "Hilos de cálculo"
+      },
+      "help": {
+        "max_file_mb": "Los ficheros más grandes se rechazan al añadirlos.",
+        "context_budget": "Cuánto texto de la biblioteca entra entero en el contexto de cada ejecución.",
+        "small_doc_tokens": "Hasta este tamaño un documento «automático» entra entero; por encima, solo por búsqueda.",
+        "concurrency": "Un cambio se aplica al reiniciar la app.",
+        "threads": "0 usa la mitad de los núcleos del equipo."
+      },
+      "describe": "Describir las imágenes con IA",
+      "describeHelp": "Opcional. Una IA describe las imágenes de los documentos y la descripción se guarda en el Markdown. Se puede cambiar documento a documento.",
+      "describer": "Cómo describirlas",
+      "describers": {
+        "cli": "Con un CLI en modo headless (Claude Code o Antigravity)",
+        "local": "Con un modelo de visión local (llama.cpp)"
+      },
+      "cli": "CLI",
+      "clis": {
+        "auto": "El primero con sesión",
+        "claude": "Claude Code",
+        "agy": "Antigravity"
+      },
+      "model": "Modelo",
+      "modelHelp": "Vacío usa el más barato del CLI.",
+      "localHelp": "Descarga el motor llama.cpp y un modelo de visión en «Modelos locales». No viene en el instalador."
     }
   },
   "usage": {
@@ -2346,6 +2383,75 @@
       "asDraft": "como borrador",
       "submit": "Crear",
       "created": "Pull request #{{number}} creado"
+    }
+  },
+  "localModels": {
+    "title": "Modelos locales",
+    "description": "Los modelos que usa la biblioteca para leer, entender y describir tus documentos. Se descargan solo si los eliges y se pueden borrar.",
+    "inUse": "En uso",
+    "default": "Recomendado",
+    "bundled": "Incluido en la app",
+    "needsAccount": "Requiere cuenta de Hugging Face",
+    "unavailable": "no disponible en este sistema",
+    "use": "Usar {{title}}",
+    "useShort": "Usar",
+    "download": "Descargar {{title}}",
+    "downloadShort": "Descargar",
+    "resume": "Reanudar",
+    "retry": "Reintentar",
+    "cancel": "Cancelar la descarga de {{title}}",
+    "remove": "Borrar {{title}}",
+    "removeShort": "Borrar",
+    "removeTitle": "¿Borrar {{title}}?",
+    "removeBody": "Se borran los ficheros del modelo. Puedes descargarlo de nuevo cuando quieras.",
+    "progress": "Descarga de {{title}}",
+    "partial": "Descarga a medias ({{done}}): se reanuda donde se quedó.",
+    "reindexing": "Los documentos se indexan de nuevo con el modelo elegido.",
+    "disk": "Modelos {{models}} · motores {{engines}} · libres en el disco {{free}}",
+    "kinds": {
+      "embedding": {
+        "title": "Búsqueda por significado",
+        "help": "Convierte el texto en vectores para encontrar pasajes parecidos. Cambiar de modelo vuelve a indexar los documentos."
+      },
+      "ocr": {
+        "title": "Lectura de texto en imágenes (OCR)",
+        "help": "Lee el texto de páginas escaneadas y de capturas."
+      },
+      "vision": {
+        "title": "Descripción de imágenes",
+        "help": "Modelos de visión para describir imágenes sin salir del equipo. Necesitan el motor llama.cpp."
+      },
+      "engine": {
+        "title": "Motor",
+        "help": "llama.cpp ejecuta los modelos de visión. No viene en el instalador: se descarga aquí."
+      }
+    },
+    "token": {
+      "title": "Cuenta de Hugging Face",
+      "help": "Algunos modelos exigen aceptar su licencia con una cuenta. El token se guarda en el gestor de credenciales de git, nunca en la base de datos.",
+      "label": "Token de Hugging Face",
+      "save": "Guardar token",
+      "remove": "Quitar",
+      "configured": "Token configurado ({{source}}).",
+      "source": {
+        "env": "variable de entorno",
+        "file": "fichero de Hugging Face",
+        "git": "credenciales de git"
+      }
+    },
+    "errors": {
+      "network": "No se pudo descargar: sin conexión o el servidor no responde.",
+      "checksum": "El fichero descargado no coincide con el esperado; se descartó.",
+      "unpack": "No se pudo descomprimir el motor.",
+      "no_space": "No hay espacio suficiente en el disco.",
+      "http_401": "Hace falta iniciar sesión en Hugging Face: guarda un token abajo.",
+      "http_403": "Hay que aceptar la licencia del modelo en Hugging Face con tu cuenta.",
+      "already_downloading": "Ya se está descargando.",
+      "downloading": "Se está descargando: cancélalo antes.",
+      "bundled": "Viene con la app y no se puede borrar.",
+      "already_installed": "Ya está descargado.",
+      "unsupported_platform": "No hay versión para este sistema.",
+      "invalid_model": "Modelo no válido para esta función."
     }
   }
 }

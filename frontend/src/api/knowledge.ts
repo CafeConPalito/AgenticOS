@@ -376,6 +376,9 @@ export function applyKnowledgeEvent(queryClient: QueryClient, event: KnowledgeEv
       queryClient.setQueryData(knowledgeKeys.system, load)
       break
     }
+    case 'model':
+      void queryClient.invalidateQueries({ queryKey: ['local-models'] })
+      break
     default:
       break
   }

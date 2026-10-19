@@ -7,11 +7,22 @@ import { AboutSection } from './AboutSection'
 import { CleanupSection } from './CleanupSection'
 import { GeneralSection } from './GeneralSection'
 import { GitSection } from './GitSection'
+import { KnowledgeSection } from './KnowledgeSection'
 import { LimitsSection } from './LimitsSection'
+import { LocalModelsSection } from './LocalModelsSection'
 import { NotificationsSection } from './NotificationsSection'
 
-/** The six sections, in order; each one is reachable as `/ajustes#<id>`. */
-export const SECTIONS = ['general', 'notifications', 'limits', 'git', 'cleanup', 'about'] as const
+/** The sections, in order; each one is reachable as `/ajustes#<id>`. */
+export const SECTIONS = [
+  'general',
+  'notifications',
+  'limits',
+  'git',
+  'knowledge',
+  'models',
+  'cleanup',
+  'about',
+] as const
 type SectionId = (typeof SECTIONS)[number]
 
 /** The id of the section that shows at the top of the scroll area. */
@@ -38,7 +49,7 @@ function useVisibleSection(): [SectionId, (id: SectionId) => void] {
   return [visible, setVisible]
 }
 
-/** Ajustes: an index on the left and the six sections on the right. */
+/** Ajustes: an index on the left and the sections on the right. */
 export default function SettingsPage() {
   const { t } = useTranslation()
   const { hash } = useLocation()
@@ -112,6 +123,12 @@ export default function SettingsPage() {
           </div>
           <div id="git" className="scroll-mt-4">
             <GitSection />
+          </div>
+          <div id="knowledge" className="scroll-mt-4">
+            <KnowledgeSection />
+          </div>
+          <div id="models" className="scroll-mt-4">
+            <LocalModelsSection />
           </div>
           <div id="cleanup" className="scroll-mt-4">
             <CleanupSection />

@@ -30,6 +30,7 @@ import type {
   WorktreeInfo,
 } from '@/api/git-more'
 import type { ProjectRepo } from '@/api/repos'
+import type { HfToken, LocalModel, ModelSelection } from '@/api/local-models'
 import type {
   DocImage,
   KnowledgeDoc,
@@ -377,6 +378,27 @@ export function makeKnowledgeDoc(overrides: Partial<KnowledgeDoc> = {}): Knowled
     processed_at: now(),
     created_at: now(),
     updated_at: now(),
+    ...overrides,
+  }
+}
+
+export function makeLocalModel(overrides: Partial<LocalModel> = {}): LocalModel {
+  return {
+    id: 'e5-small',
+    kind: 'embedding',
+    title: 'multilingual-e5-small',
+    license: 'mit',
+    size: 118_000_000,
+    default: true,
+    selected: true,
+    needs_account: false,
+    available: true,
+    bundled: false,
+    state: 'ready',
+    done: 118_000_000,
+    total: 118_000_000,
+    error_code: null,
+    error_message: null,
     ...overrides,
   }
 }
@@ -867,6 +889,9 @@ export function createFakeBackend(
     queue?: Partial<QueueState>
     system?: SystemLoad
     knowledgeSettings?: Partial<KnowledgeSettings>
+    /** The local models catalogue (phase 14). */
+    localModels?: LocalModel[]
+    hfToken?: HfToken
   } = {},
 ) {
   const usage: FakeUsage = { ...emptyUsage(), ...(seed.usage ?? {}) }
@@ -1022,6 +1047,8 @@ export function createFakeBackend(
     is_default: true,
     database_bytes: 1_200_000,
     sessions_bytes: 600_000_000,
+    knowledge_bytes: 40_000_000,
+    models_bytes: 118_000_000,
     logs_bytes: 4_000_000,
     total_bytes: 1_800_000_000,
     last_error: null as string | null,
@@ -1497,6 +1524,56 @@ export function createFakeBackend(
     describer_account: '',
     describer_model: '',
     ...(seed.knowledgeSettings ?? {}),
+  }
+
+  const models: LocalModel[] = structuredClone(seed.localModels ?? [])
+  const modelSelection: ModelSelection = { embedding: null, ocr: null, vision: null }
+  let hfToken: HfToken = seed.hfToken ?? { configured: false, source: null }
+
+  function handleLocalModels(
+    method: string,
+    path: string,
+    body: Record<string, unknown>,
+  ): Response | null {
+    if (path === '/api/local-models')
+      return json(200, { models, disk: { models: 118_000_000, engines: 0, free: 50_000_000_000 } })
+    if (path === '/api/settings/local-models') {
+      if (method === 'PUT') {
+        const before = modelSelection.embedding
+        Object.assign(modelSelection, body)
+        for (const model of models) {
+          const chosen = modelSelection[model.kind as 'embedding' | 'ocr' | 'vision']
+          if (model.kind !== 'engine') model.selected = chosen === model.id
+        }
+        return json(200, { ...modelSelection, reindex: before !== modelSelection.embedding })
+      }
+      return json(200, modelSelection)
+    }
+    if (path === '/api/settings/huggingface-token') {
+      if (method === 'PUT') {
+        hfToken = body.token
+          ? { configured: true, source: 'git' }
+          : { configured: false, source: null }
+      }
+      return json(200, hfToken)
+    }
+    const match = path.match(/^\/api\/local-models\/([^/]+)(?:\/(download|cancel))?$/)
+    if (!match) return null
+    const model = models.find((m) => m.id === match[1])
+    if (!model) return apiError(404, 'model_not_found')
+    if (match[2] === 'download') {
+      Object.assign(model, { state: 'downloading', done: model.size / 4, total: model.size })
+      return json(202, model)
+    }
+    if (match[2] === 'cancel') {
+      Object.assign(model, { state: 'partial' })
+      return json(200, model)
+    }
+    if (method === 'DELETE') {
+      Object.assign(model, { state: 'absent', done: 0, selected: false })
+      return json(204, null)
+    }
+    return null
   }
 
   function handleKnowledge(
@@ -2339,6 +2416,7 @@ export function createFakeBackend(
       handleChanges(method, url.pathname, url.searchParams) ??
       handleAccounts(method, url.pathname, body) ??
       handleRuns(method, url.pathname, url.searchParams, body) ??
+      handleLocalModels(method, url.pathname, body) ??
       handleKnowledge(method, url.pathname, url.searchParams, body) ??
       handleMemory(method, url.pathname, body) ??
       handleTasks(method, url.pathname, url.searchParams, body) ??
@@ -2358,6 +2436,7 @@ export function createFakeBackend(
     runs,
     notes,
     knowledge: library,
+    localModels: models,
     knowledgeSettings,
     queueState,
     tasks,

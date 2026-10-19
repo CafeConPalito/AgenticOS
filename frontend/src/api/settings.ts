@@ -7,6 +7,10 @@ export interface DataDir {
   is_default: boolean
   database_bytes: number
   sessions_bytes: number
+  /** The library: Markdown and pictures extracted (the originals stay where they are). */
+  knowledge_bytes: number
+  /** Downloaded models and engines. */
+  models_bytes: number
   logs_bytes: number
   total_bytes: number
   /** The last move that failed: the data stayed where it was. */
