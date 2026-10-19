@@ -68,6 +68,20 @@ def handle(request: dict, emit: Emit) -> dict:
                 "images": [image.as_dict() for image in converted.images],
                 "dropped_images": converted.dropped_images,
             }
+        if op == "ocr":
+            from agentic_os.services.knowledge import ocr
+
+            def reading(done: int, total: int) -> None:
+                emit({"id": rid, "event": "progress", "done": done, "total": total})
+
+            texts, failed = ocr.read_all(
+                Path(request["folder"]),
+                {int(n): name for n, name in request["files"].items()},
+                request["models"],
+                int(request.get("threads", 0)),
+                reading,
+            )
+            return {"ok": True, "texts": {str(n): t for n, t in texts.items()}, "failed": failed}
         return KnowledgeError("convert_error", f"unknown operation {op!r}").as_dict()
     except KnowledgeError as error:
         return error.as_dict()

@@ -92,6 +92,46 @@ def ref(n: int) -> str:
     return f"kimg:{n}"
 
 
+_REF = re.compile(r"!\[(?P<alt>[^\]]*)\]\(kimg:(?P<n>\d+)\)")
+
+
+def quoted(text: str) -> str:
+    """The text read from a picture, as a block quote under it."""
+    lines = [stripped for stripped in (raw.strip() for raw in text.splitlines()) if stripped]
+    if not lines:
+        return ""
+    head = f"\n\n> Texto de la imagen: {lines[0]}"
+    return head + "".join(f"\n> {line}" for line in lines[1:])
+
+
+def compose(markdown: str, images: list[dict], texts: dict[int, str]) -> tuple[str, list[dict]]:
+    """Puts what the OCR read into the Markdown. Returns it and the pictures worth keeping.
+
+    - A picture of a document keeps its reference and gets its text below as a quote.
+    - A scanned page that was read *is* its text: the picture is replaced and not kept.
+    - A scanned page nobody could read (a photo, a drawing) stays as a picture.
+    - A reference to a picture we do not have disappears."""
+    by_number = {image["n"]: image for image in images}
+    kept: dict[int, dict] = {}
+
+    def replace(match: re.Match[str]) -> str:
+        number = int(match.group("n"))
+        image = by_number.get(number)
+        if image is None:
+            return ""
+        text = texts.get(number, "").strip()
+        if image["kind"] == "page":
+            if text:
+                return text
+            kept[number] = image
+            return match.group(0)
+        first = number not in kept
+        kept[number] = image
+        return match.group(0) + (quoted(text) if first and text else "")
+
+    return _REF.sub(replace, markdown), [kept[n] for n in sorted(kept)]
+
+
 def extract_data_uris(markdown: str, collector: ImageCollector) -> str:
     """Moves the pictures embedded as `data:` URIs into the collector and leaves a reference.
     The page or slide markers it passes tell where each picture is."""

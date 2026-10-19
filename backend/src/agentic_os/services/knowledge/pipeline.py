@@ -1,11 +1,12 @@
 """Processing one document: the same steps for every format (phase 14).
 
   1. the original: is it there, what is its fingerprint (or download the web page);
-  2. convert to Markdown (in the worker process), with progress;
+  2. convert to Markdown (in the worker process), with progress; then read the text of the
+     pictures it found (OCR, in the worker too) and keep the ones worth keeping;
   3. keep the result.
 
-Later blocks add the steps between 2 and 3: pictures and OCR (block 4), description of pictures
-(block 7) and the search index (block 5). The document goes through the states `converting`,
+Later blocks add description of pictures (block 7) and the search index (block 5) between 2 and
+3. The document goes through the states `converting`,
 `images`, `describing`, `indexing` and ends `ready` or `failed`. A failed run keeps whatever the
 document had before (its previous Markdown), but the document is not used until it succeeds.
 """
@@ -23,17 +24,20 @@ from urllib.parse import urlparse
 
 import httpx
 import structlog
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy import delete, select
+from sqlalchemy.orm import Session, object_session, sessionmaker
 
 from agentic_os import __version__
 from agentic_os.db.base import utcnow
-from agentic_os.models import DocStatus, KnowledgeDoc, Presence, SourceKind
+from agentic_os.models import DocStatus, KnowledgeDoc, KnowledgeImage, Presence, SourceKind
 from agentic_os.schemas.knowledge import read_doc
 from agentic_os.services.knowledge import config as knowledge_config
 from agentic_os.services.knowledge import docs, formats
 from agentic_os.services.knowledge.errors import KnowledgeError
 from agentic_os.services.knowledge.events import KnowledgeEvents
+from agentic_os.services.knowledge.images import compose
 from agentic_os.services.knowledge.worker import Worker
+from agentic_os.services.localmodels import catalog, selection, store
 
 log = structlog.get_logger()
 
@@ -127,7 +131,9 @@ class Pipeline:
             )
             if not answer.get("ok"):
                 raise KnowledgeError(answer.get("code", "convert_error"), answer.get("message", ""))
-            self._finish(doc_id, source, answer)
+            images = answer.get("images") or []
+            texts, notice = self._read_images(doc_id, images, workdir, limits.threads)
+            self._finish(doc_id, source, answer, images, texts, notice, workdir)
         except Cancelled:
             log.info("knowledge_doc_gone", doc_id=doc_id)
         except KnowledgeError as error:
@@ -221,11 +227,115 @@ class Pipeline:
 
         return on_event
 
-    def _finish(self, doc_id: str, source: Source, answer: dict) -> None:
-        markdown = answer.get("markdown", "")
+    # ----------------------------------------------------------- step 2b: pictures and OCR
+    def _ocr_models(self) -> dict[str, str] | None:
+        """The paths of the chosen OCR model, or None if it is not available."""
+        with self.sessions() as db:
+            entry = selection.active(db, self.data_dir, catalog.OCR)
+        if entry is None:
+            return None
+        return {
+            key: str(store.file_path(self.data_dir, entry, entry.usage[name]))
+            for key, name in (("det", "detector"), ("cls", "classifier"), ("rec", "recognizer"))
+        }
+
+    def _read_images(
+        self, doc_id: str, images: list[dict], workdir: Path, threads: int
+    ) -> tuple[dict[int, str], str | None]:
+        """Reads the text of the pictures found. Returns {number: text} and a notice: the OCR is
+        missing or failed (the document is still processed, just without that text)."""
+        if not images:
+            return {}, None
+
+        def entering(doc: KnowledgeDoc) -> None:
+            doc.status = DocStatus.IMAGES
+            doc.progress_done, doc.progress_total = 0, len(images)
+
+        self._write(doc_id, entering)
+        models = self._ocr_models()
+        if models is None:
+            return {}, "ocr_missing"
+        try:
+            answer = self.worker.request(
+                {
+                    "op": "ocr",
+                    "folder": str(workdir / "images"),
+                    "files": {str(image["n"]): image["file"] for image in images},
+                    "models": models,
+                    "threads": threads,
+                },
+                on_event=self._progress(doc_id),
+            )
+        except KnowledgeError:
+            return {}, "ocr_failed"
+        if not answer.get("ok"):
+            log.warning("knowledge_ocr_failed", doc_id=doc_id, answer=answer)
+            return {}, "ocr_failed"
+        texts = {int(n): text for n, text in answer["texts"].items()}
+        everything_failed = answer.get("failed", 0) >= len(images)
+        return texts, "ocr_failed" if everything_failed else None
+
+    def _store_images(
+        self, db: Session, doc: KnowledgeDoc, kept: list[dict], texts: dict[int, str], folder: Path
+    ) -> list[str]:
+        """Replaces the document's pictures by the ones kept. Returns the files the old ones used,
+        to delete those nobody else needs."""
+        old = [
+            name
+            for name in db.scalars(
+                select(KnowledgeImage.file).where(
+                    KnowledgeImage.doc_id == doc.id, KnowledgeImage.file.is_not(None)
+                )
+            )
+        ]
+        db.execute(delete(KnowledgeImage).where(KnowledgeImage.doc_id == doc.id))
+        target = self.data_dir / "knowledge" / "images"
+        for image in kept:
+            file = None
+            if image["kind"] != "file":  # a picture the user added stays where they have it
+                file = image["sha256"] + Path(image["file"]).suffix
+                destination = target / file
+                if not destination.exists():
+                    target.mkdir(parents=True, exist_ok=True)
+                    partial = destination.with_name(destination.name + ".tmp")
+                    shutil.copyfile(folder / image["file"], partial)
+                    partial.replace(destination)
+            db.add(
+                KnowledgeImage(
+                    doc_id=doc.id,
+                    ord=image["n"],
+                    kind=image["kind"],
+                    sha256=image["sha256"],
+                    file=file,
+                    location=image["location"],
+                    width=image["width"],
+                    height=image["height"],
+                    ocr_text=texts.get(image["n"], ""),
+                )
+            )
+        doc.image_count = len(kept)
+        return old
+
+    # ----------------------------------------------------------------- step 3: the result
+    def _finish(
+        self,
+        doc_id: str,
+        source: Source,
+        answer: dict,
+        images: list[dict],
+        texts: dict[int, str],
+        notice: str | None,
+        workdir: Path,
+    ) -> None:
+        markdown, kept = compose(answer.get("markdown", ""), images, texts)
         title = (answer.get("title") or "").strip()
+        stale: list[str] = []
 
         def change(doc: KnowledgeDoc) -> None:
+            stale.extend(
+                self._store_images(object_session(doc), doc, kept, texts, workdir / "images")
+            )
+            doc.notice = notice
             doc.markdown = markdown
             doc.md_tokens = estimate_tokens(markdown)
             if source.sha256 is not None:  # the fingerprint of what was converted
@@ -245,6 +355,9 @@ class Pipeline:
             doc.checked_at = utcnow()
 
         self._write(doc_id, change)
+        if stale:  # the pictures of the previous run that nobody uses any more
+            with self.sessions() as db:
+                docs.prune_image_files(db, stale, self.data_dir / "knowledge" / "images")
 
     def _fail(self, doc_id: str, error: KnowledgeError) -> None:
         log.info("knowledge_doc_failed", doc_id=doc_id, code=error.code, message=error.message)

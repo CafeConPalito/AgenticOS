@@ -83,7 +83,9 @@ class DocRead(BaseModel):
     progress_total: int
     error_code: str | None
     error_message: str | None
+    notice: str | None  # a warning on a ready document: ocr_missing, ocr_failed
     md_tokens: int
+    image_count: int
     has_markdown: bool
     embed_model: str
     processed_at: datetime | None
@@ -114,7 +116,9 @@ def read_doc(doc: KnowledgeDoc) -> DocRead:
         progress_total=doc.progress_total,
         error_code=doc.error_code,
         error_message=doc.error_message,
+        notice=doc.notice,
         md_tokens=doc.md_tokens,
+        image_count=doc.image_count,
         has_markdown=bool(doc.markdown),
         embed_model=doc.embed_model,
         processed_at=doc.processed_at,
@@ -135,6 +139,18 @@ class AddItem(BaseModel):
 class RelocateRead(BaseModel):
     doc: DocRead
     reprocess: bool  # the content differs: the document will be processed again
+
+
+class ImageRead(BaseModel):
+    """A picture of a document, as `![…](kimg:<ord>)` in its Markdown."""
+
+    ord: int
+    kind: str  # embedded | page | file
+    location: str  # "p. 3", "diapositiva 2", or ""
+    width: int
+    height: int
+    ocr_text: str
+    description: str
 
 
 class MarkdownRead(BaseModel):

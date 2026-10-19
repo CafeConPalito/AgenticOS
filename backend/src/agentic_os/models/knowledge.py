@@ -121,10 +121,13 @@ class KnowledgeDoc(IdMixin, WorkspaceMixin, TimestampMixin, Base):
     progress_total: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     error_code: Mapped[str | None] = mapped_column(String(32), nullable=True)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # A warning on a document that is ready (not a failure): «ocr_missing», «ocr_failed».
+    notice: Mapped[str | None] = mapped_column(String(32), nullable=True)
 
     # --- result
     markdown: Mapped[str] = mapped_column(Text, nullable=False, default="")
     md_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    image_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     embed_model: Mapped[str] = mapped_column(String(80), nullable=False, default="")
     processed_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
 
@@ -152,10 +155,16 @@ class KnowledgeImage(IdMixin, Base):
     """A picture of a document: extracted (a file in the data folder) or the document itself."""
 
     __tablename__ = "knowledge_images"
+    __table_args__ = (UniqueConstraint("doc_id", "ord", name="uq_knowledge_images_doc_ord"),)
 
     doc_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("knowledge_docs.id", ondelete="CASCADE"), nullable=False, index=True
     )
+    # The number in the document's Markdown: `![…](kimg:<ord>)`.
+    ord: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # "embedded" (inside a PDF, Word…), "page" (a scanned page nobody could read) or "file" (the
+    # document is the picture).
+    kind: Mapped[str] = mapped_column(String(8), nullable=False, default="embedded")
     sha256: Mapped[str] = mapped_column(String(64), nullable=False)
     # Relative to <data>/knowledge/images; None for a document that is itself an image.
     file: Mapped[str | None] = mapped_column(String(300), nullable=True)

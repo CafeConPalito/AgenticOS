@@ -13,14 +13,15 @@ from sqlalchemy.orm import Session
 
 from agentic_os.db.base import DEFAULT_WORKSPACE
 from agentic_os.db.session import get_session
-from agentic_os.errors import ApiError
-from agentic_os.models import KnowledgeDoc, KnowledgeScope, SourceKind
+from agentic_os.errors import ApiError, NotFound
+from agentic_os.models import KnowledgeDoc, KnowledgeImage, KnowledgeScope, SourceKind
 from agentic_os.schemas.knowledge import (
     AddFiles,
     AddItem,
     AddUrl,
     DocRead,
     DocUpdate,
+    ImageRead,
     MarkdownRead,
     Relocate,
     RelocateRead,
@@ -158,6 +159,39 @@ def get_markdown(doc_id: str, db: DbSession) -> MarkdownRead:
     if not doc.markdown:
         raise ApiError(409, "not_processed", "the document has no Markdown yet")
     return MarkdownRead(title=doc.title, markdown=doc.markdown, tokens=doc.md_tokens)
+
+
+@router.get("/knowledge/docs/{doc_id}/images")
+def list_images(doc_id: str, db: DbSession) -> list[ImageRead]:
+    docs.get_doc(db, doc_id)
+    found = db.scalars(
+        select(KnowledgeImage).where(KnowledgeImage.doc_id == doc_id).order_by(KnowledgeImage.ord)
+    )
+    return [ImageRead.model_validate(image, from_attributes=True) for image in found]
+
+
+@router.get("/knowledge/docs/{doc_id}/images/{number}")
+def get_image(doc_id: str, number: int, request: Request, db: DbSession) -> FileResponse:
+    """A picture of the document for the Markdown view: the extracted file, or, when the document
+    is itself a picture, the original."""
+    doc = docs.get_doc(db, doc_id)
+    image = db.scalar(
+        select(KnowledgeImage).where(KnowledgeImage.doc_id == doc_id, KnowledgeImage.ord == number)
+    )
+    if image is None:
+        raise NotFound("image")
+    if image.file is None:
+        path = docs.original_path(db, doc)
+        db.commit()
+    else:
+        path = images_dir(request) / image.file
+        if not path.is_file():
+            raise ApiError(410, "missing", "the picture file is gone")
+    return FileResponse(
+        path,
+        media_type=formats.mime_of(str(path)),
+        headers={"X-Content-Type-Options": "nosniff"},
+    )
 
 
 @router.get("/knowledge/docs/{doc_id}/original")

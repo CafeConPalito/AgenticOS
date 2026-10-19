@@ -334,9 +334,13 @@ def remove(db: Session, doc: KnowledgeDoc, images_dir: Path | None = None) -> No
     db.execute(text("DELETE FROM knowledge_fts WHERE doc_id = :doc"), {"doc": doc.id})
     db.delete(doc)
     db.flush()  # the chunks and image rows go with it (ON DELETE CASCADE)
-    if images_dir is None:
-        return
-    for name in set(files):
+    if images_dir is not None:
+        prune_image_files(db, files, images_dir)
+
+
+def prune_image_files(db: Session, names: list[str], images_dir: Path) -> None:
+    """Deletes the picture files in `names` that no document uses any more."""
+    for name in set(names):
         still_used = db.scalar(
             select(KnowledgeImage.id).where(KnowledgeImage.file == name).limit(1)
         )

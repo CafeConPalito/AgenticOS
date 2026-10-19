@@ -59,6 +59,13 @@ def test_every_format_is_converted_by_the_worker_process(tmp_path: Path):
         assert "Inicio | Precios" not in markdown("pagina.html")
         assert markdown("ejemplo.py").startswith("```python")
 
+        if BINARY:  # the packaged app carries the OCR models: pictures and scans are read
+            assert "> Texto de la imagen:" in markdown("informe.docx")
+            assert "Emitida" in markdown("informe.docx")
+            scanned = markdown("manual_escaneado.pdf")
+            assert "ERR_4012" in scanned and "BIENVENIDA25" in scanned and "kimg" not in scanned
+            assert "ERR_4012" in markdown("captura_error.png")
+
         # The worker is a process of its own, and the machine's load can be read.
         system = api.get("/api/knowledge/system")
         assert system["memory"]["total_mb"] > 0 and "gpu" in system

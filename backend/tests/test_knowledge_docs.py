@@ -338,18 +338,20 @@ def test_delete_removes_the_index_and_unshared_images(client: TestClient, tmp_pa
     (images / "solo.png").write_bytes(b"1")
     (images / "compartida.png").write_bytes(b"2")
     with client.app.state.sessionmaker() as db:
-        for doc, file in (
-            (first, "solo.png"),
-            (first, "compartida.png"),
-            (second, "compartida.png"),
+        for number, (doc, file) in enumerate(
+            (
+                (first, "solo.png"),
+                (first, "compartida.png"),
+                (second, "compartida.png"),
+            )
         ):
             db.execute(
                 text(
-                    "INSERT INTO knowledge_images (id, doc_id, sha256, file, location, width,"
-                    " height, ocr_text, description, described_by) VALUES (:id, :doc, 'h', :file,"
-                    " '', 1, 1, '', '', '')"
+                    "INSERT INTO knowledge_images (id, doc_id, ord, sha256, file, location, width,"
+                    " height, ocr_text, description, described_by) VALUES (:id, :doc, :ord, 'h',"
+                    " :file, '', 1, 1, '', '', '')"
                 ),
-                {"id": f"{doc['id']}-{file}", "doc": doc["id"], "file": file},
+                {"id": f"{doc['id']}-{file}", "doc": doc["id"], "file": file, "ord": number},
             )
         db.execute(
             text(

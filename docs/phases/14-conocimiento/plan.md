@@ -1,7 +1,7 @@
 # Fase 14: Conocimiento · Plan técnico
 
 - **Spec**: [spec.md](spec.md)
-- **Estado**: aprobado (2026-10-18) · en desarrollo (bloques 0 a 3 hechos; sigue el 4)
+- **Estado**: aprobado (2026-10-18) · en desarrollo (bloques 0 a 4 hechos; sigue el 5)
 
 ## Lo que ya se sabe (revisado al escribir el plan)
 - **Contexto** (`services/context.py`): `build_instructions` monta las instrucciones por secciones (rol, proyecto, repos, git, memoria, tarea, subagente, reglas). El conocimiento es una sección más, después de la memoria. `get_context` devuelve lo mismo.
@@ -259,7 +259,7 @@ Cada bloque se cierra con sus tests en verde y un commit (o varios) en `phase/14
    - `KnowledgeEvents` y el WebSocket;
    - `system_stats`.
 3. [x] **Modelos locales**: catálogo, descargas, selección, *token* de Hugging Face y API.
-4. [ ] **Imágenes y OCR**: extracción, deduplicación, marcas `kimg:`, OCR de imágenes y de páginas escaneadas.
+4. [x] **Imágenes y OCR**: extracción, deduplicación, marcas `kimg:`, OCR de imágenes y de páginas escaneadas.
 5. [ ] **Índice y búsqueda**: troceado, FTS5, *embeddings*, búsqueda híbrida, `reindex` al cambiar de modelo y búsqueda de prueba.
 6. [ ] **Contexto y MCP**:
    - sección de conocimiento con el presupuesto;
@@ -279,7 +279,7 @@ Cada bloque se cierra con sus tests en verde y un commit (o varios) en `phase/14
     - `validacion.md`.
 
 ## Estado del desarrollo (traspaso, 2026-10-19)
-**Hecho**: bloque 0 (commit `40ff7f8`), bloque 1 (`f0dd7de`), bloque 2 y bloque 3. **Siguiente**: bloque 4 (imágenes y OCR).
+**Hecho**: bloques 0 a 4. **Siguiente**: bloque 5 (índice y búsqueda híbrida).
 
 ### Bloque 1 · qué hay y qué se decidió al hacerlo
 - **Código nuevo** (`backend/src/agentic_os/`): `models/knowledge.py` (`KnowledgeDoc`, `KnowledgeChunk`, `KnowledgeImage` y sus enums), migración `0016_knowledge`, `services/knowledge/{formats,config,docs}.py`, `schemas/knowledge.py` y `api/knowledge.py` (registrado en `api/__init__.py`). Cambios menores: `RunKind.DESCRIBE`, la clave `KNOWLEDGE` de `app_state`, `reveal_in_file_manager` en `services/proc.py`.
@@ -335,13 +335,23 @@ Cada bloque se cierra con sus tests en verde y un commit (o varios) en `phase/14
   - `GET /local-models` marca `bundled: true` (listo, no se puede borrar: `DELETE` da 409 `bundled`). Si el paquete estuviera dañado, vuelve a descargarlo.
   - **Tamaño del *sidecar*: 102,8 MB** (30,5 MB antes de la fase; 87 MB tras el bloque 2). El e2e contra el binario real confirma que `ocr-latin` sale `ready` y `bundled` sin tocar la carpeta de datos.
 
-### Cómo retomar: bloque 4 (imágenes y OCR)
-1. **Dependencias**: `rapidocr` (trae OpenCV y `onnxruntime`; añadir al `pyproject.toml` y a las banderas de PyInstaller: `--collect-submodules rapidocr` más `config.yaml` y `default_models.yaml` como datos, **sin** sus modelos, como en la variante recortada de S1). Ojo: el backend lleva `onnxruntime` 1.20.1 (lo fija `magika`); RapidOCR funcionó con 1.31 en los spikes, hay que comprobarlo con 1.20.1.
-2. **OCR** (`services/knowledge/ocr.py`): `RapidOCR(params={"Det.model_path": …, "Cls.model_path": …, "Rec.model_path": …, "Rec.lang_type": "latin", …})` apuntando a los ficheros de `selection.active(db, data_dir, "ocr")` (`store.file_path(...)` ya devuelve la copia incluida en el paquete cuando la hay), con hilos limitados según `knowledge.threads`. Sin el modelo: las imágenes se procesan sin texto y el documento avisa (`ocr_missing` es un aviso, no un fallo).
-3. **Paso «images» de la pipeline**: tras convertir, el trabajador devuelve las imágenes en `workdir/images`; el backend las guarda (`<datos>/knowledge/images/<sha256>.<ext>`, una vez por contenido), crea las filas `KnowledgeImage`, **reescribe `kimg:N` → `kimg:<id>`** en el Markdown, pasa el OCR (en el trabajador, con progreso «imagen n de m») y escribe el texto debajo de cada imagen como bloque citado (`> Texto de la imagen: …`). Las páginas escaneadas sustituyen su marca por el texto del OCR. El estado pasa por `images`.
-4. **Imágenes sueltas** (`source_kind = image`): la propia imagen no se copia (se queda por referencia); su fila `KnowledgeImage` lleva `file = None` y el OCR.
-5. Cuando exista el paso, el documento queda `ready` al final de él y la cola lo cuenta en `progress`.
-6. **Tests**: OCR real con `captura_error.png` y `manual_escaneado.pdf` (los modelos, con `AGENTIC_OS_BUNDLED_MODELS` apuntando a una carpeta con `ocr-latin/` preparada con `stage`, o los de `spikes/knowledge/.venv/…/rapidocr/models`), el paso con un OCR falso, deduplicación entre documentos, borrado de imágenes al quitar el documento, y el e2e empaquetado.
+### Bloque 4 · qué hay y qué se decidió al hacerlo
+- **Código nuevo**: `services/knowledge/ocr.py` (RapidOCR dentro del trabajador, con los tres modelos por ruta, hilos limitados y confianza mínima 0,5), la operación `ocr` del trabajador, `images.compose` (pone el texto leído en el Markdown) y el paso de imágenes de `pipeline.py`. Migración `0017` (`notice` e `image_count` en el documento; `ord` y `kind` en la imagen, único por documento). API: `GET /knowledge/docs/{id}/images` y `…/images/{ord}`.
+- **Cómo funciona**: tras convertir, el estado pasa a `images` con progreso «imagen n de m»; el trabajador lee cada imagen; en **una sola transacción** se guardan las imágenes que valen la pena (`<datos>/knowledge/images/<sha256>.<ext>`, una vez por contenido, compartidas entre documentos), se escribe el Markdown final y se borran las del intento anterior que ya nadie usa.
+- **Reglas** (`compose`): una imagen de un documento conserva `![…](kimg:N)` y lleva debajo su texto como cita (`> Texto de la imagen: …`, solo la primera vez que aparece); **una página escaneada leída se convierte en su texto y no se guarda** (el original ya está por referencia); una página que nadie pudo leer (una foto, un dibujo) se queda como imagen; una referencia a una imagen que no tenemos desaparece; una imagen que añadió el usuario no se copia (`file = None`, se sirve desde el original).
+- **Avisos, no fallos** (`doc.notice`): `ocr_missing` (no hay modelo de OCR: las imágenes se guardan sin texto y las páginas escaneadas siguen siendo imágenes) y `ocr_failed` (el OCR falló en todas). El documento queda `ready` y reprocesarlo con el modelo los quita.
+- **Tests**: `test_knowledge_images.py` (14, con un OCR falso), `test_knowledge_ocr.py` (5, **OCR real** con los modelos auténticos, que se descargan una vez a la carpeta temporal y se saltan sin red) y `test_migration_0017.py`. El e2e empaquetado comprueba que el binario lee un PDF escaneado, un Word y una captura.
+- **Empaquetado**: `build-backend.ps1` incluye `rapidocr` y sus ficheros de configuración (sin sus modelos). El *sidecar* pasa a **149 MB** (102,8 antes): RapidOCR con OpenCV añade ~46 MB. Con la ruta explícita de modelos, RapidOCR no descarga nada.
+- **Desviaciones del diseño**: (1) la referencia de imagen es **el número dentro del documento** (`kimg:3`), no un id global; (2) el texto de la imagen se guarda también en `KnowledgeImage.ocr_text`; (3) la descripción con IA (bloque 7) añadirá `description` a esa misma fila.
+
+### Cómo retomar: bloque 5 (índice y búsqueda híbrida)
+1. **Troceado** (`chunking.py`): por títulos y párrafos de Markdown (respetando bloques de código, tablas y citas), unos 400 tokens con unos 50 de solapamiento, un título nuevo abre trozo si el actual ya tiene cuerpo; cada trozo guarda `heading`, `location` (la última marca de página, diapositiva u hoja) y `start`/`end` en el Markdown. Lo que se codifica lleva delante «título del documento › apartado».
+2. **Embeddings**: operación `embed` del trabajador (`embeddings.py`, de `s4_embed_eval.py`: `onnxruntime` + `tokenizers`, *pooling* y prefijos del `usage` del catálogo, normalizado, por lotes ordenados por longitud, `float32`). Un trabajador **aparte para las consultas** (no esperar a una indexación larga).
+3. **Índice**: en la pipeline, entre las imágenes y el resultado: trocear, calcular vectores (estado `indexing`, progreso por lotes) y guardar trozos, vectores y filas FTS en la misma transacción. Sin modelo de *embeddings*, solo palabras (`embed_model = ""`).
+4. **Búsqueda** (`search.py`): visibilidad por niveles; palabras **solo con identificadores** + vector, RRF (vector 1, palabras 2); sin vectores, palabras con todos los términos y sin palabras vacías. Caché de la matriz de vectores invalidada con un contador.
+5. **Reindexar** cuando cambia el modelo elegido o termina de descargarse el elegido: un hilo que recorre los documentos, sin cambiar su estado; mientras tanto el trozo con otro modelo cuenta solo por palabras.
+6. **API**: `POST /knowledge/search` (la búsqueda de prueba: lo que vería un agente de ese proyecto y ese agente).
+7. **Tests**: troceado, FTS con acentos, `FakeEmbedder` por palabras, RRF, visibilidad, reindexado y, con el modelo real (cache temporal, se salta sin red), las 30 preguntas de S4.
 
 ### Entorno y trampas
 - **Material de los spikes** (ignorado por git, **11 GB**): `spikes/knowledge/models/` (e5-small, EmbeddingGemma 2, bge-m3, Qwen3.5-2B/4B, Gemma 4 E2B y `llama.cpp` b11720), `spikes/knowledge/.venv` y `out/`. Sirve para probar con modelos reales; se puede borrar sin perder nada que no se pueda volver a bajar (`s4_download.py`, `s6_download.py`). Hugging Face además guarda caché en `~/.cache/huggingface`.
