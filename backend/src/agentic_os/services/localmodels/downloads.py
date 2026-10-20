@@ -283,7 +283,7 @@ class DownloadManager:
             except DownloadError as error:
                 failure = error
                 if error.code in ("http_401", "http_403"):
-                    break  # another mirror would not accept us either
+                    raise  # another mirror would not accept us either
         else:
             raise failure
         if part.stat().st_size != remote.size or sha256_of(part) != remote.sha256:

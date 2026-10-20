@@ -9,6 +9,7 @@ returns L2-normalized vectors, so a dot product is the cosine similarity. The ba
 from __future__ import annotations
 
 import base64
+import os
 from collections.abc import Callable, Sequence
 from typing import Any
 
@@ -30,7 +31,8 @@ class OnnxEmbedder:
 
         self.usage = spec["usage"]
         options = ort.SessionOptions()
-        options.intra_op_num_threads = threads
+        # 0 would make ONNX Runtime use every core: the setting says «half of them».
+        options.intra_op_num_threads = threads or max(1, (os.cpu_count() or 2) // 2)
         options.inter_op_num_threads = 1
         self.session = ort.InferenceSession(
             spec["model"], options, providers=["CPUExecutionProvider"]

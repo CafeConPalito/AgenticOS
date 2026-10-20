@@ -119,7 +119,7 @@ def read_doc(doc: KnowledgeDoc) -> DocRead:
         notice=doc.notice,
         md_tokens=doc.md_tokens,
         image_count=doc.image_count,
-        has_markdown=bool(doc.markdown),
+        has_markdown=doc.md_tokens > 0,  # the Markdown itself is not loaded for a list
         embed_model=doc.embed_model,
         processed_at=doc.processed_at,
         created_at=doc.created_at,

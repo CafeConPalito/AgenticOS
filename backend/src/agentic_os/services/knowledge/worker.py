@@ -217,6 +217,12 @@ class ProcessWorker:
 
     def close(self) -> None:
         self._stop.set()
+        # A request in flight holds the lock until it ends (up to the timeout): stop its process
+        # first so that it fails now, and only then take the lock to clean up.
+        proc = self._proc
+        if proc is not None:
+            with contextlib.suppress(Exception):
+                proc.kill()
         with self._lock:
             self._kill()
 

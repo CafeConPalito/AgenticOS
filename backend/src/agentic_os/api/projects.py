@@ -13,6 +13,7 @@ from agentic_os.errors import ApiError, NotFound
 from agentic_os.models import Project, Task, TaskStatus, WorkspaceMode
 from agentic_os.schemas.project import ProjectCreate, ProjectRead, ProjectUpdate
 from agentic_os.services import git, maintenance, paths, repos
+from agentic_os.services.knowledge import docs as knowledge_docs
 from agentic_os.services.proc import open_in_file_manager
 
 router = APIRouter(tags=["projects"])
@@ -151,6 +152,11 @@ def delete_project(project_id: str, session: DbSession, request: Request) -> Non
     for task in with_worktree:
         scheduler.release_finished(session, task)
     maintenance.forget_project_snapshots(session, project)  # the refs of its runs' snapshots
+    knowledge_docs.remove_owned(
+        session,
+        Path(request.app.state.settings.data_dir) / "knowledge" / "images",
+        project_id=project.id,
+    )
     session.delete(project)
     session.commit()
 

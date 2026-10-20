@@ -174,6 +174,12 @@ class LlamaServer:
 
     def stop(self) -> None:
         self._stop.set()
+        # `chat` holds the lock while the model loads or answers (minutes): end the server first
+        # so that the request fails now, then take the lock to clean up.
+        proc = self._proc
+        if proc is not None:
+            with contextlib.suppress(Exception):
+                proc.kill()
         with self._lock:
             self._kill()
 

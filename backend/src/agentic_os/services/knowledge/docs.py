@@ -15,7 +15,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 from sqlalchemy import select, text
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, defer
 
 from agentic_os.db.base import DEFAULT_WORKSPACE, utcnow
 from agentic_os.errors import ApiError, NotFound
@@ -30,7 +30,7 @@ from agentic_os.models import (
     Project,
     SourceKind,
 )
-from agentic_os.services.knowledge import formats, search
+from agentic_os.services.knowledge import formats, index
 from agentic_os.services.knowledge.config import KnowledgeSettings
 from agentic_os.services.paths import normalize
 
@@ -87,7 +87,8 @@ def _keys_at_level(
 ) -> set[str]:
     """Comparison keys of the origins already in a level: paths (folded) and URLs."""
     keys: set[str] = set()
-    for doc in db.scalars(select(KnowledgeDoc).where(*_at_level(scope, project_id, agent_id))):
+    found = select(KnowledgeDoc).where(*_at_level(scope, project_id, agent_id))
+    for doc in db.scalars(found.options(defer(KnowledgeDoc.markdown))):
         if doc.path:
             keys.add(os.path.normcase(doc.path))
         if doc.url:
@@ -265,6 +266,8 @@ def relocate(
     confirms, because it is another document."""
     if doc.source_kind == SourceKind.URL:
         raise ApiError(422, "not_a_file", "a web address cannot be relocated")
+    if doc.status in IN_PROGRESS:
+        raise ApiError(409, "processing", "the document is being processed right now")
     shown, key, info = _check_file(raw, limits)
     others = _keys_at_level(db, doc.scope, doc.project_id, doc.agent_id) - {
         os.path.normcase(doc.path or "")
@@ -332,11 +335,26 @@ def remove(db: Session, doc: KnowledgeDoc, images_dir: Path | None = None) -> No
         if name
     ]
     db.execute(text("DELETE FROM knowledge_fts WHERE doc_id = :doc"), {"doc": doc.id})
-    search.cache.bump()
+    index.bump_when_committed(db)
     db.delete(doc)
     db.flush()  # the chunks and image rows go with it (ON DELETE CASCADE)
     if images_dir is not None:
         prune_image_files(db, files, images_dir)
+
+
+def remove_owned(
+    db: Session,
+    images_dir: Path,
+    *,
+    project_id: str | None = None,
+    agent_id: str | None = None,
+) -> None:
+    """Deletes the documents of a project or an agent that is going away. The database cascade
+    alone would leave their words in the index and their pictures on disk."""
+    column = KnowledgeDoc.project_id if project_id else KnowledgeDoc.agent_id
+    owner = project_id or agent_id
+    for doc in list(db.scalars(select(KnowledgeDoc).where(column == owner))):
+        remove(db, doc, images_dir)
 
 
 def prune_image_files(db: Session, names: list[str], images_dir: Path) -> None:

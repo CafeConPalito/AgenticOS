@@ -3,13 +3,19 @@
 from __future__ import annotations
 
 import numpy as np
-from sqlalchemy import delete, text
+from sqlalchemy import delete, event, text
 from sqlalchemy.orm import Session
 
 from agentic_os.models import KnowledgeChunk, KnowledgeDoc
 from agentic_os.services.knowledge import search
 from agentic_os.services.knowledge.chunking import Chunk
 from agentic_os.services.knowledge.embeddings import vector_bytes
+
+
+def bump_when_committed(db: Session) -> None:
+    """The search keeps the vectors in memory. It must forget them when the change is visible to
+    other connections, not before: a search in between would cache the old rows as current."""
+    event.listen(db, "after_commit", lambda _session: search.cache.bump(), once=True)
 
 
 def replace(
@@ -41,10 +47,10 @@ def replace(
             {"t": chunk.for_words(), "c": row.id, "d": doc.id},
         )
     doc.embed_model = model if vectors is not None else ""
-    search.cache.bump()
+    bump_when_committed(db)
 
 
 def clear(db: Session, doc_id: str) -> None:
     db.execute(text("DELETE FROM knowledge_fts WHERE doc_id = :d"), {"d": doc_id})
     db.execute(delete(KnowledgeChunk).where(KnowledgeChunk.doc_id == doc_id))
-    search.cache.bump()
+    bump_when_committed(db)

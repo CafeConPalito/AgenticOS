@@ -1,6 +1,7 @@
+from pathlib import Path
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -24,6 +25,7 @@ from agentic_os.schemas.agent import (
     AgentUpdate,
 )
 from agentic_os.services import accounts
+from agentic_os.services.knowledge import docs as knowledge_docs
 from agentic_os.services.tasks import wait_for_human
 from agentic_os.services.templates import BY_ID, TEMPLATES
 
@@ -214,7 +216,7 @@ def duplicate_agent(
 
 
 @router.delete("/agents/{agent_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_agent(agent_id: str, session: DbSession) -> None:
+def delete_agent(agent_id: str, session: DbSession, request: Request) -> None:
     """An agent working on a task cannot be deleted; its queued tasks are left without agent
     (they wait for the user)."""
     agent = _get(session, agent_id)
@@ -226,5 +228,10 @@ def delete_agent(agent_id: str, session: DbSession) -> None:
     for task in queued:
         wait_for_human(session, task, WaitingReason.NO_AGENT, agent.name)
     session.flush()
+    knowledge_docs.remove_owned(
+        session,
+        Path(request.app.state.settings.data_dir) / "knowledge" / "images",
+        agent_id=agent.id,
+    )
     session.delete(agent)
     session.commit()

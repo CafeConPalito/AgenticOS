@@ -336,6 +336,17 @@ export type KnowledgeEvent =
   | { type: 'reindex'; done: number; total: number; model: string }
   | { type: 'model'; id: string; state: string; done?: number; total?: number }
 
+/** Does a list (identified by the level in its query key) show this document? */
+function belongsTo(level: unknown, doc: KnowledgeDoc): boolean {
+  if (level === 'all') return true
+  const wanted = level as KnowledgeLevel
+  return (
+    wanted.scope === doc.scope &&
+    (wanted.projectId ?? null) === doc.project_id &&
+    (wanted.agentId ?? null) === doc.agent_id
+  )
+}
+
 /** Applies one live event to the cached lists, so the UI follows the queue without polling. */
 export function applyKnowledgeEvent(queryClient: QueryClient, event: KnowledgeEvent) {
   switch (event.type) {
@@ -345,12 +356,16 @@ export function applyKnowledgeEvent(queryClient: QueryClient, event: KnowledgeEv
       queryClient.setQueriesData<KnowledgeDoc[]>({ queryKey: knowledgeKeys.docs }, (list) =>
         list?.map((item) => (item.id === doc.id ? doc : item)),
       )
-      // A document that arrives in a list that does not have it yet (added elsewhere).
+      // Only the lists of the document's own level can be out of date: one that should have it
+      // and does not (added elsewhere), or one that has it and should not (moved to another level).
+      // Progress events come several times a second: the other lists must not be read again.
       void queryClient.invalidateQueries({
         queryKey: knowledgeKeys.docs,
         predicate: (query) => {
           const list = query.state.data as KnowledgeDoc[] | undefined
-          return Array.isArray(list) && !list.some((item) => item.id === doc.id)
+          if (!Array.isArray(list)) return false
+          const has = list.some((item) => item.id === doc.id)
+          return belongsTo(query.queryKey[2], doc) !== has
         },
       })
       if (doc.status === 'ready' || doc.status === 'failed') {

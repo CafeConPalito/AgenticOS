@@ -19,8 +19,8 @@ from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 
 import numpy as np
-from sqlalchemy import or_, select, text
-from sqlalchemy.orm import Session
+from sqlalchemy import bindparam, or_, select, text
+from sqlalchemy.orm import Session, defer
 
 from agentic_os.db.base import DEFAULT_WORKSPACE
 from agentic_os.models import (
@@ -228,6 +228,7 @@ def visible_docs(
             or_(*levels),
         )
         .order_by(KnowledgeDoc.created_at, KnowledgeDoc.id)
+        .options(defer(KnowledgeDoc.markdown))  # loaded only for the documents that are read
     )
     return list(db.scalars(query))
 
@@ -289,14 +290,18 @@ class Hit:
 
 
 def _words_ranking(db: Session, expression: str, allowed: set[str]) -> list[str]:
+    if not allowed:
+        return []
+    # The filter goes inside the query: with the limit applied first, the documents of other
+    # projects that share an identifier could fill the window and hide the visible ones.
     rows = db.execute(
         text(
-            "SELECT chunk_id, doc_id FROM knowledge_fts WHERE knowledge_fts MATCH :q"
-            " ORDER BY bm25(knowledge_fts) LIMIT :n"
-        ),
-        {"q": expression, "n": WORDS_FETCH},
+            "SELECT chunk_id FROM knowledge_fts WHERE knowledge_fts MATCH :q"
+            " AND doc_id IN :docs ORDER BY bm25(knowledge_fts) LIMIT :n"
+        ).bindparams(bindparam("docs", expanding=True)),
+        {"q": expression, "docs": sorted(allowed), "n": WORDS_FETCH},
     ).all()
-    return [chunk_id for chunk_id, doc_id in rows if doc_id in allowed][:CANDIDATES]
+    return [chunk_id for (chunk_id,) in rows][:CANDIDATES]
 
 
 def _meaning_ranking(

@@ -10,7 +10,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query, Request, WebSocket, WebSocketDisconnect, status
 from fastapi.responses import FileResponse
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, defer
 
 from agentic_os.db.base import DEFAULT_WORKSPACE
 from agentic_os.db.session import get_session
@@ -61,7 +61,11 @@ def list_docs(
     agent_id: str | None = Query(None),
 ) -> list[DocRead]:
     """The documents of one level (or all of them), with the state of their originals."""
-    query = select(KnowledgeDoc).where(KnowledgeDoc.workspace_id == DEFAULT_WORKSPACE)
+    query = (
+        select(KnowledgeDoc)
+        .where(KnowledgeDoc.workspace_id == DEFAULT_WORKSPACE)
+        .options(defer(KnowledgeDoc.markdown))
+    )
     if scope is not None:
         query = query.where(KnowledgeDoc.scope == scope)
     if project_id is not None:
