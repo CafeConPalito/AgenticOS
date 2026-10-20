@@ -109,3 +109,4 @@ Flujo de cada fase: ver `CLAUDE.md` (Spec → Plan → Desarrollo → Validació
 | 2026-10-20 | Fase 14 cerrada (`v1.6`): bloque 10 (revisión de código resuelta, ADR 0021, README, e2e con el sidecar real y validación). Comprobaciones manuales pendientes anotadas en la validación. La fase 15 sigue en plan. |
 | 2026-10-20 | Spec de la fase 15 reabierta: los agentes podrán buscar recorriendo el grafo (mapa de temas, exploración de varios saltos, caminos). Fase 15 en spec. |
 | 2026-10-20 | Spec de la fase 15 reaprobada con el apartado D. Fase 15 en plan. |
+| 2026-10-20 | Borrador del plan de la fase 15 y del ADR 0022 (pendientes de aprobación). |

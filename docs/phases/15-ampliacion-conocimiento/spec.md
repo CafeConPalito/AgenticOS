@@ -2,6 +2,7 @@
 
 - **Estado**: aprobada (reaprobada el 2026-10-20 con el apartado D)
 - **Rama**: `phase/15-ampliacion-conocimiento`
+- **Plan**: [plan.md](plan.md)
 
 ## Objetivo
 Que la biblioteca de conocimiento **crezca con el trabajo de los agentes** y que se pueda **ver y recorrer como un grafo**. Hoy solo el usuario añade documentos. Esta fase permite que cualquier agente, de cualquier CLI, **proponga documentos Markdown nuevos** a partir de lo que ha aprendido (sin tocar nunca los originales), que el usuario los acepte o los rechace, y que todo el conocimiento —ficheros subidos y documentos propuestos— se vea en un **grafo visual** donde se distingue quién aportó qué y qué está relacionado con qué. El grafo, además de verse, **mejora la búsqueda**.
