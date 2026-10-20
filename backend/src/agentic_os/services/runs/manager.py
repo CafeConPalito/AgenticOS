@@ -11,6 +11,7 @@ from collections.abc import Callable, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 import structlog
 from sqlalchemy import func, select, update
@@ -59,6 +60,8 @@ from agentic_os.services.hooks import (
     interpret,
     write_hook_script,
 )
+from agentic_os.services.knowledge import agent_tools as knowledge_tools
+from agentic_os.services.knowledge import context as knowledge_context
 from agentic_os.services.mcp_server import RunTokens
 from agentic_os.services.memory import add_agent_note, list_notes, render_memory
 from agentic_os.services.runs import resume as resume_ops
@@ -121,8 +124,14 @@ class RunManager:
         self.on_tasks_changed: Callable[[], None] | None = None
         # Usage of the runs (phase 07). Without `start()` it reads synchronously (tests).
         self.usage = UsageService(sessions, publish=self._publish)
+        # The knowledge library's service (phase 14): set by the app once both exist.
+        self.knowledge: Any = None
         # The installed version of a CLI, if already known (never probes: that is slow).
         self.cli_version: Callable[[Cli], str | None] = lambda cli: None
+
+    @property
+    def _data_dir(self) -> Path:
+        return Path(self._settings.data_dir)
 
     @property
     def runs_dir(self) -> Path:
@@ -322,7 +331,10 @@ class RunManager:
             overrides=self._settings.cli_command_overrides,
             resume_session=resumed_from.cli_session_id if resumed_from else None,
             account_env=account_ops.env_for(account),
-            extra_dirs=runrepos.extra_dirs(targets, cwd),
+            extra_dirs=(
+                *runrepos.extra_dirs(targets, cwd),
+                *(str(p) for p in knowledge_context.prepare_folders(self._data_dir, run.id)),
+            ),
             git_authorized=bool(project.agents_git_authorized),
         )
         try:
@@ -399,6 +411,7 @@ class RunManager:
         try:
             adapter.cleanup(ctx)
         finally:
+            knowledge_context.clean_run(self._data_dir, run_id)
             self._release_agy_folder(folder)
             self._close_changes(run_id)
             if ctx.resume_session:
@@ -733,6 +746,7 @@ class RunManager:
         task: Task | None,
     ) -> str:
         parent = db.get(Run, run.parent_run_id) if run.parent_run_id else None
+        agents = [a for a in (run.agent_id, parent.agent_id if parent else None) if a]
         return build_instructions(
             agent,
             project,
@@ -742,6 +756,9 @@ class RunManager:
             subagent=(parent.agent_name, run.prompt) if parent else None,
             repos=self._repo_lines(db, run, project, task),
             git_authorized=bool(project and project.agents_git_authorized),
+            knowledge=knowledge_context.knowledge_section(
+                db, self._data_dir, run.id, run.project_id, agents
+            ),
         )
 
     @staticmethod
@@ -789,6 +806,28 @@ class RunManager:
             prompt = None if task else run.prompt
         self.add_event(run_id, EventKind.MCP, "get_context")
         return build_context(instructions, prompt)
+
+    def search_knowledge(self, run_id: str, query: str, limit: int) -> str:
+        with self._db() as db:
+            run = db.get(Run, run_id)
+            if run is None:
+                raise LookupError(run_id)
+            answer, detail = knowledge_tools.search_knowledge(
+                db, self.knowledge, self._data_dir, run, query, limit
+            )
+        self.add_event(run_id, EventKind.MCP, "search_knowledge", detail)
+        return answer
+
+    def read_knowledge(self, run_id: str, document: str, location: str, part: int) -> str:
+        with self._db() as db:
+            run = db.get(Run, run_id)
+            if run is None:
+                raise LookupError(run_id)
+            answer, detail = knowledge_tools.read_knowledge(
+                db, self._data_dir, run, document, location, part
+            )
+        self.add_event(run_id, EventKind.MCP, "read_knowledge", detail)
+        return answer
 
     def report_status(self, run_id: str, message: str) -> None:
         with self._db() as db:

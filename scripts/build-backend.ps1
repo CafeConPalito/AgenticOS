@@ -13,6 +13,13 @@ try {
     # pywinpty's conpty.dll starts OpenConsole.exe from its own folder, and PyInstaller only
     # picks up the DLLs: without these executables every run dies as soon as it starts.
     $winpty = Join-Path $backend '.venv\Lib\site-packages\winpty'
+    # The models that ship inside the app (the OCR, ~18 MB): downloaded and checked here, with the
+    # same pinned hashes the app uses, and added to the executable as `bundled_models`.
+    $bundled = Join-Path $backend 'build\bundled'
+    uv run python -m agentic_os.services.localmodels.stage $bundled
+    if ($LASTEXITCODE -ne 0) { throw "No se pudieron preparar los modelos incluidos ($LASTEXITCODE)" }
+    # RapidOCR's own settings files (its models are not taken: ours are the bundled_models).
+    $rapidocr = Join-Path $backend '.venv\Lib\site-packages\rapidocr'
     uv run pyinstaller --noconfirm --clean --onefile --console `
         --add-binary "$winpty\OpenConsole.exe;winpty" `
         --add-binary "$winpty\winpty-agent.exe;winpty" `
@@ -23,7 +30,23 @@ try {
         --collect-submodules mcp.server `
         --collect-submodules mcp.shared `
         --collect-submodules agentic_os `
+        --collect-submodules markitdown `
+        --collect-data markitdown `
+        --collect-all magika `
+        --collect-all pypdfium2 `
+        --collect-all pypdfium2_raw `
+        --collect-data pptx `
+        --collect-all trafilatura `
+        --collect-all justext `
+        --collect-all courlan `
+        --collect-all htmldate `
+        --collect-submodules rapidocr `
+        --add-data "$rapidocr\config.yaml;rapidocr" `
+        --add-data "$rapidocr\default_models.yaml;rapidocr" `
+        --exclude-module pandas `
+        --exclude-module pdfminer `
         --add-data "$migrations;agentic_os\db\migrations" `
+        --add-data "$bundled\models;bundled_models" `
         --distpath build\dist --workpath build\work --specpath build `
         packaging\entry.py
     if ($LASTEXITCODE -ne 0) { throw "PyInstaller failed ($LASTEXITCODE)" }

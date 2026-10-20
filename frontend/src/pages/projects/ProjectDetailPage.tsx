@@ -1,11 +1,12 @@
-import { BookOpen, FolderGit2, FolderOpen } from 'lucide-react'
+import { FolderGit2, FolderOpen } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Navigate, useParams } from 'react-router'
 import { toast } from 'sonner'
 import { useOpenProjectFolder, useProject } from '@/api/projects'
 import type { Project } from '@/api/types'
 import { EmptyState } from '@/components/EmptyState'
-import { ComingSoonTab, PageContainer, RouteTabs } from '@/components/page'
+import { KnowledgeLibrary } from '@/components/knowledge/KnowledgeLibrary'
+import { PageContainer, RouteTabs } from '@/components/page'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { errorMessage } from '@/lib/form-errors'
@@ -87,7 +88,9 @@ function ProjectDetail({ project, tab }: { project: Project; tab: Tab }) {
       {tab === 'pipeline' && <PipelineTab project={project} />}
       {tab === 'git' && <GitTab project={project} />}
       {tab === 'memory' && <MemoryTab project={project} />}
-      {tab === 'knowledge' && <ComingSoonTab icon={BookOpen} />}
+      {tab === 'knowledge' && (
+        <KnowledgeLibrary level={{ scope: 'project', projectId: project.id }} />
+      )}
       {tab === 'settings' && <SettingsTab project={project} />}
     </div>
   )

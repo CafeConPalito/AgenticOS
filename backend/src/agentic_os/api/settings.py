@@ -25,6 +25,8 @@ class DataDirRead(BaseModel):
     database_bytes: int
     sessions_bytes: int
     logs_bytes: int
+    knowledge_bytes: int
+    models_bytes: int  # downloaded models and engines
     total_bytes: int
     # The last move that failed (the data stayed where it was).
     last_error: str | None = None
@@ -66,6 +68,8 @@ def get_data_dir(request: Request, refresh: bool = False) -> DataDirRead:
         database_bytes=usage.database,
         sessions_bytes=usage.sessions,
         logs_bytes=usage.logs,
+        knowledge_bytes=usage.knowledge,
+        models_bytes=usage.models,
         total_bytes=usage.total,
         last_error=error if isinstance(error, str) else None,
     )

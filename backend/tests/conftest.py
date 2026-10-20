@@ -17,6 +17,7 @@ def settings(tmp_path: Path) -> Settings:
         claude_config_file=tmp_path / "claude.json",
         agy_settings_file=tmp_path / "agy-settings.json",
         check_sessions_at_startup=False,  # never run the real CLIs
+        knowledge_processing="off",  # the knowledge tests run the queue themselves
     )
 
 

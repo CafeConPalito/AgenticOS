@@ -38,6 +38,7 @@ class Activity(StrEnum):
 class RunKind(StrEnum):
     AGENT = "agent"  # an agent's CLI session in a terminal
     DECISION = "decision"  # a call that picked the branches of a fork (phase 13): no terminal
+    DESCRIBE = "describe"  # a call that described an image of a document (phase 14): no terminal
 
 
 class Run(IdMixin, WorkspaceMixin, TimestampMixin, Base):

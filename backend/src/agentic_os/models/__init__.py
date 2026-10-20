@@ -1,7 +1,24 @@
 from agentic_os.models.account import CliAccount, SessionState
 from agentic_os.models.agent import Agent, AgentStatus, Cli, PermissionMode, Tool
-from agentic_os.models.app_state import NOTIFICATIONS, SCHEDULER_PAUSED, USAGE_LIMITS, AppState
+from agentic_os.models.app_state import (
+    KNOWLEDGE,
+    NOTIFICATIONS,
+    SCHEDULER_PAUSED,
+    USAGE_LIMITS,
+    AppState,
+)
 from agentic_os.models.inbox import InboxItem, InboxKind, InboxStatus, Resolution
+from agentic_os.models.knowledge import (
+    PROCESSING,
+    DocStatus,
+    KnowledgeChunk,
+    KnowledgeDoc,
+    KnowledgeImage,
+    KnowledgeMode,
+    KnowledgeScope,
+    Presence,
+    SourceKind,
+)
 from agentic_os.models.memory import AuthorKind, MemoryNote
 from agentic_os.models.pipeline import DEFAULT_MAX_REJECTIONS, Pipeline, Stage, StageLink
 from agentic_os.models.project import IntegrationMode, OnApprove, Project, WorkspaceMode
@@ -42,8 +59,10 @@ __all__ = [
     "ACTIVE_STATUSES",
     "DEFAULT_MAX_REJECTIONS",
     "FINISHED_TASK_STATUSES",
+    "KNOWLEDGE",
     "NOTIFICATIONS",
     "PRIORITY_RANK",
+    "PROCESSING",
     "SCHEDULER_PAUSED",
     "USAGE_LIMITS",
     "Activity",
@@ -56,16 +75,23 @@ __all__ = [
     "CliAccount",
     "CommitAttribution",
     "DecisionBy",
+    "DocStatus",
     "EventKind",
     "GitOperation",
     "InboxItem",
     "InboxKind",
     "InboxStatus",
     "IntegrationMode",
+    "KnowledgeChunk",
+    "KnowledgeDoc",
+    "KnowledgeImage",
+    "KnowledgeMode",
+    "KnowledgeScope",
     "MemoryNote",
     "OnApprove",
     "PermissionMode",
     "Pipeline",
+    "Presence",
     "Priority",
     "Project",
     "ProjectRepo",
@@ -77,6 +103,7 @@ __all__ = [
     "RunRepo",
     "RunStatus",
     "SessionState",
+    "SourceKind",
     "Stage",
     "StageLink",
     "Task",

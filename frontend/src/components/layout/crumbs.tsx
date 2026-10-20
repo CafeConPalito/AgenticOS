@@ -25,6 +25,7 @@ export function TextCrumb({
     | 'nav.usage'
     | 'nav.settings'
     | 'nav.clis'
+    | 'nav.knowledge'
 }) {
   const { t } = useTranslation()
   return <>{t(i18nKey)}</>

@@ -12,6 +12,8 @@ from agentic_os.api import (
     home,
     inbox,
     integration,
+    knowledge,
+    local_models,
     maintenance,
     memory,
     pipelines,
@@ -35,6 +37,8 @@ api_router.include_router(repos.router)
 api_router.include_router(git.router)
 api_router.include_router(git_more.router)
 api_router.include_router(forges.router)
+api_router.include_router(knowledge.router)
+api_router.include_router(local_models.router)
 api_router.include_router(memory.router)
 api_router.include_router(pipelines.router)
 api_router.include_router(clis.router)

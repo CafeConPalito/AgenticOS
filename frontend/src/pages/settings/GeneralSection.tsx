@@ -115,6 +115,11 @@ function DataDirField() {
       <div className="flex items-center gap-3">
         <p className="flex-1 text-xs text-muted-foreground">
           {t('settings.general.dataDirHelp', { size: formatBytes(data.total_bytes) })}
+          {data.knowledge_bytes + data.models_bytes > 0 &&
+            ` · ${t('settings.general.dataDirKnowledge', {
+              knowledge: formatBytes(data.knowledge_bytes),
+              models: formatBytes(data.models_bytes),
+            })}`}
         </p>
         <Button
           variant="ghost"

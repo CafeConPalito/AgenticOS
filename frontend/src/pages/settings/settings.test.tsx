@@ -136,7 +136,7 @@ describe('Settings · Acerca de', () => {
 })
 
 describe('Settings · índice y atajos', () => {
-  it('has an index with the six sections, linked to their anchors', async () => {
+  it('has an index with all the sections, linked to their anchors', async () => {
     createFakeBackend()
     renderApp('/ajustes')
     const index = await screen.findByRole('navigation', { name: es.settings.index })
@@ -147,6 +147,8 @@ describe('Settings · índice y atajos', () => {
       '#notifications',
       '#limits',
       '#git',
+      '#knowledge',
+      '#models',
       '#cleanup',
       '#about',
     ])

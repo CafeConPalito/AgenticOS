@@ -12,6 +12,8 @@ _COMMON_RULES = (
     "- Cuando termines la tarea, llama a `complete_task` con un resumen breve del resultado.\n"
     "- Si necesitas una decisión o un permiso que no tienes, pídelo con `request_human` "
     "en lugar de suponer.\n"
+    "- Si tienes documentos de conocimiento, consúltalos con `search_knowledge` y "
+    "`read_knowledge` antes de suponer un dato.\n"
 )
 
 TEMPLATES: list[AgentTemplate] = [

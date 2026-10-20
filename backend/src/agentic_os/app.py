@@ -26,6 +26,11 @@ from agentic_os.services.decider import DecisionService
 from agentic_os.services.gitx.events import GitEvents
 from agentic_os.services.gitx.jobs import JobManager
 from agentic_os.services.gitx.shell import ShellSessions
+from agentic_os.services.knowledge.events import KnowledgeEvents
+from agentic_os.services.knowledge.service import KnowledgeService
+from agentic_os.services.localmodels import hf_token
+from agentic_os.services.localmodels.catalog import EMBEDDING
+from agentic_os.services.localmodels.downloads import DownloadManager
 from agentic_os.services.mcp_server import mount_app
 from agentic_os.services.runs.manager import RunManager
 from agentic_os.services.scheduler import Scheduler
@@ -135,6 +140,25 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         git_shells.loop = asyncio.get_running_loop()
         git_shells.on_end = git_events.changed
         app.state.git_shells = git_shells
+        knowledge_events = KnowledgeEvents()
+        knowledge = KnowledgeService(
+            app.state.sessionmaker,
+            Path(settings.data_dir),
+            knowledge_events,
+            mode=settings.knowledge_processing,
+            cli_overrides=settings.cli_command_overrides,
+        )
+        app.state.knowledge_events, app.state.knowledge = knowledge_events, knowledge
+        manager.knowledge = knowledge  # the agents' search_knowledge uses its search
+        knowledge.start()
+        models = DownloadManager(
+            Path(settings.data_dir),
+            knowledge_events,
+            token=hf_token.token,
+            # A model of embeddings that arrives: the documents get indexed with it.
+            on_ready=lambda entry: knowledge.reindex() if entry.kind == EMBEDDING else None,
+        )
+        app.state.models = models
         if settings.check_sessions_at_startup:
             threading.Thread(
                 target=check_sessions,
@@ -167,6 +191,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             logins.shutdown()
             git_jobs.shutdown()
             git_shells.shutdown()
+            models.stop()
+            knowledge.stop()
             # The scheduler stops first: the runs closed by the shutdown are not "stopped by the
             # user"; their tasks are found interrupted on the next start.
             scheduler.stop()

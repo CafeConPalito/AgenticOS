@@ -152,10 +152,23 @@ En la app empaquetada, el backend usa un puerto libre asignado al arrancar (ver 
 - **Límites diarios** (Ajustes): USD para Claude Code y tokens para agy. Al superar el de un CLI, el scheduler deja de lanzar tareas de ese CLI hasta el día siguiente; lo que está en marcha sigue.
 - **Cuota agotada**: si un CLI avisa de que se ha quedado sin cuota, aparece en la Inbox, la tarea espera y el scheduler frena ese CLI hasta que pulses «Reanudar».
 
+## Conocimiento
+La biblioteca da a los agentes documentos tuyos ([ADR 0021](docs/adr/0021-knowledge.md)). Tres niveles: **general** (`/conocimiento`), de un **proyecto** y de un **agente** (pestañas «Conocimiento»).
+- **Por referencia**: la app guarda la ruta, no una copia. Si el original se borra o se mueve, la ficha lo avisa («No encontrado») y puedes reubicarlo o quitarlo; si cambia, marca «Ha cambiado» y puedes reprocesarlo.
+- **Qué acepta**: PDF, Word, Excel, PowerPoint, Markdown, texto, código, CSV, HTML, imágenes y páginas web. Todo se convierte a Markdown con la misma pipeline; en la ficha puedes ver el original y el Markdown.
+- **Imágenes**: las de los documentos se extraen y el OCR (incluido en la app, sin conexión) lee su texto; las páginas escaneadas se leen por OCR. Opcionalmente una IA las describe, con un CLI en modo headless o con un modelo de visión local.
+- **Búsqueda**: por significado (modelo local, descargable en Ajustes › Modelos locales) y por palabras para identificadores. Sin modelo, busca solo por palabras.
+- **Lo que ve un agente**: un índice de los documentos visibles y el texto entero de los pequeños (hasta un presupuesto), más las herramientas MCP `search_knowledge` y `read_knowledge`.
+- **Mientras procesa** se ve el progreso de cada documento y el uso de CPU, GPU y memoria; la cola se puede pausar.
+- Ajustes › **Conocimiento** (límites y descripción de imágenes) y › **Modelos locales** (descargar, elegir y borrar; `llama.cpp` no viene en el instalador, se descarga aquí).
+
 ## API (backend)
 | Ruta | Para qué |
 |---|---|
 | `GET /api/health` | Estado y versión |
+| `/api/knowledge/docs`, `POST …/docs/files · url`, `PATCH/DELETE …/docs/{id}`, `POST …/docs/{id}/relocate · reprocess · open · reveal`, `GET …/docs/{id}/markdown · images · original` | Documentos de la biblioteca: añadir por ruta o dirección, editar, mover de nivel, reubicar, reprocesar y verlos |
+| `POST /api/knowledge/search`, `GET /api/knowledge/queue · system`, `POST …/queue/pause · resume`, `WS /api/knowledge/events` | Probar la búsqueda, cola, carga del equipo y eventos en vivo |
+| `GET/PUT /api/settings/knowledge`, `/api/local-models`, `GET/PUT /api/settings/local-models · huggingface-token` | Ajustes de la biblioteca, modelos y motores locales y su selección |
 | `/api/agents`, `/api/agents/{id}`, `POST /api/agents/{id}/duplicate`, `GET /api/agent-templates` | Agentes y plantillas |
 | `/api/projects`, `/api/projects/{id}`, `POST /api/projects/{id}/open` | Proyectos (con el estado git calculado al leerlos) |
 | `/api/projects/{id}/memory`, `/api/projects/{id}/memory/{note_id}` | Notas de la memoria del proyecto |

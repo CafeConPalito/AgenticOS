@@ -12,7 +12,8 @@
     "settings": "Ajustes",
     "main": "Secciones",
     "home": "Inicio",
-    "clis": "CLIs y cuentas"
+    "clis": "CLIs y cuentas",
+    "knowledge": "Conocimiento"
   },
   "header": {
     "search": "Buscar agentes, tareas o acciones…",
@@ -1110,7 +1111,8 @@
         "light": "Claro"
       },
       "singleKey": "Atajos de una tecla",
-      "singleKeyHelp": "N para una tarea nueva y ? para la ayuda, sin pulsar Ctrl. Se ignoran al escribir, en la terminal y con un diálogo abierto. Ctrl+K siempre funciona."
+      "singleKeyHelp": "N para una tarea nueva y ? para la ayuda, sin pulsar Ctrl. Se ignoran al escribir, en la terminal y con un diálogo abierto. Ctrl+K siempre funciona.",
+      "dataDirKnowledge": "biblioteca {{knowledge}} · modelos {{models}}"
     },
     "cleanup": {
       "title": "Limpieza",
@@ -1159,6 +1161,8 @@
       "notifications": "Notificaciones",
       "limits": "Límites diarios",
       "git": "Git",
+      "knowledge": "Conocimiento",
+      "models": "Modelos locales",
       "cleanup": "Limpieza",
       "about": "Acerca de"
     },
@@ -1186,6 +1190,40 @@
       "accountsHelp": "Los tokens se guardan en el almacén de credenciales de git, no en Agentic OS. Si ya iniciaste sesión con Git Credential Manager, aparecen aquí.",
       "hasToken": "con token",
       "noToken": "sin token"
+    },
+    "knowledge": {
+      "title": "Conocimiento",
+      "range": "Entre {{min}} y {{max}}",
+      "fields": {
+        "max_file_mb": "Tamaño máximo por fichero (MB)",
+        "context_budget": "Presupuesto de contexto (tokens)",
+        "small_doc_tokens": "Documento pequeño (tokens)",
+        "concurrency": "Documentos a la vez",
+        "threads": "Hilos de cálculo"
+      },
+      "help": {
+        "max_file_mb": "Los ficheros más grandes se rechazan al añadirlos.",
+        "context_budget": "Cuánto texto de la biblioteca entra entero en el contexto de cada ejecución.",
+        "small_doc_tokens": "Hasta este tamaño un documento «automático» entra entero; por encima, solo por búsqueda.",
+        "concurrency": "Un cambio se aplica al reiniciar la app.",
+        "threads": "0 usa la mitad de los núcleos del equipo."
+      },
+      "describe": "Describir las imágenes con IA",
+      "describeHelp": "Opcional. Una IA describe las imágenes de los documentos y la descripción se guarda en el Markdown. Se puede cambiar documento a documento.",
+      "describer": "Cómo describirlas",
+      "describers": {
+        "cli": "Con un CLI en modo headless (Claude Code o Antigravity)",
+        "local": "Con un modelo de visión local (llama.cpp)"
+      },
+      "cli": "CLI",
+      "clis": {
+        "auto": "El primero con sesión",
+        "claude": "Claude Code",
+        "agy": "Antigravity"
+      },
+      "model": "Modelo",
+      "modelHelp": "Vacío usa el más barato del CLI.",
+      "localHelp": "Descarga el motor llama.cpp y un modelo de visión en «Modelos locales». No viene en el instalador."
     }
   },
   "usage": {
@@ -1427,10 +1465,166 @@
       "usage": "Consumo",
       "inbox": "Peticiones",
       "settings": "Ajustes",
-      "clis": "CLIs y cuentas"
+      "clis": "CLIs y cuentas",
+      "knowledge": "Conocimiento"
     },
     "schedulerPaused": "Scheduler en pausa",
     "schedulerResumed": "Scheduler en marcha"
+  },
+  "knowledge": {
+    "title": "Conocimiento",
+    "loadFailed": "No se pudo leer la biblioteca.",
+    "intro": {
+      "general": "Documentos que pueden usar todos los agentes de todos los proyectos. Se guardan por referencia: la app no hace copias de tus ficheros.",
+      "project": "Documentos que usan los agentes que trabajan en este proyecto, además de los generales.",
+      "agent": "Documentos que usa solo este agente, en cualquier proyecto, además de los generales y los del proyecto."
+    },
+    "empty": {
+      "title": "Aún no hay documentos",
+      "description": "Arrastra ficheros a esta ventana o añádelos con el botón. La app guarda solo lo imprescindible para la IA: el texto en Markdown y las imágenes que importan."
+    },
+    "add": {
+      "dialogTitle": "Elegir documentos",
+      "dropHint": "Suelta aquí PDF, Word, Excel, PowerPoint, texto, código o imágenes.",
+      "pathHint": "Escribe la ruta de un fichero (en la app de escritorio puedes arrastrarlos).",
+      "browse": "Elegir ficheros…",
+      "pathLabel": "Ruta del fichero",
+      "pathPlaceholder": "D:\\documentos\\informe.pdf",
+      "addFile": "Añadir fichero",
+      "urlLabel": "Dirección web",
+      "urlPlaceholder": "https://…",
+      "addUrl": "Añadir página web"
+    },
+    "monitor": {
+      "title": "Uso del equipo",
+      "working": "Procesando documentos",
+      "paused": "Cola en pausa",
+      "reindexing": "Reindexando con otro modelo",
+      "queue": "{{count}} en cola · {{active}} procesando",
+      "cpu": "CPU",
+      "gpu": "GPU",
+      "memory": "Memoria",
+      "app": "La app: {{value}} %",
+      "memoryDetail": "{{used}} de {{total}} GB · la app {{app}} MB",
+      "unavailable": "no disponible",
+      "pause": "Pausar",
+      "resume": "Reanudar"
+    },
+    "row": {
+      "open": "Abrir {{title}}",
+      "progress": "Progreso de {{title}}",
+      "tokens": "{{count}} tokens",
+      "notice": "Aviso"
+    },
+    "status": {
+      "queued": "En cola",
+      "converting": "Convirtiendo",
+      "images": "Leyendo imágenes",
+      "describing": "Describiendo imágenes",
+      "indexing": "Indexando",
+      "ready": "Listo",
+      "failed": "Falló"
+    },
+    "presence": {
+      "missing": "No encontrado",
+      "changed": "Ha cambiado"
+    },
+    "modes": {
+      "auto": "Automático (entero si es pequeño)",
+      "context": "Siempre en el contexto",
+      "search": "Solo por búsqueda",
+      "off": "Apagado (los agentes no lo ven)"
+    },
+    "describeChoice": {
+      "default": "Lo que digan los ajustes",
+      "yes": "Describir las imágenes con IA",
+      "no": "No describirlas"
+    },
+    "errors": {
+      "unknown": "No se pudo procesar el documento.",
+      "not_found": "El fichero ya no está donde estaba.",
+      "file_not_found": "El fichero no existe.",
+      "not_a_file": "La ruta no es un fichero.",
+      "unsupported": "Este formato no se puede leer.",
+      "encrypted": "Está protegido con contraseña.",
+      "empty": "No tiene texto ni imágenes que leer.",
+      "too_large": "Supera el tamaño máximo permitido (ver Ajustes › Conocimiento).",
+      "url_error": "No se pudo descargar la página.",
+      "invalid_url": "Escribe una dirección completa que empiece por http:// o https://.",
+      "convert_error": "Falló la conversión del documento.",
+      "embed_error": "Falló el índice de significado; la búsqueda usa solo palabras.",
+      "already_added": "Ya está en esta biblioteca.",
+      "different_content": "El fichero de esa ruta no es el mismo.",
+      "processing": "Se está procesando ahora mismo.",
+      "level_mismatch": "El nivel indicado no es válido.",
+      "missing": "El fichero se borró o se movió."
+    },
+    "notices": {
+      "ocr_missing": "Falta el modelo de OCR: las imágenes no se han leído. Reprocesa el documento cuando esté disponible.",
+      "ocr_failed": "El OCR falló en alguna imagen.",
+      "embed_failed": "No se pudo calcular el índice de significado; solo se busca por palabras.",
+      "describe_missing": "Falta el modelo de visión o el motor local para describir las imágenes (Ajustes › Modelos locales).",
+      "describe_blocked": "La cuenta del CLI no está disponible (límite o sin sesión): las imágenes no se han descrito.",
+      "describe_failed": "No se pudo describir ninguna imagen."
+    },
+    "sheet": {
+      "loading": "Cargando…",
+      "description": "Detalle del documento, su contenido y lo que se puede hacer con él.",
+      "open": "Abrir",
+      "reveal": "Mostrar en carpeta",
+      "reprocess": "Reprocesar",
+      "remove": "Quitar",
+      "removeTitle": "¿Quitar «{{title}}»?",
+      "removeBody": "Se quita de la biblioteca junto con su Markdown y sus imágenes extraídas. El fichero original no se toca.",
+      "source": "Origen",
+      "size": "Tamaño",
+      "tokens": "Tokens",
+      "titleLabel": "Título",
+      "descriptionLabel": "Descripción",
+      "descriptionPlaceholder": "Para qué sirve este documento (la ven los agentes en el índice)",
+      "mode": "Cómo lo usan los agentes",
+      "describe": "Describir imágenes",
+      "images": "Imágenes ({{count}})",
+      "imageN": "Imagen {{n}}",
+      "describedBy": "descrita por {{by}}",
+      "ocr": "Texto leído",
+      "missingHelp": "El fichero original se borró o se movió. Indica dónde está ahora o quita el documento.",
+      "changedHelp": "El fichero original ha cambiado desde que se procesó. Reprocésalo o indica otro fichero.",
+      "newPath": "Nueva ruta",
+      "newPathPlaceholder": "Nueva ubicación del fichero",
+      "relocate": "Reubicar",
+      "relocateDialog": "Elegir el fichero",
+      "relocated": "Documento reubicado",
+      "relocatedAgain": "Documento reubicado; se procesará de nuevo",
+      "differentTitle": "Es otro fichero",
+      "differentBody": "El fichero de esa ruta no es el mismo que se procesó. Si continúas, el documento se volverá a procesar con el nuevo contenido.",
+      "differentConfirm": "Usar este fichero"
+    },
+    "viewer": {
+      "original": "Original",
+      "markdown": "Markdown",
+      "tokens": "{{count}} tokens",
+      "noMarkdown": "Todavía no hay Markdown: el documento no se ha procesado.",
+      "loadFailed": "No se pudo cargar el contenido.",
+      "originalMissing": "El fichero original no está disponible.",
+      "noPreview": "Este formato no se puede ver aquí. Usa «Abrir» para verlo con su aplicación.",
+      "pdfTitle": "PDF de {{title}}"
+    },
+    "search": {
+      "label": "Probar una búsqueda",
+      "placeholder": "Qué buscaría un agente…",
+      "run": "Buscar",
+      "empty": "No se encontró nada.",
+      "mode": {
+        "hybrid": "Búsqueda por significado y por palabras",
+        "words": "Solo palabras (no hay modelo de significado)"
+      },
+      "foundBy": {
+        "meaning": "por significado",
+        "words": "por palabras",
+        "both": "por ambos"
+      }
+    }
   },
   "clis": {
     "title": "CLIs y cuentas",
@@ -2189,6 +2383,75 @@
       "asDraft": "como borrador",
       "submit": "Crear",
       "created": "Pull request #{{number}} creado"
+    }
+  },
+  "localModels": {
+    "title": "Modelos locales",
+    "description": "Los modelos que usa la biblioteca para leer, entender y describir tus documentos. Se descargan solo si los eliges y se pueden borrar.",
+    "inUse": "En uso",
+    "default": "Recomendado",
+    "bundled": "Incluido en la app",
+    "needsAccount": "Requiere cuenta de Hugging Face",
+    "unavailable": "no disponible en este sistema",
+    "use": "Usar {{title}}",
+    "useShort": "Usar",
+    "download": "Descargar {{title}}",
+    "downloadShort": "Descargar",
+    "resume": "Reanudar",
+    "retry": "Reintentar",
+    "cancel": "Cancelar la descarga de {{title}}",
+    "remove": "Borrar {{title}}",
+    "removeShort": "Borrar",
+    "removeTitle": "¿Borrar {{title}}?",
+    "removeBody": "Se borran los ficheros del modelo. Puedes descargarlo de nuevo cuando quieras.",
+    "progress": "Descarga de {{title}}",
+    "partial": "Descarga a medias ({{done}}): se reanuda donde se quedó.",
+    "reindexing": "Los documentos se indexan de nuevo con el modelo elegido.",
+    "disk": "Modelos {{models}} · motores {{engines}} · libres en el disco {{free}}",
+    "kinds": {
+      "embedding": {
+        "title": "Búsqueda por significado",
+        "help": "Convierte el texto en vectores para encontrar pasajes parecidos. Cambiar de modelo vuelve a indexar los documentos."
+      },
+      "ocr": {
+        "title": "Lectura de texto en imágenes (OCR)",
+        "help": "Lee el texto de páginas escaneadas y de capturas."
+      },
+      "vision": {
+        "title": "Descripción de imágenes",
+        "help": "Modelos de visión para describir imágenes sin salir del equipo. Necesitan el motor llama.cpp."
+      },
+      "engine": {
+        "title": "Motor",
+        "help": "llama.cpp ejecuta los modelos de visión. No viene en el instalador: se descarga aquí."
+      }
+    },
+    "token": {
+      "title": "Cuenta de Hugging Face",
+      "help": "Algunos modelos exigen aceptar su licencia con una cuenta. El token se guarda en el gestor de credenciales de git, nunca en la base de datos.",
+      "label": "Token de Hugging Face",
+      "save": "Guardar token",
+      "remove": "Quitar",
+      "configured": "Token configurado ({{source}}).",
+      "source": {
+        "env": "variable de entorno",
+        "file": "fichero de Hugging Face",
+        "git": "credenciales de git"
+      }
+    },
+    "errors": {
+      "network": "No se pudo descargar: sin conexión o el servidor no responde.",
+      "checksum": "El fichero descargado no coincide con el esperado; se descartó.",
+      "unpack": "No se pudo descomprimir el motor.",
+      "no_space": "No hay espacio suficiente en el disco.",
+      "http_401": "Hace falta iniciar sesión en Hugging Face: guarda un token abajo.",
+      "http_403": "Hay que aceptar la licencia del modelo en Hugging Face con tu cuenta.",
+      "already_downloading": "Ya se está descargando.",
+      "downloading": "Se está descargando: cancélalo antes.",
+      "bundled": "Viene con la app y no se puede borrar.",
+      "already_installed": "Ya está descargado.",
+      "unsupported_platform": "No hay versión para este sistema.",
+      "invalid_model": "Modelo no válido para esta función."
     }
   }
 }

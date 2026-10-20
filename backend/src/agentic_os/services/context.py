@@ -25,6 +25,10 @@ queda pendiente. Después no sigas trabajando: Agentic OS cerrará la sesión.
 - `spawn_subagent`: si tu agente puede lanzar subagentes, reparte en paralelo una parte \
 independiente del trabajo (otro agente o tú mismo); su resultado te llegará como un mensaje.
 - `create_subtask`: si tu agente puede crear tareas, deja en cola trabajo para más adelante.
+- `search_knowledge` y `read_knowledge`: si hay una sección «Conocimiento», consulta \
+los documentos que la persona te ha dado antes de suponer un dato: busca con una pregunta \
+o con un código exacto, y lee un documento, una página o un apartado entero cuando lo \
+necesites.
 - `request_human`: si necesitas una decisión o un dato de la persona, o algo que solo ella \
 puede hacer (una clave, un acceso), pídeselo con una pregunta corta y el contexto necesario. \
 Después termina tu turno: su respuesta te llegará como un mensaje nuevo. No lo uses para lo \
@@ -126,10 +130,12 @@ def build_instructions(
     subagent: tuple[str, str] | None = None,
     repos: Sequence[RepoLine] = (),
     git_authorized: bool = False,
+    knowledge: str = "",
 ) -> str:
     """`memory` is the rendered project memory (services.memory.render_memory); `task`, the
     task and stage of a run launched by the scheduler (None for a manual run); `repos`, the
-    project's repositories as this run sees them."""
+    project's repositories as this run sees them; `knowledge`, the «Conocimiento» block
+    (services.knowledge.context), empty when there are no documents to read."""
     name = project.name if project is not None else "(proyecto)"
     memory = memory.strip() or "(vacía)"
     values = {
@@ -153,6 +159,8 @@ def build_instructions(
     if git_authorized:
         parts.append(GIT_RULES)
     parts.append(f"## Memoria del proyecto\n{memory}")
+    if knowledge.strip():
+        parts.append(knowledge.strip())
     if task is not None:
         parts.append(task_section(task))
     if subagent is not None:

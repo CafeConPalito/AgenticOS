@@ -30,6 +30,15 @@ import type {
   WorktreeInfo,
 } from '@/api/git-more'
 import type { ProjectRepo } from '@/api/repos'
+import type { HfToken, LocalModel, ModelSelection } from '@/api/local-models'
+import type {
+  DocImage,
+  KnowledgeDoc,
+  KnowledgeSettings,
+  QueueState,
+  SearchHit,
+  SystemLoad,
+} from '@/api/knowledge'
 import type { ProjectBranches, ProjectSnapshots } from '@/api/maintenance'
 import {
   ACTIVE_RUN_STATUSES,
@@ -333,6 +342,63 @@ export function makeRun(overrides: Partial<Run> = {}): Run {
     controller: null,
     viewers: 0,
     usage: makeUsage(),
+    ...overrides,
+  }
+}
+
+export function makeKnowledgeDoc(overrides: Partial<KnowledgeDoc> = {}): KnowledgeDoc {
+  seq += 1
+  return {
+    id: `doc-${seq}`,
+    scope: 'general',
+    project_id: null,
+    agent_id: null,
+    title: 'Manual de marca',
+    description: '',
+    mode: 'auto',
+    describe_images: null,
+    source_kind: 'file',
+    path: 'D:\\docs\\manual.pdf',
+    url: null,
+    file_name: 'manual.pdf',
+    extension: '.pdf',
+    viewer: 'pdf',
+    size: 120_000,
+    presence: 'ok',
+    status: 'ready',
+    progress_done: 0,
+    progress_total: 0,
+    error_code: null,
+    error_message: null,
+    notice: null,
+    md_tokens: 1500,
+    image_count: 0,
+    has_markdown: true,
+    embed_model: 'e5-small',
+    processed_at: now(),
+    created_at: now(),
+    updated_at: now(),
+    ...overrides,
+  }
+}
+
+export function makeLocalModel(overrides: Partial<LocalModel> = {}): LocalModel {
+  return {
+    id: 'e5-small',
+    kind: 'embedding',
+    title: 'multilingual-e5-small',
+    license: 'mit',
+    size: 118_000_000,
+    default: true,
+    selected: true,
+    needs_account: false,
+    available: true,
+    bundled: false,
+    state: 'ready',
+    done: 118_000_000,
+    total: 118_000_000,
+    error_code: null,
+    error_message: null,
     ...overrides,
   }
 }
@@ -812,6 +878,20 @@ export function createFakeBackend(
     tokens?: string[]
     /** The global git configuration (key → value). */
     globalConfig?: Record<string, string>
+    /** The knowledge library (phase 14). */
+    knowledge?: KnowledgeDoc[]
+    /** The Markdown of each document, by id. */
+    markdowns?: Record<string, string>
+    /** The pictures of each document, by id. */
+    knowledgeImages?: Record<string, DocImage[]>
+    /** What a search answers. */
+    searchHits?: SearchHit[]
+    queue?: Partial<QueueState>
+    system?: SystemLoad
+    knowledgeSettings?: Partial<KnowledgeSettings>
+    /** The local models catalogue (phase 14). */
+    localModels?: LocalModel[]
+    hfToken?: HfToken
   } = {},
 ) {
   const usage: FakeUsage = { ...emptyUsage(), ...(seed.usage ?? {}) }
@@ -967,6 +1047,8 @@ export function createFakeBackend(
     is_default: true,
     database_bytes: 1_200_000,
     sessions_bytes: 600_000_000,
+    knowledge_bytes: 40_000_000,
+    models_bytes: 118_000_000,
     logs_bytes: 4_000_000,
     total_bytes: 1_800_000_000,
     last_error: null as string | null,
@@ -1420,6 +1502,189 @@ export function createFakeBackend(
     if (action === 'complete') Object.assign(task, { status: 'done', finished_at: now() })
     if (method === 'PATCH') Object.assign(task, body)
     return json(200, task)
+  }
+
+  const library: KnowledgeDoc[] = structuredClone(seed.knowledge ?? [])
+  const queueState: QueueState = {
+    paused: false,
+    queued: 0,
+    active: [],
+    mode: 'on',
+    ...(seed.queue ?? {}),
+  }
+  const knowledgeSettings: KnowledgeSettings = {
+    max_file_mb: 50,
+    context_budget: 8000,
+    small_doc_tokens: 2000,
+    concurrency: 1,
+    threads: 0,
+    describe_images: false,
+    describer: 'cli',
+    describer_cli: '',
+    describer_account: '',
+    describer_model: '',
+    ...(seed.knowledgeSettings ?? {}),
+  }
+
+  const models: LocalModel[] = structuredClone(seed.localModels ?? [])
+  const modelSelection: ModelSelection = { embedding: null, ocr: null, vision: null }
+  let hfToken: HfToken = seed.hfToken ?? { configured: false, source: null }
+
+  function handleLocalModels(
+    method: string,
+    path: string,
+    body: Record<string, unknown>,
+  ): Response | null {
+    if (path === '/api/local-models')
+      return json(200, { models, disk: { models: 118_000_000, engines: 0, free: 50_000_000_000 } })
+    if (path === '/api/settings/local-models') {
+      if (method === 'PUT') {
+        const before = modelSelection.embedding
+        Object.assign(modelSelection, body)
+        for (const model of models) {
+          const chosen = modelSelection[model.kind as 'embedding' | 'ocr' | 'vision']
+          if (model.kind !== 'engine') model.selected = chosen === model.id
+        }
+        return json(200, { ...modelSelection, reindex: before !== modelSelection.embedding })
+      }
+      return json(200, modelSelection)
+    }
+    if (path === '/api/settings/huggingface-token') {
+      if (method === 'PUT') {
+        hfToken = body.token
+          ? { configured: true, source: 'git' }
+          : { configured: false, source: null }
+      }
+      return json(200, hfToken)
+    }
+    const match = path.match(/^\/api\/local-models\/([^/]+)(?:\/(download|cancel))?$/)
+    if (!match) return null
+    const model = models.find((m) => m.id === match[1])
+    if (!model) return apiError(404, 'model_not_found')
+    if (match[2] === 'download') {
+      Object.assign(model, { state: 'downloading', done: model.size / 4, total: model.size })
+      return json(202, model)
+    }
+    if (match[2] === 'cancel') {
+      Object.assign(model, { state: 'partial' })
+      return json(200, model)
+    }
+    if (method === 'DELETE') {
+      Object.assign(model, { state: 'absent', done: 0, selected: false })
+      return json(204, null)
+    }
+    return null
+  }
+
+  function handleKnowledge(
+    method: string,
+    path: string,
+    query: URLSearchParams,
+    body: Record<string, unknown>,
+  ): Response | null {
+    if (path === '/api/settings/knowledge') {
+      if (method === 'PUT') Object.assign(knowledgeSettings, body)
+      return json(200, knowledgeSettings)
+    }
+    if (!path.startsWith('/api/knowledge/')) return null
+    if (path === '/api/knowledge/queue') return json(200, queueState)
+    if (path === '/api/knowledge/queue/pause' || path === '/api/knowledge/queue/resume') {
+      queueState.paused = path.endsWith('/pause')
+      return json(200, queueState)
+    }
+    if (path === '/api/knowledge/system')
+      return json(
+        200,
+        seed.system ?? {
+          cpu: { percent: 40, app_percent: 25, cores: 8 },
+          memory: { percent: 60, used_mb: 9600, total_mb: 16000, app_mb: 800 },
+          gpu: null,
+        },
+      )
+    if (path === '/api/knowledge/search')
+      return json(200, { hits: seed.searchHits ?? [], mode: 'hybrid', model: 'e5-small' })
+    if (path === '/api/knowledge/docs') {
+      const scope = query.get('scope')
+      return json(
+        200,
+        library.filter(
+          (d) =>
+            (!scope || d.scope === scope) &&
+            (!query.get('project_id') || d.project_id === query.get('project_id')) &&
+            (!query.get('agent_id') || d.agent_id === query.get('agent_id')),
+        ),
+      )
+    }
+    if (path === '/api/knowledge/docs/files') {
+      const items = (body.paths as string[]).map((p) => {
+        if (p.includes('enorme'))
+          return { path: p, doc: null, error_code: 'too_large', message: 'too large' }
+        const name = p.split(/[\\/]/).pop() ?? p
+        const doc = makeKnowledgeDoc({
+          scope: body.scope as KnowledgeDoc['scope'],
+          project_id: (body.project_id as string | null) ?? null,
+          agent_id: (body.agent_id as string | null) ?? null,
+          title: name.replace(/\.[^.]+$/, ''),
+          path: p,
+          file_name: name,
+          status: 'queued',
+          md_tokens: 0,
+          has_markdown: false,
+        })
+        library.push(doc)
+        return { path: p, doc, error_code: null, message: '' }
+      })
+      return json(201, items)
+    }
+    if (path === '/api/knowledge/docs/url') {
+      const doc = makeKnowledgeDoc({
+        scope: body.scope as KnowledgeDoc['scope'],
+        project_id: (body.project_id as string | null) ?? null,
+        agent_id: (body.agent_id as string | null) ?? null,
+        title: String(body.url),
+        source_kind: 'url',
+        url: String(body.url),
+        path: null,
+        file_name: null,
+        extension: '',
+        viewer: 'url',
+        status: 'queued',
+      })
+      library.push(doc)
+      return json(201, doc)
+    }
+    const match = path.match(/^\/api\/knowledge\/docs\/([^/]+)(?:\/([a-z]+)(?:\/(\d+))?)?$/)
+    if (!match) return null
+    const doc = library.find((d) => d.id === match[1])
+    if (!doc) return apiError(404, 'doc_not_found')
+    const action = match[2]
+    if (!action) {
+      if (method === 'PATCH') Object.assign(doc, body, { updated_at: now() })
+      if (method === 'DELETE') {
+        library.splice(library.indexOf(doc), 1)
+        return json(204, null)
+      }
+      return json(200, doc)
+    }
+    if (action === 'markdown')
+      return json(200, {
+        title: doc.title,
+        markdown: seed.markdowns?.[doc.id] ?? '# Contenido',
+        tokens: doc.md_tokens,
+      })
+    if (action === 'images') return json(200, seed.knowledgeImages?.[doc.id] ?? [])
+    if (action === 'reprocess') {
+      Object.assign(doc, { status: 'queued', error_code: null, error_message: null })
+      return json(200, doc)
+    }
+    if (action === 'relocate') {
+      if (String(body.path).includes('otro') && !body.confirm)
+        return apiError(409, 'different_content')
+      Object.assign(doc, { path: body.path, presence: 'ok' })
+      return json(200, { doc, reprocess: String(body.path).includes('otro') })
+    }
+    if (action === 'open' || action === 'reveal') return json(204, null)
+    return null
   }
 
   function handleMemory(method: string, path: string, body: Record<string, unknown>) {
@@ -2151,6 +2416,8 @@ export function createFakeBackend(
       handleChanges(method, url.pathname, url.searchParams) ??
       handleAccounts(method, url.pathname, body) ??
       handleRuns(method, url.pathname, url.searchParams, body) ??
+      handleLocalModels(method, url.pathname, body) ??
+      handleKnowledge(method, url.pathname, url.searchParams, body) ??
       handleMemory(method, url.pathname, body) ??
       handleTasks(method, url.pathname, url.searchParams, body) ??
       handleInbox(method, url.pathname, url.searchParams, body) ??
@@ -2168,6 +2435,10 @@ export function createFakeBackend(
     projects,
     runs,
     notes,
+    knowledge: library,
+    localModels: models,
+    knowledgeSettings,
+    queueState,
     tasks,
     inbox,
     pipelines,

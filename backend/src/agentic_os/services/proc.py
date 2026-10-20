@@ -45,3 +45,13 @@ def open_in_file_manager(path: str) -> None:
         subprocess.Popen(["open", path])
     else:
         subprocess.Popen(["xdg-open", path])
+
+
+def reveal_in_file_manager(path: str) -> None:
+    """Opens the file manager with the file selected (its folder, where that is not possible)."""
+    if sys.platform == "win32":
+        subprocess.Popen(["explorer", f"/select,{os.path.normpath(path)}"])
+    elif sys.platform == "darwin":
+        subprocess.Popen(["open", "-R", path])
+    else:
+        subprocess.Popen(["xdg-open", os.path.dirname(path)])
