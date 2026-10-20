@@ -107,3 +107,5 @@ Flujo de cada fase: ver `CLAUDE.md` (Spec → Plan → Desarrollo → Validació
 | 2026-10-19 | Spec de la fase 15 aprobada con las recomendaciones para las cinco preguntas abiertas. Fase 15 en plan; su desarrollo espera al cierre de la 14. |
 | 2026-10-19 | Estado de las fases: 00–13 cerradas; 14 en dev (bloques 0–9 hechos, falta el 10: e2e, validación y cierre); 15 en plan; 16–22 pendientes. |
 | 2026-10-20 | Fase 14 cerrada (`v1.6`): bloque 10 (revisión de código resuelta, ADR 0021, README, e2e con el sidecar real y validación). Comprobaciones manuales pendientes anotadas en la validación. La fase 15 sigue en plan. |
+| 2026-10-20 | Spec de la fase 15 reabierta: los agentes podrán buscar recorriendo el grafo (mapa de temas, exploración de varios saltos, caminos). Fase 15 en spec. |
+| 2026-10-20 | Spec de la fase 15 reaprobada con el apartado D. Fase 15 en plan. |
