@@ -266,10 +266,10 @@ Cada bloque se cierra con sus tests en verde y un commit (o varios) en `phase/14
    - `search_knowledge` y `read_knowledge` con sus eventos;
    - carpetas de imágenes en `extra_dirs` y copias temporales;
    - plantillas.
-7. [ ] **Describir imágenes**: `CliDescriber` (y agy según S7), `LlamaDescriber` con la descarga y el ciclo de vida de `llama-server`, ajustes.
-8. [ ] **UI de la biblioteca**: página, pestañas, lista con progreso, ficha, visor, «Ver Markdown», monitor de recursos, pausa y «Probar la búsqueda».
-9. [ ] **UI de ajustes**: Modelos locales, Conocimiento y uso de la carpeta de datos.
-10. [ ] **e2e y cierre**:
+7. [x] **Describir imágenes**: `CliDescriber` (y agy según S7), `LlamaDescriber` con la descarga y el ciclo de vida de `llama-server`, ajustes.
+8. [x] **UI de la biblioteca**: página, pestañas, lista con progreso, ficha, visor, «Ver Markdown», monitor de recursos, pausa y «Probar la búsqueda».
+9. [x] **UI de ajustes**: Modelos locales, Conocimiento y uso de la carpeta de datos.
+10. [x] **e2e y cierre**:
     - `test_e2e_knowledge.py` (CA1);
     - instalador en una máquina limpia (CA10);
     - prueba manual con Claude Code y un PDF real (CA1, CA11);
