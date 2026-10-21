@@ -134,3 +134,32 @@ def test_downgrade_and_upgrade_again(settings: Settings):
         assert db.execute(text("SELECT count(*) FROM knowledge_docs")).scalar() == 1
     command.upgrade(config, "0018")
     assert "knowledge_related" in inspect(engine).get_table_names()
+
+
+def test_existing_documents_get_the_centroid_of_their_chunks(settings: Settings):
+    import numpy as np
+
+    engine, config = _engine(settings, "0017")
+    vectors = [np.array([1, 0, 0, 0], dtype=np.float32), np.array([0, 1, 0, 0], dtype=np.float32)]
+    with engine.begin() as db:
+        db.execute(text(_doc("d1")))
+        db.execute(text(_doc("d2")))  # a document without vectors (no model when it was indexed)
+        for ord_, vector in enumerate(vectors):
+            db.execute(
+                text(
+                    "INSERT INTO knowledge_chunks (id, doc_id, ord, heading, location, start, end,"
+                    " tokens, vector, vector_model) VALUES (:id, 'd1', :ord, '', '', 0, 1, 1, :v,"
+                    " 'e5-small')"
+                ),
+                {"id": f"c{ord_}", "ord": ord_, "v": vector.tobytes()},
+            )
+    command.upgrade(config, "0018")
+    with engine.connect() as db:
+        rows = {
+            r[0]: r[1:]
+            for r in db.execute(text("SELECT id, centroid, centroid_model FROM knowledge_docs"))
+        }
+    blob, model = rows["d1"]
+    assert model == "e5-small"
+    assert np.allclose(np.frombuffer(blob, dtype=np.float32), [0.7071, 0.7071, 0, 0], atol=1e-3)
+    assert rows["d2"] == (None, "")

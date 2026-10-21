@@ -19,6 +19,7 @@ from agentic_os.services.knowledge import graph_search as walk
 from agentic_os.services.knowledge import search, topics
 from agentic_os.services.knowledge.agent_tools import find_document, scope_of
 from agentic_os.services.knowledge.context import GENERATED, LEVELS, is_generated, short_id
+from agentic_os.services.knowledge.tokens import estimate_tokens
 
 MAP_TOKENS = 2_000
 EXPLORE_TOKENS = 3_000
@@ -56,8 +57,7 @@ _LEVELS = {
 }
 
 
-def tokens_of(text: str) -> int:
-    return (len(text) + 3) // 4
+tokens_of = estimate_tokens
 
 
 @dataclass

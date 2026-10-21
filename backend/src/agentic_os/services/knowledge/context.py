@@ -62,8 +62,22 @@ TOPIC_NAME_MAX = 40
 
 def topics_line(db: Session, docs: list[KnowledgeDoc]) -> str:
     """«Temas: Celery (4), Docker (3)…» for the index; empty when nothing is linked."""
+    from agentic_os.services.knowledge import graph as graph_module
     from agentic_os.services.knowledge import graph_search  # it imports this package's search
 
+    key = (graph_module.VERSION, tuple(sorted(d.id for d in docs)))
+    if key in _TOPICS_LINES:
+        return _TOPICS_LINES[key]
+    line = _topics_line(db, docs, graph_search)
+    _TOPICS_LINES.clear()  # only the latest is worth keeping
+    _TOPICS_LINES[key] = line
+    return line
+
+
+_TOPICS_LINES: dict[tuple, str] = {}
+
+
+def _topics_line(db: Session, docs: list[KnowledgeDoc], graph_search) -> str:
     graph = graph_search.Adjacency.build(db, docs)
     if not graph.related and not graph.derived:
         return ""

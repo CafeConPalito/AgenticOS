@@ -297,7 +297,12 @@ export function KnowledgeGraph({
     event.preventDefault()
     if (!query.trim()) return
     try {
-      const result = await search.mutateAsync({ query: query.trim(), projectId, agentId })
+      // The whole library is on screen: ask it as a whole, not as this level's agent would.
+      const result = await search.mutateAsync({
+        query: query.trim(),
+        projectId: everything ? undefined : projectId,
+        agentId: everything ? undefined : agentId,
+      })
       setMatches(new Set(result.hits.map((hit) => hit.doc_id)))
     } catch (error) {
       toast.error(errorMessage(error))

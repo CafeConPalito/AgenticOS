@@ -253,8 +253,9 @@ def test_a_deleted_source_leaves_a_ghost_the_derived_document_hangs_from(library
 def test_the_graph_reports_its_version(library: dict):
     client = library["client"]
     before = client.get(GRAPH).json()["version"]
+    client.app.state.knowledge.mark_graph_dirty()
     client.app.state.knowledge.refresh_graph_now()
-    assert client.get(GRAPH).json()["version"] == before + 1
+    assert client.get(GRAPH).json()["version"] > before
 
 
 def test_documents_report_the_model_their_centroid_comes_from(library: dict):

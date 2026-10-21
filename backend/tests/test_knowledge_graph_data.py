@@ -164,3 +164,39 @@ def test_a_proposal_waiting_in_the_inbox_outlives_its_task(client: TestClient):
         db.commit()
         assert db.get(InboxItem, item.id).status == InboxStatus.PENDING
         assert db.get(InboxItem, other.id).status == InboxStatus.RESOLVED
+
+
+def test_the_graph_is_announced_only_when_something_changed(client: TestClient):
+    service = client.app.state.knowledge
+    service.refresh_graph_now()
+    first = service.graph_version
+    service.refresh_graph_now()  # nothing moved, nobody asked for an announcement
+    assert service.graph_version == first
+    service.mark_graph_dirty()  # a document appeared or went away
+    service.refresh_graph_now()
+    announced = service.graph_version
+    assert announced > first
+    service.mark_graph_dirty(announce=False)  # e.g. the end of a reindex
+    service.refresh_graph_now()
+    assert service.graph_version == announced
+
+
+def test_two_recomputes_at_once_do_not_collide(client: TestClient):
+    import threading
+
+    service = client.app.state.knowledge
+    errors: list[Exception] = []
+
+    def run() -> None:
+        try:
+            for _ in range(5):
+                service.refresh_graph_now()
+        except Exception as error:  # pragma: no cover - the failure we look for
+            errors.append(error)
+
+    threads = [threading.Thread(target=run) for _ in range(4)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+    assert errors == []

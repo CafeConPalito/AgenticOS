@@ -412,3 +412,12 @@ def test_an_indexed_document_has_a_centroid(library: dict):
     with client.app.state.sessionmaker() as db:
         row = db.get(KnowledgeDoc, doc["id"])
         assert row.centroid is not None and row.centroid_model == "fake-emb"
+
+
+def test_rejecting_does_not_give_the_agent_its_proposals_back(server: LiveServer, agent: dict):
+    api(server, "PUT", "/settings/knowledge", json={"proposals_per_run": 1})
+    assert propose(agent).startswith("Propuesta registrada")
+    [first] = proposals(server)
+    api(server, "POST", f"/knowledge/docs/{first['id']}/reject", json={})
+    again = propose(agent, title="Otra", markdown=OTHER)
+    assert "máximo es 1" in again and proposals(server) == []

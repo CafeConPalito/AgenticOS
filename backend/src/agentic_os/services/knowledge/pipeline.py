@@ -52,6 +52,7 @@ from agentic_os.services.knowledge.chunking import Chunk
 from agentic_os.services.knowledge.errors import KnowledgeError
 from agentic_os.services.knowledge.events import KnowledgeEvents
 from agentic_os.services.knowledge.images import compose
+from agentic_os.services.knowledge.tokens import estimate_tokens
 from agentic_os.services.knowledge.worker import Worker
 from agentic_os.services.localmodels import catalog, selection, store
 
@@ -102,11 +103,6 @@ class Source:
     size: int | None = None
     mtime: float | None = None
     sha256: str | None = None
-
-
-def estimate_tokens(text: str) -> int:
-    """About four characters per token: enough to budget a context, no tokenizer needed."""
-    return (len(text) + 3) // 4
 
 
 class Pipeline:

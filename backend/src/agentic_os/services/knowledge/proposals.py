@@ -47,6 +47,7 @@ from agentic_os.services.knowledge import config as knowledge_config
 from agentic_os.services.knowledge.agent_tools import find_document, scope_of
 from agentic_os.services.knowledge.context import LEVELS
 from agentic_os.services.knowledge.embeddings import vector_bytes, vector_from
+from agentic_os.services.knowledge.tokens import estimate_tokens
 
 TITLE_MAX = 200
 MIN_CHARS = 200  # shorter than this is a note, not a document
@@ -56,10 +57,6 @@ LEVEL_WORDS = ("general", "project", "agent")
 
 _HEADING_LINE = re.compile(r"^\s{0,3}#{1,6}\s")
 _SENTENCE = re.compile(r"(.+?[.!?…])(\s|$)", re.S)
-
-
-def estimate_tokens(text: str) -> int:
-    return (len(text) + 3) // 4
 
 
 def summary_of(description: str, markdown: str) -> str:
@@ -118,10 +115,11 @@ def propose(
             f"{settings.proposals_max_tokens}). Divídelo en varios documentos, uno por tema.",
             f"{title[:80]} → demasiado larga",
         )
+    # Counted in the Inbox, not in the documents: rejecting deletes the document, not the request.
     made = db.scalar(
         select(func.count())
-        .select_from(KnowledgeProvenance)
-        .where(KnowledgeProvenance.run_id == run.id)
+        .select_from(InboxItem)
+        .where(InboxItem.kind == InboxKind.KNOWLEDGE, InboxItem.run_id == run.id)
     )
     if (made or 0) >= settings.proposals_per_run:
         return (
@@ -164,7 +162,7 @@ def propose(
         )
     scope, owner_project, owner_agent = _provisional_level(suggested, sources, run)
 
-    answer = _duplicate(db, service, run, visible, title, markdown, replaced)
+    answer = _duplicate(db, service, run, visible, title, markdown, tokens, replaced)
     if isinstance(answer, str):
         return answer, f"{title[:80]} → duplicada"
     centroid, model = answer
@@ -262,6 +260,7 @@ def _duplicate(
     visible: list[KnowledgeDoc],
     title: str,
     markdown: str,
+    tokens: int,
     replaced: KnowledgeDoc | None,
 ) -> str | tuple[np.ndarray | None, str]:
     """The refusal (a text) when the library already says this, else (centroid, model) of the
@@ -285,7 +284,8 @@ def _duplicate(
     for doc in candidates:
         if search._plain(doc.title) == same_title:
             return _exists(doc, "tiene ese mismo título")
-        if fingerprint(doc.markdown) == digest:
+        # Only a document of the same size can have the same text: the others are not loaded.
+        if doc.md_tokens == tokens and fingerprint(doc.markdown) == digest:
             return _exists(doc, "tiene exactamente ese texto")
     mine = db.scalars(
         select(KnowledgeRejection).where(

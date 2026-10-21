@@ -336,3 +336,25 @@ describe('Settings for proposals and the graph', () => {
     expect(backend.callsTo('PUT', '/api/settings/knowledge')).toHaveLength(0)
   })
 })
+
+describe('The «Propuestos» filter', () => {
+  it('stops filtering when the last proposal has been decided', async () => {
+    installFakeWebSocket()
+    createFakeBackend({
+      knowledge: [celery(), proposal()],
+      markdowns: { 'prop-1': GUIDE },
+    })
+    const user = userEvent.setup()
+    renderApp('/conocimiento')
+    const filters = await screen.findByRole('group', { name: k.filters.label })
+    await user.click(within(filters).getByRole('button', { name: /Propuestos \(1\)/ }))
+    await user.click(await screen.findByRole('button', { name: 'Abrir Guía de reintentos' }))
+    const sheet = await screen.findByRole('dialog')
+    await user.click(await within(sheet).findByRole('button', { name: p.reject }))
+    await user.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', { name: p.reject }),
+    )
+    // Nothing is left to filter by: the whole library is back, not an empty list.
+    expect(await screen.findByRole('button', { name: 'Abrir Manual de Celery' })).toBeVisible()
+  })
+})

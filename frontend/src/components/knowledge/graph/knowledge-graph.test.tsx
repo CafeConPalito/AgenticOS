@@ -273,3 +273,31 @@ describe('The knowledge graph', () => {
     await waitFor(() => expect(reads()).toBeGreaterThan(before))
   })
 })
+
+describe('The graph search with the whole library on screen', () => {
+  it('asks as the whole library, not as the agent of this level', async () => {
+    installFakeWebSocket()
+    const backend = createFakeBackend({
+      projects: [makeProject({ id: 'p1', name: 'Blog' })],
+      knowledge: [makeKnowledgeDoc({ scope: 'project', project_id: 'p1', title: 'Guía' })],
+      graph,
+      searchHits: [],
+    })
+    const user = userEvent.setup()
+    renderApp('/proyectos/p1/knowledge')
+    await user.click(await screen.findByRole('tab', { name: es.knowledge.views.graph }))
+    await user.type(screen.getByLabelText(g.search.label), 'algo')
+    await user.click(screen.getByRole('button', { name: g.search.run }))
+    await waitFor(() => expect(backend.callsTo('POST', '/api/knowledge/search')).toHaveLength(1))
+    expect(backend.callsTo('POST', '/api/knowledge/search')[0].body).toMatchObject({
+      project_id: 'p1',
+    })
+    await user.click(screen.getByRole('switch', { name: g.scope.all }))
+    await user.click(screen.getByRole('button', { name: g.search.run }))
+    await waitFor(() => expect(backend.callsTo('POST', '/api/knowledge/search')).toHaveLength(2))
+    expect(backend.callsTo('POST', '/api/knowledge/search')[1].body).toMatchObject({
+      project_id: null,
+      agent_id: null,
+    })
+  })
+})

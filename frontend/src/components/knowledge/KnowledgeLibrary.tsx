@@ -69,7 +69,10 @@ export function KnowledgeLibrary({ level }: { level: KnowledgeLevel }) {
   const [view, setView] = useState('list')
   // Documents the search tester asks the graph to highlight (an exploration's result).
   const [highlighted, setHighlighted] = useState<string[] | null>(null)
-  const shown = docs.data?.filter(FILTERS[filter]) ?? []
+  // A filter with nothing left (the last proposal was decided) is not applied: the list would
+  // look empty and its buttons are gone.
+  const active = docs.data?.some(FILTERS[filter]) ? filter : 'all'
+  const shown = docs.data?.filter(FILTERS[active]) ?? []
 
   return (
     <div className="flex flex-col gap-4 px-6 pt-5 pb-8">
@@ -97,7 +100,7 @@ export function KnowledgeLibrary({ level }: { level: KnowledgeLevel }) {
             <TabsTrigger value="graph">{t('knowledge.views.graph')}</TabsTrigger>
           </TabsList>
           <TabsContent value="list" className="flex flex-col gap-4">
-            <Filters docs={docs.data} value={filter} onChange={setFilter} />
+            <Filters docs={docs.data} value={active} onChange={setFilter} />
             <DocList docs={shown} onOpen={setOpened} />
             <SearchTester
               projectId={level.projectId}

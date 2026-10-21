@@ -59,7 +59,8 @@ def search_knowledge(
     from agentic_os.services.knowledge import graph_tools  # it imports this module too
 
     project_id, agents = scope_of(db, run)
-    if not search.visible_docs(db, project_id, agents):
+    view = graph_tools.View.open_for(db, project_id, agents)  # the documents and links, once
+    if not view.docs:
         return (
             "No hay documentos de conocimiento para este proyecto y este agente.",
             "sin documentos",
@@ -70,7 +71,16 @@ def search_knowledge(
             "`graph` debe ser «off», «neighbors» (por defecto) o «explore».",
             f"graph={graph[:20]} no válido",
         )
-    hits = service.search(db, query, project_id, agents, limit, use_graph=graph != "off")
+    hits = service.search(
+        db,
+        query,
+        project_id,
+        agents,
+        limit,
+        use_graph=graph != "off",
+        docs=view.docs,
+        adjacency=view.graph,
+    )
     if not hits:
         return (
             f"No encontré nada en el conocimiento para «{query}». Prueba con otras palabras, "
@@ -80,7 +90,7 @@ def search_knowledge(
     parts = [f"## Resultados para «{query}»"]
     if service.embedding_model() is None:
         parts.append("(Búsqueda solo por palabras: no hay un modelo de significado descargado.)")
-    view = graph_tools.View.open(db, run) if graph != "off" else None
+    view = view if graph != "off" else None
     for number, hit in enumerate(hits, 1):
         place = " · ".join(x for x in (hit.chunk.heading, hit.chunk.location) if x)
         body = resolve_images(db, data_dir, run.id, hit.doc, hit.text)

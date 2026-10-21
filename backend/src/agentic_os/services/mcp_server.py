@@ -248,7 +248,8 @@ def build_mcp(backend: AgentBackend) -> MCPServer:
         """Busca en los documentos de conocimiento que la persona te ha dado (manuales,
         especificaciones, páginas web, hojas de cálculo, imágenes…). `query`: una pregunta
         o un código exacto (`ERR_4012`, `/v2/facturas`); devuelve los pasajes más
-        relevantes, con su documento y su lugar. `limit`: cuántos (1 a 20). `graph`: «off»
+        relevantes, con su documento y su lugar. `limit`: cuántos resultados directos (1 a 20; el
+        grafo puede añadir detrás hasta 3 vecinos más). `graph`: «off»
         (solo la búsqueda), «neighbors» (por defecto: cada resultado lista los documentos
         vecinos y se añaden los vecinos que también responden) o «explore» (además, dibuja
         los documentos cercanos a los mejores resultados)."""

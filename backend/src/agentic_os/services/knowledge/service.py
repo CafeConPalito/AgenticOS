@@ -82,6 +82,8 @@ class KnowledgeService:
         self._reindexing = False
         self._reindex_again = False
         self._graph_dirty = threading.Event()
+        self._graph_lock = threading.Lock()  # one recompute at a time
+        self._graph_announce = False  # something other than the links changed too
         self._graph_thread: threading.Thread | None = None
         self.graph_version = 0
 
@@ -260,11 +262,14 @@ class KnowledgeService:
         agent_ids: list[str],
         limit: int = search.DEFAULT_LIMIT,
         use_graph: bool = True,
+        docs: list[KnowledgeDoc] | None = None,
+        adjacency: Adjacency | None = None,
     ) -> list[search.Hit]:
         """What an agent of `project_id` (and `agent_ids`) finds for `query`. With `use_graph`,
         neighbours of the best results that also fit the question are added after them."""
         entry = self.embedding_model()
-        docs = search.visible_docs(db, project_id, agent_ids)
+        if docs is None:  # the caller may already have them (and the links) from a view
+            docs = search.visible_docs(db, project_id, agent_ids)
         expand = knowledge_config.load(db).graph_expand if use_graph else 0
         return search.search(
             db,
@@ -273,7 +278,7 @@ class KnowledgeService:
             limit=limit,
             embed_query=self.embed_query if entry else None,
             model=entry.id if entry else None,
-            graph=Adjacency.build(db, docs) if expand and entry else None,
+            graph=(adjacency or Adjacency.build(db, docs)) if expand and entry else None,
             expand=expand,
         )
 
@@ -346,7 +351,7 @@ class KnowledgeService:
             with self._lock:
                 self._reindexing = False
         self.events.queue(self.state())
-        self.mark_graph_dirty()
+        self.mark_graph_dirty(announce=False)
 
     def system(self) -> dict:
         """The machine's load now. The first reading of a rate is 0: ask again a second later."""
@@ -355,27 +360,35 @@ class KnowledgeService:
         return self._sampler.sample()
 
     # ------------------------------------------------------------------------- the graph
-    def mark_graph_dirty(self) -> None:
+    def mark_graph_dirty(self, *, announce: bool = True) -> None:
         """Something changed that the links between documents depend on (a document was indexed,
-        removed, proposed…): they are recomputed soon, once for a burst of changes."""
+        removed, proposed…): they are recomputed soon, once for a burst of changes. `announce`:
+        the screens must read the graph again even if no link moved (a document appeared or was
+        removed); without it they are told only when a link changed."""
+        if announce:
+            self._graph_announce = True
         self._graph_dirty.set()
 
     def refresh_graph_now(self) -> None:
         """Recomputes the «related» links and tells the screens (the tests call this directly)."""
-        entry = self.embedding_model()
-        with self.sessions() as db:
-            limits = knowledge_config.load(db)
-            raw = float(entry.usage.get("related_raw", 0.9)) if entry else 0.9
-            graph.recompute(
-                db,
-                entry.id if entry else None,
-                threshold=limits.graph_threshold,
-                max_neighbors=limits.graph_max_neighbors,
-                raw_threshold=raw,
-            )
-            db.commit()
-        self.graph_version += 1
-        self.events.graph(self.graph_version)
+        with self._graph_lock:
+            entry = self.embedding_model()
+            announce, self._graph_announce = self._graph_announce, False
+            with self.sessions() as db:
+                limits = knowledge_config.load(db)
+                raw = float(entry.usage.get("related_raw", 0.9)) if entry else 0.9
+                changed = graph.recompute(
+                    db,
+                    entry.id if entry else None,
+                    threshold=limits.graph_threshold,
+                    max_neighbors=limits.graph_max_neighbors,
+                    raw_threshold=raw,
+                )
+                db.commit()
+            if changed or announce:
+                graph.VERSION += 1
+                self.graph_version = graph.VERSION
+                self.events.graph(self.graph_version)
 
     def _graph_loop(self) -> None:
         while not self._stop.is_set():

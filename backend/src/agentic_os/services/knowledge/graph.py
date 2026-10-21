@@ -25,6 +25,7 @@ from agentic_os.services.knowledge import search, similarity, topics
 from agentic_os.services.knowledge.embeddings import vector_from
 
 WEIGHT_EPSILON = 1e-4  # a weight that moved less than this is not worth a write
+VERSION = 0  # moves with every change of the graph; caches of what it yields key on it
 
 
 @dataclass(frozen=True)

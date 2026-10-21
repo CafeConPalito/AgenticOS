@@ -51,6 +51,8 @@ def upgrade() -> None:
         batch_op.create_check_constraint(op.f("ck_knowledge_docs_review"), f"review IN ({REVIEWS})")
         batch_op.create_index("ix_knowledge_docs_review", ["review"])
 
+    _fill_centroids()
+
     op.create_table(
         "knowledge_provenance",
         sa.Column("doc_id", sa.String(length=36), nullable=False),
@@ -167,6 +169,33 @@ def upgrade() -> None:
         batch_op.drop_constraint(op.f("ck_inbox_items_kind"), type_="check")
         batch_op.create_check_constraint(
             op.f("ck_inbox_items_kind"), f"kind IN ({NEW_INBOX_KINDS})"
+        )
+
+
+def _fill_centroids() -> None:
+    """Documents that were already indexed get their centroid from the vectors of their chunks, so
+    the graph, the topics and the duplicate check work on an existing library without
+    reprocessing it (the centroid is the mean of the chunk vectors, normalised)."""
+    import numpy as np
+
+    conn = op.get_bind()
+    rows = conn.execute(
+        sa.text(
+            "SELECT doc_id, vector, vector_model FROM knowledge_chunks"
+            " WHERE vector IS NOT NULL ORDER BY doc_id"
+        )
+    ).all()
+    by_doc: dict[str, tuple[str, list]] = {}
+    for doc_id, blob, model in rows:
+        by_doc.setdefault(doc_id, (model, []))[1].append(np.frombuffer(blob, dtype=np.float32))
+    for doc_id, (model, vectors) in by_doc.items():
+        mean = np.stack(vectors).mean(axis=0)
+        norm = float(np.linalg.norm(mean))
+        if norm == 0:
+            continue
+        conn.execute(
+            sa.text("UPDATE knowledge_docs SET centroid = :c, centroid_model = :m WHERE id = :d"),
+            {"c": (mean / norm).astype(np.float32).tobytes(), "m": model, "d": doc_id},
         )
 
 
