@@ -507,6 +507,7 @@ export type InboxKind =
   | 'quota'
   | 'account'
   | 'switch'
+  | 'knowledge'
 
 export type InboxResolution =
   'approved' | 'rejected' | 'answered' | 'answered_in_terminal' | 'reviewed' | 'dismissed'
@@ -521,6 +522,8 @@ export interface InboxItem {
   /** A review or a delivery: what the task changed (phase 11); null when there is no data. */
   changes: ChangesTotals | null
   run_id: string | null
+  /** A «knowledge» item: the proposal to review. */
+  knowledge_doc_id?: string | null
   agent_id: string | null
   agent_name: string
   agent_color: string

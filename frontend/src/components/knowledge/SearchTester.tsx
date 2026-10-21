@@ -69,6 +69,7 @@ export function SearchTester({
                     {[hit.heading, hit.location].filter(Boolean).join(' · ')}
                     {' · '}
                     {t(`knowledge.search.foundBy.${hit.found_by}`)}
+                    {hit.via && ` · ${t('knowledge.search.via', { via: hit.via })}`}
                   </div>
                   <p className="mt-1 line-clamp-4 text-[12.5px] whitespace-pre-line">{hit.text}</p>
                 </li>

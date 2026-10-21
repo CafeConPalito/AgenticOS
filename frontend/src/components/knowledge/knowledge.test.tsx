@@ -168,6 +168,7 @@ describe('Knowledge library (general)', () => {
           text: 'El plan Pro cuesta 12 euros.',
           score: 0.9,
           found_by: 'both',
+          via: '',
           images: [],
         },
       ],

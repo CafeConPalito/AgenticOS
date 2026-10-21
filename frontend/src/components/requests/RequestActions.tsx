@@ -1,5 +1,14 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { ArrowLeftRight, Check, LogIn, Play, RotateCcw, SquareTerminal, X } from 'lucide-react'
+import {
+  ArrowLeftRight,
+  BookOpenCheck,
+  Check,
+  LogIn,
+  Play,
+  RotateCcw,
+  SquareTerminal,
+  X,
+} from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
@@ -16,6 +25,7 @@ import {
 import { taskKeys } from '@/api/tasks'
 import type { InboxItem } from '@/api/types'
 import { ChangesButton } from '@/components/changes/ChangesSheet'
+import { DocSheet } from '@/components/knowledge/DocSheet'
 import { useDock } from '@/components/terminal/dock-store'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -53,6 +63,7 @@ export function RequestActions({
   const switchCli = useSwitchItem()
   const [text, setText] = useState('')
   const [rejecting, setRejecting] = useState(false)
+  const [reviewingProposal, setReviewingProposal] = useState<string | null>(null)
   const busy =
     answer.isPending ||
     permission.isPending ||
@@ -221,6 +232,23 @@ export function RequestActions({
             {t('inbox.reviewReject')}
           </Button>
         </form>
+      )}
+      {item.kind === 'knowledge' && item.knowledge_doc_id && (
+        <>
+          <Button
+            size="sm"
+            onClick={() => setReviewingProposal(item.knowledge_doc_id ?? null)}
+            className="bg-primary-action text-white hover:bg-primary-action-hover"
+          >
+            <BookOpenCheck />
+            {t('inbox.reviewProposal')}
+          </Button>
+          <DocSheet
+            docId={reviewingProposal}
+            onClose={() => setReviewingProposal(null)}
+            onNavigate={setReviewingProposal}
+          />
+        </>
       )}
       {item.kind === 'quota' && (
         <Button

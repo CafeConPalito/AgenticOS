@@ -40,6 +40,8 @@ import { formatBytes } from '@/lib/format'
 import { pickFiles } from '@/lib/native-files'
 import { isPending } from './status'
 import { DocViewer } from './DocViewer'
+import { ProposalReview, SourcesList } from './ProposalReview'
+import { relativeTime } from '@/lib/time'
 
 const MODES: KnowledgeMode[] = ['auto', 'context', 'search', 'off']
 type DescribeChoice = 'default' | 'yes' | 'no'
@@ -150,7 +152,58 @@ function Relocate({ doc }: { doc: KnowledgeDoc }) {
   )
 }
 
-function Details({ doc, onClose }: { doc: KnowledgeDoc; onClose: () => void }) {
+/** Who proposed an agent's document, when, from which task, and what it was built on. */
+function Provenance({ doc, onOpen }: { doc: KnowledgeDoc; onOpen?: (id: string) => void }) {
+  const { t } = useTranslation()
+  const provenance = doc.provenance
+  if (!provenance && doc.sources.length === 0) return null
+  return (
+    <section className="flex flex-col gap-2 rounded-lg border p-3">
+      <h3 className="text-[13px] font-medium">{t('knowledge.provenance.title')}</h3>
+      {provenance && (
+        <dl className="grid grid-cols-[110px_1fr] gap-x-3 gap-y-1 text-[12.5px]">
+          <dt className="text-muted-foreground">{t('knowledge.provenance.agent')}</dt>
+          <dd>{provenance.agent_name || t('knowledge.provenance.unknownAgent')}</dd>
+          {provenance.task_title && (
+            <>
+              <dt className="text-muted-foreground">{t('knowledge.provenance.task')}</dt>
+              <dd>{provenance.task_title}</dd>
+            </>
+          )}
+          <dt className="text-muted-foreground">{t('knowledge.provenance.proposed')}</dt>
+          <dd>{relativeTime(provenance.proposed_at)}</dd>
+          {provenance.decided_at && (
+            <>
+              <dt className="text-muted-foreground">{t('knowledge.provenance.decided')}</dt>
+              <dd>
+                {relativeTime(provenance.decided_at)}
+                {provenance.edited && ` · ${t('knowledge.provenance.edited')}`}
+              </dd>
+            </>
+          )}
+        </dl>
+      )}
+      {doc.sources.length > 0 && (
+        <div className="flex flex-col gap-1">
+          <span className="text-[12.5px] text-muted-foreground">
+            {t('knowledge.provenance.derivedFrom')}
+          </span>
+          <SourcesList doc={doc} onOpen={onOpen} />
+        </div>
+      )}
+    </section>
+  )
+}
+
+function Details({
+  doc,
+  onClose,
+  onNavigate,
+}: {
+  doc: KnowledgeDoc
+  onClose: () => void
+  onNavigate?: (id: string) => void
+}) {
   const { t } = useTranslation()
   const update = useUpdateDoc()
   const reprocess = useReprocessDoc()
@@ -178,7 +231,9 @@ function Details({ doc, onClose }: { doc: KnowledgeDoc; onClose: () => void }) {
     }
   }
 
-  const isFile = doc.source_kind !== 'url'
+  if (doc.review === 'proposed')
+    return <ProposalReview doc={doc} onDone={onClose} onOpenSource={onNavigate} />
+  const isFile = doc.source_kind === 'file' || doc.source_kind === 'image'
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-auto p-4">
       <div className="flex flex-wrap gap-2">
@@ -238,10 +293,13 @@ function Details({ doc, onClose }: { doc: KnowledgeDoc; onClose: () => void }) {
         </p>
       )}
       {isFile && doc.presence !== 'ok' && <Relocate doc={doc} />}
+      <Provenance doc={doc} onOpen={onNavigate} />
 
       <dl className="grid grid-cols-[110px_1fr] gap-x-3 gap-y-1 text-[12.5px]">
         <dt className="text-muted-foreground">{t('knowledge.sheet.source')}</dt>
-        <dd className="font-mono break-all">{doc.path ?? doc.url}</dd>
+        <dd className="font-mono break-all">
+          {doc.source_kind === 'markdown' ? t('knowledge.origin.agent') : (doc.path ?? doc.url)}
+        </dd>
         {doc.size !== null && (
           <>
             <dt className="text-muted-foreground">{t('knowledge.sheet.size')}</dt>
@@ -339,7 +397,16 @@ function Details({ doc, onClose }: { doc: KnowledgeDoc; onClose: () => void }) {
 }
 
 /** The side sheet of a document: what it is, what can be done to it, and its content. */
-export function DocSheet({ docId, onClose }: { docId: string | null; onClose: () => void }) {
+export function DocSheet({
+  docId,
+  onClose,
+  onNavigate,
+}: {
+  docId: string | null
+  onClose: () => void
+  /** Open another document from this one (a source it was derived from). */
+  onNavigate?: (id: string) => void
+}) {
   const { t } = useTranslation()
   const doc = useKnowledgeDoc(docId)
   return (
@@ -349,7 +416,7 @@ export function DocSheet({ docId, onClose }: { docId: string | null; onClose: ()
           <SheetTitle>{doc.data?.title ?? t('knowledge.sheet.loading')}</SheetTitle>
           <SheetDescription>{t('knowledge.sheet.description')}</SheetDescription>
         </SheetHeader>
-        {doc.data && <Details doc={doc.data} onClose={onClose} />}
+        {doc.data && <Details doc={doc.data} onClose={onClose} onNavigate={onNavigate} />}
       </SheetContent>
     </Sheet>
   )

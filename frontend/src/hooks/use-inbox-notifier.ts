@@ -18,6 +18,7 @@ const SETTING: Record<InboxKind, keyof NotificationSettings> = {
   quota: 'limits',
   account: 'limits',
   switch: 'limits',
+  knowledge: 'review',
 }
 
 /**

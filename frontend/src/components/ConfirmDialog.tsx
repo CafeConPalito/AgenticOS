@@ -18,6 +18,7 @@ export function ConfirmDialog({
   confirmLabel,
   destructive = false,
   onConfirm,
+  children,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -26,6 +27,8 @@ export function ConfirmDialog({
   confirmLabel: string
   destructive?: boolean
   onConfirm: () => void
+  /** Something to fill in before confirming (a reason…). */
+  children?: React.ReactNode
 }) {
   const { t } = useTranslation()
   return (
@@ -35,6 +38,7 @@ export function ConfirmDialog({
           <AlertDialogTitle>{title}</AlertDialogTitle>
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
+        {children}
         <AlertDialogFooter>
           <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
           <AlertDialogAction
