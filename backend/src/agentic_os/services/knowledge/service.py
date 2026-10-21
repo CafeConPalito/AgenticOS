@@ -27,6 +27,7 @@ from agentic_os.services.knowledge import describe, embeddings, graph, search
 from agentic_os.services.knowledge.docs import IN_PROGRESS
 from agentic_os.services.knowledge.errors import KnowledgeError
 from agentic_os.services.knowledge.events import KnowledgeEvents
+from agentic_os.services.knowledge.graph_search import Adjacency
 from agentic_os.services.knowledge.pipeline import Pipeline, model_spec
 from agentic_os.services.knowledge.worker import InlineWorker, ProcessWorker, Worker
 from agentic_os.services.localmodels import catalog, selection
@@ -258,16 +259,22 @@ class KnowledgeService:
         project_id: str | None,
         agent_ids: list[str],
         limit: int = search.DEFAULT_LIMIT,
+        use_graph: bool = True,
     ) -> list[search.Hit]:
-        """What an agent of `project_id` (and `agent_ids`) finds for `query`."""
+        """What an agent of `project_id` (and `agent_ids`) finds for `query`. With `use_graph`,
+        neighbours of the best results that also fit the question are added after them."""
         entry = self.embedding_model()
+        docs = search.visible_docs(db, project_id, agent_ids)
+        expand = knowledge_config.load(db).graph_expand if use_graph else 0
         return search.search(
             db,
             query,
-            search.visible_docs(db, project_id, agent_ids),
+            docs,
             limit=limit,
             embed_query=self.embed_query if entry else None,
             model=entry.id if entry else None,
+            graph=Adjacency.build(db, docs) if expand and entry else None,
+            expand=expand,
         )
 
     # ----------------------------------------------------------------------- reindex

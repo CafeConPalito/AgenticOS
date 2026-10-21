@@ -32,6 +32,7 @@ from agentic_os.models import (
     Review,
 )
 from agentic_os.services.knowledge.embeddings import vector_from
+from agentic_os.services.knowledge.graph_search import DERIVES_FROM, RELATED, SOURCE_OF, Adjacency
 
 DEFAULT_LIMIT = 8
 MAX_LIMIT = 20
@@ -294,8 +295,9 @@ class Hit:
     chunk: KnowledgeChunk
     text: str  # the chunk's Markdown, without page markers
     score: float
-    found_by: str  # "meaning", "words" or "both"
+    found_by: str  # "meaning", "words", "both" or "graph" (a neighbour of a good result)
     images: list[int]  # numbers of the pictures the chunk shows (`kimg:N`)
+    via: str = ""  # for «graph»: how it was reached («deriva de «Manual»»)
 
 
 def _words_ranking(db: Session, expression: str, allowed: set[str]) -> list[str]:
@@ -344,10 +346,13 @@ def search(
     limit: int = DEFAULT_LIMIT,
     embed_query: Callable[[str], np.ndarray | None] | None = None,
     model: str | None = None,
+    graph: Adjacency | None = None,
+    expand: int = 0,
 ) -> list[Hit]:
     """The chunks of `docs` that best answer `query`. `embed_query` turns the question into a
     vector (None, or returning None: there is no model, so only words); `model` is the id of the
-    model that made the vectors the index must have to be used."""
+    model that made the vectors the index must have to be used. With a `graph` and `expand`, up to
+    that many neighbours of the best results are added after them when they fit the question too."""
     query = query.strip()
     if not query or not docs:
         return []
@@ -401,4 +406,67 @@ def search(
         hits.append(
             Hit(doc, chunk, body, score, found, sorted({int(n) for n in _IMAGE_REF.findall(body)}))
         )
+    if graph is not None and expand > 0 and meaning and hits:
+        hits += _from_graph(db, hits, meaning, by_id, graph, expand, limit)
     return hits
+
+
+# ------------------------------------------------------------------- help from the graph
+GRAPH_SEEDS = 3  # the best results whose neighbours may be added
+GRAPH_WINDOW = 3  # a neighbour must be in the first `GRAPH_WINDOW * limit` chunks by meaning
+_VIA = {DERIVES_FROM: "deriva de", SOURCE_OF: "origen de", RELATED: "relacionado con"}
+
+
+def _from_graph(
+    db: Session,
+    hits: list[Hit],
+    meaning: list[str],
+    by_id: dict[str, KnowledgeDoc],
+    graph: Adjacency,
+    expand: int,
+    limit: int,
+) -> list[Hit]:
+    """Neighbours of the best results that also answer the question: a document derived from the
+    PDF that was found, or one that talks about the same thing. They go after the direct results
+    (never in front of them) and only when one of their chunks is among the best by meaning."""
+    direct = {hit.doc.id for hit in hits}
+    seeds = list(dict.fromkeys(hit.doc.id for hit in hits))[:GRAPH_SEEDS]
+    candidates: dict[str, tuple[float, str, str]] = {}  # doc → (strength, seed, kind)
+    for seed in seeds:
+        for link in graph.of(seed):
+            if link.other in by_id and link.other not in direct:
+                strength = 1.0 if link.kind != RELATED else link.weight
+                if link.other not in candidates or strength > candidates[link.other][0]:
+                    candidates[link.other] = (strength, seed, link.kind)
+    if not candidates:
+        return []
+    window = meaning[: max(GRAPH_WINDOW * limit, 15)]
+    chunk_docs = dict(
+        db.execute(
+            select(KnowledgeChunk.id, KnowledgeChunk.doc_id).where(KnowledgeChunk.id.in_(window))
+        ).all()
+    )
+    best_chunk: dict[str, tuple[int, str]] = {}  # doc → (position, chunk id) of its best chunk
+    for position, chunk_id in enumerate(window):
+        doc_id = chunk_docs.get(chunk_id)
+        if doc_id in candidates and doc_id not in best_chunk:
+            best_chunk[doc_id] = (position, chunk_id)
+    picked = sorted(best_chunk, key=lambda d: (-candidates[d][0], best_chunk[d][0], d))[:expand]
+    rows = {
+        c.id: c
+        for c in db.scalars(
+            select(KnowledgeChunk).where(KnowledgeChunk.id.in_([best_chunk[d][1] for d in picked]))
+        )
+    }
+    added: list[Hit] = []
+    for doc_id in picked:
+        chunk = rows.get(best_chunk[doc_id][1])
+        if chunk is None:
+            continue
+        doc = by_id[doc_id]
+        body = _COMMENT.sub("", doc.markdown[chunk.start : chunk.end]).strip()
+        _, seed, kind = candidates[doc_id]
+        via = f"{_VIA[kind]} «{by_id[seed].title}»"
+        images = sorted({int(n) for n in _IMAGE_REF.findall(body)})
+        added.append(Hit(doc, chunk, body, 0.0, "graph", images, via))
+    return added

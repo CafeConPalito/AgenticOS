@@ -51,6 +51,33 @@ PROPOSE_NOTE = (
 )
 
 
+GRAPH_NOTE = (
+    "Los documentos están enlazados (derivados de otros, o parecidos): `knowledge_map` muestra "
+    "los temas, `explore_knowledge` recorre los vecinos de un documento o de una búsqueda y "
+    "`related_knowledge` lista los de uno."
+)
+TOPICS_SHOWN = 8
+TOPIC_NAME_MAX = 40
+
+
+def topics_line(db: Session, docs: list[KnowledgeDoc]) -> str:
+    """«Temas: Celery (4), Docker (3)…» for the index; empty when nothing is linked."""
+    from agentic_os.services.knowledge import graph_search  # it imports this package's search
+
+    graph = graph_search.Adjacency.build(db, docs)
+    if not graph.related and not graph.derived:
+        return ""
+    found = [t for t in graph.topics({d.id: d.title for d in docs}) if not t.loose]
+    if not found:
+        return ""
+    shown = ", ".join(
+        f"{t.name.split(' · ')[0][:TOPIC_NAME_MAX]} ({len(t.doc_ids)})"
+        for t in found[:TOPICS_SHOWN]
+    )
+    more = f" y {len(found) - TOPICS_SHOWN} más" if len(found) > TOPICS_SHOWN else ""
+    return f"Temas: {shown}{more}."
+
+
 def is_generated(doc: KnowledgeDoc) -> bool:
     return doc.origin == Origin.AGENT
 
@@ -161,6 +188,9 @@ def knowledge_section(
         header += " " + GENERATED_NOTE
     if limits.proposals_enabled:
         header += " " + PROPOSE_NOTE
+    topics = topics_line(db, docs)
+    if topics:
+        header += " " + GRAPH_NOTE + " " + topics
     lines = [header, ""]
     for doc in docs:
         facts = [

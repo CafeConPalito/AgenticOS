@@ -62,6 +62,7 @@ from agentic_os.services.hooks import (
 )
 from agentic_os.services.knowledge import agent_tools as knowledge_tools
 from agentic_os.services.knowledge import context as knowledge_context
+from agentic_os.services.knowledge import graph_tools
 from agentic_os.services.knowledge import proposals as knowledge_proposals
 from agentic_os.services.mcp_server import RunTokens
 from agentic_os.services.memory import add_agent_note, list_notes, render_memory
@@ -808,16 +809,67 @@ class RunManager:
         self.add_event(run_id, EventKind.MCP, "get_context")
         return build_context(instructions, prompt)
 
-    def search_knowledge(self, run_id: str, query: str, limit: int) -> str:
+    def search_knowledge(
+        self, run_id: str, query: str, limit: int, graph: str = "neighbors"
+    ) -> str:
         with self._db() as db:
             run = db.get(Run, run_id)
             if run is None:
                 raise LookupError(run_id)
             answer, detail = knowledge_tools.search_knowledge(
-                db, self.knowledge, self._data_dir, run, query, limit
+                db, self.knowledge, self._data_dir, run, query, limit, graph
             )
         self.add_event(run_id, EventKind.MCP, "search_knowledge", detail)
         return answer
+
+    def _graph_tool(
+        self, run_id: str, name: str, call: Callable[[Session, Run], tuple[str, str]]
+    ) -> str:
+        with self._db() as db:
+            run = db.get(Run, run_id)
+            if run is None:
+                raise LookupError(run_id)
+            answer, detail = call(db, run)
+        self.add_event(run_id, EventKind.MCP, name, detail)
+        return answer
+
+    def knowledge_map(self, run_id: str, topic: str) -> str:
+        return self._graph_tool(
+            run_id, "knowledge_map", lambda db, run: graph_tools.knowledge_map(db, run, topic)
+        )
+
+    def related_knowledge(self, run_id: str, document: str, kinds: str, origin: str) -> str:
+        return self._graph_tool(
+            run_id,
+            "related_knowledge",
+            lambda db, run: graph_tools.related_knowledge(db, run, document, kinds, origin),
+        )
+
+    def explore_knowledge(
+        self,
+        run_id: str,
+        document: str,
+        query: str,
+        hops: int,
+        kinds: str,
+        origin: str,
+        level: str,
+        max_docs: int,
+    ) -> str:
+        return self._graph_tool(
+            run_id,
+            "explore_knowledge",
+            lambda db, run: graph_tools.explore_knowledge(
+                db, self.knowledge, run, document, query, hops, kinds, origin, level, max_docs
+            ),
+        )
+
+    def knowledge_path(self, run_id: str, source: str, target: str, max_hops: int) -> str:
+        return self._graph_tool(
+            run_id,
+            "knowledge_path",
+            lambda db, run: graph_tools.knowledge_path(db, run, source, target, max_hops),
+        )
 
     def read_knowledge(self, run_id: str, document: str, location: str, part: int) -> str:
         with self._db() as db:

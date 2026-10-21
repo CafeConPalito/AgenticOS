@@ -238,7 +238,8 @@ class HitRead(BaseModel):
     location: str  # "p. 12", "diapositiva 3", "hoja Ventas", or ""
     text: str
     score: float
-    found_by: str  # meaning | words | both
+    found_by: str  # meaning | words | both | graph (a neighbour of a good result)
+    via: str  # for «graph»: how it was reached from a result; otherwise empty
     images: list[int]  # numbers of the pictures it shows
 
 

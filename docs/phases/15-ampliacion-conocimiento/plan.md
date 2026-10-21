@@ -136,7 +136,7 @@ Nuevos: `proposals.enabled`, `proposals.per_run`, `proposals.max_tokens`, `graph
 2. [x] **Bloque 1 · Datos**: migración `0018`, modelos, `visible_docs` exige `review = none`, `InboxKind.KNOWLEDGE`, esquemas y listados con `origin`/`review`.
 3. [x] **Bloque 2 · Propuestas (backend)**: `proposals.py`, `propose_knowledge` en el MCP, controles anti-ruido, Inbox, aceptar (pipeline desde «trocear»), rechazar, reemplazar, borrado de orígenes, ajustes.
 4. [x] **Bloque 3 · Grafo (backend)**: centroides, relaciones y su recálculo, temas, `GET /knowledge/graph`, evento `graph_changed`.
-5. [ ] **Bloque 4 · Búsqueda con el grafo (backend)**: vecinos y expansión en `search_knowledge` (+ parámetro `graph`), `knowledge_map`, `related_knowledge`, `explore_knowledge`, `knowledge_path`, contexto (temas, marca, reglas).
+5. [x] **Bloque 4 · Búsqueda con el grafo (backend)**: vecinos y expansión en `search_knowledge` (+ parámetro `graph`), `knowledge_map`, `related_knowledge`, `explore_knowledge`, `knowledge_path`, contexto (temas, marca, reglas).
 6. [ ] **Bloque 5 · Propuestas (frontend)**: API, `ProposalReview`, filtro «Propuestos», marcas y procedencia, Inbox, ajustes.
 7. [ ] **Bloque 6 · Grafo (frontend)**: vista, nodos y aristas, *layout* en Worker, filtros, «Todo», resaltado, clic y doble clic.
 8. [ ] **Bloque 7 · Probador y registro (frontend)**: «por el grafo», Explorar, Mapa, etiquetas de las herramientas en el registro.

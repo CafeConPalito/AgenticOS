@@ -384,6 +384,7 @@ def search_library(payload: SearchRequest, request: Request, db: DbSession) -> S
                 text=hit.text,
                 score=round(hit.score, 5),
                 found_by=hit.found_by,
+                via=hit.via,
                 images=hit.images,
             )
             for hit in hits

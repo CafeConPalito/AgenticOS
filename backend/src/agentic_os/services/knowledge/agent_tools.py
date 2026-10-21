@@ -51,15 +51,26 @@ def search_knowledge(
     run: Run,
     query: str,
     limit: int = search.DEFAULT_LIMIT,
+    graph: str = "neighbors",
 ) -> tuple[str, str]:
-    """(the answer for the agent, a one-line detail for the run's events)."""
+    """(the answer for the agent, a one-line detail for the run's events). `graph`: «off» (only
+    the search), «neighbors» (each result lists its neighbours and the best neighbours that also
+    fit are added) or «explore» (and the sub-graph around the best results is drawn)."""
+    from agentic_os.services.knowledge import graph_tools  # it imports this module too
+
     project_id, agents = scope_of(db, run)
     if not search.visible_docs(db, project_id, agents):
         return (
             "No hay documentos de conocimiento para este proyecto y este agente.",
             "sin documentos",
         )
-    hits = service.search(db, query, project_id, agents, limit)
+    graph = graph.strip().lower()
+    if graph not in ("off", "neighbors", "explore"):
+        return (
+            "`graph` debe ser «off», «neighbors» (por defecto) o «explore».",
+            f"graph={graph[:20]} no válido",
+        )
+    hits = service.search(db, query, project_id, agents, limit, use_graph=graph != "off")
     if not hits:
         return (
             f"No encontré nada en el conocimiento para «{query}». Prueba con otras palabras, "
@@ -69,16 +80,24 @@ def search_knowledge(
     parts = [f"## Resultados para «{query}»"]
     if service.embedding_model() is None:
         parts.append("(Búsqueda solo por palabras: no hay un modelo de significado descargado.)")
+    view = graph_tools.View.open(db, run) if graph != "off" else None
     for number, hit in enumerate(hits, 1):
         place = " · ".join(x for x in (hit.chunk.heading, hit.chunk.location) if x)
         body = resolve_images(db, data_dir, run.id, hit.doc, hit.text)
+        neighbors = graph_tools.neighbors_line(view, hit.doc) if view is not None else ""
         parts.append(
             f"### {number}. {hit.doc.title}"
             + (f" — {place}" if place else "")
             + f"\n`[{short_id(hit.doc)}]` · {LEVELS.get(hit.doc.scope, hit.doc.scope)}"
             + (f" · {GENERATED}" if is_generated(hit.doc) else "")
+            + (f" · vecino: {hit.via}" if hit.found_by == "graph" else "")
             + f"\n\n{body}"
+            + (f"\n\n{neighbors}" if neighbors else "")
         )
+    if graph == "explore" and view is not None:
+        around = graph_tools.explore_text_for_results(db, view, [h.doc.id for h in hits])
+        if around:
+            parts.append(around)
     names = ", ".join(dict.fromkeys(h.doc.title for h in hits))
     return "\n\n".join(parts), f"{query[:100]} → {len(hits)} resultados: {names}"[:300]
 
