@@ -1,6 +1,6 @@
 # ADR 0022: Propuestas de los agentes y grafo de conocimiento
 
-- **Estado**: propuesto
+- **Estado**: propuesto (se cierra al terminar los spikes)
 - **Fecha**: 2026-10-20
 - **Contexto de decisión**: fase 15 ([`spec.md`](../phases/15-ampliacion-conocimiento/spec.md), [`plan.md`](../phases/15-ampliacion-conocimiento/plan.md))
 

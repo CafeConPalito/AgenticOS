@@ -1,7 +1,7 @@
 # Fase 15: Ampliación del conocimiento · Plan técnico
 
 - **Spec**: [spec.md](spec.md)
-- **Estado**: borrador
+- **Estado**: aprobado (2026-10-21) · en desarrollo (bloque 0)
 
 ## Lo que ya se sabe (revisado al escribir el plan)
 - **Documentos** (`models/knowledge.py`): `KnowledgeDoc` con nivel (`scope`, `project_id`, `agent_id`), origen (`source_kind`: `file` · `image` · `url`), proceso (`status`) y resultado (`markdown`, `md_tokens`, `embed_model`). `KnowledgeChunk` guarda el vector de cada trozo (`vector`, `vector_model`). No hay un vector por documento ni ninguna relación entre documentos. Última migración: `0017_knowledge_images`.
