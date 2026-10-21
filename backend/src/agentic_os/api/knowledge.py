@@ -15,7 +15,14 @@ from sqlalchemy.orm import Session, defer
 from agentic_os.db.base import DEFAULT_WORKSPACE
 from agentic_os.db.session import get_session
 from agentic_os.errors import ApiError, NotFound
-from agentic_os.models import KnowledgeDoc, KnowledgeImage, KnowledgeScope, SourceKind
+from agentic_os.models import (
+    KnowledgeDoc,
+    KnowledgeImage,
+    KnowledgeScope,
+    Origin,
+    Review,
+    SourceKind,
+)
 from agentic_os.schemas.knowledge import (
     AddFiles,
     AddItem,
@@ -59,8 +66,11 @@ def list_docs(
     scope: KnowledgeScope | None = None,
     project_id: str | None = Query(None),
     agent_id: str | None = Query(None),
+    review: Review | None = None,
+    origin: Origin | None = None,
 ) -> list[DocRead]:
-    """The documents of one level (or all of them), with the state of their originals."""
+    """The documents of one level (or all of them), with the state of their originals.
+    `review=proposed`: the agents' proposals waiting for the person."""
     query = (
         select(KnowledgeDoc)
         .where(KnowledgeDoc.workspace_id == DEFAULT_WORKSPACE)
@@ -72,6 +82,10 @@ def list_docs(
         query = query.where(KnowledgeDoc.project_id == project_id)
     if agent_id is not None:
         query = query.where(KnowledgeDoc.agent_id == agent_id)
+    if review is not None:
+        query = query.where(KnowledgeDoc.review == review)
+    if origin is not None:
+        query = query.where(KnowledgeDoc.origin == origin)
     found = list(db.scalars(query.order_by(KnowledgeDoc.created_at, KnowledgeDoc.id)))
     docs.check_all(db, found)
     db.commit()

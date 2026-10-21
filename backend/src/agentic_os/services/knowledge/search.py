@@ -29,6 +29,7 @@ from agentic_os.models import (
     KnowledgeDoc,
     KnowledgeMode,
     KnowledgeScope,
+    Review,
 )
 from agentic_os.services.knowledge.embeddings import vector_from
 
@@ -208,7 +209,8 @@ def visible_docs(
     db: Session, project_id: str | None, agent_ids: Iterable[str]
 ) -> list[KnowledgeDoc]:
     """The documents an agent working in `project_id` reads: the general ones, the project's and
-    its own (a subagent also reads its parent's), that are ready and not switched off."""
+    its own (a subagent also reads its parent's), that are ready, reviewed (an agent's proposal
+    waits for the person) and not switched off."""
     levels = [KnowledgeDoc.scope == KnowledgeScope.GENERAL]
     if project_id:
         levels.append(
@@ -224,6 +226,7 @@ def visible_docs(
         .where(
             KnowledgeDoc.workspace_id == DEFAULT_WORKSPACE,
             KnowledgeDoc.status == DocStatus.READY,
+            KnowledgeDoc.review == Review.NONE,  # a proposal is read by nobody until accepted
             KnowledgeDoc.mode != KnowledgeMode.OFF,
             or_(*levels),
         )

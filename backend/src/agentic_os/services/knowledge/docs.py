@@ -15,6 +15,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 from sqlalchemy import select, text
+from sqlalchemy import update as sql_update
 from sqlalchemy.orm import Session, defer
 
 from agentic_os.db.base import DEFAULT_WORKSPACE, utcnow
@@ -26,6 +27,7 @@ from agentic_os.models import (
     KnowledgeImage,
     KnowledgeMode,
     KnowledgeScope,
+    KnowledgeSource,
     Presence,
     Project,
     SourceKind,
@@ -248,8 +250,8 @@ def check_all(db: Session, docs: list[KnowledgeDoc]) -> None:
 
 def original_path(db: Session, doc: KnowledgeDoc) -> Path:
     """The original file to open, or the error that tells the user what happened to it."""
-    if doc.source_kind == SourceKind.URL or not doc.path:
-        raise ApiError(422, "not_a_file", "a web address has no file to open")
+    if doc.source_kind in (SourceKind.URL, SourceKind.MARKDOWN) or not doc.path:
+        raise ApiError(422, "not_a_file", "this document has no file to open")
     if check_presence(db, doc) == Presence.MISSING:
         raise ApiError(410, "missing", "the file was deleted or moved")
     return Path(doc.path)
@@ -316,6 +318,12 @@ def update(db: Session, doc: KnowledgeDoc, values: dict) -> None:
         if not title:
             raise ApiError(422, "title_required", "the title cannot be empty", "title")
         doc.title = title[:TITLE_MAX]
+        # The documents built on this one remember its name; keep that copy up to date.
+        db.execute(
+            sql_update(KnowledgeSource)
+            .where(KnowledgeSource.source_id == doc.id)
+            .values(source_title=doc.title)
+        )
     if "description" in values:
         doc.description = (values["description"] or "").strip()
     if "mode" in values:

@@ -21,6 +21,7 @@ class InboxItemRead(BaseModel):
     # A review or a delivery: what the task changed (phase 11); null when there is no data.
     changes: ChangesTotals | None = None
     run_id: str | None
+    knowledge_doc_id: str | None = None  # a «knowledge» item: the proposal to review
     agent_id: str | None
     agent_name: str
     agent_color: str

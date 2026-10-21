@@ -46,6 +46,7 @@ SETTING_FOR = {
     InboxKind.QUOTA: "limits",
     InboxKind.ACCOUNT: "limits",
     InboxKind.SWITCH: "limits",
+    InboxKind.KNOWLEDGE: "review",  # a proposal is a review of the agents' work
 }
 
 
@@ -59,6 +60,7 @@ def create(
     run: Run | None = None,
     command: str | None = None,
     options: list[str] | None = None,
+    knowledge_doc_id: str | None = None,
 ) -> InboxItem:
     """A new pending item. Agent and project are copied from the run, else from the task."""
     item = InboxItem(
@@ -69,6 +71,7 @@ def create(
         task_id=task.id if task else (run.task_id if run else None),
         run_id=run.id if run else None,
         command=command,
+        knowledge_doc_id=knowledge_doc_id,
         options=[str(o)[:80] for o in (options or []) if str(o).strip()][:8],
     )
     agent_id = task.agent_id if task is not None else None

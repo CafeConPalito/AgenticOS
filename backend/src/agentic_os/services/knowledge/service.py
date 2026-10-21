@@ -19,7 +19,7 @@ from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from agentic_os.db.base import DEFAULT_WORKSPACE
-from agentic_os.models import DocStatus, KnowledgeDoc
+from agentic_os.models import DocStatus, KnowledgeDoc, Review
 from agentic_os.schemas.knowledge import read_doc
 from agentic_os.services.knowledge import config as knowledge_config
 from agentic_os.services.knowledge import context as knowledge_context
@@ -248,6 +248,7 @@ class KnowledgeService:
                     select(KnowledgeDoc.id).where(
                         KnowledgeDoc.workspace_id == DEFAULT_WORKSPACE,
                         KnowledgeDoc.status == DocStatus.READY,
+                        KnowledgeDoc.review == Review.NONE,  # a proposal has no index yet
                         KnowledgeDoc.markdown != "",
                         KnowledgeDoc.embed_model != entry.id,
                     )

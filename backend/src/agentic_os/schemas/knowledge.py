@@ -9,7 +9,9 @@ from agentic_os.models import (
     KnowledgeDoc,
     KnowledgeMode,
     KnowledgeScope,
+    Origin,
     Presence,
+    Review,
     SourceKind,
 )
 from agentic_os.services.knowledge.formats import Viewer, extension, viewer_of
@@ -59,6 +61,29 @@ class Relocate(BaseModel):
     confirm: bool = False
 
 
+class ProvenanceRead(BaseModel):
+    """Who proposed an agent's document (phase 15)."""
+
+    agent_id: str | None
+    agent_name: str
+    run_id: str | None
+    task_id: str | None
+    task_title: str
+    proposed_at: datetime
+    suggested_scope: str  # "" when the agent did not suggest a level
+    replaces_id: str | None  # the version of its own that this one would replace
+    decided_at: datetime | None
+    edited: bool  # the person changed it before accepting
+
+
+class SourceRead(BaseModel):
+    """«Derived from»: `id` is None when that document was deleted (`title` remembers it)."""
+
+    id: str | None
+    title: str
+    removed: bool
+
+
 class DocRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -70,6 +95,11 @@ class DocRead(BaseModel):
     description: str
     mode: KnowledgeMode
     describe_images: bool | None
+    origin: Origin
+    review: Review
+    summary: str
+    provenance: ProvenanceRead | None
+    sources: list[SourceRead]
     source_kind: SourceKind
     path: str | None
     url: str | None
@@ -103,6 +133,18 @@ def read_doc(doc: KnowledgeDoc) -> DocRead:
         description=doc.description,
         mode=doc.mode,
         describe_images=doc.describe_images,
+        origin=doc.origin,
+        review=doc.review,
+        summary=doc.summary,
+        provenance=(
+            ProvenanceRead.model_validate(doc.provenance, from_attributes=True)
+            if doc.provenance
+            else None
+        ),
+        sources=[
+            SourceRead(id=s.source_id, title=s.source_title, removed=s.source_id is None)
+            for s in doc.sources
+        ],
         source_kind=doc.source_kind,
         path=doc.path,
         url=doc.url,
