@@ -120,6 +120,10 @@ def pending(
         query = query.where(InboxItem.run_id == run_id)
     if kinds:
         query = query.where(InboxItem.kind.in_([k.value for k in kinds]))
+    else:
+        # An agent's proposal outlives the task and the run it came from: only the person (or
+        # the document going away) resolves it.
+        query = query.where(InboxItem.kind != InboxKind.KNOWLEDGE.value)
     return list(db.scalars(query.order_by(InboxItem.created_at)))
 
 

@@ -454,6 +454,27 @@ def use_tools(text: str) -> int | None:
             Path(target or location).write_text(mcp("read_knowledge", args_r), "utf-8")
             out(f"● MCP read_knowledge: {document}")
             continue
+        if (
+            keyword == "PROPONE" and MCP_URL is not None
+        ):  # phase 15: `PROPONE: título|origen|archivo`
+            title, source, target = [*value.split("|"), "", ""][:3]
+            body = (
+                f"# {title}\n\n" + "Contenido verificado sobre este tema, con detalles útiles. " * 8
+            )
+            args_p = {"title": title, "markdown": body, "based_on": [source] if source else []}
+            Path(target).write_text(mcp("propose_knowledge", args_p), "utf-8")
+            out(f"● MCP propose_knowledge: {title}")
+            continue
+        if keyword == "MAPA" and MCP_URL is not None:  # `MAPA: archivo`
+            Path(value).write_text(mcp("knowledge_map", {}), "utf-8")
+            out("● MCP knowledge_map")
+            continue
+        if keyword == "EXPLORA" and MCP_URL is not None:  # `EXPLORA: documento|saltos|archivo`
+            document, hops, target = [*value.split("|"), "", ""][:3]
+            args_e = {"document": document, "hops": int(hops or 2)}
+            Path(target).write_text(mcp("explore_knowledge", args_e), "utf-8")
+            out(f"● MCP explore_knowledge: {document}")
+            continue
         if keyword == "CONTEXTO" and MCP_URL is not None:
             Path(value).write_text(mcp("get_context", {}), "utf-8")
             out("● MCP get_context")

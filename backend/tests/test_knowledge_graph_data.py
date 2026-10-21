@@ -147,3 +147,20 @@ def test_a_proposal_is_not_reindexed_when_the_model_changes(
     install_fake_model(client, monkeypatch)
     add_proposal(client, "Guía", based_on=[])
     assert client.app.state.knowledge.stale_docs() == []
+
+
+def test_a_proposal_waiting_in_the_inbox_outlives_its_task(client: TestClient):
+    from agentic_os.models import InboxItem, InboxKind, InboxStatus, Resolution
+    from agentic_os.services import inbox
+
+    proposal = add_proposal(client, "Guía", based_on=[])
+    with client.app.state.sessionmaker() as db:
+        item = inbox.create(db, InboxKind.KNOWLEDGE, "Conocimiento propuesto: Guía", "")
+        item.knowledge_doc_id = proposal
+        other = inbox.create(db, InboxKind.STALLED, "Sin terminar", "")
+        db.commit()
+        # What closing a task does to everything that waited for it:
+        inbox.resolve_pending(db, Resolution.DISMISSED)
+        db.commit()
+        assert db.get(InboxItem, item.id).status == InboxStatus.PENDING
+        assert db.get(InboxItem, other.id).status == InboxStatus.RESOLVED
