@@ -30,6 +30,10 @@ from agentic_os.schemas.knowledge import (
     AddUrl,
     DocRead,
     DocUpdate,
+    GraphEdgeRead,
+    GraphNodeRead,
+    GraphRead,
+    GraphTopicRead,
     HitRead,
     ImageRead,
     KnowledgeSettingsRead,
@@ -43,7 +47,7 @@ from agentic_os.schemas.knowledge import (
     read_doc,
 )
 from agentic_os.services.knowledge import config as knowledge_config
-from agentic_os.services.knowledge import docs, formats, proposals
+from agentic_os.services.knowledge import docs, formats, graph, proposals
 from agentic_os.services.knowledge.service import KnowledgeService
 from agentic_os.services.proc import open_in_file_manager as open_path
 from agentic_os.services.proc import reveal_in_file_manager as reveal_path
@@ -92,6 +96,61 @@ def list_docs(
     docs.check_all(db, found)
     db.commit()
     return [read_doc(doc) for doc in found]
+
+
+@router.get("/knowledge/graph")
+def read_graph(
+    request: Request,
+    db: DbSession,
+    project_id: str | None = Query(None),
+    agent_id: str | None = Query(None),
+    everything: bool = Query(False, alias="all"),
+    include_proposed: bool = True,
+) -> GraphRead:
+    """The graph of the documents: what an agent of that project (and agent) sees — the general
+    documents, the project's and the agent's — or, with `all=true`, the whole library."""
+    data = graph.read(
+        db,
+        project_id=project_id,
+        agent_ids=[agent_id] if agent_id else [],
+        everything=everything,
+        include_proposed=include_proposed,
+    )
+    nodes = [
+        GraphNodeRead(
+            id=d.id,
+            title=d.title,
+            summary=d.summary,
+            origin=d.origin,
+            source_kind=d.source_kind,
+            review=d.review,
+            scope=d.scope,
+            project_id=d.project_id,
+            agent_id=d.agent_id,
+            mode=d.mode,
+            status=d.status,
+            presence=d.presence,
+            md_tokens=d.md_tokens,
+            topic=data.topic_of.get(d.id),
+        )
+        for d in data.docs
+    ] + [GraphNodeRead(id=i, title=t, summary="", ghost=True) for i, t in data.ghosts]
+    return GraphRead(
+        version=service(request).graph_version,
+        nodes=nodes,
+        edges=[GraphEdgeRead(**vars(e)) for e in data.edges],
+        topics=[
+            GraphTopicRead(
+                id=t.id,
+                name=t.name,
+                size=len(t.doc_ids),
+                loose=t.loose,
+                central=t.central,
+                neighbors=t.neighbors,
+            )
+            for t in data.topics
+        ],
+    )
 
 
 @router.get("/knowledge/docs/{doc_id}")
@@ -155,6 +214,7 @@ def delete_doc(doc_id: str, request: Request, db: DbSession) -> None:
     docs.remove(db, docs.get_doc(db, doc_id), images_dir(request))
     db.commit()
     request.app.state.knowledge_events.doc_removed(doc_id)
+    service(request).mark_graph_dirty()
 
 
 @router.post("/knowledge/docs/{doc_id}/accept")
@@ -167,6 +227,7 @@ def accept_proposal(
     proposals.accept(db, doc, payload.model_dump(exclude_unset=True))
     db.commit()
     service(request).poke()
+    service(request).mark_graph_dirty()
     read = read_doc(doc)
     request.app.state.knowledge_events.doc(read.model_dump(mode="json"))
     return read
@@ -181,6 +242,7 @@ def reject_proposal(
     proposals.reject(db, docs.get_doc(db, doc_id), payload.reason if payload else "")
     db.commit()
     request.app.state.knowledge_events.doc_removed(doc_id)
+    service(request).mark_graph_dirty()
 
 
 @router.post("/knowledge/docs/{doc_id}/relocate")
@@ -287,10 +349,18 @@ def get_settings(db: DbSession) -> KnowledgeSettingsRead:
 
 
 @router.put("/settings/knowledge")
-def put_settings(payload: KnowledgeSettingsWrite, db: DbSession) -> KnowledgeSettingsRead:
+def put_settings(
+    payload: KnowledgeSettingsWrite, request: Request, db: DbSession
+) -> KnowledgeSettingsRead:
     values = payload.model_dump(exclude_unset=True)
+    before = knowledge_config.load(db)
     saved = knowledge_config.save(db, {k: v for k, v in values.items() if v is not None})
     db.commit()
+    if (saved.graph_threshold, saved.graph_max_neighbors) != (
+        before.graph_threshold,
+        before.graph_max_neighbors,
+    ):
+        service(request).mark_graph_dirty()
     return KnowledgeSettingsRead(**asdict(saved))
 
 

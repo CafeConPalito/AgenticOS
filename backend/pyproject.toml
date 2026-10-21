@@ -26,6 +26,7 @@ dependencies = [
     "numpy>=2.5.4",
     "onnxruntime>=1.20.1",
     "tokenizers>=0.23.3",
+    "networkx>=3.7",
 ]
 
 [project.scripts]

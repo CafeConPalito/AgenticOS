@@ -263,6 +263,9 @@ class KnowledgeSettingsRead(BaseModel):
     proposals_enabled: bool  # agents may propose knowledge documents
     proposals_per_run: int
     proposals_max_tokens: int
+    graph_threshold: float  # centered cosine from which two documents are «related»
+    graph_max_neighbors: int
+    graph_expand: int  # documents a search may add from the graph
 
 
 class KnowledgeSettingsWrite(BaseModel):
@@ -283,9 +286,56 @@ class KnowledgeSettingsWrite(BaseModel):
     proposals_enabled: bool | None = None
     proposals_per_run: int | None = Field(default=None, ge=1, le=20)
     proposals_max_tokens: int | None = Field(default=None, ge=500, le=100_000)
+    graph_threshold: float | None = Field(default=None, ge=0.05, le=0.90)
+    graph_max_neighbors: int | None = Field(default=None, ge=1, le=30)
+    graph_expand: int | None = Field(default=None, ge=0, le=10)
 
 
 class MarkdownRead(BaseModel):
     title: str
     markdown: str
     tokens: int
+
+
+# ------------------------------------------------------------------------------ the graph
+class GraphNodeRead(BaseModel):
+    """A document as a node. A «ghost» is a source that was deleted: only its name is left."""
+
+    id: str
+    title: str
+    summary: str
+    ghost: bool = False
+    origin: Origin = Origin.USER
+    source_kind: SourceKind | None = None
+    review: Review = Review.NONE
+    scope: KnowledgeScope | None = None
+    project_id: str | None = None
+    agent_id: str | None = None
+    mode: KnowledgeMode | None = None
+    status: DocStatus | None = None
+    presence: Presence | None = None
+    md_tokens: int = 0
+    topic: int | None = None
+
+
+class GraphEdgeRead(BaseModel):
+    kind: Literal["derived", "related"]
+    source: str  # «derived»: the document it was derived from
+    target: str
+    weight: float
+
+
+class GraphTopicRead(BaseModel):
+    id: int
+    name: str
+    size: int
+    loose: bool  # the «Sueltos» group: documents with no link
+    central: list[str]  # ids of its most linked documents
+    neighbors: list[int]  # topics it is linked to
+
+
+class GraphRead(BaseModel):
+    version: int  # changes when the links do; the screen reads again on a `graph` event
+    nodes: list[GraphNodeRead]
+    edges: list[GraphEdgeRead]
+    topics: list[GraphTopicRead]

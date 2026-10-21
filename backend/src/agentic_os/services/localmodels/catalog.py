@@ -119,6 +119,7 @@ CATALOG: tuple[CatalogEntry, ...] = (
             document_prefix="passage: ",
             pooling="mean",
             inputs=("input_ids", "attention_mask", "token_type_ids"),
+            related_raw=0.91,  # raw cosine that links two documents in a tiny library (phase 15)
         ),
     ),
     CatalogEntry(
@@ -149,6 +150,7 @@ CATALOG: tuple[CatalogEntry, ...] = (
             query_prefix="task: search result | query: ",
             document_prefix="title: none | text: ",
             pooling="sentence_embedding",
+            related_raw=0.80,
             inputs=("input_ids", "attention_mask"),
             # The text model still asks for the picture, video and audio features: empty ones.
             empty_inputs=("image_features", "video_features", "audio_features"),
@@ -176,6 +178,7 @@ CATALOG: tuple[CatalogEntry, ...] = (
             query_prefix="",
             document_prefix="",
             pooling="cls",
+            related_raw=0.68,
             inputs=("input_ids", "attention_mask"),
         ),
     ),

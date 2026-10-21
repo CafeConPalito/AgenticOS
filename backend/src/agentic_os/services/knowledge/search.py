@@ -205,12 +205,9 @@ def words_query(query: str, with_vectors: bool) -> str | None:
 
 
 # ------------------------------------------------------------------------ who sees what
-def visible_docs(
-    db: Session, project_id: str | None, agent_ids: Iterable[str]
-) -> list[KnowledgeDoc]:
-    """The documents an agent working in `project_id` reads: the general ones, the project's and
-    its own (a subagent also reads its parent's), that are ready, reviewed (an agent's proposal
-    waits for the person) and not switched off."""
+def level_clause(project_id: str | None, agent_ids: Iterable[str]):
+    """The WHERE clause of the levels an agent working in `project_id` belongs to: the general
+    documents, the project's and its own (a subagent also reads its parent's)."""
     levels = [KnowledgeDoc.scope == KnowledgeScope.GENERAL]
     if project_id:
         levels.append(
@@ -221,6 +218,15 @@ def visible_docs(
         levels.append(
             (KnowledgeDoc.scope == KnowledgeScope.AGENT) & KnowledgeDoc.agent_id.in_(agents)
         )
+    return or_(*levels)
+
+
+def visible_docs(
+    db: Session, project_id: str | None, agent_ids: Iterable[str]
+) -> list[KnowledgeDoc]:
+    """The documents an agent working in `project_id` reads: the general ones, the project's and
+    its own (a subagent also reads its parent's), that are ready, reviewed (an agent's proposal
+    waits for the person) and not switched off."""
     query = (
         select(KnowledgeDoc)
         .where(
@@ -228,7 +234,7 @@ def visible_docs(
             KnowledgeDoc.status == DocStatus.READY,
             KnowledgeDoc.review == Review.NONE,  # a proposal is read by nobody until accepted
             KnowledgeDoc.mode != KnowledgeMode.OFF,
-            or_(*levels),
+            level_clause(project_id, agent_ids),
         )
         .order_by(KnowledgeDoc.created_at, KnowledgeDoc.id)
         .options(defer(KnowledgeDoc.markdown))  # loaded only for the documents that are read

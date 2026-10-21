@@ -226,6 +226,7 @@ def propose(
     from agentic_os.schemas.knowledge import read_doc
 
     service.events.doc(read_doc(doc).model_dump(mode="json"))
+    service.mark_graph_dirty()
     left = settings.proposals_per_run - (made or 0) - 1
     return (
         f"Propuesta registrada: «{title}». Queda pendiente de que la persona la revise; hasta "
