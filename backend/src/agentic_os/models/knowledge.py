@@ -239,6 +239,8 @@ class KnowledgeProvenance(Base):
     )
     decided_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
     edited: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # Accepted with «Reemplazar»: when it is ready, the version it replaces goes away.
+    replace_on_ready: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
 
 class KnowledgeSource(IdMixin, Base):

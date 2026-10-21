@@ -62,6 +62,7 @@ from agentic_os.services.hooks import (
 )
 from agentic_os.services.knowledge import agent_tools as knowledge_tools
 from agentic_os.services.knowledge import context as knowledge_context
+from agentic_os.services.knowledge import proposals as knowledge_proposals
 from agentic_os.services.mcp_server import RunTokens
 from agentic_os.services.memory import add_agent_note, list_notes, render_memory
 from agentic_os.services.runs import resume as resume_ops
@@ -827,6 +828,26 @@ class RunManager:
                 db, self._data_dir, run, document, location, part
             )
         self.add_event(run_id, EventKind.MCP, "read_knowledge", detail)
+        return answer
+
+    def propose_knowledge(
+        self,
+        run_id: str,
+        title: str,
+        markdown: str,
+        description: str,
+        based_on: list[str],
+        level: str,
+        replaces: str,
+    ) -> str:
+        with self._db() as db:
+            run = db.get(Run, run_id)
+            if run is None:
+                raise LookupError(run_id)
+            answer, detail = knowledge_proposals.propose(
+                db, self.knowledge, run, title, markdown, description, based_on, level, replaces
+            )
+        self.add_event(run_id, EventKind.MCP, "propose_knowledge", detail)
         return answer
 
     def report_status(self, run_id: str, message: str) -> None:

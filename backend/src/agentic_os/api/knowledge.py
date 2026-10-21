@@ -24,6 +24,7 @@ from agentic_os.models import (
     SourceKind,
 )
 from agentic_os.schemas.knowledge import (
+    AcceptProposal,
     AddFiles,
     AddItem,
     AddUrl,
@@ -34,6 +35,7 @@ from agentic_os.schemas.knowledge import (
     KnowledgeSettingsRead,
     KnowledgeSettingsWrite,
     MarkdownRead,
+    RejectProposal,
     Relocate,
     RelocateRead,
     SearchRead,
@@ -41,7 +43,7 @@ from agentic_os.schemas.knowledge import (
     read_doc,
 )
 from agentic_os.services.knowledge import config as knowledge_config
-from agentic_os.services.knowledge import docs, formats
+from agentic_os.services.knowledge import docs, formats, proposals
 from agentic_os.services.knowledge.service import KnowledgeService
 from agentic_os.services.proc import open_in_file_manager as open_path
 from agentic_os.services.proc import reveal_in_file_manager as reveal_path
@@ -151,6 +153,32 @@ def update_doc(doc_id: str, payload: DocUpdate, db: DbSession) -> DocRead:
 @router.delete("/knowledge/docs/{doc_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_doc(doc_id: str, request: Request, db: DbSession) -> None:
     docs.remove(db, docs.get_doc(db, doc_id), images_dir(request))
+    db.commit()
+    request.app.state.knowledge_events.doc_removed(doc_id)
+
+
+@router.post("/knowledge/docs/{doc_id}/accept")
+def accept_proposal(
+    doc_id: str, payload: AcceptProposal, request: Request, db: DbSession
+) -> DocRead:
+    """The person accepts an agent's proposal (with the changes they made, and the level they
+    chose). It goes to the queue and, once indexed, the agents can read it."""
+    doc = docs.get_doc(db, doc_id)
+    proposals.accept(db, doc, payload.model_dump(exclude_unset=True))
+    db.commit()
+    service(request).poke()
+    read = read_doc(doc)
+    request.app.state.knowledge_events.doc(read.model_dump(mode="json"))
+    return read
+
+
+@router.post("/knowledge/docs/{doc_id}/reject", status_code=status.HTTP_204_NO_CONTENT)
+def reject_proposal(
+    doc_id: str, request: Request, db: DbSession, payload: RejectProposal | None = None
+) -> None:
+    """The person rejects an agent's proposal: it is deleted; only its fingerprint stays, so the
+    agent is told if it proposes the same again."""
+    proposals.reject(db, docs.get_doc(db, doc_id), payload.reason if payload else "")
     db.commit()
     request.app.state.knowledge_events.doc_removed(doc_id)
 

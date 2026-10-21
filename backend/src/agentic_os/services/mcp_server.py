@@ -66,6 +66,16 @@ class AgentBackend(Protocol):
     def write_project_memory(self, run_id: str, note: str) -> None: ...
     def search_knowledge(self, run_id: str, query: str, limit: int) -> str: ...
     def read_knowledge(self, run_id: str, document: str, location: str, part: int) -> str: ...
+    def propose_knowledge(
+        self,
+        run_id: str,
+        title: str,
+        markdown: str,
+        description: str,
+        based_on: list[str],
+        level: str,
+        replaces: str,
+    ) -> str: ...
     def request_human(self, run_id: str, title: str, detail: str, options: list[str]) -> str: ...
     def spawn_subagent(self, run_id: str, prompt: str, agent_name: str) -> str: ...
     def create_subtask(self, run_id: str, title: str, description: str, agent_name: str) -> str: ...
@@ -234,6 +244,37 @@ def build_mcp(backend: AgentBackend) -> MCPServer:
         hay)."""
         return await call(
             backend.read_knowledge, _run_id(ctx), _clip(document), _clip(location), part
+        )
+
+    @server.tool()
+    async def propose_knowledge(
+        title: str,
+        markdown: str,
+        ctx: Context,
+        description: str = "",
+        based_on: list[str] | None = None,
+        level: str = "",
+        replaces: str = "",
+    ) -> str:
+        """Propone un documento de conocimiento NUEVO con algo que has aprendido y que
+        ayudaría a otros agentes (una guía, una solución verificada, una síntesis). No
+        modifica nunca los documentos existentes: se crea uno aparte, vinculado a los que lo
+        inspiraron, y la persona lo revisa antes de que nadie lo use; tú sigues trabajando.
+        `title`: título claro. `markdown`: el texto completo en Markdown, autocontenido y
+        comprobado (no resúmenes de lo que ya hay escrito). `description`: una línea.
+        `based_on`: los documentos en los que te basas (título o identificador). `level`:
+        «general», «project» o «agent» si tienes preferencia (decide la persona). `replaces`:
+        una propuesta tuya ya aceptada a la que esta sustituye. Hay un máximo de propuestas
+        por ejecución; si algo no se puede, la respuesta te explica por qué."""
+        return await call(
+            backend.propose_knowledge,
+            _run_id(ctx),
+            _clip(title)[:200],
+            markdown.strip(),
+            _clip(description),
+            [_clip(x)[:200] for x in (based_on or [])][:10],
+            _clip(level),
+            _clip(replaces),
         )
 
     @server.tool()

@@ -64,6 +64,7 @@ def upgrade() -> None:
         sa.Column("replaces_id", sa.String(length=36), nullable=True),
         sa.Column("decided_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("edited", sa.Boolean(), nullable=False),
+        sa.Column("replace_on_ready", sa.Boolean(), nullable=False),
         sa.ForeignKeyConstraint(
             ["doc_id"],
             ["knowledge_docs.id"],

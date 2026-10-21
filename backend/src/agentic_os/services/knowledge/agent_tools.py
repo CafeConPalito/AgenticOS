@@ -16,7 +16,13 @@ from sqlalchemy.orm import Session
 
 from agentic_os.models import KnowledgeDoc, Run
 from agentic_os.services.knowledge import search
-from agentic_os.services.knowledge.context import LEVELS, resolve_images, short_id
+from agentic_os.services.knowledge.context import (
+    GENERATED,
+    LEVELS,
+    is_generated,
+    resolve_images,
+    short_id,
+)
 from agentic_os.services.knowledge.search import _plain  # accent-blind comparison
 
 PART_TOKENS = 6_000  # a document longer than this is read in parts
@@ -69,7 +75,9 @@ def search_knowledge(
         parts.append(
             f"### {number}. {hit.doc.title}"
             + (f" — {place}" if place else "")
-            + f"\n`[{short_id(hit.doc)}]` · {LEVELS.get(hit.doc.scope, hit.doc.scope)}\n\n{body}"
+            + f"\n`[{short_id(hit.doc)}]` · {LEVELS.get(hit.doc.scope, hit.doc.scope)}"
+            + (f" · {GENERATED}" if is_generated(hit.doc) else "")
+            + f"\n\n{body}"
         )
     names = ", ".join(dict.fromkeys(h.doc.title for h in hits))
     return "\n\n".join(parts), f"{query[:100]} → {len(hits)} resultados: {names}"[:300]
@@ -215,6 +223,8 @@ def read_knowledge(
     body = resolve_images(db, data_dir, run.id, doc, parts[part - 1])
     head = f"# {doc.title}" + (f" — {label}" if label else "")
     note = f"`[{short_id(doc)}]` · {LEVELS.get(doc.scope, doc.scope)}"
+    if is_generated(doc):
+        note += f" · {GENERATED}"
     if len(parts) > 1:
         note += f" · parte {part} de {len(parts)}"
         if part < len(parts):

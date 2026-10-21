@@ -42,10 +42,10 @@ Evidencias en [`evidencias/s1-s3-grafo.md`](evidencias/s1-s3-grafo.md); scripts 
 ### 1. Modelo de datos (migración `0018_knowledge_graph`)
 - **`KnowledgeDoc`** gana:
   - `origin` (`user` · `agent`): quién lo aportó. `source_kind` admite `markdown` (el contenido es el Markdown propuesto: no hay original en disco, nunca está `missing`);
-  - `review` (`none` · `proposed` · `rejected`): `proposed` es una propuesta pendiente (no es visible para ningún agente: `visible_docs` exige `review = none`); `rejected` solo dura hasta que se borra el contenido (ver «Rechazar»);
+  - `review` (`none` · `proposed`): `proposed` es una propuesta pendiente (no es visible para ningún agente: `visible_docs` exige `review = none`); rechazar la borra;
   - `summary` (una línea: la descripción o la primera frase del Markdown), para el grafo y las herramientas;
   - `centroid` (BLOB) y `centroid_model`: vector medio normalizado de sus trozos, calculado al indexar.
-- **`KnowledgeProvenance`** (`knowledge_provenance`, 1:1 con un documento del agente): `agent_id`, `agent_name`, `run_id` (`SET NULL`), `task_id` (`SET NULL`), `task_title` (copia), `proposed_at`, `suggested_scope`, `replaces_id` (`SET NULL`, la versión que pretende sustituir), `decided_at`, `edited` (si el usuario cambió algo al aceptar).
+- **`KnowledgeProvenance`** (`knowledge_provenance`, 1:1 con un documento del agente): `agent_id`, `agent_name`, `run_id` (`SET NULL`), `task_id` (`SET NULL`), `task_title` (copia), `proposed_at`, `suggested_scope`, `replaces_id` (`SET NULL`, la versión que pretende sustituir), `decided_at`, `edited` (si el usuario cambió el texto al aceptar) y `replace_on_ready` (aceptada con «Reemplazar»: la versión anterior se borra cuando la nueva queda lista).
 - **`KnowledgeSource`** (`knowledge_sources`): aristas **«derivado de»**. `doc_id` (el derivado, `CASCADE`), `source_id` (`SET NULL`) y `source_title` (copia). Si se borra el origen, la fila queda con `source_id` nulo: el derivado se ve «origen eliminado» (CA11).
 - **`KnowledgeRelated`** (`knowledge_related`): aristas **«relacionado»**, `a_id < b_id` (ambas `CASCADE`), `weight` (coseno) y `model`. Clave primaria `(a_id, b_id)`.
 - **`KnowledgeRejection`** (`knowledge_rejections`): lo rechazado sin el texto: `title`, `md_sha256`, `centroid`, `agent_id`, `reason`, `rejected_at`. Sirve para avisar al agente si vuelve a proponer lo mismo.
@@ -133,8 +133,8 @@ Nuevos: `proposals.enabled`, `proposals.per_run`, `proposals.max_tokens`, `graph
 
 ## Tareas (en orden)
 1. [x] **Bloque 0 · Spikes** S1–S3 hechos (S4 pasa al bloque 8); evidencias y cambios al diseño anotados arriba.
-2. [ ] **Bloque 1 · Datos**: migración `0018`, modelos, `visible_docs` exige `review = none`, `InboxKind.KNOWLEDGE`, esquemas y listados con `origin`/`review`.
-3. [ ] **Bloque 2 · Propuestas (backend)**: `proposals.py`, `propose_knowledge` en el MCP, controles anti-ruido, Inbox, aceptar (pipeline desde «trocear»), rechazar, reemplazar, borrado de orígenes, ajustes.
+2. [x] **Bloque 1 · Datos**: migración `0018`, modelos, `visible_docs` exige `review = none`, `InboxKind.KNOWLEDGE`, esquemas y listados con `origin`/`review`.
+3. [x] **Bloque 2 · Propuestas (backend)**: `proposals.py`, `propose_knowledge` en el MCP, controles anti-ruido, Inbox, aceptar (pipeline desde «trocear»), rechazar, reemplazar, borrado de orígenes, ajustes.
 4. [ ] **Bloque 3 · Grafo (backend)**: centroides, relaciones y su recálculo, temas, `GET /knowledge/graph`, evento `graph_changed`.
 5. [ ] **Bloque 4 · Búsqueda con el grafo (backend)**: vecinos y expansión en `search_knowledge` (+ parámetro `graph`), `knowledge_map`, `related_knowledge`, `explore_knowledge`, `knowledge_path`, contexto (temas, marca, reglas).
 6. [ ] **Bloque 5 · Propuestas (frontend)**: API, `ProposalReview`, filtro «Propuestos», marcas y procedencia, Inbox, ajustes.

@@ -217,6 +217,27 @@ class KnowledgeService:
                 return None
         return vectors[0]
 
+    def embed_passages(self, texts: list[str]) -> np.ndarray | None:
+        """The vectors of some passages (a proposal's chunks), or None without a model. Uses the
+        worker that embeds questions, so it never waits behind a long indexing."""
+        entry = self.embedding_model()
+        if entry is None or not texts:
+            return None
+        with self._query_lock:
+            if self._query_worker is None:
+                self._query_worker = (
+                    ProcessWorker(idle_seconds=QUERY_IDLE_SECONDS)
+                    if self.mode == "subprocess"
+                    else self._factory()
+                )
+            try:
+                return embeddings.embed(
+                    self._query_worker, model_spec(self.data_dir, entry), texts, "passage"
+                )
+            except KnowledgeError as error:
+                log.warning("knowledge_passage_embedding_failed", message=error.message)
+                return None
+
     def search(
         self,
         db: Session,

@@ -54,6 +54,28 @@ class DocUpdate(BaseModel):
     agent_id: str | None = None
 
 
+class AcceptProposal(BaseModel):
+    """What the person decided about a proposal: everything is optional (accept it as it is).
+    `scope` (with its owner) picks the level; `replace` deletes the version it replaces once the
+    new one is ready."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    title: Title | None = None
+    description: str | None = None
+    markdown: str | None = None
+    scope: KnowledgeScope | None = None
+    project_id: str | None = None
+    agent_id: str | None = None
+    replace: bool = False
+
+
+class RejectProposal(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    reason: str = Field(default="", max_length=500)
+
+
 class Relocate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -238,6 +260,9 @@ class KnowledgeSettingsRead(BaseModel):
     describer_cli: str  # "" (the first CLI with a session), claude or agy
     describer_account: str
     describer_model: str
+    proposals_enabled: bool  # agents may propose knowledge documents
+    proposals_per_run: int
+    proposals_max_tokens: int
 
 
 class KnowledgeSettingsWrite(BaseModel):
@@ -255,6 +280,9 @@ class KnowledgeSettingsWrite(BaseModel):
     describer_cli: Literal["", "claude", "agy"] | None = None
     describer_account: str | None = Field(default=None, max_length=80)
     describer_model: str | None = Field(default=None, max_length=80)
+    proposals_enabled: bool | None = None
+    proposals_per_run: int | None = Field(default=None, ge=1, le=20)
+    proposals_max_tokens: int | None = Field(default=None, ge=500, le=100_000)
 
 
 class MarkdownRead(BaseModel):
