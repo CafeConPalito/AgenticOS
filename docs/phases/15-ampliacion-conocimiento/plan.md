@@ -166,3 +166,14 @@ Nuevos: `proposals.enabled`, `proposals.per_run`, `proposals.max_tokens`, `graph
 ## Decisiones (ADR)
 - [ADR 0022](../../adr/0022-knowledge-graph.md): propuestas como documentos con `review`, procedencia y orígenes en tablas propias, relaciones por centroide con umbral y tope, temas por comunidades sin LLM, herramientas del grafo de solo lectura y *layout* en el cliente.
 - Pendiente de los spikes: centroide o pares de trozos y umbrales (S1), Louvain propio o `networkx` (S2), `d3-force` en Worker o `<canvas>` (S3).
+
+## Estado al 2026-10-21 (para retomar)
+- Bloques 0 a 8 hechos; del bloque 9 están hechos el e2e empaquetado (con el ejecutable anterior a la revisión), la medición del grafo en un navegador real, la prueba con `claude` real y `/code-review high` (10 hallazgos, resueltos en `2619ac8`).
+- **Falta**:
+  1. Suite completa del backend tras la revisión (`cd backend; uv run pytest tests -q`; unos 35 min; la anterior, antes de la revisión, pasó al 100 %). Los tests afectados por la revisión ya pasan.
+  2. Reconstruir el ejecutable (`npm run build:backend`) y repetir `AGENTIC_OS_E2E_BINARY=backend\build\dist\agentic-os-backend.exe uv run pytest tests/test_knowledge_e2e.py` (la migración 0018 cambió).
+  3. Frontend completo (`cd frontend; npx vitest run`, `npm run build`).
+  4. Rellenar `validacion.md` (tabla de CA con la evidencia, hallazgos de la revisión, retro) y actualizar README/ADR 0022 («Consecuencias»: el ejecutable pesa 162,6 MB, +10,6 MB por `networkx`).
+  5. Pendiente manual: `agy` real y el instalador en una máquina limpia.
+  6. Cierre: OK del usuario → merge `--no-ff` a `main`, tag `v1.7`, roadmap «cerrada».
+- Evidencias ya obtenidas: calidad con e5 real (recall de familia 0,44 → 1,00), 442 tests de frontend, e2e empaquetado 5/5, grafo de 300 nodos y 971 vínculos fluido (≈1 fotograma por paso), `claude` real (haiku, ~0,01 USD) propone con `based_on` correcto y recorre mapa → explorar → leer.
