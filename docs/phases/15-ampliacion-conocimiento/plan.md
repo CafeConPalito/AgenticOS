@@ -23,6 +23,20 @@ Scripts en `spikes/knowledge-graph/`, con el corpus de la fase 14 ampliado con *
 | S3 | **Dibujo**: `d3-force` en un **Web Worker** + `@xyflow/react` con 300 nodos y 1 000 aristas: tiempo hasta estabilizar, FPS al hacer zoom y arrastrar, y si `onlyRenderVisibleElements` y ocultar aristas débiles al alejar bastan | `layout` por lotes con posiciones guardadas; como último recurso, dibujo en `<canvas>` (sigma.js) solo para la vista «Todo» |
 | S4 | **Propuestas reales**: `claude` y `agy` con el MCP de prueba y un PDF de Celery: ¿llaman a `propose_knowledge` cuando deben y no en cada ejecución? ¿Qué redacción de la herramienta y de la línea del contexto lo consigue? ¿Usan `knowledge_map` y `explore_knowledge` sin que se lo pidan? | Ajustar las descripciones; si proponen de más, bajar el máximo por defecto a 1 |
 
+## Resultados de los spikes (bloque 0, 2026-10-21)
+Evidencias en [`evidencias/s1-s3-grafo.md`](evidencias/s1-s3-grafo.md); scripts en `spikes/knowledge-graph/`.
+
+- **S1 · Relaciones**: el **centroide** (vector medio de los trozos) gana en los tres modelos (AUC 0,94–0,97) a los pares de trozos. El coseno crudo no da un umbral común (rangos distintos por modelo), pero **restando el vector medio de la biblioteca** la escala es común: umbral **0,20** → precisión de aristas 0,8–0,9. Con **el vecino más próximo siempre que supere 0,10** los documentos puente (Redis entre Celery y Docker) no quedan sueltos. Todos contra todos con 1 000 centroides: 9 ms.
+- **S2 · Temas**: Louvain de `networkx` (semilla 0, grafo ordenado) da temas coherentes (NMI 0,88–0,96) y **estables** (barajar el orden o quitar un documento: NMI 1,0). Nombre = documento más central + 2 palabras TF-IDF. `networkx` pesa 14 MB sin comprimir; si el *sidecar* crece demasiado, Louvain propio.
+- **S3 · Dibujo**: `d3-force` con 300 nodos y 1 000 aristas tarda **327 ms** (1 000 y 3 500: 1,3 s), así que va en un Worker. La fluidez de `@xyflow/react` se mide con navegador en el bloque 6 (plan B: `<canvas>`).
+- **S4 · Agentes reales**: aplazado al bloque 8 (necesita las herramientas hechas).
+
+### Cambios al diseño por los spikes
+1. Relación = **coseno de centroides centrado en la media de la biblioteca**; `graph.threshold` = 0,20, vecino más próximo ≥ 0,10 siempre, máximo 8. Con menos de 8 documentos con vectores se usa el coseno crudo con un umbral por modelo en el catálogo (e5 0,91 · Gemma 0,80 · bge-m3 0,68).
+2. El recálculo es **completo en memoria con cada cambio** y se escribe solo la diferencia (no «uno contra todos»).
+3. Los temas usan `networkx` (se añade a las dependencias del backend en el bloque 3).
+4. *Layout* con `d3-force` en un Web Worker, con posiciones parciales cada 30 iteraciones.
+
 ## Diseño ([ADR 0022](../../adr/0022-knowledge-graph.md), nuevo)
 
 ### 1. Modelo de datos (migración `0018_knowledge_graph`)
@@ -64,8 +78,8 @@ Desde la Inbox y desde la biblioteca se usan los mismos endpoints. Si se resuelv
 
 ### 3. Grafo (`services/knowledge/graph.py`)
 - **Centroide**: al indexar, media de los vectores de sus trozos, normalizada (o lo que decida S1). Sin modelo de significado no hay centroide.
-- **Relaciones**: para un documento, coseno contra los centroides de **todos** los aceptados del mismo modelo (matriz NumPy); se guardan las aristas por encima de `knowledge.graph.threshold` (por modelo, calibrado en S1) hasta `knowledge.graph.max_neighbors` (8) por documento, conservando la arista si cualquiera de los dos la elige. Las relaciones se calculan entre **todos** los niveles; la visibilidad se aplica al leer.
-- **Cuándo se recalcula**: al terminar de indexar un documento (sus aristas), al quitarlo (por `CASCADE` y se recalculan sus antiguos vecinos, que quedan con huecos), al cambiar el ajuste de umbral o vecinos, y al cambiar de modelo (todas, cuando termina el `reindex`). Se hace en el hilo de la cola, después de indexar, y sube `graph_version`.
+- **Relaciones** (S1): matriz de centroides de todos los documentos aceptados del mismo modelo, centrada en su media y normalizada; coseno de todos contra todos con NumPy. Cada documento conserva sus hasta `knowledge.graph.max_neighbors` (8) vecinos más próximos que superen `knowledge.graph.threshold` (0,20) y, además, su vecino más próximo si supera 0,10; la arista existe si cualquiera de los dos la elige. Con menos de 8 documentos con vectores se usa el coseno crudo con el umbral del modelo (catálogo). Las relaciones se calculan entre **todos** los niveles; la visibilidad se aplica al leer.
+- **Cuándo se recalcula**: al terminar de indexar un documento, al quitarlo, al cambiar el umbral o los vecinos, y al cambiar de modelo (cuando termina el `reindex`). Siempre **completo en memoria** (9 ms con 1 000 documentos) y se escribe solo la diferencia contra `knowledge_related`. Se hace en el hilo de la cola, después de indexar, y sube `graph_version`.
 - **Temas** (`topics.py`): comunidades sobre las aristas «relacionado» (peso = coseno) y «derivado de» (peso 1) con el algoritmo de S2, con orden y semilla fijos. Nombre: título del documento más central más los términos más propios del grupo. Se calcula al leer y se cachea por `graph_version`. Los documentos sin aristas forman el tema «Sueltos».
 - **Lectura** (`GET /api/knowledge/graph`): parámetros `project_id`, `agent_id` (el contexto actual: lo visible desde ahí, decisión 4 de la spec) o `all=true` (toda la biblioteca), más `include_proposed` (por defecto, sí en la UI). Devuelve nodos (id, título, `origin`, `source_kind`, nivel, proyecto o agente, `review`, `mode`, `presence`, `md_tokens`, tema), aristas (tipo, origen, destino, peso; «derivado de» con origen eliminado incluida como nodo fantasma) y temas (id, nombre, tamaño). Las propuestas pendientes salen con sus aristas «derivado de», sin «relacionado».
 - **Eventos**: `graph_changed` con la versión, para que la vista recargue.
@@ -118,7 +132,7 @@ Nuevos: `proposals.enabled`, `proposals.per_run`, `proposals.max_tokens`, `graph
 | `spikes/knowledge-graph/` | nuevo |
 
 ## Tareas (en orden)
-1. [ ] **Bloque 0 · Spikes** S1–S4, evidencias y cambios al diseño anotados aquí.
+1. [x] **Bloque 0 · Spikes** S1–S3 hechos (S4 pasa al bloque 8); evidencias y cambios al diseño anotados arriba.
 2. [ ] **Bloque 1 · Datos**: migración `0018`, modelos, `visible_docs` exige `review = none`, `InboxKind.KNOWLEDGE`, esquemas y listados con `origin`/`review`.
 3. [ ] **Bloque 2 · Propuestas (backend)**: `proposals.py`, `propose_knowledge` en el MCP, controles anti-ruido, Inbox, aceptar (pipeline desde «trocear»), rechazar, reemplazar, borrado de orígenes, ajustes.
 4. [ ] **Bloque 3 · Grafo (backend)**: centroides, relaciones y su recálculo, temas, `GET /knowledge/graph`, evento `graph_changed`.

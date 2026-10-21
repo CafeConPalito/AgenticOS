@@ -19,12 +19,12 @@ La biblioteca de la fase 14 ([ADR 0021](0021-knowledge.md)) solo crece con lo qu
 - La propuesta **no bloquea** al agente; la revisión llega por la Inbox (clase `knowledge`) y por la biblioteca, con los mismos endpoints.
 
 ### Relaciones por vectores, con umbral y tope
-- Cada documento tiene un **centroide** (vector medio normalizado de sus trozos). La arista «relacionado» une dos documentos cuyo coseno supera un umbral **por modelo**, con un máximo de vecinos por documento. Se guarda en `knowledge_related` y se recalcula al indexar, quitar o cambiar de modelo.
-- Es lineal por documento (uno contra todos con NumPy) y cuadrática solo al cambiar de modelo, aceptable hasta miles de documentos.
+- Cada documento tiene un **centroide** (vector medio normalizado de sus trozos); en los spikes superó a la comparación por pares de trozos con los tres modelos. Los centroides se **centran en la media de la biblioteca** antes de comparar, lo que da una escala de coseno común a los modelos (umbral 0,20) en vez de un umbral por modelo. La arista «relacionado» une dos documentos por encima del umbral, con un máximo de 8 vecinos, y siempre une a cada documento con su vecino más próximo si supera 0,10, para que los documentos puente no queden sueltos. Con menos de 8 documentos se usa el coseno crudo y un umbral por modelo.
+- Se guarda en `knowledge_related` y se recalcula **completo en memoria** al indexar, quitar o cambiar de modelo (9 ms con 1 000 documentos), escribiendo solo la diferencia.
 - Las relaciones se calculan en toda la biblioteca y **la visibilidad se aplica al leer**, para que el grafo de cada agente sea un subconjunto del global sin recálculos.
 
 ### Temas por comunidades, sin LLM
-- Los temas son comunidades (Louvain, determinista) sobre las aristas «relacionado» y «derivado de». Su nombre sale de los documentos más centrales. Se calculan al leer y se cachean por versión del grafo.
+- Los temas son comunidades (Louvain de `networkx` con semilla fija y el grafo ordenado, que dio temas estables) sobre las aristas «relacionado» y «derivado de». Su nombre sale de los documentos más centrales. Se calculan al leer y se cachean por versión del grafo.
 - Se descarta GraphRAG (entidades y relaciones con un LLM) por coste, tiempo y dependencia de un modelo; queda para una fase futura si hiciera falta.
 
 ### El grafo como herramienta de los agentes, de solo lectura
@@ -39,4 +39,4 @@ La biblioteca de la fase 14 ([ADR 0021](0021-knowledge.md)) solo crece con lo qu
 - El grafo y los temas se degradan sin modelo de significado: solo hay aristas de procedencia.
 - El umbral depende del modelo y hay que calibrarlo; se deja ajustable.
 - Nuevas tablas y una clase más de la Inbox; `downgrade` las borra.
-- Las decisiones pendientes de los spikes (centroide frente a pares de trozos, Louvain propio o `networkx`, `d3-force` o `<canvas>`) se anotarán aquí al cerrarlos.
+- Resueltas por los spikes: centroide, `networkx` (14 MB sin comprimir; Louvain propio si el ejecutable crece demasiado) y `d3-force` en un Worker. Pendiente: si `@xyflow/react` aguanta 300 nodos con fluidez (bloque 6; plan B, `<canvas>`).

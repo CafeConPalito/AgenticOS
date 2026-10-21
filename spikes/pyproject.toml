@@ -35,3 +35,5 @@ known-first-party = ["common", "pty_run", "recorder", "spike_mcp", "usage_probe"
 [tool.ruff.lint.per-file-ignores]
 # Phase 14 probes: throwaway scripts with their own environment (spikes/knowledge/pyproject.toml).
 "knowledge/*.py" = ["E501", "E402", "E731", "E741", "B905", "SIM115"]
+# Phase 15 probes: same idea, they reuse the phase 14 environment.
+"knowledge-graph/*.py" = ["E501", "E402", "E731", "E741", "B905", "SIM115", "SIM108"]
