@@ -116,21 +116,21 @@ describe('which nodes are drawn', () => {
 
 describe('the lines between documents', () => {
   it('draws «derived from» solid with an arrow and «related» dashed, thicker if stronger', () => {
-    const derived = flowEdge(edge('a', 'b', 'derived', 1), 1)
+    const derived = flowEdge(edge('a', 'b', 'derived', 1), false)
     expect(derived.markerEnd).toBeDefined()
     expect(derived.style?.strokeDasharray).toBeUndefined()
-    const weak = flowEdge(edge('a', 'b', 'related', 0.2), 1)
-    const strong = flowEdge(edge('a', 'b', 'related', 0.9), 1)
+    const weak = flowEdge(edge('a', 'b', 'related', 0.2), false)
+    const strong = flowEdge(edge('a', 'b', 'related', 0.9), false)
     expect(weak.style?.strokeDasharray).toBe('5 5')
     expect(weak.markerEnd).toBeUndefined()
     expect(Number(strong.style?.strokeWidth)).toBeGreaterThan(Number(weak.style?.strokeWidth))
   })
 
   it('hides weak guesses when zoomed out, never the facts or the strong links', () => {
-    expect(flowEdge(edge('a', 'b', 'related', 0.2), 0.3).hidden).toBe(true)
-    expect(flowEdge(edge('a', 'b', 'related', 0.2), 1).hidden).toBe(false)
-    expect(flowEdge(edge('a', 'b', 'related', 0.8), 0.3).hidden).toBe(false)
-    expect(flowEdge(edge('a', 'b', 'derived', 1), 0.3).hidden).toBe(false)
+    expect(flowEdge(edge('a', 'b', 'related', 0.2), true).hidden).toBe(true)
+    expect(flowEdge(edge('a', 'b', 'related', 0.2), false).hidden).toBe(false)
+    expect(flowEdge(edge('a', 'b', 'related', 0.8), true).hidden).toBe(false)
+    expect(flowEdge(edge('a', 'b', 'derived', 1), true).hidden).toBe(false)
   })
 })
 

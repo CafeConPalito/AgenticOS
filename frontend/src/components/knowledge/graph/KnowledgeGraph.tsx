@@ -42,7 +42,7 @@ const NODE_WIDTH = 132
 // Up to here every node is drawn; beyond, only the ones in view (the canvas has to stay fluid).
 const LARGE = 80
 
-export function flowEdge(edge: GraphEdge, zoom: number): Edge {
+export function flowEdge(edge: GraphEdge, zoomedOut: boolean): Edge {
   const derived = edge.kind === 'derived'
   return {
     id: `${edge.kind}:${edge.source}:${edge.target}`,
@@ -50,7 +50,7 @@ export function flowEdge(edge: GraphEdge, zoom: number): Edge {
     target: edge.target,
     type: 'straight',
     // Zoomed out, the weak guesses are noise: only facts and strong links stay.
-    hidden: !derived && zoom < WEAK_BELOW_ZOOM && edge.weight < WEAK_WEIGHT,
+    hidden: !derived && zoomedOut && edge.weight < WEAK_WEIGHT,
     markerEnd: derived
       ? { type: MarkerType.ArrowClosed, width: 14, height: 14, color: 'var(--foreground)' }
       : undefined,
@@ -167,7 +167,9 @@ function Canvas({
 }) {
   const { t } = useTranslation()
   const flow = useReactFlow()
-  const [zoom, setZoom] = useState(1)
+  // Only crossing the threshold matters: a state that changes on every wheel step would redraw
+  // all the nodes and links each time.
+  const [zoomedOut, setZoomedOut] = useState(false)
   const visible = useMemo(() => visibleGraph(graph, filters, focus), [graph, filters, focus])
   const layout = useGraphLayout(
     useMemo(
@@ -210,7 +212,10 @@ function Canvas({
       }),
     [visible.nodes, layout.positions, matches, focus, onOpen, onFocus],
   )
-  const edges = useMemo(() => visible.edges.map((e) => flowEdge(e, zoom)), [visible.edges, zoom])
+  const edges = useMemo(
+    () => visible.edges.map((e) => flowEdge(e, zoomedOut)),
+    [visible.edges, zoomedOut],
+  )
 
   // When the layout has settled (or the set of documents changed), show all of it.
   const settled = !layout.working && nodes.length > 0
@@ -229,7 +234,7 @@ function Canvas({
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
-        onMove={(_, viewport) => setZoom(viewport.zoom)}
+        onMove={(_, viewport) => setZoomedOut(viewport.zoom < WEAK_BELOW_ZOOM)}
         nodesConnectable={false}
         nodesDraggable={false}
         // A click opens the document, a double click looks at its neighbourhood (a keyboard goes
