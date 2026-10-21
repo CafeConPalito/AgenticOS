@@ -5,11 +5,13 @@ import { useKnowledgeDocs, type KnowledgeDoc, type KnowledgeLevel } from '@/api/
 import { EmptyState } from '@/components/EmptyState'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useKnowledgeEvents } from '@/hooks/use-knowledge-events'
 import { cn } from '@/lib/utils'
 import { AddDocuments } from './AddDocuments'
 import { DocList } from './DocList'
 import { DocSheet } from './DocSheet'
+import { KnowledgeGraph } from './graph/KnowledgeGraph'
 import { ResourceMonitor } from './ResourceMonitor'
 import { SearchTester } from './SearchTester'
 
@@ -86,11 +88,24 @@ export function KnowledgeLibrary({ level }: { level: KnowledgeLevel }) {
           description={t('knowledge.empty.description')}
         />
       ) : (
-        <>
-          <Filters docs={docs.data} value={filter} onChange={setFilter} />
-          <DocList docs={shown} onOpen={setOpened} />
-          <SearchTester projectId={level.projectId} agentId={level.agentId} onOpen={setOpened} />
-        </>
+        <Tabs defaultValue="list" className="gap-4">
+          <TabsList aria-label={t('knowledge.views.label')}>
+            <TabsTrigger value="list">{t('knowledge.views.list')}</TabsTrigger>
+            <TabsTrigger value="graph">{t('knowledge.views.graph')}</TabsTrigger>
+          </TabsList>
+          <TabsContent value="list" className="flex flex-col gap-4">
+            <Filters docs={docs.data} value={filter} onChange={setFilter} />
+            <DocList docs={shown} onOpen={setOpened} />
+            <SearchTester projectId={level.projectId} agentId={level.agentId} onOpen={setOpened} />
+          </TabsContent>
+          <TabsContent value="graph">
+            <KnowledgeGraph
+              projectId={level.projectId}
+              agentId={level.agentId}
+              onOpen={setOpened}
+            />
+          </TabsContent>
+        </Tabs>
       )}
       <DocSheet docId={opened} onClose={() => setOpened(null)} onNavigate={setOpened} />
     </div>
