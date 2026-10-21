@@ -473,6 +473,23 @@ export interface ExploredNode {
 
 export interface ExplorationResult {
   nodes: ExploredNode[]
+  /** Why nothing was explored, in words; empty when it went well. */
+  message: string
+}
+
+/** «Explorar»: a document's title or a question, and how many hops to follow. */
+export function useExploreKnowledge() {
+  return useMutation({
+    mutationFn: (input: { text: string; hops: number; projectId?: string; agentId?: string }) =>
+      api.post<ExplorationResult>('/api/knowledge/explore', {
+        // A title opens that document; anything else is searched, and the search is the start.
+        document: input.text,
+        query: input.text,
+        hops: input.hops,
+        project_id: input.projectId ?? null,
+        agent_id: input.agentId ?? null,
+      }),
+  })
 }
 
 export function useKnowledgeSettings() {

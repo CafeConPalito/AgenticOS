@@ -30,6 +30,8 @@ from agentic_os.schemas.knowledge import (
     AddUrl,
     DocRead,
     DocUpdate,
+    ExplorationRead,
+    ExploreRequest,
     GraphEdgeRead,
     GraphNodeRead,
     GraphRead,
@@ -47,7 +49,7 @@ from agentic_os.schemas.knowledge import (
     read_doc,
 )
 from agentic_os.services.knowledge import config as knowledge_config
-from agentic_os.services.knowledge import docs, formats, graph, proposals
+from agentic_os.services.knowledge import docs, formats, graph, graph_tools, proposals
 from agentic_os.services.knowledge.service import KnowledgeService
 from agentic_os.services.proc import open_in_file_manager as open_path
 from agentic_os.services.proc import reveal_in_file_manager as reveal_path
@@ -151,6 +153,26 @@ def read_graph(
             for t in data.topics
         ],
     )
+
+
+@router.post("/knowledge/explore")
+def explore_graph(payload: ExploreRequest, request: Request, db: DbSession) -> ExplorationRead:
+    """The search tester's «Explorar»: what an agent of that project would reach walking the
+    graph from a question or a document."""
+    nodes, message = graph_tools.explore_data(
+        db,
+        service(request),
+        payload.project_id,
+        [payload.agent_id] if payload.agent_id else [],
+        document=payload.document,
+        query=payload.query,
+        hops=payload.hops,
+        kinds=payload.kinds,
+        origin=payload.origin,
+        level=payload.level,
+        max_docs=payload.max_docs,
+    )
+    return ExplorationRead(nodes=nodes, message=message)
 
 
 @router.get("/knowledge/docs/{doc_id}")

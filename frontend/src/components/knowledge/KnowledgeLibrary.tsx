@@ -66,6 +66,9 @@ export function KnowledgeLibrary({ level }: { level: KnowledgeLevel }) {
   const docs = useKnowledgeDocs(level)
   const [opened, setOpened] = useState<string | null>(null)
   const [filter, setFilter] = useState<Filter>('all')
+  const [view, setView] = useState('list')
+  // Documents the search tester asks the graph to highlight (an exploration's result).
+  const [highlighted, setHighlighted] = useState<string[] | null>(null)
   const shown = docs.data?.filter(FILTERS[filter]) ?? []
 
   return (
@@ -88,7 +91,7 @@ export function KnowledgeLibrary({ level }: { level: KnowledgeLevel }) {
           description={t('knowledge.empty.description')}
         />
       ) : (
-        <Tabs defaultValue="list" className="gap-4">
+        <Tabs value={view} onValueChange={setView} className="gap-4">
           <TabsList aria-label={t('knowledge.views.label')}>
             <TabsTrigger value="list">{t('knowledge.views.list')}</TabsTrigger>
             <TabsTrigger value="graph">{t('knowledge.views.graph')}</TabsTrigger>
@@ -96,13 +99,23 @@ export function KnowledgeLibrary({ level }: { level: KnowledgeLevel }) {
           <TabsContent value="list" className="flex flex-col gap-4">
             <Filters docs={docs.data} value={filter} onChange={setFilter} />
             <DocList docs={shown} onOpen={setOpened} />
-            <SearchTester projectId={level.projectId} agentId={level.agentId} onOpen={setOpened} />
+            <SearchTester
+              projectId={level.projectId}
+              agentId={level.agentId}
+              onOpen={setOpened}
+              onHighlight={(ids) => {
+                setHighlighted(ids)
+                setView('graph')
+              }}
+            />
           </TabsContent>
           <TabsContent value="graph">
             <KnowledgeGraph
               projectId={level.projectId}
               agentId={level.agentId}
               onOpen={setOpened}
+              highlighted={highlighted}
+              onClearHighlighted={() => setHighlighted(null)}
             />
           </TabsContent>
         </Tabs>

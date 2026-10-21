@@ -1660,7 +1660,8 @@ export function createFakeBackend(
           topics: [],
         },
       )
-    if (path === '/api/knowledge/explore') return json(200, seed.exploration ?? { nodes: [] })
+    if (path === '/api/knowledge/explore')
+      return json(200, seed.exploration ?? { nodes: [], message: '' })
     if (path === '/api/knowledge/docs/files') {
       const items = (body.paths as string[]).map((p) => {
         if (p.includes('enorme'))

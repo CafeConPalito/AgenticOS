@@ -46,6 +46,18 @@ DOCS: list[dict] = [
         ],
     },
     {
+        "id": "celery-observabilidad",
+        "title": "Observabilidad de tareas en Celery",
+        "topic": "celery",
+        "origin": "agent",
+        "derived": ["celery-reintentos"],
+        "chunks": [
+            "Una tarea que se reintenta en silencio oculta los problemas. Flower muestra en tiempo real los workers, las colas y el estado de cada tarea, y permite revocar las que se han quedado atascadas.",
+            "Los fallos definitivos deben llegar a un sistema de alertas: Sentry agrupa las excepciones de las tareas y avisa cuando una aparece de nuevo. El umbral de errores por minuto decide cuándo despertar a alguien.",
+            "Conviene medir la longitud de las colas y el tiempo que una tarea espera antes de empezar. Si crece sin parar faltan workers; si las tareas fallan al instante el problema es del código, no de capacidad.",
+        ],
+    },
+    {
         "id": "redis-broker",
         "title": "Redis como broker y caché",
         "topic": "redis",
@@ -349,3 +361,47 @@ TWO_HOP: list[dict] = [
         "via": "celery-manual",
     },
 ]
+
+
+# Questions about the PDFs themselves: do the guides derived from them come along?
+FAMILY_QUESTIONS: list[dict] = [
+    {
+        "q": "¿Cómo declaro una tarea y cómo arranco los workers?",
+        "answer": "celery-manual",
+        "family": ["celery-reintentos", "celery-colas"],
+    },
+    {
+        "q": "¿Qué diferencia hay entre una imagen y un contenedor?",
+        "answer": "docker-basico",
+        "family": ["docker-compose", "docker-multistage"],
+    },
+    {
+        "q": "¿Qué nivel de aislamiento usa PostgreSQL por defecto?",
+        "answer": "pg-transacciones",
+        "family": ["pg-migraciones"],
+    },
+    {
+        "q": "¿Cómo funciona el array de dependencias de useEffect?",
+        "answer": "react-hooks",
+        "family": ["react-rendimiento"],
+    },
+    {
+        "q": "¿Para qué sirve merge --no-ff?",
+        "answer": "git-ramas",
+        "family": ["git-rebase"],
+    },
+    {
+        "q": "¿Por qué caduca pronto un token de acceso?",
+        "answer": "auth-jwt",
+        "family": ["seg-secretos"],
+    },
+]
+
+# A question answered by the Docker PDF; the Celery manual is what its derived guide (Docker
+# Compose, which runs a Celery worker) points to: two hops from the best result.
+CHAIN: dict = {
+    "q": "¿Qué diferencia hay entre una imagen y un contenedor?",
+    "start": "docker-basico",
+    "answer": "celery-manual",
+    "via": "docker-compose",
+}

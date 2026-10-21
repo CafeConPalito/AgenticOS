@@ -366,3 +366,40 @@ def test_a_document_off_the_graph_changes_nothing_for_the_tools(chain: dict):
         db.query(KnowledgeDoc).delete()
         db.commit()
     assert "No hay documentos" in tools(world).explore(document="manual")
+
+
+# ------------------------------------------------------------------- the search tester
+def test_the_tester_explores_the_way_an_agent_does(chain: dict):
+    world = chain["world"]
+    answer = world.client.post(
+        "/api/knowledge/explore",
+        json={"document": "manual", "hops": 2, "project_id": world.project_id},
+    ).json()
+    assert answer["message"] == ""
+    by_title = {n["title"]: n for n in answer["nodes"]}
+    assert by_title["manual"]["depth"] == 0 and by_title["manual"]["strength"] == 1
+    assert by_title["retries"]["depth"] == 1 and by_title["retries"]["reasons"] == ["origen de"]
+    assert by_title["tuning"]["path"] == ["manual", "retries", "tuning"]
+    assert by_title["tuning"]["depth"] == 2 and 0 < by_title["tuning"]["strength"] <= 1
+
+
+def test_the_tester_says_in_words_why_it_cannot_explore(chain: dict):
+    client = chain["world"].client
+    nothing = client.post("/api/knowledge/explore", json={}).json()
+    assert nothing["nodes"] == [] and "Indica un `document` o una `query`" in nothing["message"]
+    unknown = client.post("/api/knowledge/explore", json={"document": "no existe"}).json()
+    assert "No encuentro un documento" in unknown["message"]
+    assert client.post("/api/knowledge/explore", json={"hops": 9}).status_code == 422
+
+
+def test_the_run_log_says_what_the_agent_asked_the_graph(chain: dict):
+    world = chain["world"]
+    with world.client.app.state.sessionmaker() as db:
+        run = db.get(Run, world.run_id)
+        _, detail = graph_tools.explore_knowledge(
+            db, world.service, run, document="manual", hops=3, kinds="derived", origin="agent"
+        )
+        assert detail.startswith("«manual» → 3 documentos")
+        assert "3 saltos" in detail and "kinds=derived" in detail and "origin=agent" in detail
+        _, related = graph_tools.related_knowledge(db, run, "retries", "derived", "agent")
+        assert related == "retries → 1 vecinos (derived, agent)"

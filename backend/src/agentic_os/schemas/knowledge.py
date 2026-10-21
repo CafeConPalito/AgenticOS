@@ -298,6 +298,37 @@ class MarkdownRead(BaseModel):
     tokens: int
 
 
+class ExploreRequest(BaseModel):
+    """«Explorar» in the search tester: walk the graph from a question or a document, as an agent
+    of that project (and agent) would."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    query: str = Field(default="", max_length=1000)
+    document: str = Field(default="", max_length=300)
+    project_id: str | None = None
+    agent_id: str | None = None
+    hops: int = Field(default=2, ge=1, le=3)
+    kinds: Literal["all", "derived", "related"] = "all"
+    origin: Literal["all", "user", "agent"] = "all"
+    level: Literal["", "general", "project", "agent"] = ""
+    max_docs: int = Field(default=15, ge=1, le=30)
+
+
+class ExploredNodeRead(BaseModel):
+    id: str
+    title: str
+    depth: int  # 0: a starting point
+    strength: float
+    path: list[str]  # titles, from the starting point
+    reasons: list[str]  # «derivado de», «origen de», «relacionado 0,52»
+
+
+class ExplorationRead(BaseModel):
+    nodes: list[ExploredNodeRead]
+    message: str  # why nothing was explored, in words; empty otherwise
+
+
 # ------------------------------------------------------------------------------ the graph
 class GraphNodeRead(BaseModel):
     """A document as a node. A «ghost» is a source that was deleted: only its name is left."""

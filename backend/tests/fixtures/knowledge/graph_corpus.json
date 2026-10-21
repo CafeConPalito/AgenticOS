@@ -1,0 +1,446 @@
+{
+ "docs": [
+  {
+   "id": "celery-manual",
+   "title": "Desarrollo con Celery",
+   "topic": "celery",
+   "origin": "user",
+   "derived": [],
+   "chunks": [
+    "Celery es una cola de tareas distribuida para Python. Permite ejecutar trabajo fuera de la petición web: enviar correos, generar informes o procesar imágenes. Un productor publica un mensaje en un broker y uno o varios workers lo consumen.",
+    "Una tarea se declara con el decorador @app.task. Se lanza con delay() o apply_async(). El resultado puede guardarse en un backend de resultados, aunque conviene no depender de él para flujos largos.",
+    "Los workers se arrancan con celery -A proyecto worker. La concurrencia por defecto es el número de núcleos; con tareas que esperan red conviene el pool gevent. El broker más habitual es Redis o RabbitMQ."
+   ]
+  },
+  {
+   "id": "celery-reintentos",
+   "title": "Guía de reintentos en Celery",
+   "topic": "celery",
+   "origin": "agent",
+   "derived": [
+    "celery-manual"
+   ],
+   "chunks": [
+    "Una tarea que falla por un error transitorio debe reintentarse. Con autoretry_for se indican las excepciones que provocan el reintento automático, por ejemplo ConnectionError o TimeoutError.",
+    "El parámetro retry_backoff espacia los reintentos de forma exponencial y retry_jitter evita que todos coincidan. max_retries limita el número de intentos; al agotarse la tarea queda en estado FAILURE.",
+    "Reintentar obliga a que la tarea sea idempotente: si se ejecuta dos veces no debe duplicar cobros ni correos. Una clave de idempotencia guardada antes del efecto lo resuelve."
+   ]
+  },
+  {
+   "id": "celery-colas",
+   "title": "Colas y enrutamiento en Celery",
+   "topic": "celery",
+   "origin": "agent",
+   "derived": [
+    "celery-manual"
+   ],
+   "chunks": [
+    "Por defecto todas las tareas van a la cola celery. Separar colas por tipo de trabajo evita que las tareas lentas bloqueen las rápidas: una cola para correos, otra para informes pesados.",
+    "El enrutamiento se configura con task_routes, que asocia cada tarea a una cola. Cada worker consume solo las colas que se indican con la opción -Q al arrancarlo.",
+    "Con RabbitMQ pueden usarse prioridades de mensaje; con Redis las prioridades se simulan con varias colas. Un worker dedicado a la cola crítica garantiza capacidad reservada."
+   ]
+  },
+  {
+   "id": "celery-observabilidad",
+   "title": "Observabilidad de tareas en Celery",
+   "topic": "celery",
+   "origin": "agent",
+   "derived": [
+    "celery-reintentos"
+   ],
+   "chunks": [
+    "Una tarea que se reintenta en silencio oculta los problemas. Flower muestra en tiempo real los workers, las colas y el estado de cada tarea, y permite revocar las que se han quedado atascadas.",
+    "Los fallos definitivos deben llegar a un sistema de alertas: Sentry agrupa las excepciones de las tareas y avisa cuando una aparece de nuevo. El umbral de errores por minuto decide cuándo despertar a alguien.",
+    "Conviene medir la longitud de las colas y el tiempo que una tarea espera antes de empezar. Si crece sin parar faltan workers; si las tareas fallan al instante el problema es del código, no de capacidad."
+   ]
+  },
+  {
+   "id": "redis-broker",
+   "title": "Redis como broker y caché",
+   "topic": "redis",
+   "origin": "user",
+   "derived": [],
+   "bridge": [
+    "celery",
+    "docker"
+   ],
+   "chunks": [
+    "Redis guarda los datos en memoria y es muy rápido. Sirve como caché con expiración, como almacén de sesiones y como broker de mensajes para colas de tareas como Celery.",
+    "Como broker, el visibility_timeout decide cuándo un mensaje no confirmado vuelve a la cola. Si una tarea dura más que ese tiempo se ejecutará dos veces, así que hay que subirlo por encima de la tarea más larga.",
+    "La persistencia se elige entre RDB, instantáneas periódicas, y AOF, que registra cada escritura. Con maxmemory y una política de expulsión se evita que Redis consuma toda la memoria de la máquina."
+   ]
+  },
+  {
+   "id": "docker-basico",
+   "title": "Docker: imágenes y contenedores",
+   "topic": "docker",
+   "origin": "user",
+   "derived": [],
+   "chunks": [
+    "Una imagen de Docker es una plantilla inmutable construida por capas; un contenedor es una instancia en ejecución de una imagen. El Dockerfile describe los pasos para construirla.",
+    "docker build crea la imagen y docker run arranca un contenedor. Con -p se publica un puerto y con -v se monta un volumen para que los datos sobrevivan al contenedor.",
+    "Cada instrucción del Dockerfile genera una capa que se cachea. Poner primero lo que cambia poco, como instalar dependencias, acelera las construcciones siguientes."
+   ]
+  },
+  {
+   "id": "docker-compose",
+   "title": "Docker Compose para desarrollo",
+   "topic": "docker",
+   "origin": "agent",
+   "derived": [
+    "docker-basico"
+   ],
+   "bridge": [
+    "celery",
+    "redis"
+   ],
+   "chunks": [
+    "Docker Compose describe varios contenedores en un solo fichero compose.yaml: la aplicación, la base de datos y los servicios auxiliares. docker compose up los arranca todos con su red común.",
+    "Un servicio típico de desarrollo incluye redis como broker, un contenedor web y otro con el worker de Celery que ejecuta celery -A proyecto worker. Los servicios se encuentran por su nombre dentro de la red.",
+    "Los volúmenes nombrados conservan los datos de la base de datos entre arranques, y depends_on con healthcheck hace que el worker espere a que Redis esté disponible."
+   ]
+  },
+  {
+   "id": "docker-multistage",
+   "title": "Imágenes pequeñas con multi-stage",
+   "topic": "docker",
+   "origin": "agent",
+   "derived": [
+    "docker-basico"
+   ],
+   "chunks": [
+    "Una construcción multi-stage usa varias instrucciones FROM en el mismo Dockerfile. La primera etapa compila con todas las herramientas y la última copia solo el resultado a una imagen base mínima.",
+    "Así una imagen de Python pasa de más de un gigabyte a unos cien megabytes. Las imágenes slim o distroless reducen además la superficie de ataque.",
+    "El fichero .dockerignore evita enviar al demonio el directorio .git o los node_modules, lo que acelera el contexto de construcción."
+   ]
+  },
+  {
+   "id": "pg-indices",
+   "title": "Índices en PostgreSQL",
+   "topic": "postgres",
+   "origin": "user",
+   "derived": [],
+   "chunks": [
+    "Un índice acelera las lecturas a costa de ralentizar las escrituras y ocupar espacio. El índice B-tree sirve para igualdad y rangos; GIN para búsquedas dentro de arrays, JSONB y texto.",
+    "EXPLAIN ANALYZE muestra el plan real de una consulta. Un Seq Scan sobre una tabla grande suele indicar que falta un índice o que el planificador estima mal las filas.",
+    "Los índices parciales cubren solo las filas que cumplen una condición, por ejemplo los pedidos pendientes, y son mucho más pequeños. Un índice compuesto respeta el orden de sus columnas."
+   ]
+  },
+  {
+   "id": "pg-transacciones",
+   "title": "Transacciones y aislamiento",
+   "topic": "postgres",
+   "origin": "user",
+   "derived": [],
+   "chunks": [
+    "Una transacción agrupa operaciones que se confirman o se deshacen juntas. PostgreSQL garantiza atomicidad y durabilidad mediante el registro de escritura anticipada.",
+    "El nivel de aislamiento por defecto es READ COMMITTED. REPEATABLE READ evita lecturas no repetibles y SERIALIZABLE detecta anomalías, pero puede abortar transacciones que hay que reintentar.",
+    "Los bloqueos con SELECT FOR UPDATE reservan filas durante la transacción. Las transacciones largas retrasan el vacuum y hacen crecer las tablas."
+   ]
+  },
+  {
+   "id": "pg-migraciones",
+   "title": "Migraciones con Alembic",
+   "topic": "postgres",
+   "origin": "agent",
+   "derived": [
+    "pg-transacciones"
+   ],
+   "chunks": [
+    "Alembic versiona el esquema de la base de datos con ficheros de migración. alembic revision --autogenerate compara los modelos con la base y propone los cambios.",
+    "En PostgreSQL el DDL es transaccional: una migración que falla a mitad se deshace entera. Aun así, añadir una columna con valor por defecto en una tabla enorme puede bloquearla.",
+    "Cada migración debe tener su downgrade. Las migraciones de datos conviene separarlas de las de esquema y probarlas con una copia de producción."
+   ]
+  },
+  {
+   "id": "react-hooks",
+   "title": "Hooks de React",
+   "topic": "react",
+   "origin": "user",
+   "derived": [],
+   "chunks": [
+    "Los hooks permiten usar estado y efectos en componentes de función. useState guarda un valor y useEffect ejecuta un efecto secundario tras el renderizado, con una función de limpieza.",
+    "El array de dependencias de useEffect decide cuándo se repite el efecto. Olvidar una dependencia produce datos obsoletos; incluir un objeto nuevo en cada render lo ejecuta sin parar.",
+    "useMemo y useCallback memorizan valores y funciones entre renderizados. useRef guarda un valor mutable que no provoca renderizado al cambiar."
+   ]
+  },
+  {
+   "id": "react-query",
+   "title": "Datos del servidor con React Query",
+   "topic": "react",
+   "origin": "user",
+   "derived": [],
+   "chunks": [
+    "React Query gestiona el estado que viene del servidor: caché, reintentos y actualización en segundo plano. useQuery recibe una clave y una función que devuelve una promesa.",
+    "Tras una mutación se invalida la clave afectada con invalidateQueries y los datos se vuelven a pedir. Las actualizaciones optimistas aplican el cambio antes de la respuesta y lo revierten si falla.",
+    "El tiempo staleTime indica cuánto se consideran frescos los datos. Con eventos en tiempo real se puede actualizar la caché directamente con setQueryData."
+   ]
+  },
+  {
+   "id": "react-rendimiento",
+   "title": "Rendimiento de listas en React",
+   "topic": "react",
+   "origin": "agent",
+   "derived": [
+    "react-hooks"
+   ],
+   "chunks": [
+    "Una lista de miles de filas hace lento el renderizado. La virtualización dibuja solo las filas visibles; librerías como react-window o TanStack Virtual lo resuelven.",
+    "React.memo evita renderizar de nuevo un componente si sus propiedades no cambian. Solo compensa cuando el componente es caro y las propiedades son estables, por eso se combina con useCallback.",
+    "El Profiler de las herramientas de desarrollo muestra qué componentes se renderizan y cuánto tardan. Medir antes de optimizar evita complicar el código sin necesidad."
+   ]
+  },
+  {
+   "id": "git-ramas",
+   "title": "Ramas y merge en Git",
+   "topic": "git",
+   "origin": "user",
+   "derived": [],
+   "chunks": [
+    "Una rama en Git es un puntero a un commit. Crear ramas es barato, así que se trabaja cada funcionalidad en la suya y se integra después con merge.",
+    "git merge --no-ff crea siempre un commit de fusión y conserva en el historial la existencia de la rama. Un merge fast-forward, en cambio, solo mueve el puntero.",
+    "Los conflictos aparecen cuando dos ramas tocan las mismas líneas. Git deja marcas <<<<<<< en el fichero y la persona decide qué versión queda antes de confirmar."
+   ]
+  },
+  {
+   "id": "git-rebase",
+   "title": "Rebase interactivo",
+   "topic": "git",
+   "origin": "agent",
+   "derived": [
+    "git-ramas"
+   ],
+   "chunks": [
+    "git rebase reescribe los commits de una rama sobre otra base para obtener un historial lineal. No debe hacerse sobre ramas ya publicadas que usen otras personas.",
+    "El rebase interactivo permite reordenar, unir con squash y editar commits antes de compartirlos. Con fixup se absorben las correcciones pequeñas en el commit que corrigen.",
+    "Si algo sale mal, git reflog recuerda dónde estaba cada rama y permite volver al estado anterior al rebase."
+   ]
+  },
+  {
+   "id": "git-hooks",
+   "title": "Hooks de Git y husky",
+   "topic": "git",
+   "origin": "user",
+   "derived": [],
+   "chunks": [
+    "Los hooks son scripts que Git ejecuta en momentos concretos. pre-commit se lanza antes de crear el commit y sirve para pasar el linter y el formateador sobre los ficheros preparados.",
+    "husky instala los hooks en un proyecto de Node y los comparte con el equipo, porque viven en el repositorio y no en .git. lint-staged limita las comprobaciones a los ficheros modificados.",
+    "Saltarse los hooks con --no-verify debería ser excepcional. Los mismos controles deben repetirse en la integración continua porque un hook local siempre puede omitirse."
+   ]
+  },
+  {
+   "id": "auth-jwt",
+   "title": "Autenticación con JWT",
+   "topic": "auth",
+   "origin": "user",
+   "derived": [],
+   "chunks": [
+    "Un JSON Web Token lleva en tres partes la cabecera, los datos del usuario y una firma. El servidor comprueba la firma y no necesita guardar sesiones, lo que facilita escalar.",
+    "Los tokens de acceso deben caducar pronto, en minutos. Un token de refresco de larga duración permite obtener otros nuevos y se guarda con más cuidado, mejor en una cookie HttpOnly.",
+    "Un JWT no se puede revocar antes de que caduque salvo que se mantenga una lista de bloqueo. Nunca debe guardarse información secreta en él: el contenido va codificado, no cifrado."
+   ]
+  },
+  {
+   "id": "auth-oauth",
+   "title": "OAuth 2 con PKCE",
+   "topic": "auth",
+   "origin": "user",
+   "derived": [],
+   "chunks": [
+    "OAuth 2 permite que una aplicación acceda a datos de una persona en otro servicio sin conocer su contraseña. La aplicación obtiene un código de autorización y lo cambia por un token.",
+    "PKCE protege el flujo en aplicaciones públicas, como las de escritorio o móviles. La aplicación genera un verificador aleatorio, envía su hash y lo demuestra al canjear el código.",
+    "El parámetro state evita ataques de falsificación de petición. Los permisos solicitados deben ser los mínimos, en forma de scopes, y la redirección debe estar registrada de antemano."
+   ]
+  },
+  {
+   "id": "seg-secretos",
+   "title": "Gestión de secretos",
+   "topic": "auth",
+   "origin": "agent",
+   "derived": [
+    "auth-jwt"
+   ],
+   "chunks": [
+    "Las claves de API y contraseñas no se guardan en el repositorio. Se inyectan como variables de entorno o desde un gestor de secretos y se rotan con regularidad.",
+    "Si un secreto se sube por error a Git hay que revocarlo, no solo borrarlo: sigue en el historial. Herramientas como gitleaks lo detectan antes de confirmar.",
+    "La clave que firma los JWT es especialmente sensible. Con un algoritmo asimétrico solo el servicio de autenticación guarda la clave privada."
+   ]
+  },
+  {
+   "id": "cocina-paella",
+   "title": "Paella valenciana",
+   "topic": "cocina",
+   "origin": "user",
+   "derived": [],
+   "chunks": [
+    "La paella valenciana lleva pollo, conejo, garrofón y judía verde, además de arroz bomba, azafrán y aceite de oliva. Se cocina en una paellera ancha sobre fuego de leña.",
+    "El sofrito se hace con la carne bien dorada y tomate rallado. Se añade el agua caliente, se rectifica de sal y el arroz se reparte sin removerlo más.",
+    "Al final del cocinado se sube el fuego para formar la costra, la capa de arroz tostado del fondo. Tras apagar se deja reposar unos minutos antes de servir."
+   ]
+  },
+  {
+   "id": "cocina-masa",
+   "title": "Pan con masa madre",
+   "topic": "cocina",
+   "origin": "user",
+   "derived": [],
+   "chunks": [
+    "La masa madre es un cultivo de harina y agua con levaduras y bacterias lácticas silvestres. Se alimenta cada día hasta que dobla su volumen en pocas horas.",
+    "El pan se amasa con harina fuerte, agua y sal, y la masa madre activa. La fermentación en frío durante la noche desarrolla el sabor y una corteza más crujiente.",
+    "Se hornea a 240 grados con vapor los primeros minutos para que la masa crezca. Los cortes en la superficie, o greñas, dirigen la expansión."
+   ]
+  },
+  {
+   "id": "viajes-lisboa",
+   "title": "Lisboa en tres días",
+   "topic": "viajes",
+   "origin": "user",
+   "derived": [],
+   "chunks": [
+    "El primer día se recorre Alfama y el castillo de San Jorge, con subida en el tranvía 28 y el mirador de Santa Luzia. Por la tarde, paseo por la Baixa hasta la plaza del Comercio.",
+    "El segundo día toca Belém: la torre, el monasterio de los Jerónimos y los pasteles de nata de la pastelería más antigua. Se llega en tren desde la estación de Cais do Sodré.",
+    "El tercer día se puede ir a Sintra en tren y ver el palacio de Pena. Conviene reservar la entrada con antelación y salir temprano para evitar las colas."
+   ]
+  },
+  {
+   "id": "aurora-facturas",
+   "title": "Facturas rectificativas de Aurora",
+   "topic": "aurora",
+   "origin": "user",
+   "derived": [],
+   "chunks": [
+    "Una factura emitida en Aurora no se puede borrar. Para corregirla se genera una factura rectificativa desde el menú de la factura original, indicando el motivo.",
+    "La rectificativa lleva su propia serie, con prefijo R, y mantiene la referencia a la factura que corrige. El cliente recibe ambas por correo.",
+    "Los importes de la rectificativa pueden ser negativos para anular total o parcialmente la factura original. El libro de IVA refleja las dos."
+   ]
+  },
+  {
+   "id": "aurora-backup",
+   "title": "Copias de seguridad de Aurora",
+   "topic": "aurora",
+   "origin": "user",
+   "derived": [],
+   "chunks": [
+    "Aurora guarda una copia cifrada de todas las facturas cada noche a las tres de la madrugada. Se conservan las últimas catorce copias.",
+    "La restauración desde una copia tarda entre cinco y veinte minutos según el volumen de datos. Durante la restauración la cuenta queda en modo solo lectura.",
+    "Los datos de una cuenta dada de baja se conservan noventa días por si se quiere reactivar, y después se eliminan también de las copias."
+   ]
+  }
+ ],
+ "questions": [
+  {
+   "q": "¿Cómo reintento una tarea que falla por un error de red?",
+   "answer": "celery-reintentos"
+  },
+  {
+   "q": "¿Cómo separo las tareas lentas de las rápidas?",
+   "answer": "celery-colas"
+  },
+  {
+   "q": "¿Por qué una tarea se ejecuta dos veces con el broker en memoria?",
+   "answer": "redis-broker"
+  },
+  {
+   "q": "¿Cómo levanto el worker y el broker en local con un solo comando?",
+   "answer": "docker-compose"
+  },
+  {
+   "q": "¿Cómo reduzco el tamaño de mi imagen?",
+   "answer": "docker-multistage"
+  },
+  {
+   "q": "¿Qué hago cuando una consulta recorre toda la tabla?",
+   "answer": "pg-indices"
+  },
+  {
+   "q": "¿Cómo evito que una migración bloquee una tabla enorme?",
+   "answer": "pg-migraciones"
+  },
+  {
+   "q": "¿Cómo hago que una lista de miles de filas vaya fluida?",
+   "answer": "react-rendimiento"
+  },
+  {
+   "q": "¿Cómo dejo el historial de commits lineal?",
+   "answer": "git-rebase"
+  },
+  {
+   "q": "¿Dónde guardo las claves de API?",
+   "answer": "seg-secretos"
+  },
+  {
+   "q": "¿Cómo corrijo una factura que ya envié?",
+   "answer": "aurora-facturas"
+  },
+  {
+   "q": "¿Cuánto tarda en recuperarse una copia?",
+   "answer": "aurora-backup"
+  }
+ ],
+ "two_hop": [
+  {
+   "q": "Mi worker de Celery en Docker Compose no arranca porque Redis aún no responde",
+   "start": "celery-manual",
+   "answer": "docker-compose",
+   "via": "redis-broker"
+  },
+  {
+   "q": "¿Cómo configuro la memoria máxima del broker que usa mi cola de tareas?",
+   "start": "celery-colas",
+   "answer": "redis-broker",
+   "via": "celery-manual"
+  }
+ ],
+ "family": [
+  {
+   "q": "¿Cómo declaro una tarea y cómo arranco los workers?",
+   "answer": "celery-manual",
+   "family": [
+    "celery-reintentos",
+    "celery-colas"
+   ]
+  },
+  {
+   "q": "¿Qué diferencia hay entre una imagen y un contenedor?",
+   "answer": "docker-basico",
+   "family": [
+    "docker-compose",
+    "docker-multistage"
+   ]
+  },
+  {
+   "q": "¿Qué nivel de aislamiento usa PostgreSQL por defecto?",
+   "answer": "pg-transacciones",
+   "family": [
+    "pg-migraciones"
+   ]
+  },
+  {
+   "q": "¿Cómo funciona el array de dependencias de useEffect?",
+   "answer": "react-hooks",
+   "family": [
+    "react-rendimiento"
+   ]
+  },
+  {
+   "q": "¿Para qué sirve merge --no-ff?",
+   "answer": "git-ramas",
+   "family": [
+    "git-rebase"
+   ]
+  },
+  {
+   "q": "¿Por qué caduca pronto un token de acceso?",
+   "answer": "auth-jwt",
+   "family": [
+    "seg-secretos"
+   ]
+  }
+ ],
+ "chain": {
+  "q": "¿Qué diferencia hay entre una imagen y un contenedor?",
+  "start": "docker-basico",
+  "answer": "celery-manual",
+  "via": "docker-compose"
+ }
+}

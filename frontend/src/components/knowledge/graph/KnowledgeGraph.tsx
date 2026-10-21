@@ -269,10 +269,15 @@ export function KnowledgeGraph({
   projectId,
   agentId,
   onOpen,
+  highlighted = null,
+  onClearHighlighted,
 }: {
   projectId?: string
   agentId?: string
   onOpen: (id: string) => void
+  /** Documents to highlight from outside (the search tester's exploration). */
+  highlighted?: string[] | null
+  onClearHighlighted?: () => void
 }) {
   const { t } = useTranslation()
   const [everything, setEverything] = useState(false)
@@ -295,6 +300,11 @@ export function KnowledgeGraph({
   }
 
   const focusedTitle = graph.data?.nodes.find((n) => n.id === focus)?.title ?? ''
+  // What is highlighted: the answer to the question typed here, or what the tester sent.
+  const lit = useMemo(
+    () => matches ?? (highlighted ? new Set(highlighted) : null),
+    [matches, highlighted],
+  )
   return (
     <section className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -324,13 +334,14 @@ export function KnowledgeGraph({
             <Search />
             {t('knowledge.graph.search.run')}
           </Button>
-          {matches !== null && (
+          {lit !== null && (
             <Button
               type="button"
               variant="ghost"
               onClick={() => {
                 setMatches(null)
                 setQuery('')
+                onClearHighlighted?.()
               }}
             >
               <X />
@@ -362,10 +373,10 @@ export function KnowledgeGraph({
                 edges: graph.data.edges.length,
               })}
             </span>
-            {matches !== null && (
+            {lit !== null && (
               <span role="status">
-                {matches.size > 0
-                  ? t('knowledge.graph.search.found', { count: matches.size })
+                {lit.size > 0
+                  ? t('knowledge.graph.search.found', { count: lit.size })
                   : t('knowledge.graph.search.none')}
               </span>
             )}
@@ -383,7 +394,7 @@ export function KnowledgeGraph({
               graph={graph.data}
               filters={filters}
               focus={focus}
-              matches={matches}
+              matches={lit}
               onOpen={onOpen}
               onFocus={setFocus}
             />

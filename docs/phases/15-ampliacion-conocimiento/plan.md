@@ -139,7 +139,7 @@ Nuevos: `proposals.enabled`, `proposals.per_run`, `proposals.max_tokens`, `graph
 5. [x] **Bloque 4 · Búsqueda con el grafo (backend)**: vecinos y expansión en `search_knowledge` (+ parámetro `graph`), `knowledge_map`, `related_knowledge`, `explore_knowledge`, `knowledge_path`, contexto (temas, marca, reglas).
 6. [x] **Bloque 5 · Propuestas (frontend)**: API, `ProposalReview`, filtro «Propuestos», marcas y procedencia, Inbox, ajustes.
 7. [x] **Bloque 6 · Grafo (frontend)**: vista, nodos y aristas, *layout* en Worker, filtros, «Todo», resaltado, clic y doble clic.
-8. [ ] **Bloque 7 · Probador y registro (frontend)**: «por el grafo», Explorar, Mapa, etiquetas de las herramientas en el registro.
+8. [x] **Bloque 7 · Probador y registro (frontend)**: «por el grafo», Explorar, Mapa, etiquetas de las herramientas en el registro.
 9. [ ] **Bloque 8 · Calidad y rendimiento**: corpus de prueba con derivados, test de calidad (CA9, CA15), temas (CA13), rendimiento del grafo (CA10), e2e con CLI falso y MCP real (CA1, CA16).
 10. [ ] **Bloque 9 · Cierre**: e2e con el binario empaquetado (CA12), `/code-review`, ADR 0022 definitivo, README, validación.
 

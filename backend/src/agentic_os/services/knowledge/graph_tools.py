@@ -72,6 +72,10 @@ class View:
     @classmethod
     def open(cls, db: Session, run: Run) -> View:
         project_id, agent_ids = scope_of(db, run)
+        return cls.open_for(db, project_id, agent_ids)
+
+    @classmethod
+    def open_for(cls, db: Session, project_id: str | None, agent_ids: list[str]) -> View:
         docs = search.visible_docs(db, project_id, agent_ids)
         graph = walk.Adjacency.build(db, docs)
         return cls(docs, {d.id: d for d in docs}, graph, bool(graph.related))
@@ -253,7 +257,9 @@ def related_knowledge(
     for link in found[:MAX_DOCS]:
         other = view.by_id[link.other]
         lines.append(f"- {_reason(link)} → {describe(other)}")
-    return _fit(lines, EXPLORE_TOKENS), f"{doc.title[:80]} → {len(found)} vecinos"
+    return _fit(
+        lines, EXPLORE_TOKENS
+    ), f"{doc.title[:80]} → {len(found)} vecinos ({kinds}, {origin})"
 
 
 # ------------------------------------------------------------------------- exploring
@@ -275,7 +281,8 @@ def explore_knowledge(
     link_kinds, only_origin, only_level, bad = _options(kinds, origin, level)
     if bad:
         return bad, "opciones no válidas"
-    starts, where = _starting_points(db, service, run, view, document, query)
+    project_id, agent_ids = scope_of(db, run)
+    starts, where = _starting_points(db, service, project_id, agent_ids, view, document, query)
     if isinstance(starts, str):
         return starts, where
     hops = max(1, min(int(hops), walk.MAX_HOPS))
@@ -288,20 +295,31 @@ def explore_knowledge(
         allowed=_allowed(view, only_origin, only_level),
         max_docs=max_docs + len(starts),
     )
-    return _render_exploration(
-        view, reached, starts, where, hops
-    ), f"{where[:80]} → {len(reached)} documentos"
+    options = ", ".join(
+        part
+        for part in (
+            f"{hops} saltos",
+            f"kinds={kinds}" if kinds.strip() not in ("", "all") else "",
+            f"origin={origin}" if origin.strip() not in ("", "all") else "",
+            f"level={level}" if level.strip() else "",
+        )
+        if part
+    )
+    detail = f"{where[:80]} → {len(reached)} documentos ({options})"
+    return _render_exploration(view, reached, starts, where, hops), detail
 
 
-def _starting_points(db, service, run, view: View, document: str, query: str):
+def _starting_points(
+    db, service, project_id: str | None, agent_ids: list[str], view: View, document: str, query: str
+):
     """(documents to start from, how to call them) or (a refusal in words, detail)."""
     if document.strip():
         doc, problem = find_document(view.docs, document)
-        if doc is None:
+        if doc is not None:
+            return [doc], f"«{doc.title}»"
+        if not query.strip():  # with a question too, it is searched when no document has that name
             return problem, f"{document[:100]} → no encontrado"
-        return [doc], f"«{doc.title}»"
     if query.strip():
-        project_id, agent_ids = scope_of(db, run)
         hits = service.search(db, query, project_id, agent_ids, 8, use_graph=False)
         starts = list(dict.fromkeys(h.doc.id for h in hits))[:3]
         if not starts:
@@ -350,6 +368,52 @@ def explore_text_for_results(db: Session, view: View, hit_doc_ids: list[str]) ->
     return _render_exploration(view, reached, starts, "los mejores resultados", 2).replace(
         "## Exploración", "### Grafo cercano a los resultados\nExploración", 1
     )
+
+
+def explore_data(
+    db: Session,
+    service,
+    project_id: str | None,
+    agent_ids: list[str],
+    *,
+    document: str = "",
+    query: str = "",
+    hops: int = 2,
+    kinds: str = "all",
+    origin: str = "all",
+    level: str = "",
+    max_docs: int = 15,
+) -> tuple[list[dict], str]:
+    """(the documents reached, a refusal in words — empty when it went well): the same
+    exploration the agents get, as data, for the search tester."""
+    view = View.open_for(db, project_id, agent_ids)
+    if not view.docs:
+        return [], NO_DOCS
+    link_kinds, only_origin, only_level, bad = _options(kinds, origin, level)
+    if bad:
+        return [], bad
+    starts, _ = _starting_points(db, service, project_id, agent_ids, view, document, query)
+    if isinstance(starts, str):
+        return [], starts
+    reached = walk.explore(
+        view.graph,
+        [d.id for d in starts],
+        hops=max(1, min(int(hops), walk.MAX_HOPS)),
+        kinds=link_kinds,
+        allowed=_allowed(view, only_origin, only_level),
+        max_docs=max(1, min(int(max_docs), MAX_DOCS)) + len(starts),
+    )
+    return [
+        {
+            "id": r.id,
+            "title": view.title(r.id),
+            "depth": r.depth,
+            "strength": round(r.strength, 3),
+            "path": [view.title(node) for node, _ in r.chain],
+            "reasons": [_reason(link) for _, link in r.chain[1:] if link is not None],
+        }
+        for r in reached
+    ], ""
 
 
 # --------------------------------------------------------------------------- the path
