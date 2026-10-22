@@ -39,4 +39,6 @@ La biblioteca de la fase 14 ([ADR 0021](0021-knowledge.md)) solo crece con lo qu
 - El grafo y los temas se degradan sin modelo de significado: solo hay aristas de procedencia.
 - El umbral depende del modelo y hay que calibrarlo; se deja ajustable.
 - Nuevas tablas y una clase más de la Inbox; `downgrade` las borra.
-- Resueltas por los spikes: centroide, `networkx` (14 MB sin comprimir; Louvain propio si el ejecutable crece demasiado) y `d3-force` en un Worker. Pendiente: si `@xyflow/react` aguanta 300 nodos con fluidez (bloque 6; plan B, `<canvas>`).
+- Resueltas por los spikes: centroide, `networkx` y `d3-force` en un Worker. `networkx` hizo crecer el ejecutable de 152 a 162,6 MB (+10,6 MB), aceptable; Louvain propio queda como plan B.
+- `@xyflow/react` aguanta 300 nodos y ~1 000 vínculos: medido en Chrome, un paso de zoom cuesta ≈ 1 fotograma tras evitar que el estado de zoom cambie en cada paso. `<canvas>` no hizo falta.
+- Los vínculos «relacionado» se recalculan en un solo hilo a la vez y solo se anuncian si cambian; el centroide de los documentos anteriores a la fase lo rellena la migración.
