@@ -69,7 +69,7 @@ Hallazgos propios de los e2e (antes de la revisión): terminar una tarea descart
   - Deuda: cuatro pruebas intermitentes por empates de reloj al ordenar por fecha de creación (conviene desempatar siempre por `id` en esas consultas).
 
 ## Cierre
-- [ ] OK del usuario
-- [ ] Merge a `main` (`--no-ff`)
-- [ ] Tag `v1.7`
-- [ ] `docs/roadmap.md` actualizado
+- [x] OK del usuario (2026-10-22)
+- [x] Merge a `main` (`--no-ff`)
+- [x] Tag `v1.7`
+- [x] `docs/roadmap.md` actualizado
