@@ -15,6 +15,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 from sqlalchemy import select, text
+from sqlalchemy import update as sql_update
 from sqlalchemy.orm import Session, defer
 
 from agentic_os.db.base import DEFAULT_WORKSPACE, utcnow
@@ -22,14 +23,20 @@ from agentic_os.errors import ApiError, NotFound
 from agentic_os.models import (
     Agent,
     DocStatus,
+    InboxItem,
+    InboxStatus,
     KnowledgeDoc,
     KnowledgeImage,
     KnowledgeMode,
     KnowledgeScope,
+    KnowledgeSource,
     Presence,
     Project,
+    Resolution,
+    Review,
     SourceKind,
 )
+from agentic_os.services import inbox
 from agentic_os.services.knowledge import formats, index
 from agentic_os.services.knowledge.config import KnowledgeSettings
 from agentic_os.services.paths import normalize
@@ -248,8 +255,8 @@ def check_all(db: Session, docs: list[KnowledgeDoc]) -> None:
 
 def original_path(db: Session, doc: KnowledgeDoc) -> Path:
     """The original file to open, or the error that tells the user what happened to it."""
-    if doc.source_kind == SourceKind.URL or not doc.path:
-        raise ApiError(422, "not_a_file", "a web address has no file to open")
+    if doc.source_kind in (SourceKind.URL, SourceKind.MARKDOWN) or not doc.path:
+        raise ApiError(422, "not_a_file", "this document has no file to open")
     if check_presence(db, doc) == Presence.MISSING:
         raise ApiError(410, "missing", "the file was deleted or moved")
     return Path(doc.path)
@@ -264,8 +271,8 @@ def relocate(
 
     Same content (same SHA-256): the index is kept. Different content: refused unless the user
     confirms, because it is another document."""
-    if doc.source_kind == SourceKind.URL:
-        raise ApiError(422, "not_a_file", "a web address cannot be relocated")
+    if doc.source_kind in (SourceKind.URL, SourceKind.MARKDOWN):
+        raise ApiError(422, "not_a_file", "this document has no file to relocate")
     if doc.status in IN_PROGRESS:
         raise ApiError(409, "processing", "the document is being processed right now")
     shown, key, info = _check_file(raw, limits)
@@ -293,6 +300,8 @@ def reprocess(doc: KnowledgeDoc) -> None:
     succeeds."""
     if doc.status in IN_PROGRESS:
         raise ApiError(409, "processing", "the document is being processed right now")
+    if doc.review == Review.PROPOSED:
+        raise ApiError(409, "in_review", "accept the proposal first; it has no index until then")
     doc.status = DocStatus.QUEUED
     doc.progress_done = doc.progress_total = 0
     doc.error_code = doc.error_message = None
@@ -316,6 +325,12 @@ def update(db: Session, doc: KnowledgeDoc, values: dict) -> None:
         if not title:
             raise ApiError(422, "title_required", "the title cannot be empty", "title")
         doc.title = title[:TITLE_MAX]
+        # The documents built on this one remember its name; keep that copy up to date.
+        db.execute(
+            sql_update(KnowledgeSource)
+            .where(KnowledgeSource.source_id == doc.id)
+            .values(source_title=doc.title)
+        )
     if "description" in values:
         doc.description = (values["description"] or "").strip()
     if "mode" in values:
@@ -336,6 +351,12 @@ def remove(db: Session, doc: KnowledgeDoc, images_dir: Path | None = None) -> No
     ]
     db.execute(text("DELETE FROM knowledge_fts WHERE doc_id = :doc"), {"doc": doc.id})
     index.bump_when_committed(db)
+    for item in db.scalars(
+        select(InboxItem).where(
+            InboxItem.knowledge_doc_id == doc.id, InboxItem.status == InboxStatus.PENDING
+        )
+    ):  # a proposal deleted without a decision: its Inbox item no longer applies
+        inbox.resolve(db, item, Resolution.DISMISSED)
     db.delete(doc)
     db.flush()  # the chunks and image rows go with it (ON DELETE CASCADE)
     if images_dir is not None:

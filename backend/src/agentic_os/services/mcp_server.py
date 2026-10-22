@@ -64,8 +64,32 @@ class AgentBackend(Protocol):
         self, run_id: str, summary: str, verdict: Verdict, reject_to: str = ""
     ) -> str | None: ...
     def write_project_memory(self, run_id: str, note: str) -> None: ...
-    def search_knowledge(self, run_id: str, query: str, limit: int) -> str: ...
+    def search_knowledge(self, run_id: str, query: str, limit: int, graph: str) -> str: ...
+    def knowledge_map(self, run_id: str, topic: str) -> str: ...
+    def related_knowledge(self, run_id: str, document: str, kinds: str, origin: str) -> str: ...
+    def explore_knowledge(
+        self,
+        run_id: str,
+        document: str,
+        query: str,
+        hops: int,
+        kinds: str,
+        origin: str,
+        level: str,
+        max_docs: int,
+    ) -> str: ...
+    def knowledge_path(self, run_id: str, source: str, target: str, max_hops: int) -> str: ...
     def read_knowledge(self, run_id: str, document: str, location: str, part: int) -> str: ...
+    def propose_knowledge(
+        self,
+        run_id: str,
+        title: str,
+        markdown: str,
+        description: str,
+        based_on: list[str],
+        level: str,
+        replaces: str,
+    ) -> str: ...
     def request_human(self, run_id: str, title: str, detail: str, options: list[str]) -> str: ...
     def spawn_subagent(self, run_id: str, prompt: str, agent_name: str) -> str: ...
     def create_subtask(self, run_id: str, title: str, description: str, agent_name: str) -> str: ...
@@ -218,12 +242,76 @@ def build_mcp(backend: AgentBackend) -> MCPServer:
         )
 
     @server.tool()
-    async def search_knowledge(query: str, ctx: Context, limit: int = 8) -> str:
+    async def search_knowledge(
+        query: str, ctx: Context, limit: int = 8, graph: str = "neighbors"
+    ) -> str:
         """Busca en los documentos de conocimiento que la persona te ha dado (manuales,
         especificaciones, páginas web, hojas de cálculo, imágenes…). `query`: una pregunta
         o un código exacto (`ERR_4012`, `/v2/facturas`); devuelve los pasajes más
-        relevantes, con su documento y su lugar. `limit`: cuántos (1 a 20)."""
-        return await call(backend.search_knowledge, _run_id(ctx), _clip(query), limit)
+        relevantes, con su documento y su lugar. `limit`: cuántos resultados directos (1 a 20; el
+        grafo puede añadir detrás hasta 3 vecinos más). `graph`: «off»
+        (solo la búsqueda), «neighbors» (por defecto: cada resultado lista los documentos
+        vecinos y se añaden los vecinos que también responden) o «explore» (además, dibuja
+        los documentos cercanos a los mejores resultados)."""
+        return await call(backend.search_knowledge, _run_id(ctx), _clip(query), limit, graph)
+
+    @server.tool()
+    async def knowledge_map(ctx: Context, topic: str = "") -> str:
+        """Mapa de la biblioteca de conocimiento: los TEMAS (grupos de documentos muy
+        relacionados), con cuántos documentos tienen, los principales y qué temas tienen
+        cerca. Úsalo para orientarte ANTES de buscar. `topic` (opcional): el número o el
+        nombre de un tema, para ver todos sus documentos."""
+        return await call(backend.knowledge_map, _run_id(ctx), _clip(topic))
+
+    @server.tool()
+    async def related_knowledge(
+        document: str, ctx: Context, kinds: str = "all", origin: str = "all"
+    ) -> str:
+        """Los documentos vecinos de uno, con el motivo del vínculo (derivado de, origen de,
+        relacionado y su fuerza). `document`: título o identificador. `kinds`: «all»,
+        «derived» o «related». `origin`: «all», «user» (lo puso la persona) o «agent»
+        (lo propuso un agente)."""
+        return await call(
+            backend.related_knowledge, _run_id(ctx), _clip(document), _clip(kinds), _clip(origin)
+        )
+
+    @server.tool()
+    async def explore_knowledge(
+        ctx: Context,
+        document: str = "",
+        query: str = "",
+        hops: int = 2,
+        kinds: str = "all",
+        origin: str = "all",
+        level: str = "",
+        max_docs: int = 15,
+    ) -> str:
+        """Recorre el grafo de conocimiento varios saltos desde un documento (`document`) o
+        desde los mejores resultados de una búsqueda (`query`) y devuelve los documentos
+        alcanzados con el camino que los une. Sirve para encontrar material que la búsqueda
+        no da por sí sola (p. ej. la guía derivada de un PDF, o un documento relacionado con
+        ella). `hops`: saltos (1 a 3). `kinds`: «all», «derived» o «related». `origin`:
+        «all», «user» o «agent». `level`: «general», «project» o «agent». `max_docs`: tope."""
+        return await call(
+            backend.explore_knowledge,
+            _run_id(ctx),
+            _clip(document),
+            _clip(query),
+            hops,
+            _clip(kinds),
+            _clip(origin),
+            _clip(level),
+            max_docs,
+        )
+
+    @server.tool()
+    async def knowledge_path(source: str, target: str, ctx: Context, max_hops: int = 4) -> str:
+        """El camino más fuerte entre dos documentos de conocimiento (qué tiene que ver uno
+        con otro), o la respuesta de que no hay. `source` y `target`: título o identificador.
+        `max_hops`: saltos como máximo (1 a 6)."""
+        return await call(
+            backend.knowledge_path, _run_id(ctx), _clip(source), _clip(target), max_hops
+        )
 
     @server.tool()
     async def read_knowledge(document: str, ctx: Context, location: str = "", part: int = 1) -> str:
@@ -234,6 +322,37 @@ def build_mcp(backend: AgentBackend) -> MCPServer:
         hay)."""
         return await call(
             backend.read_knowledge, _run_id(ctx), _clip(document), _clip(location), part
+        )
+
+    @server.tool()
+    async def propose_knowledge(
+        title: str,
+        markdown: str,
+        ctx: Context,
+        description: str = "",
+        based_on: list[str] | None = None,
+        level: str = "",
+        replaces: str = "",
+    ) -> str:
+        """Propone un documento de conocimiento NUEVO con algo que has aprendido y que
+        ayudaría a otros agentes (una guía, una solución verificada, una síntesis). No
+        modifica nunca los documentos existentes: se crea uno aparte, vinculado a los que lo
+        inspiraron, y la persona lo revisa antes de que nadie lo use; tú sigues trabajando.
+        `title`: título claro. `markdown`: el texto completo en Markdown, autocontenido y
+        comprobado (no resúmenes de lo que ya hay escrito). `description`: una línea.
+        `based_on`: los documentos en los que te basas (título o identificador). `level`:
+        «general», «project» o «agent» si tienes preferencia (decide la persona). `replaces`:
+        una propuesta tuya ya aceptada a la que esta sustituye. Hay un máximo de propuestas
+        por ejecución; si algo no se puede, la respuesta te explica por qué."""
+        return await call(
+            backend.propose_knowledge,
+            _run_id(ctx),
+            _clip(title)[:200],
+            markdown.strip(),
+            _clip(description),
+            [_clip(x)[:200] for x in (based_on or [])][:10],
+            _clip(level),
+            _clip(replaces),
         )
 
     @server.tool()

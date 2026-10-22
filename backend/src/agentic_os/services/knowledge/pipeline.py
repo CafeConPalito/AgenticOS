@@ -30,7 +30,14 @@ from sqlalchemy.orm import Session, object_session, sessionmaker
 
 from agentic_os import __version__
 from agentic_os.db.base import utcnow
-from agentic_os.models import DocStatus, KnowledgeDoc, KnowledgeImage, Presence, SourceKind
+from agentic_os.models import (
+    DocStatus,
+    KnowledgeDoc,
+    KnowledgeImage,
+    KnowledgeSource,
+    Presence,
+    SourceKind,
+)
 from agentic_os.schemas.knowledge import read_doc
 from agentic_os.services.knowledge import (
     chunking,
@@ -45,6 +52,7 @@ from agentic_os.services.knowledge.chunking import Chunk
 from agentic_os.services.knowledge.errors import KnowledgeError
 from agentic_os.services.knowledge.events import KnowledgeEvents
 from agentic_os.services.knowledge.images import compose
+from agentic_os.services.knowledge.tokens import estimate_tokens
 from agentic_os.services.knowledge.worker import Worker
 from agentic_os.services.localmodels import catalog, selection, store
 
@@ -97,11 +105,6 @@ class Source:
     sha256: str | None = None
 
 
-def estimate_tokens(text: str) -> int:
-    """About four characters per token: enough to budget a context, no tokenizer needed."""
-    return (len(text) + 3) // 4
-
-
 class Pipeline:
     def __init__(
         self,
@@ -143,6 +146,9 @@ class Pipeline:
                 origin = (doc.source_kind, doc.path, doc.url)
                 current_title = doc.title
                 limits = knowledge_config.load(db)
+            if origin[0] == SourceKind.MARKDOWN:
+                self._process_markdown(doc_id, limits)
+                return
             workdir.mkdir(parents=True, exist_ok=True)
             source = self._source(*origin, workdir=workdir, max_bytes=limits.max_file_bytes)
             answer = self.worker.request(
@@ -193,6 +199,56 @@ class Pipeline:
             self._fail(doc_id, KnowledgeError("convert_error", f"{type(error).__name__}: {error}"))
         finally:
             shutil.rmtree(workdir, ignore_errors=True)
+
+    def _process_markdown(self, doc_id: str, limits) -> None:
+        """A document whose Markdown *is* the content (an agent's accepted proposal): no original
+        to read, nothing to convert, no pictures. It is only split and indexed."""
+        with self.sessions() as db:
+            doc = db.get(KnowledgeDoc, doc_id)
+            if doc is None:
+                raise Cancelled
+            title, markdown = doc.title, doc.markdown
+        chunks = chunking.chunk(markdown)
+        vectors, model, notice = self._embed(doc_id, title, chunks, limits.threads)
+        outcome = Outcome(markdown, [], {}, {}, {}, notice, chunks, vectors, model)
+        self._finish(doc_id, Source(Path("."), "", title), title, outcome, self.work_root)
+        self._apply_replacement(doc_id)
+
+    def _apply_replacement(self, doc_id: str) -> None:
+        """Accepted with «Reemplazar»: the version it replaces goes away now that the new one is
+        ready, and what was built on the old one is now built on the new one."""
+        with self.sessions() as db:
+            doc = db.get(KnowledgeDoc, doc_id)
+            provenance = doc.provenance if doc is not None else None
+            if doc is None or provenance is None or not provenance.replace_on_ready:
+                return
+            old = db.get(KnowledgeDoc, provenance.replaces_id) if provenance.replaces_id else None
+            removed = None
+            if old is not None:
+                for link in list(
+                    db.scalars(select(KnowledgeSource).where(KnowledgeSource.source_id == old.id))
+                ):
+                    if link.doc_id == doc.id:
+                        db.delete(link)  # the new version no longer derives from the old one
+                        continue
+                    taken = db.scalar(
+                        select(KnowledgeSource.id).where(
+                            KnowledgeSource.doc_id == link.doc_id,
+                            KnowledgeSource.source_id == doc.id,
+                        )
+                    )
+                    if taken is not None:
+                        db.delete(link)
+                    else:
+                        link.source_id, link.source_title = doc.id, doc.title
+                db.flush()
+                docs.remove(db, old, self.data_dir / "knowledge" / "images")
+                removed = old.id
+            provenance.replace_on_ready = False
+            provenance.replaces_id = None
+            db.commit()
+        if removed:
+            self.events.doc_removed(removed)
 
     # ------------------------------------------------------------- step 1: the original
     def _source(

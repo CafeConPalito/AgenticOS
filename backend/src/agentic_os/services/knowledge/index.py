@@ -7,7 +7,7 @@ from sqlalchemy import delete, event, text
 from sqlalchemy.orm import Session
 
 from agentic_os.models import KnowledgeChunk, KnowledgeDoc
-from agentic_os.services.knowledge import search
+from agentic_os.services.knowledge import search, similarity
 from agentic_os.services.knowledge.chunking import Chunk
 from agentic_os.services.knowledge.embeddings import vector_bytes
 
@@ -47,6 +47,12 @@ def replace(
             {"t": chunk.for_words(), "c": row.id, "d": doc.id},
         )
     doc.embed_model = model if vectors is not None else ""
+    # The document as one point (phase 15): what its links to other documents are measured with.
+    if vectors is not None and len(chunks):
+        doc.centroid = vector_bytes(similarity.centroid_of(vectors))
+        doc.centroid_model = model
+    else:
+        doc.centroid, doc.centroid_model = None, ""
     bump_when_committed(db)
 
 

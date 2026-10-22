@@ -1,7 +1,7 @@
 # Fase 15: Ampliación del conocimiento · Plan técnico
 
 - **Spec**: [spec.md](spec.md)
-- **Estado**: borrador
+- **Estado**: aprobado (2026-10-21) · en desarrollo (bloque 0)
 
 ## Lo que ya se sabe (revisado al escribir el plan)
 - **Documentos** (`models/knowledge.py`): `KnowledgeDoc` con nivel (`scope`, `project_id`, `agent_id`), origen (`source_kind`: `file` · `image` · `url`), proceso (`status`) y resultado (`markdown`, `md_tokens`, `embed_model`). `KnowledgeChunk` guarda el vector de cada trozo (`vector`, `vector_model`). No hay un vector por documento ni ninguna relación entre documentos. Última migración: `0017_knowledge_images`.
@@ -23,15 +23,29 @@ Scripts en `spikes/knowledge-graph/`, con el corpus de la fase 14 ampliado con *
 | S3 | **Dibujo**: `d3-force` en un **Web Worker** + `@xyflow/react` con 300 nodos y 1 000 aristas: tiempo hasta estabilizar, FPS al hacer zoom y arrastrar, y si `onlyRenderVisibleElements` y ocultar aristas débiles al alejar bastan | `layout` por lotes con posiciones guardadas; como último recurso, dibujo en `<canvas>` (sigma.js) solo para la vista «Todo» |
 | S4 | **Propuestas reales**: `claude` y `agy` con el MCP de prueba y un PDF de Celery: ¿llaman a `propose_knowledge` cuando deben y no en cada ejecución? ¿Qué redacción de la herramienta y de la línea del contexto lo consigue? ¿Usan `knowledge_map` y `explore_knowledge` sin que se lo pidan? | Ajustar las descripciones; si proponen de más, bajar el máximo por defecto a 1 |
 
+## Resultados de los spikes (bloque 0, 2026-10-21)
+Evidencias en [`evidencias/s1-s3-grafo.md`](evidencias/s1-s3-grafo.md); scripts en `spikes/knowledge-graph/`.
+
+- **S1 · Relaciones**: el **centroide** (vector medio de los trozos) gana en los tres modelos (AUC 0,94–0,97) a los pares de trozos. El coseno crudo no da un umbral común (rangos distintos por modelo), pero **restando el vector medio de la biblioteca** la escala es común: umbral **0,20** → precisión de aristas 0,8–0,9. Con **el vecino más próximo siempre que supere 0,10** los documentos puente (Redis entre Celery y Docker) no quedan sueltos. Todos contra todos con 1 000 centroides: 9 ms.
+- **S2 · Temas**: Louvain de `networkx` (semilla 0, grafo ordenado) da temas coherentes (NMI 0,88–0,96) y **estables** (barajar el orden o quitar un documento: NMI 1,0). Nombre = documento más central + 2 palabras TF-IDF. `networkx` pesa 14 MB sin comprimir; si el *sidecar* crece demasiado, Louvain propio.
+- **S3 · Dibujo**: `d3-force` con 300 nodos y 1 000 aristas tarda **327 ms** (1 000 y 3 500: 1,3 s), así que va en un Worker. La fluidez de `@xyflow/react` se mide con navegador en el bloque 6 (plan B: `<canvas>`).
+- **S4 · Agentes reales**: aplazado al bloque 8 (necesita las herramientas hechas).
+
+### Cambios al diseño por los spikes
+1. Relación = **coseno de centroides centrado en la media de la biblioteca**; `graph.threshold` = 0,20, vecino más próximo ≥ 0,10 siempre, máximo 8. Con menos de 8 documentos con vectores se usa el coseno crudo con un umbral por modelo en el catálogo (e5 0,91 · Gemma 0,80 · bge-m3 0,68).
+2. El recálculo es **completo en memoria con cada cambio** y se escribe solo la diferencia (no «uno contra todos»).
+3. Los temas usan `networkx` (se añade a las dependencias del backend en el bloque 3).
+4. *Layout* con `d3-force` en un Web Worker, con posiciones parciales cada 30 iteraciones.
+
 ## Diseño ([ADR 0022](../../adr/0022-knowledge-graph.md), nuevo)
 
 ### 1. Modelo de datos (migración `0018_knowledge_graph`)
 - **`KnowledgeDoc`** gana:
   - `origin` (`user` · `agent`): quién lo aportó. `source_kind` admite `markdown` (el contenido es el Markdown propuesto: no hay original en disco, nunca está `missing`);
-  - `review` (`none` · `proposed` · `rejected`): `proposed` es una propuesta pendiente (no es visible para ningún agente: `visible_docs` exige `review = none`); `rejected` solo dura hasta que se borra el contenido (ver «Rechazar»);
+  - `review` (`none` · `proposed`): `proposed` es una propuesta pendiente (no es visible para ningún agente: `visible_docs` exige `review = none`); rechazar la borra;
   - `summary` (una línea: la descripción o la primera frase del Markdown), para el grafo y las herramientas;
   - `centroid` (BLOB) y `centroid_model`: vector medio normalizado de sus trozos, calculado al indexar.
-- **`KnowledgeProvenance`** (`knowledge_provenance`, 1:1 con un documento del agente): `agent_id`, `agent_name`, `run_id` (`SET NULL`), `task_id` (`SET NULL`), `task_title` (copia), `proposed_at`, `suggested_scope`, `replaces_id` (`SET NULL`, la versión que pretende sustituir), `decided_at`, `edited` (si el usuario cambió algo al aceptar).
+- **`KnowledgeProvenance`** (`knowledge_provenance`, 1:1 con un documento del agente): `agent_id`, `agent_name`, `run_id` (`SET NULL`), `task_id` (`SET NULL`), `task_title` (copia), `proposed_at`, `suggested_scope`, `replaces_id` (`SET NULL`, la versión que pretende sustituir), `decided_at`, `edited` (si el usuario cambió el texto al aceptar) y `replace_on_ready` (aceptada con «Reemplazar»: la versión anterior se borra cuando la nueva queda lista).
 - **`KnowledgeSource`** (`knowledge_sources`): aristas **«derivado de»**. `doc_id` (el derivado, `CASCADE`), `source_id` (`SET NULL`) y `source_title` (copia). Si se borra el origen, la fila queda con `source_id` nulo: el derivado se ve «origen eliminado» (CA11).
 - **`KnowledgeRelated`** (`knowledge_related`): aristas **«relacionado»**, `a_id < b_id` (ambas `CASCADE`), `weight` (coseno) y `model`. Clave primaria `(a_id, b_id)`.
 - **`KnowledgeRejection`** (`knowledge_rejections`): lo rechazado sin el texto: `title`, `md_sha256`, `centroid`, `agent_id`, `reason`, `rejected_at`. Sirve para avisar al agente si vuelve a proponer lo mismo.
@@ -64,8 +78,8 @@ Desde la Inbox y desde la biblioteca se usan los mismos endpoints. Si se resuelv
 
 ### 3. Grafo (`services/knowledge/graph.py`)
 - **Centroide**: al indexar, media de los vectores de sus trozos, normalizada (o lo que decida S1). Sin modelo de significado no hay centroide.
-- **Relaciones**: para un documento, coseno contra los centroides de **todos** los aceptados del mismo modelo (matriz NumPy); se guardan las aristas por encima de `knowledge.graph.threshold` (por modelo, calibrado en S1) hasta `knowledge.graph.max_neighbors` (8) por documento, conservando la arista si cualquiera de los dos la elige. Las relaciones se calculan entre **todos** los niveles; la visibilidad se aplica al leer.
-- **Cuándo se recalcula**: al terminar de indexar un documento (sus aristas), al quitarlo (por `CASCADE` y se recalculan sus antiguos vecinos, que quedan con huecos), al cambiar el ajuste de umbral o vecinos, y al cambiar de modelo (todas, cuando termina el `reindex`). Se hace en el hilo de la cola, después de indexar, y sube `graph_version`.
+- **Relaciones** (S1): matriz de centroides de todos los documentos aceptados del mismo modelo, centrada en su media y normalizada; coseno de todos contra todos con NumPy. Cada documento conserva sus hasta `knowledge.graph.max_neighbors` (8) vecinos más próximos que superen `knowledge.graph.threshold` (0,20) y, además, su vecino más próximo si supera 0,10; la arista existe si cualquiera de los dos la elige. Con menos de 8 documentos con vectores se usa el coseno crudo con el umbral del modelo (catálogo). Las relaciones se calculan entre **todos** los niveles; la visibilidad se aplica al leer.
+- **Cuándo se recalcula**: al terminar de indexar un documento, al quitarlo, al cambiar el umbral o los vecinos, y al cambiar de modelo (cuando termina el `reindex`). Siempre **completo en memoria** (9 ms con 1 000 documentos) y se escribe solo la diferencia contra `knowledge_related`. Se hace en el hilo de la cola, después de indexar, y sube `graph_version`.
 - **Temas** (`topics.py`): comunidades sobre las aristas «relacionado» (peso = coseno) y «derivado de» (peso 1) con el algoritmo de S2, con orden y semilla fijos. Nombre: título del documento más central más los términos más propios del grupo. Se calcula al leer y se cachea por `graph_version`. Los documentos sin aristas forman el tema «Sueltos».
 - **Lectura** (`GET /api/knowledge/graph`): parámetros `project_id`, `agent_id` (el contexto actual: lo visible desde ahí, decisión 4 de la spec) o `all=true` (toda la biblioteca), más `include_proposed` (por defecto, sí en la UI). Devuelve nodos (id, título, `origin`, `source_kind`, nivel, proyecto o agente, `review`, `mode`, `presence`, `md_tokens`, tema), aristas (tipo, origen, destino, peso; «derivado de» con origen eliminado incluida como nodo fantasma) y temas (id, nombre, tamaño). Las propuestas pendientes salen con sus aristas «derivado de», sin «relacionado».
 - **Eventos**: `graph_changed` con la versión, para que la vista recargue.
@@ -118,14 +132,14 @@ Nuevos: `proposals.enabled`, `proposals.per_run`, `proposals.max_tokens`, `graph
 | `spikes/knowledge-graph/` | nuevo |
 
 ## Tareas (en orden)
-1. [ ] **Bloque 0 · Spikes** S1–S4, evidencias y cambios al diseño anotados aquí.
-2. [ ] **Bloque 1 · Datos**: migración `0018`, modelos, `visible_docs` exige `review = none`, `InboxKind.KNOWLEDGE`, esquemas y listados con `origin`/`review`.
-3. [ ] **Bloque 2 · Propuestas (backend)**: `proposals.py`, `propose_knowledge` en el MCP, controles anti-ruido, Inbox, aceptar (pipeline desde «trocear»), rechazar, reemplazar, borrado de orígenes, ajustes.
-4. [ ] **Bloque 3 · Grafo (backend)**: centroides, relaciones y su recálculo, temas, `GET /knowledge/graph`, evento `graph_changed`.
-5. [ ] **Bloque 4 · Búsqueda con el grafo (backend)**: vecinos y expansión en `search_knowledge` (+ parámetro `graph`), `knowledge_map`, `related_knowledge`, `explore_knowledge`, `knowledge_path`, contexto (temas, marca, reglas).
-6. [ ] **Bloque 5 · Propuestas (frontend)**: API, `ProposalReview`, filtro «Propuestos», marcas y procedencia, Inbox, ajustes.
-7. [ ] **Bloque 6 · Grafo (frontend)**: vista, nodos y aristas, *layout* en Worker, filtros, «Todo», resaltado, clic y doble clic.
-8. [ ] **Bloque 7 · Probador y registro (frontend)**: «por el grafo», Explorar, Mapa, etiquetas de las herramientas en el registro.
+1. [x] **Bloque 0 · Spikes** S1–S3 hechos (S4 pasa al bloque 8); evidencias y cambios al diseño anotados arriba.
+2. [x] **Bloque 1 · Datos**: migración `0018`, modelos, `visible_docs` exige `review = none`, `InboxKind.KNOWLEDGE`, esquemas y listados con `origin`/`review`.
+3. [x] **Bloque 2 · Propuestas (backend)**: `proposals.py`, `propose_knowledge` en el MCP, controles anti-ruido, Inbox, aceptar (pipeline desde «trocear»), rechazar, reemplazar, borrado de orígenes, ajustes.
+4. [x] **Bloque 3 · Grafo (backend)**: centroides, relaciones y su recálculo, temas, `GET /knowledge/graph`, evento `graph_changed`.
+5. [x] **Bloque 4 · Búsqueda con el grafo (backend)**: vecinos y expansión en `search_knowledge` (+ parámetro `graph`), `knowledge_map`, `related_knowledge`, `explore_knowledge`, `knowledge_path`, contexto (temas, marca, reglas).
+6. [x] **Bloque 5 · Propuestas (frontend)**: API, `ProposalReview`, filtro «Propuestos», marcas y procedencia, Inbox, ajustes.
+7. [x] **Bloque 6 · Grafo (frontend)**: vista, nodos y aristas, *layout* en Worker, filtros, «Todo», resaltado, clic y doble clic.
+8. [x] **Bloque 7 · Probador y registro (frontend)**: «por el grafo», Explorar, Mapa, etiquetas de las herramientas en el registro.
 9. [ ] **Bloque 8 · Calidad y rendimiento**: corpus de prueba con derivados, test de calidad (CA9, CA15), temas (CA13), rendimiento del grafo (CA10), e2e con CLI falso y MCP real (CA1, CA16).
 10. [ ] **Bloque 9 · Cierre**: e2e con el binario empaquetado (CA12), `/code-review`, ADR 0022 definitivo, README, validación.
 
@@ -152,3 +166,14 @@ Nuevos: `proposals.enabled`, `proposals.per_run`, `proposals.max_tokens`, `graph
 ## Decisiones (ADR)
 - [ADR 0022](../../adr/0022-knowledge-graph.md): propuestas como documentos con `review`, procedencia y orígenes en tablas propias, relaciones por centroide con umbral y tope, temas por comunidades sin LLM, herramientas del grafo de solo lectura y *layout* en el cliente.
 - Pendiente de los spikes: centroide o pares de trozos y umbrales (S1), Louvain propio o `networkx` (S2), `d3-force` en Worker o `<canvas>` (S3).
+
+## Estado al 2026-10-21 (para retomar)
+- Bloques 0 a 8 hechos; del bloque 9 están hechos el e2e empaquetado (con el ejecutable anterior a la revisión), la medición del grafo en un navegador real, la prueba con `claude` real y `/code-review high` (10 hallazgos, resueltos en `2619ac8`).
+- **Falta**:
+  1. Suite completa del backend tras la revisión (`cd backend; uv run pytest tests -q`; unos 35 min; la anterior, antes de la revisión, pasó al 100 %). Los tests afectados por la revisión ya pasan.
+  2. Reconstruir el ejecutable (`npm run build:backend`) y repetir `AGENTIC_OS_E2E_BINARY=backend\build\dist\agentic-os-backend.exe uv run pytest tests/test_knowledge_e2e.py` (la migración 0018 cambió).
+  3. Frontend completo (`cd frontend; npx vitest run`, `npm run build`).
+  4. Rellenar `validacion.md` (tabla de CA con la evidencia, hallazgos de la revisión, retro) y actualizar README/ADR 0022 («Consecuencias»: el ejecutable pesa 162,6 MB, +10,6 MB por `networkx`).
+  5. Pendiente manual: `agy` real y el instalador en una máquina limpia.
+  6. Cierre: OK del usuario → merge `--no-ff` a `main`, tag `v1.7`, roadmap «cerrada».
+- Evidencias ya obtenidas: calidad con e5 real (recall de familia 0,44 → 1,00), 442 tests de frontend, e2e empaquetado 5/5, grafo de 300 nodos y 971 vínculos fluido (≈1 fotograma por paso), `claude` real (haiku, ~0,01 USD) propone con `based_on` correcto y recorre mapa → explorar → leer.

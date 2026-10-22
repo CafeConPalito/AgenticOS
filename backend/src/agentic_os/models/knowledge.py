@@ -19,7 +19,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
 )
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from agentic_os.db.base import Base, IdMixin, TimestampMixin, UTCDateTime, WorkspaceMixin
 
@@ -41,6 +41,17 @@ class SourceKind(StrEnum):
     FILE = "file"  # a text, code or office file on the user's disk
     IMAGE = "image"  # a picture on the user's disk
     URL = "url"  # a web page
+    MARKDOWN = "markdown"  # no original: the Markdown is the content (an agent's proposal)
+
+
+class Origin(StrEnum):
+    USER = "user"  # added by the person
+    AGENT = "agent"  # proposed by an agent and accepted by the person
+
+
+class Review(StrEnum):
+    NONE = "none"  # nothing to review: the agents may use it (if it is ready)
+    PROPOSED = "proposed"  # an agent's proposal waiting for the person: nobody reads it yet
 
 
 class Presence(StrEnum):
@@ -83,6 +94,8 @@ class KnowledgeDoc(IdMixin, WorkspaceMixin, TimestampMixin, Base):
         CheckConstraint(_enum_check("source_kind", SourceKind), name="source_kind"),
         CheckConstraint(_enum_check("presence", Presence), name="presence"),
         CheckConstraint(_enum_check("status", DocStatus), name="status"),
+        CheckConstraint(_enum_check("origin", Origin), name="origin"),
+        CheckConstraint(_enum_check("review", Review), name="review"),
         CheckConstraint(
             "(scope = 'general' AND project_id IS NULL AND agent_id IS NULL)"
             " OR (scope = 'project' AND project_id IS NOT NULL AND agent_id IS NULL)"
@@ -103,6 +116,14 @@ class KnowledgeDoc(IdMixin, WorkspaceMixin, TimestampMixin, Base):
     mode: Mapped[str] = mapped_column(String(8), nullable=False, default=KnowledgeMode.AUTO)
     # None: what the settings say. True/False: forced for this document.
     describe_images: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    # --- who brought it (phase 15)
+    origin: Mapped[str] = mapped_column(String(8), nullable=False, default=Origin.USER)
+    review: Mapped[str] = mapped_column(String(8), nullable=False, default=Review.NONE, index=True)
+    # One line for the graph and the agents' tools: the description or the first sentence.
+    summary: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    # The mean of the chunks' vectors (normalised): the document as one point in the graph.
+    centroid: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
+    centroid_model: Mapped[str] = mapped_column(String(80), nullable=False, default="")
 
     # --- origin (the original stays where the user has it)
     source_kind: Mapped[str] = mapped_column(String(8), nullable=False)
@@ -130,6 +151,22 @@ class KnowledgeDoc(IdMixin, WorkspaceMixin, TimestampMixin, Base):
     image_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     embed_model: Mapped[str] = mapped_column(String(80), nullable=False, default="")
     processed_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+
+    # --- phase 15: who proposed it and what it was built on (rows go with the document by cascade)
+    provenance: Mapped["KnowledgeProvenance | None"] = relationship(
+        foreign_keys="KnowledgeProvenance.doc_id",
+        uselist=False,
+        lazy="selectin",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    sources: Mapped[list["KnowledgeSource"]] = relationship(
+        foreign_keys="KnowledgeSource.doc_id",
+        order_by="KnowledgeSource.source_title",
+        lazy="selectin",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
 
 
 class KnowledgeChunk(IdMixin, Base):
@@ -174,3 +211,81 @@ class KnowledgeImage(IdMixin, Base):
     ocr_text: Mapped[str] = mapped_column(Text, nullable=False, default="")
     description: Mapped[str] = mapped_column(Text, nullable=False, default="")
     described_by: Mapped[str] = mapped_column(String(80), nullable=False, default="")
+
+
+class KnowledgeProvenance(Base):
+    """Who proposed an agent's document, when and from which run (phase 15). Kept apart from the
+    document so its Markdown stays clean."""
+
+    __tablename__ = "knowledge_provenance"
+
+    doc_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("knowledge_docs.id", ondelete="CASCADE"), primary_key=True
+    )
+    agent_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    agent_name: Mapped[str] = mapped_column(String(80), nullable=False, default="")
+    run_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("runs.id", ondelete="SET NULL"), nullable=True
+    )
+    task_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("tasks.id", ondelete="SET NULL"), nullable=True
+    )
+    task_title: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    proposed_at: Mapped[datetime] = mapped_column(UTCDateTime(), nullable=False)
+    # What the agent would like (the person decides): a level and the version it would replace.
+    suggested_scope: Mapped[str] = mapped_column(String(8), nullable=False, default="")
+    replaces_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("knowledge_docs.id", ondelete="SET NULL"), nullable=True
+    )
+    decided_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    edited: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # Accepted with «Reemplazar»: when it is ready, the version it replaces goes away.
+    replace_on_ready: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
+
+class KnowledgeSource(IdMixin, Base):
+    """«Derived from»: a document built on another. Deleting the source keeps the derived one,
+    that then shows «source removed» (`source_id` is None; `source_title` remembers its name)."""
+
+    __tablename__ = "knowledge_sources"
+    __table_args__ = (UniqueConstraint("doc_id", "source_id", name="uq_knowledge_sources_pair"),)
+
+    doc_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("knowledge_docs.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    source_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("knowledge_docs.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    source_title: Mapped[str] = mapped_column(String(200), nullable=False, default="")
+
+
+class KnowledgeRelated(Base):
+    """«Related»: two documents whose content is close. `a_id < b_id`, so a pair is stored once."""
+
+    __tablename__ = "knowledge_related"
+    __table_args__ = (CheckConstraint("a_id < b_id", name="order"),)
+
+    a_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("knowledge_docs.id", ondelete="CASCADE"), primary_key=True
+    )
+    b_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("knowledge_docs.id", ondelete="CASCADE"),
+        primary_key=True,
+        index=True,
+    )
+    weight: Mapped[float] = mapped_column(Float, nullable=False)
+    model: Mapped[str] = mapped_column(String(80), nullable=False, default="")
+
+
+class KnowledgeRejection(IdMixin, TimestampMixin, Base):
+    """What the person rejected, without the text: enough to warn an agent that repeats it."""
+
+    __tablename__ = "knowledge_rejections"
+
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    md_sha256: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    centroid: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
+    centroid_model: Mapped[str] = mapped_column(String(80), nullable=False, default="")
+    agent_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    reason: Mapped[str] = mapped_column(Text, nullable=False, default="")

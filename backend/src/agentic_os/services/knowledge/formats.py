@@ -32,6 +32,7 @@ class Viewer(StrEnum):
     CSV = "csv"
     SYSTEM = "system"  # Word, Excel, PowerPoint…: the system's application
     URL = "url"  # the system's browser
+    NONE = "none"  # no original: only the Markdown (an agent's document)
 
 
 def extension(path: str) -> str:
@@ -47,6 +48,8 @@ def source_kind_of(path: str) -> SourceKind:
 
 
 def viewer_of(source_kind: str, path: str | None) -> Viewer:
+    if source_kind == SourceKind.MARKDOWN:
+        return Viewer.NONE
     if source_kind == SourceKind.URL or path is None:
         return Viewer.URL
     ext = extension(path)

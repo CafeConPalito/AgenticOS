@@ -23,6 +23,14 @@ class KnowledgeSettings:
     describer_cli: str = ""  # "", "claude" or "agy"
     describer_account: str = ""  # a CLI account id, or "" for the CLI's default
     describer_model: str = ""
+    # Knowledge the agents propose (phase 15)
+    proposals_enabled: bool = True
+    proposals_per_run: int = 3  # most proposals one run may make
+    proposals_max_tokens: int = 20_000  # biggest proposal (estimated tokens)
+    # The graph (phase 15)
+    graph_threshold: float = 0.20  # centered cosine from which two documents are «related»
+    graph_max_neighbors: int = 8  # related links kept per document
+    graph_expand: int = 3  # documents a search may add from the graph (0: none)
 
     @property
     def max_file_bytes(self) -> int:
@@ -35,7 +43,12 @@ _LIMITS = {  # (min, max) of the numeric settings
     "small_doc_tokens": (100, 50_000),
     "concurrency": (1, 4),
     "threads": (0, 64),
+    "proposals_per_run": (1, 20),
+    "proposals_max_tokens": (500, 100_000),
+    "graph_max_neighbors": (1, 30),
+    "graph_expand": (0, 10),
 }
+_FLOAT_LIMITS = {"graph_threshold": (0.05, 0.90)}
 
 
 def load(db: Session) -> KnowledgeSettings:
@@ -57,8 +70,15 @@ def normalized(base: KnowledgeSettings, values: dict) -> KnowledgeSettings:
         if field.name in _LIMITS and isinstance(value, int) and not isinstance(value, bool):
             low, high = _LIMITS[field.name]
             setattr(result, field.name, max(low, min(high, value)))
-        elif field.name == "describe_images" and isinstance(value, bool):
-            result.describe_images = value
+        elif (
+            field.name in _FLOAT_LIMITS
+            and isinstance(value, (int, float))
+            and not isinstance(value, bool)
+        ):
+            low, high = _FLOAT_LIMITS[field.name]
+            setattr(result, field.name, max(low, min(high, float(value))))
+        elif field.name in ("describe_images", "proposals_enabled") and isinstance(value, bool):
+            setattr(result, field.name, value)
         elif field.name == "describer" and value in ("cli", "local"):
             result.describer = value
         elif field.name == "describer_cli" and value in ("", "claude", "agy"):

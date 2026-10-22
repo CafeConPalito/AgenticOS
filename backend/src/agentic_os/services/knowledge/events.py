@@ -25,3 +25,7 @@ class KnowledgeEvents(GitEvents):
     def model(self, payload: dict) -> None:
         """A local model's download changed: `{id, state, done, total, error_code…}`."""
         self.publish({"type": "model", **payload})
+
+    def graph(self, version: int) -> None:
+        """The links between documents changed: whoever shows the graph reads it again."""
+        self.publish({"type": "graph", "version": version})

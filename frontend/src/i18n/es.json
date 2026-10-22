@@ -999,7 +999,8 @@
       "limit": "Límite diario",
       "quota": "Cuota agotada",
       "account": "Sesión cerrada",
-      "switch": "Cambiar de CLI"
+      "switch": "Cambiar de CLI",
+      "knowledge": "Conocimiento propuesto"
     },
     "approvalTitle": "¿Puedo continuar?",
     "answerPlaceholder": "Responder con texto…",
@@ -1036,7 +1037,8 @@
     "resume": "Reanudar",
     "limitHint": "Se resuelve solo mañana o al subir el límite en Ajustes.",
     "openSettings": "Abrir Ajustes",
-    "reconnect": "Reconectar"
+    "reconnect": "Reconectar",
+    "reviewProposal": "Revisar propuesta"
   },
   "settings": {
     "title": "Ajustes",
@@ -1199,14 +1201,24 @@
         "context_budget": "Presupuesto de contexto (tokens)",
         "small_doc_tokens": "Documento pequeño (tokens)",
         "concurrency": "Documentos a la vez",
-        "threads": "Hilos de cálculo"
+        "threads": "Hilos de cálculo",
+        "proposals_per_run": "Propuestas por ejecución",
+        "proposals_max_tokens": "Tamaño máximo de una propuesta (tokens)",
+        "graph_max_neighbors": "Vecinos por documento",
+        "graph_expand": "Documentos que el grafo añade a una búsqueda",
+        "graph_threshold": "Umbral de parecido"
       },
       "help": {
         "max_file_mb": "Los ficheros más grandes se rechazan al añadirlos.",
         "context_budget": "Cuánto texto de la biblioteca entra entero en el contexto de cada ejecución.",
         "small_doc_tokens": "Hasta este tamaño un documento «automático» entra entero; por encima, solo por búsqueda.",
         "concurrency": "Un cambio se aplica al reiniciar la app.",
-        "threads": "0 usa la mitad de los núcleos del equipo."
+        "threads": "0 usa la mitad de los núcleos del equipo.",
+        "proposals_per_run": "Cuántos documentos nuevos puede proponer un agente en una misma ejecución.",
+        "proposals_max_tokens": "Una propuesta más larga se rechaza y el agente recibe el motivo.",
+        "graph_max_neighbors": "Máximo de documentos relacionados que se enlazan a cada uno.",
+        "graph_expand": "Vecinos de los mejores resultados que se añaden detrás de ellos si también responden. 0 lo desactiva.",
+        "graph_threshold": "Entre 0,05 y 0,90. Más alto, menos vínculos «relacionado» y más seguros."
       },
       "describe": "Describir las imágenes con IA",
       "describeHelp": "Opcional. Una IA describe las imágenes de los documentos y la descripción se guarda en el Markdown. Se puede cambiar documento a documento.",
@@ -1223,7 +1235,10 @@
       },
       "model": "Modelo",
       "modelHelp": "Vacío usa el más barato del CLI.",
-      "localHelp": "Descarga el motor llama.cpp y un modelo de visión en «Modelos locales». No viene en el instalador."
+      "localHelp": "Descarga el motor llama.cpp y un modelo de visión en «Modelos locales». No viene en el instalador.",
+      "proposals": "Permitir que los agentes propongan conocimiento",
+      "proposalsHelp": "Un agente puede proponer un documento nuevo, vinculado a los que usó. Nunca modifica los existentes y tú decides si se acepta.",
+      "graphTitle": "Grafo"
     }
   },
   "usage": {
@@ -1514,7 +1529,10 @@
       "open": "Abrir {{title}}",
       "progress": "Progreso de {{title}}",
       "tokens": "{{count}} tokens",
-      "notice": "Aviso"
+      "notice": "Aviso",
+      "proposedBy": "Propuesto por {{agent}}",
+      "derived": "Derivado de {{title}}",
+      "derivedRemoved": "Derivado de un documento eliminado"
     },
     "status": {
       "queued": "En cola",
@@ -1617,13 +1635,165 @@
       "empty": "No se encontró nada.",
       "mode": {
         "hybrid": "Búsqueda por significado y por palabras",
-        "words": "Solo palabras (no hay modelo de significado)"
+        "words": "Solo palabras (no hay modelo de significado)",
+        "label": "Qué probar",
+        "search": "Búsqueda",
+        "explore": "Explorar",
+        "map": "Mapa"
       },
       "foundBy": {
         "meaning": "por significado",
         "words": "por palabras",
-        "both": "por ambos"
+        "both": "por ambos",
+        "graph": "por el grafo"
+      },
+      "via": "vecino: {{via}}",
+      "explore": {
+        "label": "Explorar el grafo desde una pregunta o un documento",
+        "placeholder": "Una pregunta o el título de un documento…",
+        "hops": "Saltos",
+        "run": "Recorrer",
+        "empty": "No se alcanzó ningún documento.",
+        "start": "punto de partida",
+        "hopsReached": "a {{count}} saltos",
+        "strength": "fuerza {{value}}",
+        "highlight": "Ver en el grafo",
+        "path": "Camino"
+      },
+      "map": {
+        "intro": "Los temas que vería un agente de este contexto.",
+        "empty": "Todavía no hay temas.",
+        "docs": "{{count}} documentos",
+        "loose": "Sueltos",
+        "near": "Cerca de"
       }
+    },
+    "filters": {
+      "label": "Filtrar documentos",
+      "all": "Todos",
+      "proposed": "Propuestos",
+      "agent": "Generados por agentes"
+    },
+    "views": {
+      "label": "Vista",
+      "list": "Lista",
+      "graph": "Grafo"
+    },
+    "origin": {
+      "agent": "Generado por agente",
+      "proposed": "Propuesto"
+    },
+    "proposal": {
+      "title": "Propuesta de un agente",
+      "intro": "{{agent}} propone este documento. Nadie lo lee hasta que lo aceptes, y los documentos en los que se basa no cambian.",
+      "introUnknown": "Un agente propone este documento. Nadie lo lee hasta que lo aceptes, y los documentos en los que se basa no cambian.",
+      "task": "Tarea: {{task}}",
+      "basedOn": "Basado en",
+      "noSources": "No indica en qué documentos se basa.",
+      "sourceRemoved": "origen eliminado",
+      "titleLabel": "Título",
+      "descriptionLabel": "Descripción",
+      "textLabel": "Texto (Markdown)",
+      "edit": "Editar",
+      "preview": "Vista previa",
+      "level": "Dónde se guarda",
+      "levelSuggested": "El agente sugiere: {{level}}",
+      "scope": {
+        "general": "General (todos los agentes)",
+        "project": "Un proyecto",
+        "agent": "Un agente"
+      },
+      "pickProject": "Elige un proyecto",
+      "pickAgent": "Elige un agente",
+      "project": "Proyecto",
+      "agent": "Agente",
+      "replaces": "Es una versión nueva de «{{title}}», que sigue en la biblioteca.",
+      "replaceOption": "Reemplazar la versión anterior al aceptar",
+      "replaceHelp": "Sin marcar, las dos conviven.",
+      "accept": "Aceptar",
+      "reject": "Rechazar",
+      "rejectTitle": "¿Rechazar esta propuesta?",
+      "rejectBody": "Se borra. Se recuerda para avisar al agente si propone lo mismo otra vez.",
+      "reason": "Motivo (opcional; se lo cuenta al agente)",
+      "accepted": "Propuesta aceptada: se está indexando.",
+      "rejected": "Propuesta rechazada.",
+      "missingOwner": "Elige a qué proyecto o agente pertenece.",
+      "emptyText": "El texto no puede estar vacío."
+    },
+    "provenance": {
+      "title": "Procedencia",
+      "agent": "Agente",
+      "task": "Tarea",
+      "proposed": "Propuesto",
+      "decided": "Aceptado",
+      "edited": "Editado antes de aceptar",
+      "derivedFrom": "Derivado de",
+      "removed": "origen eliminado",
+      "unknownAgent": "un agente"
+    },
+    "graph": {
+      "title": "Grafo de conocimiento",
+      "canvas": "Grafo de conocimiento: arrastra para moverte y usa la rueda para acercar",
+      "empty": "Todavía no hay documentos que dibujar.",
+      "summary": "{{nodes}} documentos · {{edges}} vínculos",
+      "layouting": "Colocando los documentos…",
+      "scope": {
+        "label": "Qué se ve",
+        "context": "Contexto actual",
+        "all": "Toda la biblioteca"
+      },
+      "legend": {
+        "title": "Leyenda",
+        "file": "Fichero",
+        "url": "Web",
+        "image": "Imagen",
+        "agent": "Generado por agente",
+        "proposed": "Propuesto (pendiente)",
+        "derived": "Derivado de",
+        "related": "Relacionado",
+        "removed": "Origen eliminado"
+      },
+      "filters": {
+        "label": "Filtros",
+        "level": "Nivel",
+        "origin": "Origen",
+        "state": "Estado",
+        "topic": "Tema",
+        "all": "Todos",
+        "general": "General",
+        "project": "Proyecto",
+        "agent": "Agente",
+        "user": "Aportados por ti",
+        "byAgent": "Generados por agentes",
+        "pending": "Pendientes de revisión",
+        "problems": "Apagados o sin original",
+        "reset": "Quitar filtros"
+      },
+      "search": {
+        "label": "Resaltar lo que responde a una pregunta",
+        "placeholder": "Qué quieres encontrar…",
+        "run": "Resaltar",
+        "clear": "Quitar resaltado",
+        "found": "{{count}} documentos resaltados",
+        "none": "Nada responde a eso."
+      },
+      "node": {
+        "open": "Abrir {{title}}",
+        "ghost": "{{title}} (origen eliminado)",
+        "tokens": "{{count}} tokens",
+        "off": "apagado",
+        "missing": "sin original"
+      },
+      "focus": "Centrar en el vecindario",
+      "unfocus": "Ver todo",
+      "focused": "Vecindario de {{title}}",
+      "topics": {
+        "title": "Temas",
+        "loose": "Sueltos",
+        "docs": "{{count}} documentos"
+      },
+      "weak": "Con el zoom alejado se ocultan los vínculos débiles.",
+      "highlighted": "Resaltado: {{count}}"
     }
   },
   "clis": {

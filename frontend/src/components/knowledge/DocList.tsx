@@ -1,4 +1,4 @@
-import { AlertTriangle, FileText, Globe, Image as ImageIcon } from 'lucide-react'
+import { AlertTriangle, Bot, FileText, Globe, Image as ImageIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { KnowledgeDoc } from '@/api/knowledge'
 import { Badge } from '@/components/ui/badge'
@@ -38,16 +38,32 @@ function ProgressBar({ doc }: { doc: KnowledgeDoc }) {
 
 function DocIcon({ doc }: { doc: KnowledgeDoc }) {
   const Icon =
-    doc.source_kind === 'url' ? Globe : doc.source_kind === 'image' ? ImageIcon : FileText
+    doc.source_kind === 'url'
+      ? Globe
+      : doc.source_kind === 'image'
+        ? ImageIcon
+        : doc.source_kind === 'markdown'
+          ? Bot
+          : FileText
   return <Icon aria-hidden className="size-5 shrink-0 text-muted-foreground" />
 }
 
 export function DocRow({ doc, onOpen }: { doc: KnowledgeDoc; onOpen: (id: string) => void }) {
   const { t } = useTranslation()
+  const proposed = doc.review === 'proposed'
+  const [first] = doc.sources
   const meta = [
     doc.file_name ?? doc.url,
+    proposed && doc.provenance
+      ? t('knowledge.row.proposedBy', { agent: doc.provenance.agent_name })
+      : null,
+    first
+      ? first.removed
+        ? t('knowledge.row.derivedRemoved')
+        : t('knowledge.row.derived', { title: first.title })
+      : null,
     doc.size !== null ? formatBytes(doc.size) : null,
-    doc.status === 'ready' ? t('knowledge.row.tokens', { count: doc.md_tokens }) : null,
+    doc.status === 'ready' || proposed ? t('knowledge.row.tokens', { count: doc.md_tokens }) : null,
   ].filter(Boolean)
   return (
     <li>
@@ -61,6 +77,10 @@ export function DocRow({ doc, onOpen }: { doc: KnowledgeDoc; onOpen: (id: string
         <div className="flex min-w-0 flex-1 flex-col gap-1">
           <div className="flex items-center gap-2">
             <span className="truncate text-[13.5px] font-medium">{doc.title}</span>
+            {proposed && <Badge>{t('knowledge.origin.proposed')}</Badge>}
+            {doc.origin === 'agent' && !proposed && (
+              <Badge variant="outline">{t('knowledge.origin.agent')}</Badge>
+            )}
             {doc.mode !== 'auto' && (
               <Badge variant="outline">{t(`knowledge.modes.${doc.mode}`)}</Badge>
             )}
@@ -92,9 +112,11 @@ export function DocRow({ doc, onOpen }: { doc: KnowledgeDoc; onOpen: (id: string
             {t('knowledge.row.notice')}
           </Badge>
         )}
-        <Badge variant={doc.status === 'failed' ? 'destructive' : 'secondary'}>
-          {t(`knowledge.status.${doc.status}`)}
-        </Badge>
+        {!proposed && (
+          <Badge variant={doc.status === 'failed' ? 'destructive' : 'secondary'}>
+            {t(`knowledge.status.${doc.status}`)}
+          </Badge>
+        )}
       </button>
     </li>
   )

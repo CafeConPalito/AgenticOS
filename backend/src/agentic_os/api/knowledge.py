@@ -15,18 +15,33 @@ from sqlalchemy.orm import Session, defer
 from agentic_os.db.base import DEFAULT_WORKSPACE
 from agentic_os.db.session import get_session
 from agentic_os.errors import ApiError, NotFound
-from agentic_os.models import KnowledgeDoc, KnowledgeImage, KnowledgeScope, SourceKind
+from agentic_os.models import (
+    KnowledgeDoc,
+    KnowledgeImage,
+    KnowledgeScope,
+    Origin,
+    Review,
+    SourceKind,
+)
 from agentic_os.schemas.knowledge import (
+    AcceptProposal,
     AddFiles,
     AddItem,
     AddUrl,
     DocRead,
     DocUpdate,
+    ExplorationRead,
+    ExploreRequest,
+    GraphEdgeRead,
+    GraphNodeRead,
+    GraphRead,
+    GraphTopicRead,
     HitRead,
     ImageRead,
     KnowledgeSettingsRead,
     KnowledgeSettingsWrite,
     MarkdownRead,
+    RejectProposal,
     Relocate,
     RelocateRead,
     SearchRead,
@@ -34,7 +49,7 @@ from agentic_os.schemas.knowledge import (
     read_doc,
 )
 from agentic_os.services.knowledge import config as knowledge_config
-from agentic_os.services.knowledge import docs, formats
+from agentic_os.services.knowledge import docs, formats, graph, graph_tools, proposals
 from agentic_os.services.knowledge.service import KnowledgeService
 from agentic_os.services.proc import open_in_file_manager as open_path
 from agentic_os.services.proc import reveal_in_file_manager as reveal_path
@@ -59,8 +74,11 @@ def list_docs(
     scope: KnowledgeScope | None = None,
     project_id: str | None = Query(None),
     agent_id: str | None = Query(None),
+    review: Review | None = None,
+    origin: Origin | None = None,
 ) -> list[DocRead]:
-    """The documents of one level (or all of them), with the state of their originals."""
+    """The documents of one level (or all of them), with the state of their originals.
+    `review=proposed`: the agents' proposals waiting for the person."""
     query = (
         select(KnowledgeDoc)
         .where(KnowledgeDoc.workspace_id == DEFAULT_WORKSPACE)
@@ -72,10 +90,89 @@ def list_docs(
         query = query.where(KnowledgeDoc.project_id == project_id)
     if agent_id is not None:
         query = query.where(KnowledgeDoc.agent_id == agent_id)
+    if review is not None:
+        query = query.where(KnowledgeDoc.review == review)
+    if origin is not None:
+        query = query.where(KnowledgeDoc.origin == origin)
     found = list(db.scalars(query.order_by(KnowledgeDoc.created_at, KnowledgeDoc.id)))
     docs.check_all(db, found)
     db.commit()
     return [read_doc(doc) for doc in found]
+
+
+@router.get("/knowledge/graph")
+def read_graph(
+    request: Request,
+    db: DbSession,
+    project_id: str | None = Query(None),
+    agent_id: str | None = Query(None),
+    everything: bool = Query(False, alias="all"),
+    include_proposed: bool = True,
+) -> GraphRead:
+    """The graph of the documents: what an agent of that project (and agent) sees — the general
+    documents, the project's and the agent's — or, with `all=true`, the whole library."""
+    data = graph.read(
+        db,
+        project_id=project_id,
+        agent_ids=[agent_id] if agent_id else [],
+        everything=everything,
+        include_proposed=include_proposed,
+    )
+    nodes = [
+        GraphNodeRead(
+            id=d.id,
+            title=d.title,
+            summary=d.summary,
+            origin=d.origin,
+            source_kind=d.source_kind,
+            review=d.review,
+            scope=d.scope,
+            project_id=d.project_id,
+            agent_id=d.agent_id,
+            mode=d.mode,
+            status=d.status,
+            presence=d.presence,
+            md_tokens=d.md_tokens,
+            topic=data.topic_of.get(d.id),
+        )
+        for d in data.docs
+    ] + [GraphNodeRead(id=i, title=t, summary="", ghost=True) for i, t in data.ghosts]
+    return GraphRead(
+        version=service(request).graph_version,
+        nodes=nodes,
+        edges=[GraphEdgeRead(**vars(e)) for e in data.edges],
+        topics=[
+            GraphTopicRead(
+                id=t.id,
+                name=t.name,
+                size=len(t.doc_ids),
+                loose=t.loose,
+                central=t.central,
+                neighbors=t.neighbors,
+            )
+            for t in data.topics
+        ],
+    )
+
+
+@router.post("/knowledge/explore")
+def explore_graph(payload: ExploreRequest, request: Request, db: DbSession) -> ExplorationRead:
+    """The search tester's «Explorar»: what an agent of that project would reach walking the
+    graph from a question or a document."""
+    nodes, message = graph_tools.explore_data(
+        db,
+        service(request),
+        payload.project_id,
+        [payload.agent_id] if payload.agent_id else [],
+        document=payload.document,
+        query=payload.query,
+        hops=payload.hops,
+        kinds=payload.kinds,
+        origin=payload.origin,
+        level=payload.level,
+        max_docs=payload.max_docs,
+    )
+    return ExplorationRead(nodes=nodes, message=message)
 
 
 @router.get("/knowledge/docs/{doc_id}")
@@ -139,6 +236,35 @@ def delete_doc(doc_id: str, request: Request, db: DbSession) -> None:
     docs.remove(db, docs.get_doc(db, doc_id), images_dir(request))
     db.commit()
     request.app.state.knowledge_events.doc_removed(doc_id)
+    service(request).mark_graph_dirty()
+
+
+@router.post("/knowledge/docs/{doc_id}/accept")
+def accept_proposal(
+    doc_id: str, payload: AcceptProposal, request: Request, db: DbSession
+) -> DocRead:
+    """The person accepts an agent's proposal (with the changes they made, and the level they
+    chose). It goes to the queue and, once indexed, the agents can read it."""
+    doc = docs.get_doc(db, doc_id)
+    proposals.accept(db, doc, payload.model_dump(exclude_unset=True))
+    db.commit()
+    service(request).poke()
+    service(request).mark_graph_dirty()
+    read = read_doc(doc)
+    request.app.state.knowledge_events.doc(read.model_dump(mode="json"))
+    return read
+
+
+@router.post("/knowledge/docs/{doc_id}/reject", status_code=status.HTTP_204_NO_CONTENT)
+def reject_proposal(
+    doc_id: str, request: Request, db: DbSession, payload: RejectProposal | None = None
+) -> None:
+    """The person rejects an agent's proposal: it is deleted; only its fingerprint stays, so the
+    agent is told if it proposes the same again."""
+    proposals.reject(db, docs.get_doc(db, doc_id), payload.reason if payload else "")
+    db.commit()
+    request.app.state.knowledge_events.doc_removed(doc_id)
+    service(request).mark_graph_dirty()
 
 
 @router.post("/knowledge/docs/{doc_id}/relocate")
@@ -245,10 +371,18 @@ def get_settings(db: DbSession) -> KnowledgeSettingsRead:
 
 
 @router.put("/settings/knowledge")
-def put_settings(payload: KnowledgeSettingsWrite, db: DbSession) -> KnowledgeSettingsRead:
+def put_settings(
+    payload: KnowledgeSettingsWrite, request: Request, db: DbSession
+) -> KnowledgeSettingsRead:
     values = payload.model_dump(exclude_unset=True)
+    before = knowledge_config.load(db)
     saved = knowledge_config.save(db, {k: v for k, v in values.items() if v is not None})
     db.commit()
+    if (saved.graph_threshold, saved.graph_max_neighbors) != (
+        before.graph_threshold,
+        before.graph_max_neighbors,
+    ):
+        service(request).mark_graph_dirty()
     return KnowledgeSettingsRead(**asdict(saved))
 
 
@@ -272,6 +406,7 @@ def search_library(payload: SearchRequest, request: Request, db: DbSession) -> S
                 text=hit.text,
                 score=round(hit.score, 5),
                 found_by=hit.found_by,
+                via=hit.via,
                 images=hit.images,
             )
             for hit in hits

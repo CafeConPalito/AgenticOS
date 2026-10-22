@@ -176,3 +176,63 @@ def test_an_agent_uses_a_pdf_of_the_project_to_answer(tmp_path: Path):
         assert "search_knowledge" in names and "read_knowledge" in names
         detail = next(e["detail"] for e in events if e["name"] == "search_knowledge")
         assert "manual.pdf" in detail  # the run says which documents it consulted
+
+
+def test_an_agent_proposes_knowledge_and_walks_the_graph(tmp_path: Path):
+    """Phase 15 (CA1, CA12, CA16): the whole flow with a real run — also with the packaged app.
+    The fake CLI proposes a guide based on the project's PDF; the person accepts it from the
+    Inbox's data; a second run finds it, draws the map, explores from the PDF and reads the
+    context with the topics."""
+    from test_hitl_e2e import setup
+
+    manual = tmp_path / "docs" / "manual.pdf"
+    manual.parent.mkdir()
+    shutil.copy(FIXTURES / "manual.pdf", manual)
+    project_folder = tmp_path / "web-claude"
+    with live_server(settings_for(tmp_path)) as server:
+        api = Api(server)
+        agent, project = setup(api, tmp_path, "claude")
+        api.post(
+            "/api/knowledge/docs/files",
+            {"scope": "project", "project_id": project, "paths": [str(manual)]},
+        )
+        assert wait_until(
+            lambda: {d["status"] for d in api.get("/api/knowledge/docs")} == {"ready"}, timeout=120
+        )
+        pdf = api.get("/api/knowledge/docs")[0]
+        before = api.get(f"/api/knowledge/docs/{pdf['id']}/markdown")["markdown"]
+
+        title = "propuesta; PROPONE: Guia de bajas|manual|prop.txt; TERMINA: propuesto"
+        first = api.post("/api/tasks", {"project_id": project, "agent_id": agent, "title": title})
+        api.wait_status(first["id"], "done")
+        assert (project_folder / "prop.txt").read_text("utf-8").startswith("Propuesta registrada")
+
+        [proposal] = api.get("/api/knowledge/docs?review=proposed")
+        assert proposal["origin"] == "agent" and proposal["sources"][0]["id"] == pdf["id"]
+        assert [i for i in api.get("/api/inbox") if i["kind"] == "knowledge"]
+        accepted = api.post(f"/api/knowledge/docs/{proposal['id']}/accept", {})
+        assert accepted["review"] == "none"
+        assert wait_until(
+            lambda: api.get(f"/api/knowledge/docs/{proposal['id']}")["status"] == "ready",
+            timeout=120,
+        )
+        assert api.get(f"/api/knowledge/docs/{pdf['id']}/markdown")["markdown"] == before
+
+        title = (
+            "recorrido; MAPA: mapa.txt; EXPLORA: manual.pdf|2|explora.txt; "
+            "BUSCA: contenido verificado sobre este tema|busca.txt; CONTEXTO: ctx.txt; "
+            "TERMINA: recorrido"
+        )
+        second = api.post("/api/tasks", {"project_id": project, "agent_id": agent, "title": title})
+        done = api.wait_status(second["id"], "done")
+        assert "Mapa del conocimiento: 2 documentos" in (project_folder / "mapa.txt").read_text(
+            "utf-8"
+        )
+        assert "Guia de bajas" in (project_folder / "explora.txt").read_text("utf-8")
+        found = (project_folder / "busca.txt").read_text("utf-8")
+        assert "Guia de bajas" in found and "generado por agente" in found
+        context = (project_folder / "ctx.txt").read_text("utf-8")
+        assert "Temas: " in context and "propose_knowledge" in context
+
+        names = [e["name"] for e in api.get(f"/api/runs/{done['last_run_id']}/events")]
+        assert {"knowledge_map", "explore_knowledge", "search_knowledge"} <= set(names)

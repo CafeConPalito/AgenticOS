@@ -22,6 +22,7 @@ from agentic_os.models import (
     KnowledgeImage,
     KnowledgeMode,
     KnowledgeScope,
+    Origin,
 )
 from agentic_os.services.knowledge import config as knowledge_config
 from agentic_os.services.knowledge import search
@@ -38,6 +39,61 @@ Documentos que la persona ha puesto a tu alcance. Los marcados «completo» los 
 Para los demás, o para comprobar un dato, usa `search_knowledge` (busca por significado y por \
 códigos exactos) y `read_knowledge` (lee un documento, una página, una hoja o un apartado). \
 Las imágenes salen como rutas de fichero que puedes abrir."""
+GENERATED = "generado por agente"
+GENERATED_NOTE = (
+    "Los marcados «generado por agente» son síntesis que otro agente propuso y la persona "
+    "aceptó: fíate más de las fuentes originales."
+)
+PROPOSE_NOTE = (
+    "Si aprendes algo nuevo y comprobado que aquí no está, puedes proponerlo con "
+    "`propose_knowledge` (nunca modifica un documento: crea otro vinculado, y la persona lo "
+    "revisa antes de que nadie lo use)."
+)
+
+
+GRAPH_NOTE = (
+    "Los documentos están enlazados (derivados de otros, o parecidos): `knowledge_map` muestra "
+    "los temas, `explore_knowledge` recorre los vecinos de un documento o de una búsqueda y "
+    "`related_knowledge` lista los de uno."
+)
+TOPICS_SHOWN = 8
+TOPIC_NAME_MAX = 40
+
+
+def topics_line(db: Session, docs: list[KnowledgeDoc]) -> str:
+    """«Temas: Celery (4), Docker (3)…» for the index; empty when nothing is linked."""
+    from agentic_os.services.knowledge import graph as graph_module
+    from agentic_os.services.knowledge import graph_search  # it imports this package's search
+
+    key = (graph_module.VERSION, tuple(sorted(d.id for d in docs)))
+    if key in _TOPICS_LINES:
+        return _TOPICS_LINES[key]
+    line = _topics_line(db, docs, graph_search)
+    _TOPICS_LINES.clear()  # only the latest is worth keeping
+    _TOPICS_LINES[key] = line
+    return line
+
+
+_TOPICS_LINES: dict[tuple, str] = {}
+
+
+def _topics_line(db: Session, docs: list[KnowledgeDoc], graph_search) -> str:
+    graph = graph_search.Adjacency.build(db, docs)
+    if not graph.related and not graph.derived:
+        return ""
+    found = [t for t in graph.topics({d.id: d.title for d in docs}) if not t.loose]
+    if not found:
+        return ""
+    shown = ", ".join(
+        f"{t.name.split(' · ')[0][:TOPIC_NAME_MAX]} ({len(t.doc_ids)})"
+        for t in found[:TOPICS_SHOWN]
+    )
+    more = f" y {len(found) - TOPICS_SHOWN} más" if len(found) > TOPICS_SHOWN else ""
+    return f"Temas: {shown}{more}."
+
+
+def is_generated(doc: KnowledgeDoc) -> bool:
+    return doc.origin == Origin.AGENT
 
 
 def images_folder(data_dir: Path) -> Path:
@@ -141,13 +197,23 @@ def knowledge_section(
         return ""
     limits = knowledge_config.load(db)
     whole = plan(docs, limits.context_budget, limits.small_doc_tokens)
-    lines = [HEADER, ""]
+    header = HEADER
+    if any(is_generated(d) for d in docs):
+        header += " " + GENERATED_NOTE
+    if limits.proposals_enabled:
+        header += " " + PROPOSE_NOTE
+    topics = topics_line(db, docs)
+    if topics:
+        header += " " + GRAPH_NOTE + " " + topics
+    lines = [header, ""]
     for doc in docs:
         facts = [
             LEVELS.get(doc.scope, doc.scope),
             "completo" if doc.id in whole else "solo búsqueda",
             f"~{doc.md_tokens} tokens",
         ]
+        if is_generated(doc):
+            facts.insert(1, GENERATED)
         if doc.image_count:
             facts.append("1 imagen" if doc.image_count == 1 else f"{doc.image_count} imágenes")
         extra = f" — {doc.description}" if doc.description else ""

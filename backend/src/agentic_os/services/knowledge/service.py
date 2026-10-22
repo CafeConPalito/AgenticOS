@@ -19,14 +19,15 @@ from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from agentic_os.db.base import DEFAULT_WORKSPACE
-from agentic_os.models import DocStatus, KnowledgeDoc
+from agentic_os.models import DocStatus, KnowledgeDoc, Review
 from agentic_os.schemas.knowledge import read_doc
 from agentic_os.services.knowledge import config as knowledge_config
 from agentic_os.services.knowledge import context as knowledge_context
-from agentic_os.services.knowledge import describe, embeddings, search
+from agentic_os.services.knowledge import describe, embeddings, graph, search
 from agentic_os.services.knowledge.docs import IN_PROGRESS
 from agentic_os.services.knowledge.errors import KnowledgeError
 from agentic_os.services.knowledge.events import KnowledgeEvents
+from agentic_os.services.knowledge.graph_search import Adjacency
 from agentic_os.services.knowledge.pipeline import Pipeline, model_spec
 from agentic_os.services.knowledge.worker import InlineWorker, ProcessWorker, Worker
 from agentic_os.services.localmodels import catalog, selection
@@ -36,6 +37,7 @@ from agentic_os.services.system_stats import Sampler, SamplerThread
 
 log = structlog.get_logger()
 
+GRAPH_DEBOUNCE = 0.4  # seconds to wait for more changes before recomputing the links
 POLL_SECONDS = 2.0  # how often an idle thread looks for documents nobody poked it about
 MODES = ("subprocess", "inline", "off")
 QUERY_IDLE_SECONDS = 300.0  # the worker that embeds questions stays ready for this long
@@ -79,6 +81,11 @@ class KnowledgeService:
         self._query_lock = threading.Lock()
         self._reindexing = False
         self._reindex_again = False
+        self._graph_dirty = threading.Event()
+        self._graph_lock = threading.Lock()  # one recompute at a time
+        self._graph_announce = False  # something other than the links changed too
+        self._graph_thread: threading.Thread | None = None
+        self.graph_version = 0
 
     def _llama_for(self, engine: CatalogEntry, vision: CatalogEntry, threads: int) -> LlamaServer:
         """The `llama-server` for this vision model: one at a time, kept between documents."""
@@ -106,6 +113,11 @@ class KnowledgeService:
         with self.sessions() as db:
             count = knowledge_config.load(db).concurrency
         self.reindex()  # documents indexed with another model (or none) than the chosen one
+        self._graph_thread = threading.Thread(
+            target=self._graph_loop, name="knowledge-graph", daemon=True
+        )
+        self._graph_thread.start()
+        self.mark_graph_dirty()
         # The machine's load, once a second while there is work.
         self._sampling = SamplerThread(self.events.publish, lambda: bool(self._active))
         self._sampling.start()
@@ -124,11 +136,15 @@ class KnowledgeService:
     def stop(self) -> None:
         self._stop.set()
         self._wake.set()
+        self._graph_dirty.set()
         for worker in self._workers:
             with contextlib.suppress(Exception):
                 worker.close()
         for thread in self._threads:
             thread.join(timeout=5)
+        if self._graph_thread is not None:
+            self._graph_thread.join(timeout=5)
+            self._graph_thread = None
         self._threads.clear()
         self._workers.clear()
         with self._query_lock:
@@ -217,6 +233,27 @@ class KnowledgeService:
                 return None
         return vectors[0]
 
+    def embed_passages(self, texts: list[str]) -> np.ndarray | None:
+        """The vectors of some passages (a proposal's chunks), or None without a model. Uses the
+        worker that embeds questions, so it never waits behind a long indexing."""
+        entry = self.embedding_model()
+        if entry is None or not texts:
+            return None
+        with self._query_lock:
+            if self._query_worker is None:
+                self._query_worker = (
+                    ProcessWorker(idle_seconds=QUERY_IDLE_SECONDS)
+                    if self.mode == "subprocess"
+                    else self._factory()
+                )
+            try:
+                return embeddings.embed(
+                    self._query_worker, model_spec(self.data_dir, entry), texts, "passage"
+                )
+            except KnowledgeError as error:
+                log.warning("knowledge_passage_embedding_failed", message=error.message)
+                return None
+
     def search(
         self,
         db: Session,
@@ -224,16 +261,25 @@ class KnowledgeService:
         project_id: str | None,
         agent_ids: list[str],
         limit: int = search.DEFAULT_LIMIT,
+        use_graph: bool = True,
+        docs: list[KnowledgeDoc] | None = None,
+        adjacency: Adjacency | None = None,
     ) -> list[search.Hit]:
-        """What an agent of `project_id` (and `agent_ids`) finds for `query`."""
+        """What an agent of `project_id` (and `agent_ids`) finds for `query`. With `use_graph`,
+        neighbours of the best results that also fit the question are added after them."""
         entry = self.embedding_model()
+        if docs is None:  # the caller may already have them (and the links) from a view
+            docs = search.visible_docs(db, project_id, agent_ids)
+        expand = knowledge_config.load(db).graph_expand if use_graph else 0
         return search.search(
             db,
             query,
-            search.visible_docs(db, project_id, agent_ids),
+            docs,
             limit=limit,
             embed_query=self.embed_query if entry else None,
             model=entry.id if entry else None,
+            graph=(adjacency or Adjacency.build(db, docs)) if expand and entry else None,
+            expand=expand,
         )
 
     # ----------------------------------------------------------------------- reindex
@@ -248,6 +294,7 @@ class KnowledgeService:
                     select(KnowledgeDoc.id).where(
                         KnowledgeDoc.workspace_id == DEFAULT_WORKSPACE,
                         KnowledgeDoc.status == DocStatus.READY,
+                        KnowledgeDoc.review == Review.NONE,  # a proposal has no index yet
                         KnowledgeDoc.markdown != "",
                         KnowledgeDoc.embed_model != entry.id,
                     )
@@ -274,6 +321,8 @@ class KnowledgeService:
         finally:
             if worker is None:
                 own.close()
+        if done:
+            self.refresh_graph_now()
         return done
 
     def reindex(self) -> None:
@@ -302,12 +351,56 @@ class KnowledgeService:
             with self._lock:
                 self._reindexing = False
         self.events.queue(self.state())
+        self.mark_graph_dirty(announce=False)
 
     def system(self) -> dict:
         """The machine's load now. The first reading of a rate is 0: ask again a second later."""
         if self._sampler is None:
             self._sampler = Sampler()
         return self._sampler.sample()
+
+    # ------------------------------------------------------------------------- the graph
+    def mark_graph_dirty(self, *, announce: bool = True) -> None:
+        """Something changed that the links between documents depend on (a document was indexed,
+        removed, proposed…): they are recomputed soon, once for a burst of changes. `announce`:
+        the screens must read the graph again even if no link moved (a document appeared or was
+        removed); without it they are told only when a link changed."""
+        if announce:
+            self._graph_announce = True
+        self._graph_dirty.set()
+
+    def refresh_graph_now(self) -> None:
+        """Recomputes the «related» links and tells the screens (the tests call this directly)."""
+        with self._graph_lock:
+            entry = self.embedding_model()
+            announce, self._graph_announce = self._graph_announce, False
+            with self.sessions() as db:
+                limits = knowledge_config.load(db)
+                raw = float(entry.usage.get("related_raw", 0.9)) if entry else 0.9
+                changed = graph.recompute(
+                    db,
+                    entry.id if entry else None,
+                    threshold=limits.graph_threshold,
+                    max_neighbors=limits.graph_max_neighbors,
+                    raw_threshold=raw,
+                )
+                db.commit()
+            if changed or announce:
+                graph.VERSION += 1
+                self.graph_version = graph.VERSION
+                self.events.graph(self.graph_version)
+
+    def _graph_loop(self) -> None:
+        while not self._stop.is_set():
+            self._graph_dirty.wait()
+            if self._stop.is_set():
+                break
+            self._stop.wait(GRAPH_DEBOUNCE)
+            self._graph_dirty.clear()
+            try:
+                self.refresh_graph_now()
+            except Exception:
+                log.exception("knowledge_graph_failed")
 
     # ------------------------------------------------------------------- the queue
     def claim_next(self) -> str | None:
@@ -353,6 +446,7 @@ class KnowledgeService:
             with self._lock:
                 self._active.discard(doc_id)
             self.events.queue(self.state())
+            self.mark_graph_dirty()
 
     def _loop(self, pipeline: Pipeline) -> None:
         while not self._stop.is_set():
@@ -376,4 +470,6 @@ class KnowledgeService:
         finally:
             if worker is None:
                 own.close()
+        if done:
+            self.refresh_graph_now()
         return done

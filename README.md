@@ -162,12 +162,22 @@ La biblioteca da a los agentes documentos tuyos ([ADR 0021](docs/adr/0021-knowle
 - **Mientras procesa** se ve el progreso de cada documento y el uso de CPU, GPU y memoria; la cola se puede pausar.
 - Ajustes › **Conocimiento** (límites y descripción de imágenes) y › **Modelos locales** (descargar, elegir y borrar; `llama.cpp` no viene en el instalador, se descarga aquí).
 
+### Propuestas de los agentes y grafo
+Los agentes también pueden **ampliar** la biblioteca y recorrerla como un grafo ([ADR 0022](docs/adr/0022-knowledge-graph.md)).
+- **Proponer**: con `propose_knowledge`, un agente de cualquier CLI propone un documento Markdown nuevo, vinculado a los que usó («derivado de»). **Nunca modifica** un documento existente. Queda «Propuesto»: nadie lo lee hasta que lo aceptes. Aparece en la **Inbox** («Conocimiento propuesto») y en la biblioteca (filtro «Propuestos»).
+- **Revisar**: puedes editar el texto, elegir el nivel (el agente solo sugiere) y **Aceptar** (se indexa sin conversión y queda marcado «Generado por agente», con su procedencia en la ficha) o **Rechazar** (se borra; el agente es avisado si repite la propuesta). Una versión nueva de lo que propuso el mismo agente convive con la anterior hasta que pulses «Reemplazar».
+- **Controles**: máximo de propuestas por ejecución, tamaño máximo, aviso de duplicados (mismo texto o título, o el mismo contenido con otras palabras) y un interruptor para apagarlas, en Ajustes › Conocimiento.
+- **Grafo**: pestaña «Grafo» de cada biblioteca. Un nodo por documento (su aspecto dice si es un fichero, una web, una imagen, algo generado por un agente o una propuesta pendiente; el borde, el nivel), flechas «derivado de» y líneas discontinuas «relacionado» (parecido de contenido, calculado en local con los vectores que ya existen). Filtros, interruptor «Toda la biblioteca», resaltado de lo que responde a una pregunta, clic para abrir y doble clic para ver un vecindario.
+- **El grafo ayuda a buscar**: `search_knowledge` lista los vecinos de cada resultado y añade los que también responden; y los agentes tienen `knowledge_map` (temas), `related_knowledge`, `explore_knowledge` (hasta 3 saltos) y `knowledge_path`, todas de solo lectura y limitadas a lo que ese agente puede leer. El probador de búsqueda tiene los modos «Búsqueda», «Explorar» y «Mapa».
+
 ## API (backend)
 | Ruta | Para qué |
 |---|---|
 | `GET /api/health` | Estado y versión |
 | `/api/knowledge/docs`, `POST …/docs/files · url`, `PATCH/DELETE …/docs/{id}`, `POST …/docs/{id}/relocate · reprocess · open · reveal`, `GET …/docs/{id}/markdown · images · original` | Documentos de la biblioteca: añadir por ruta o dirección, editar, mover de nivel, reubicar, reprocesar y verlos |
-| `POST /api/knowledge/search`, `GET /api/knowledge/queue · system`, `POST …/queue/pause · resume`, `WS /api/knowledge/events` | Probar la búsqueda, cola, carga del equipo y eventos en vivo |
+| `POST /api/knowledge/search · explore`, `GET /api/knowledge/queue · system`, `POST …/queue/pause · resume`, `WS /api/knowledge/events` | Probar la búsqueda y la exploración del grafo, cola, carga del equipo y eventos en vivo |
+| `POST /api/knowledge/docs/{id}/accept · reject`, `GET /api/knowledge/docs?review=proposed&origin=agent` | Revisar las propuestas de los agentes |
+| `GET /api/knowledge/graph?project_id&agent_id&all` | Grafo de documentos: nodos, vínculos «derivado de» y «relacionado» y temas |
 | `GET/PUT /api/settings/knowledge`, `/api/local-models`, `GET/PUT /api/settings/local-models · huggingface-token` | Ajustes de la biblioteca, modelos y motores locales y su selección |
 | `/api/agents`, `/api/agents/{id}`, `POST /api/agents/{id}/duplicate`, `GET /api/agent-templates` | Agentes y plantillas |
 | `/api/projects`, `/api/projects/{id}`, `POST /api/projects/{id}/open` | Proyectos (con el estado git calculado al leerlos) |

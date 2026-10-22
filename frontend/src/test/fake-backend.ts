@@ -33,7 +33,9 @@ import type { ProjectRepo } from '@/api/repos'
 import type { HfToken, LocalModel, ModelSelection } from '@/api/local-models'
 import type {
   DocImage,
+  ExplorationResult,
   KnowledgeDoc,
+  KnowledgeGraph,
   KnowledgeSettings,
   QueueState,
   SearchHit,
@@ -357,6 +359,11 @@ export function makeKnowledgeDoc(overrides: Partial<KnowledgeDoc> = {}): Knowled
     description: '',
     mode: 'auto',
     describe_images: null,
+    origin: 'user',
+    review: 'none',
+    summary: '',
+    provenance: null,
+    sources: [],
     source_kind: 'file',
     path: 'D:\\docs\\manual.pdf',
     url: null,
@@ -886,6 +893,10 @@ export function createFakeBackend(
     knowledgeImages?: Record<string, DocImage[]>
     /** What a search answers. */
     searchHits?: SearchHit[]
+    /** The graph of the documents (phase 15); by default, one node per document and no links. */
+    graph?: KnowledgeGraph
+    /** What «Explorar» answers: the documents reached, with the path to each. */
+    exploration?: ExplorationResult
     queue?: Partial<QueueState>
     system?: SystemLoad
     knowledgeSettings?: Partial<KnowledgeSettings>
@@ -1523,6 +1534,12 @@ export function createFakeBackend(
     describer_cli: '',
     describer_account: '',
     describer_model: '',
+    proposals_enabled: true,
+    proposals_per_run: 3,
+    proposals_max_tokens: 20000,
+    graph_threshold: 0.2,
+    graph_max_neighbors: 8,
+    graph_expand: 3,
     ...(seed.knowledgeSettings ?? {}),
   }
 
@@ -1611,10 +1628,40 @@ export function createFakeBackend(
           (d) =>
             (!scope || d.scope === scope) &&
             (!query.get('project_id') || d.project_id === query.get('project_id')) &&
-            (!query.get('agent_id') || d.agent_id === query.get('agent_id')),
+            (!query.get('agent_id') || d.agent_id === query.get('agent_id')) &&
+            (!query.get('review') || d.review === query.get('review')) &&
+            (!query.get('origin') || d.origin === query.get('origin')),
         ),
       )
     }
+    if (path === '/api/knowledge/graph')
+      return json(
+        200,
+        seed.graph ?? {
+          version: 1,
+          nodes: library.map((d) => ({
+            id: d.id,
+            title: d.title,
+            summary: d.summary,
+            ghost: false,
+            origin: d.origin,
+            source_kind: d.source_kind,
+            review: d.review,
+            scope: d.scope,
+            project_id: d.project_id,
+            agent_id: d.agent_id,
+            mode: d.mode,
+            status: d.status,
+            presence: d.presence,
+            md_tokens: d.md_tokens,
+            topic: null,
+          })),
+          edges: [],
+          topics: [],
+        },
+      )
+    if (path === '/api/knowledge/explore')
+      return json(200, seed.exploration ?? { nodes: [], message: '' })
     if (path === '/api/knowledge/docs/files') {
       const items = (body.paths as string[]).map((p) => {
         if (p.includes('enorme'))
@@ -1682,6 +1729,23 @@ export function createFakeBackend(
         return apiError(409, 'different_content')
       Object.assign(doc, { path: body.path, presence: 'ok' })
       return json(200, { doc, reprocess: String(body.path).includes('otro') })
+    }
+    if (action === 'accept') {
+      if (doc.review !== 'proposed') return apiError(409, 'not_proposed')
+      const { replace: _replace, ...changes } = body
+      void _replace
+      Object.assign(doc, changes, { review: 'none', status: 'queued', updated_at: now() })
+      if (doc.provenance) doc.provenance = { ...doc.provenance, decided_at: now() }
+      for (const item of inbox)
+        if (item.knowledge_doc_id === doc.id) Object.assign(item, { status: 'resolved' })
+      return json(200, doc)
+    }
+    if (action === 'reject') {
+      if (doc.review !== 'proposed') return apiError(409, 'not_proposed')
+      library.splice(library.indexOf(doc), 1)
+      for (const item of inbox)
+        if (item.knowledge_doc_id === doc.id) Object.assign(item, { status: 'resolved' })
+      return json(204, null)
     }
     if (action === 'open' || action === 'reveal') return json(204, null)
     return null

@@ -41,6 +41,7 @@ try {
         --collect-all courlan `
         --collect-all htmldate `
         --collect-submodules rapidocr `
+        --collect-submodules networkx `
         --add-data "$rapidocr\config.yaml;rapidocr" `
         --add-data "$rapidocr\default_models.yaml;rapidocr" `
         --exclude-module pandas `

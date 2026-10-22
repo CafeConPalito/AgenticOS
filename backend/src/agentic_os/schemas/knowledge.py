@@ -9,7 +9,9 @@ from agentic_os.models import (
     KnowledgeDoc,
     KnowledgeMode,
     KnowledgeScope,
+    Origin,
     Presence,
+    Review,
     SourceKind,
 )
 from agentic_os.services.knowledge.formats import Viewer, extension, viewer_of
@@ -52,11 +54,56 @@ class DocUpdate(BaseModel):
     agent_id: str | None = None
 
 
+class AcceptProposal(BaseModel):
+    """What the person decided about a proposal: everything is optional (accept it as it is).
+    `scope` (with its owner) picks the level; `replace` deletes the version it replaces once the
+    new one is ready."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    title: Title | None = None
+    description: str | None = None
+    markdown: str | None = None
+    scope: KnowledgeScope | None = None
+    project_id: str | None = None
+    agent_id: str | None = None
+    replace: bool = False
+
+
+class RejectProposal(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    reason: str = Field(default="", max_length=500)
+
+
 class Relocate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     path: PathStr
     confirm: bool = False
+
+
+class ProvenanceRead(BaseModel):
+    """Who proposed an agent's document (phase 15)."""
+
+    agent_id: str | None
+    agent_name: str
+    run_id: str | None
+    task_id: str | None
+    task_title: str
+    proposed_at: datetime
+    suggested_scope: str  # "" when the agent did not suggest a level
+    replaces_id: str | None  # the version of its own that this one would replace
+    decided_at: datetime | None
+    edited: bool  # the person changed it before accepting
+
+
+class SourceRead(BaseModel):
+    """«Derived from»: `id` is None when that document was deleted (`title` remembers it)."""
+
+    id: str | None
+    title: str
+    removed: bool
 
 
 class DocRead(BaseModel):
@@ -70,6 +117,11 @@ class DocRead(BaseModel):
     description: str
     mode: KnowledgeMode
     describe_images: bool | None
+    origin: Origin
+    review: Review
+    summary: str
+    provenance: ProvenanceRead | None
+    sources: list[SourceRead]
     source_kind: SourceKind
     path: str | None
     url: str | None
@@ -103,6 +155,18 @@ def read_doc(doc: KnowledgeDoc) -> DocRead:
         description=doc.description,
         mode=doc.mode,
         describe_images=doc.describe_images,
+        origin=doc.origin,
+        review=doc.review,
+        summary=doc.summary,
+        provenance=(
+            ProvenanceRead.model_validate(doc.provenance, from_attributes=True)
+            if doc.provenance
+            else None
+        ),
+        sources=[
+            SourceRead(id=s.source_id, title=s.source_title, removed=s.source_id is None)
+            for s in doc.sources
+        ],
         source_kind=doc.source_kind,
         path=doc.path,
         url=doc.url,
@@ -174,7 +238,8 @@ class HitRead(BaseModel):
     location: str  # "p. 12", "diapositiva 3", "hoja Ventas", or ""
     text: str
     score: float
-    found_by: str  # meaning | words | both
+    found_by: str  # meaning | words | both | graph (a neighbour of a good result)
+    via: str  # for «graph»: how it was reached from a result; otherwise empty
     images: list[int]  # numbers of the pictures it shows
 
 
@@ -196,6 +261,12 @@ class KnowledgeSettingsRead(BaseModel):
     describer_cli: str  # "" (the first CLI with a session), claude or agy
     describer_account: str
     describer_model: str
+    proposals_enabled: bool  # agents may propose knowledge documents
+    proposals_per_run: int
+    proposals_max_tokens: int
+    graph_threshold: float  # centered cosine from which two documents are «related»
+    graph_max_neighbors: int
+    graph_expand: int  # documents a search may add from the graph
 
 
 class KnowledgeSettingsWrite(BaseModel):
@@ -213,9 +284,90 @@ class KnowledgeSettingsWrite(BaseModel):
     describer_cli: Literal["", "claude", "agy"] | None = None
     describer_account: str | None = Field(default=None, max_length=80)
     describer_model: str | None = Field(default=None, max_length=80)
+    proposals_enabled: bool | None = None
+    proposals_per_run: int | None = Field(default=None, ge=1, le=20)
+    proposals_max_tokens: int | None = Field(default=None, ge=500, le=100_000)
+    graph_threshold: float | None = Field(default=None, ge=0.05, le=0.90)
+    graph_max_neighbors: int | None = Field(default=None, ge=1, le=30)
+    graph_expand: int | None = Field(default=None, ge=0, le=10)
 
 
 class MarkdownRead(BaseModel):
     title: str
     markdown: str
     tokens: int
+
+
+class ExploreRequest(BaseModel):
+    """«Explorar» in the search tester: walk the graph from a question or a document, as an agent
+    of that project (and agent) would."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    query: str = Field(default="", max_length=1000)
+    document: str = Field(default="", max_length=300)
+    project_id: str | None = None
+    agent_id: str | None = None
+    hops: int = Field(default=2, ge=1, le=3)
+    kinds: Literal["all", "derived", "related"] = "all"
+    origin: Literal["all", "user", "agent"] = "all"
+    level: Literal["", "general", "project", "agent"] = ""
+    max_docs: int = Field(default=15, ge=1, le=30)
+
+
+class ExploredNodeRead(BaseModel):
+    id: str
+    title: str
+    depth: int  # 0: a starting point
+    strength: float
+    path: list[str]  # titles, from the starting point
+    reasons: list[str]  # «derivado de», «origen de», «relacionado 0,52»
+
+
+class ExplorationRead(BaseModel):
+    nodes: list[ExploredNodeRead]
+    message: str  # why nothing was explored, in words; empty otherwise
+
+
+# ------------------------------------------------------------------------------ the graph
+class GraphNodeRead(BaseModel):
+    """A document as a node. A «ghost» is a source that was deleted: only its name is left."""
+
+    id: str
+    title: str
+    summary: str
+    ghost: bool = False
+    origin: Origin = Origin.USER
+    source_kind: SourceKind | None = None
+    review: Review = Review.NONE
+    scope: KnowledgeScope | None = None
+    project_id: str | None = None
+    agent_id: str | None = None
+    mode: KnowledgeMode | None = None
+    status: DocStatus | None = None
+    presence: Presence | None = None
+    md_tokens: int = 0
+    topic: int | None = None
+
+
+class GraphEdgeRead(BaseModel):
+    kind: Literal["derived", "related"]
+    source: str  # «derived»: the document it was derived from
+    target: str
+    weight: float
+
+
+class GraphTopicRead(BaseModel):
+    id: int
+    name: str
+    size: int
+    loose: bool  # the «Sueltos» group: documents with no link
+    central: list[str]  # ids of its most linked documents
+    neighbors: list[int]  # topics it is linked to
+
+
+class GraphRead(BaseModel):
+    version: int  # changes when the links do; the screen reads again on a `graph` event
+    nodes: list[GraphNodeRead]
+    edges: list[GraphEdgeRead]
+    topics: list[GraphTopicRead]
