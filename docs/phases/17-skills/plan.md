@@ -291,7 +291,7 @@ Las reglas de Agentic OS explican en una línea cuándo proponer: una forma de t
 ## Tareas (en orden)
 1. [x] **Bloque 0 · Spikes** S1–S5 hechos; evidencias y cambios al diseño anotados arriba (skills del repo y CA5 sin modelo aprobados por el usuario).
 2. [x] **Bloque 1 · Datos y almacén**: migración `0019`, modelos, `InboxKind.SKILL`, `store.py`, `format.py` y uso de disco.
-3. [ ] **Bloque 2 · Biblioteca (backend)**: CRUD con versiones, validación, historial y diff, restaurar, importar (carpeta, `.zip`, CLIs), exportar, vectores y su reindexado, API.
+3. [x] **Bloque 2 · Biblioteca (backend)**: CRUD con versiones, validación, historial y diff (`difflib`), restaurar, importar por ruta local (carpeta, `.zip`, `SKILL.md`) y de los CLIs con nivel por skill, exportar, vectores (al crear o cambiar la descripción, y tras reindexar o al arrancar) y API `/api/skills…`. Cambios: `SkillError` es un `ApiError` (422; 409 si el nombre ya existe o no hay cambios); `Skill.model_invocable` como columna (en la migración 0019); la importación va por ruta, como los documentos de la fase 14.
 4. [ ] **Bloque 3 · Selección y uso (backend)**: visibles y precedencia, modos por agente y etapa, candidatas, sección «Skills», materialización, `use_skill` y `read_skill_file`, `RunSkill`, probador, API de modos y de la ejecución.
 5. [ ] **Bloque 4 · Nativo**: lo que confirmen S1 y S2 en los adapters, *hook* de la herramienta `Skill` y *snapshots* de la configuración del usuario.
 6. [ ] **Bloque 5 · Propuestas (backend)**: `propose_skill`, controles, Inbox, aprobar (con `opened_files`) y rechazar, versión nueva sobre una existente, reglas.

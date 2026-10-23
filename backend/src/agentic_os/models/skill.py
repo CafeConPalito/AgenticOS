@@ -120,6 +120,8 @@ class Skill(IdMixin, WorkspaceMixin, TimestampMixin, Base):
     current_version_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     # Copy of the current version's description: listing and selecting need no join.
     description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    # False with `disable-model-invocation: true`: never a candidate, only asked for by name.
+    model_invocable: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     # Vector of «name + description» with the active meaning model (spike S4).
     vector: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
     vector_model: Mapped[str] = mapped_column(String(80), nullable=False, default="")

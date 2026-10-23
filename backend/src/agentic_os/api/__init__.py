@@ -23,6 +23,7 @@ from agentic_os.api import (
     run_git,
     runs,
     settings,
+    skills,
     tasks,
     teams,
     usage,
@@ -39,6 +40,7 @@ api_router.include_router(git.router)
 api_router.include_router(git_more.router)
 api_router.include_router(forges.router)
 api_router.include_router(knowledge.router)
+api_router.include_router(skills.router)
 api_router.include_router(local_models.router)
 api_router.include_router(dictation.router)
 api_router.include_router(memory.router)

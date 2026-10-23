@@ -28,9 +28,9 @@ def _skill(skill_id: str, name: str = "revision", scope: str = "general", **leve
     agent = f"'{level['agent']}'" if "agent" in level else "NULL"
     return (
         "INSERT INTO skills (id, workspace_id, created_at, updated_at, name, scope, project_id,"
-        " agent_id, enabled, review, origin, description, vector_model) VALUES"
+        " agent_id, enabled, review, origin, description, model_invocable, vector_model) VALUES"
         f" ('{skill_id}', 'default', '{NOW}', '{NOW}', '{name}', '{scope}', {project}, {agent},"
-        " 1, 'none', 'user', 'd', '')"
+        " 1, 'none', 'user', 'd', 1, '')"
     )
 
 

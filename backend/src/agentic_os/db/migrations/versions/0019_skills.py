@@ -52,6 +52,7 @@ def upgrade() -> None:
         sa.Column("origin", sa.String(length=8), nullable=False),
         sa.Column("current_version_id", sa.String(length=36), nullable=True),
         sa.Column("description", sa.Text(), nullable=False),
+        sa.Column("model_invocable", sa.Boolean(), nullable=False),
         sa.Column("vector", sa.LargeBinary(), nullable=True),
         sa.Column("vector_model", sa.String(length=80), nullable=False),
         sa.CheckConstraint(

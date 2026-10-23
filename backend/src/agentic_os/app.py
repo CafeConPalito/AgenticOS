@@ -35,6 +35,8 @@ from agentic_os.services.localmodels.downloads import DownloadManager
 from agentic_os.services.mcp_server import mount_app
 from agentic_os.services.runs.manager import RunManager
 from agentic_os.services.scheduler import Scheduler
+from agentic_os.services.skills.library import SkillLibrary, refresh_skill_vectors
+from agentic_os.services.skills.store import SkillStore
 from agentic_os.services.trust import TrustCleaner, account_trust_files, agy_settings, claude_config
 from agentic_os.services.usage import limits as usage_limits
 from agentic_os.services.worktrees import Worktrees
@@ -151,7 +153,24 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         )
         app.state.knowledge_events, app.state.knowledge = knowledge_events, knowledge
         manager.knowledge = knowledge  # the agents' search_knowledge uses its search
+        skills = SkillLibrary(
+            SkillStore(Path(settings.data_dir)),
+            embed=knowledge.embed_passages,
+            model=lambda: entry.id if (entry := knowledge.embedding_model()) else None,
+        )
+        app.state.skills = skills
+        # Skills are selected by their vector: a new model gives them new ones (spike S4).
+        knowledge.after_reindex.append(
+            lambda: refresh_skill_vectors(app.state.sessionmaker, skills)
+        )
         knowledge.start()
+        if knowledge.mode != "off":
+            threading.Thread(
+                target=refresh_skill_vectors,
+                args=(app.state.sessionmaker, skills),
+                name="skills-vectors",
+                daemon=True,
+            ).start()
         models = DownloadManager(
             Path(settings.data_dir),
             knowledge_events,
