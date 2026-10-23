@@ -1164,6 +1164,7 @@
       "limits": "Límites diarios",
       "git": "Git",
       "knowledge": "Conocimiento",
+      "dictation": "Dictado",
       "models": "Modelos locales",
       "cleanup": "Limpieza",
       "about": "Acerca de"
@@ -1239,6 +1240,57 @@
       "proposals": "Permitir que los agentes propongan conocimiento",
       "proposalsHelp": "Un agente puede proponer un documento nuevo, vinculado a los que usó. Nunca modifica los existentes y tú decides si se acepta.",
       "graphTitle": "Grafo"
+    },
+    "dictation": {
+      "title": "Dictado por voz",
+      "description": "Dicta en lugar de escribir en los campos de texto largos. La voz se transcribe en tu equipo con Whisper: el audio no sale de aquí y funciona sin conexión.",
+      "enabled": "Activar el dictado",
+      "enabledHelp": "Si lo desactivas, los campos no muestran el micrófono.",
+      "model": "Modelo de voz",
+      "modelNone": "Ninguno descargado",
+      "modelHelp": "Se elige y se descarga en Modelos locales.",
+      "manageModels": "Gestionar modelos",
+      "language": "Idioma",
+      "languageAuto": "Detectar el idioma",
+      "languages": {
+        "es": "Español",
+        "en": "Inglés",
+        "ca": "Catalán",
+        "gl": "Gallego",
+        "eu": "Euskera",
+        "fr": "Francés",
+        "de": "Alemán",
+        "it": "Italiano",
+        "pt": "Portugués"
+      },
+      "shortcut": "Atajo para dictar",
+      "shortcutHelp": "Mantén pulsado el atajo con el cursor en un campo, habla y suéltalo.",
+      "shortcutChange": "Cambiar",
+      "shortcutListening": "Pulsa la combinación…",
+      "shortcutReset": "Restablecer",
+      "microphone": "Micrófono",
+      "microphoneDefault": "El predeterminado del sistema",
+      "microphoneTest": "Probar",
+      "microphoneTesting": "Hablando… {{seconds}} s",
+      "microphoneOk": "Se oye bien.",
+      "microphoneSilent": "No se oye nada: revisa el micrófono.",
+      "permission": "El micrófono está bloqueado para la aplicación.",
+      "permissionHelp": "Concede el permiso y vuelve a probar. Si Windows lo bloquea, abre su configuración de privacidad.",
+      "maxSeconds": "Duración máxima",
+      "maxSecondsHelp": "A los {{seconds}} s se corta y se transcribe lo grabado.",
+      "seconds": "segundos",
+      "vocabulary": "Vocabulario",
+      "vocabularyHelp": "Nombres propios y términos que Whisper debe acertar. Los nombres de tus agentes, proyectos, equipos y etapas se añaden solos.",
+      "vocabularyPlaceholder": "Escribe un término y pulsa Intro",
+      "vocabularyRemove": "Quitar {{term}}",
+      "saved": "Ajustes de dictado guardados",
+      "status": {
+        "ready": "Listo para dictar",
+        "disabled": "Desactivado",
+        "no_model": "Falta descargar un modelo de voz",
+        "engine_missing": "Falta descargar el motor de voz"
+      },
+      "shortcutInvalid": "Usa una combinación con Ctrl, Alt o Mayús, o una tecla de función; si no, escribiría en el campo."
     }
   },
   "usage": {
@@ -1435,6 +1487,45 @@
       "addAccount": "Añadir cuenta"
     }
   },
+  "dictation": {
+    "start": "Dictar",
+    "stop": "Terminar de dictar",
+    "recording": "Grabando",
+    "queued": "En cola para transcribir",
+    "transcribing": "Transcribiendo…",
+    "nearLimit": "se cortará pronto",
+    "copied": "El campo ya no está: el texto dictado se ha copiado al portapapeles.",
+    "errors": {
+      "permission": "No hay permiso para usar el micrófono. Concédelo en Ajustes › Dictado.",
+      "no_device": "No se encuentra ningún micrófono. Conecta uno y vuelve a intentarlo.",
+      "failed": "No se pudo usar el micrófono ni transcribir.",
+      "no_speech": "No se ha oído nada. Habla más cerca del micrófono e inténtalo de nuevo.",
+      "disabled": "El dictado está desactivado en Ajustes › Dictado.",
+      "bad_audio": "La grabación no es válida.",
+      "too_long": "La grabación es demasiado larga.",
+      "too_large": "La grabación es demasiado grande.",
+      "not_enough_memory": "No hay memoria libre suficiente para cargar el modelo de voz. Prueba con uno más ligero.",
+      "start_failed": "El motor de voz no pudo arrancar. Mira el registro del backend.",
+      "request_failed": "El motor de voz falló al transcribir.",
+      "transcription_failed": "El motor de voz devolvió una respuesta ilegible.",
+      "no_model": "Descarga un modelo de voz para dictar.",
+      "engine_missing": "Descarga el motor de voz para dictar."
+    },
+    "download": {
+      "title": "Descarga un modelo de voz",
+      "description": "El dictado transcribe en tu equipo, sin enviar el audio a ningún sitio. Hace falta descargar el motor y un modelo una sola vez.",
+      "engine": "Motor de voz",
+      "model": "Modelo recomendado",
+      "total": "Descarga total: {{size}}",
+      "start": "Descargar",
+      "resume": "Reanudar",
+      "downloading": "Descargando…",
+      "another": "Elegir otro modelo",
+      "ready": "Dictado listo: ya puedes usar el micrófono.",
+      "later": "Ahora no"
+    },
+    "space": "Espacio"
+  },
   "shortcuts": {
     "title": "Atajos de teclado",
     "description": "Lista de atajos de teclado",
@@ -1446,7 +1537,8 @@
     "newTask": "Nueva tarea",
     "shortcuts": "Atajos de teclado",
     "dock": "Abrir / cerrar la terminal",
-    "close": "Cerrar diálogo o panel"
+    "close": "Cerrar diálogo o panel",
+    "dictate": "Dictar (mantener pulsado)"
   },
   "palette": {
     "title": "Paleta de comandos",
@@ -2593,7 +2685,11 @@
       },
       "engine": {
         "title": "Motor",
-        "help": "llama.cpp ejecuta los modelos de visión. No viene en el instalador: se descarga aquí."
+        "help": "llama.cpp ejecuta los modelos de visión y whisper.cpp los de voz. No vienen en el instalador: se descargan aquí."
+      },
+      "speech": {
+        "title": "Dictado por voz",
+        "help": "Modelos de Whisper que convierten tu voz en texto, sin salir del equipo. Necesitan el motor whisper.cpp."
       }
     },
     "token": {
@@ -2622,6 +2718,17 @@
       "already_installed": "Ya está descargado.",
       "unsupported_platform": "No hay versión para este sistema.",
       "invalid_model": "Modelo no válido para esta función."
-    }
+    },
+    "speed": {
+      "fast": "Rápido",
+      "medium": "Equilibrado",
+      "slow": "Lento"
+    },
+    "quality": {
+      "basic": "Calidad básica",
+      "good": "Buena calidad",
+      "best": "Mejor calidad"
+    },
+    "speechNote": "{{speed}} · {{quality}}"
   }
 }

@@ -23,11 +23,12 @@ import { ApiError } from '@/lib/api'
 import { errorMessage } from '@/lib/form-errors'
 import { formatBytes } from '@/lib/format'
 
-const KINDS: ModelKind[] = ['embedding', 'ocr', 'vision', 'engine']
-const JOB: Partial<Record<ModelKind, 'embedding' | 'ocr' | 'vision'>> = {
+const KINDS: ModelKind[] = ['embedding', 'ocr', 'vision', 'speech', 'engine']
+const JOB: Partial<Record<ModelKind, 'embedding' | 'ocr' | 'vision' | 'speech'>> = {
   embedding: 'embedding',
   ocr: 'ocr',
   vision: 'vision',
+  speech: 'speech',
 }
 
 function Row({ model }: { model: LocalModel }) {
@@ -79,6 +80,15 @@ function Row({ model }: { model: LocalModel }) {
           </div>
           <div className="text-[12px] text-muted-foreground">
             {model.license} · {formatBytes(model.size)}
+            {model.speed && model.quality && (
+              <>
+                {' · '}
+                {t('localModels.speechNote', {
+                  speed: t(`localModels.speed.${model.speed}`),
+                  quality: t(`localModels.quality.${model.quality}`),
+                })}
+              </>
+            )}
             {!model.available && ` · ${t('localModels.unavailable')}`}
           </div>
         </div>

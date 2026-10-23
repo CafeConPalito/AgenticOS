@@ -3,10 +3,12 @@ import { Outlet, useLocation } from 'react-router'
 import { Toaster } from '@/components/ui/sonner'
 import { CommandPalette } from '@/components/palette/CommandPalette'
 import { ShortcutsDialog } from '@/components/palette/ShortcutsDialog'
+import { DownloadSpeechDialog } from '@/components/dictation/DownloadSpeechDialog'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { useInboxNotifier } from '@/hooks/use-inbox-notifier'
 import { useHealth } from '@/hooks/useHealth'
 import { getApiBaseUrl } from '@/lib/api'
+import { useHoldToDictate } from '@/lib/dictation/hold'
 import { useGlobalShortcuts } from '@/lib/shortcuts'
 import { TerminalDock, useDockShortcut } from '@/components/terminal/TerminalDock'
 import { useDock } from '@/components/terminal/dock-store'
@@ -48,6 +50,7 @@ export function AppShell() {
   const closeNewProject = useDialogs((s) => s.closeNewProject)
   useDockShortcut()
   useGlobalShortcuts()
+  useHoldToDictate()
   useInboxNotifier()
 
   return (
@@ -97,6 +100,7 @@ export function AppShell() {
       <NewProjectDialog open={newProject} onOpenChange={(open) => !open && closeNewProject()} />
       <CommandPalette open={palette} onOpenChange={(open) => !open && closePalette()} />
       <ShortcutsDialog open={shortcuts} onOpenChange={(open) => !open && closeShortcuts()} />
+      <DownloadSpeechDialog />
       <Toaster theme={theme} />
     </TooltipProvider>
   )

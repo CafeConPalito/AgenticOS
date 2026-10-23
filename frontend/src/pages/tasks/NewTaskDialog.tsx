@@ -248,6 +248,7 @@ function NewTaskForm({ onClose, init }: { onClose: () => void; init: NewTaskInit
               <Field label={t('tasks.new.descriptionField')} htmlFor="task-description">
                 <Textarea
                   id="task-description"
+                  dictation
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   onKeyDown={submitOnCtrlEnter}

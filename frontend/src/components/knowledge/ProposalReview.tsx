@@ -234,6 +234,7 @@ function Form({
           <Label htmlFor="proposal-description">{t('knowledge.proposal.descriptionLabel')}</Label>
           <Textarea
             id="proposal-description"
+            dictation
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder={t('knowledge.sheet.descriptionPlaceholder')}

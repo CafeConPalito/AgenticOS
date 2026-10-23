@@ -33,6 +33,7 @@ function NoteEditor({
       <UnsavedChangesGuard when={text !== initial} />
       <Textarea
         aria-label={t('projects.memory.noteLabel')}
+        dictation
         value={text}
         onChange={(e) => setText(e.target.value)}
         placeholder={t('projects.memory.placeholder')}

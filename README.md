@@ -170,6 +170,14 @@ Los agentes también pueden **ampliar** la biblioteca y recorrerla como un grafo
 - **Grafo**: pestaña «Grafo» de cada biblioteca. Un nodo por documento (su aspecto dice si es un fichero, una web, una imagen, algo generado por un agente o una propuesta pendiente; el borde, el nivel), flechas «derivado de» y líneas discontinuas «relacionado» (parecido de contenido, calculado en local con los vectores que ya existen). Filtros, interruptor «Toda la biblioteca», resaltado de lo que responde a una pregunta, clic para abrir y doble clic para ver un vecindario.
 - **El grafo ayuda a buscar**: `search_knowledge` lista los vecinos de cada resultado y añade los que también responden; y los agentes tienen `knowledge_map` (temas), `related_knowledge`, `explore_knowledge` (hasta 3 saltos) y `knowledge_path`, todas de solo lectura y limitadas a lo que ese agente puede leer. El probador de búsqueda tiene los modos «Búsqueda», «Explorar» y «Mapa».
 
+## Dictado por voz
+Dictas en lugar de escribir ([ADR 0023](docs/adr/0023-dictation.md)). La transcripción es **local**: Whisper (`whisper.cpp`) corre en tu equipo, el audio no sale de él, nunca se guarda y funciona sin conexión.
+- **Dónde**: un micrófono en los campos de texto largos (descripción de la tarea, resumen y motivo de rechazo, instrucciones y descripción del agente, memoria del proyecto, prompt de una ejecución, respuestas y rechazos de la Inbox, propuestas y fichas de conocimiento). La respuesta de la Inbox crece con el texto; `Intro` la envía y `Mayús+Intro` hace un salto de línea.
+- **Cómo**: clic en el micrófono para empezar y otro para terminar, o **mantén pulsado `Ctrl+Espacio`** (configurable) con el cursor en el campo, habla y suelta. `Esc` cancela. Se ve el nivel y el tiempo; a los 5 minutos (configurable) se corta y se transcribe lo grabado.
+- **El texto** entra donde estaba el cursor al empezar (o sustituye la selección), aunque sigas escribiendo mientras transcribe. Las transcripciones van de una en una.
+- **Primera vez**: el micrófono ofrece descargar el motor y el modelo recomendado (`Whisper small`, 190 MB) y empieza a usarlo al terminar. En Ajustes › **Modelos locales** hay también uno rápido (`base`) y uno más preciso pero lento (`large-v3 turbo`).
+- **Ajustes › Dictado**: activar, idioma, atajo, micrófono (con prueba de nivel), duración máxima y **vocabulario**. Los nombres de tus agentes, proyectos, equipos y etapas se pasan solos como pista a Whisper para que los acierte.
+
 ## API (backend)
 | Ruta | Para qué |
 |---|---|
@@ -178,6 +186,7 @@ Los agentes también pueden **ampliar** la biblioteca y recorrerla como un grafo
 | `POST /api/knowledge/search · explore`, `GET /api/knowledge/queue · system`, `POST …/queue/pause · resume`, `WS /api/knowledge/events` | Probar la búsqueda y la exploración del grafo, cola, carga del equipo y eventos en vivo |
 | `POST /api/knowledge/docs/{id}/accept · reject`, `GET /api/knowledge/docs?review=proposed&origin=agent` | Revisar las propuestas de los agentes |
 | `GET /api/knowledge/graph?project_id&agent_id&all` | Grafo de documentos: nodos, vínculos «derivado de» y «relacionado» y temas |
+| `POST /api/dictation/transcribe · warmup`, `GET /api/dictation/status`, `GET/PUT /api/settings/dictation` | Dictado por voz: el cuerpo de `transcribe` es el WAV (16 kHz, mono) y devuelve el texto; estado; ajustes |
 | `GET/PUT /api/settings/knowledge`, `/api/local-models`, `GET/PUT /api/settings/local-models · huggingface-token` | Ajustes de la biblioteca, modelos y motores locales y su selección |
 | `/api/agents`, `/api/agents/{id}`, `POST /api/agents/{id}/duplicate`, `GET /api/agent-templates` | Agentes y plantillas |
 | `/api/projects`, `/api/projects/{id}`, `POST /api/projects/{id}/open` | Proyectos (con el estado git calculado al leerlos) |

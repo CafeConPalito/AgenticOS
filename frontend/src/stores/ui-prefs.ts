@@ -12,10 +12,13 @@ interface UiPrefsState {
   singleKeyShortcuts: boolean
   /** The project and agent of the last task created: «Nueva tarea» starts there. */
   lastTaskTarget: TaskTarget | null
+  /** The microphone used to dictate (a browser device id); null: the system's default. */
+  microphoneId: string | null
   /** CLI alerts postponed in this session (not persisted). */
   snoozedAlerts: string[]
   setSingleKeyShortcuts: (value: boolean) => void
   setLastTaskTarget: (target: TaskTarget) => void
+  setMicrophoneId: (id: string | null) => void
   snoozeAlert: (id: string) => void
 }
 
@@ -24,9 +27,11 @@ export const useUiPrefs = create<UiPrefsState>()(
     (set) => ({
       singleKeyShortcuts: true,
       lastTaskTarget: null,
+      microphoneId: null,
       snoozedAlerts: [],
       setSingleKeyShortcuts: (singleKeyShortcuts) => set({ singleKeyShortcuts }),
       setLastTaskTarget: (lastTaskTarget) => set({ lastTaskTarget }),
+      setMicrophoneId: (microphoneId) => set({ microphoneId }),
       snoozeAlert: (id) =>
         set((s) =>
           s.snoozedAlerts.includes(id) ? s : { snoozedAlerts: [...s.snoozedAlerts, id] },
@@ -38,6 +43,7 @@ export const useUiPrefs = create<UiPrefsState>()(
       partialize: (s) => ({
         singleKeyShortcuts: s.singleKeyShortcuts,
         lastTaskTarget: s.lastTaskTarget,
+        microphoneId: s.microphoneId,
       }),
     },
   ),

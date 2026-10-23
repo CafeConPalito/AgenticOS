@@ -33,3 +33,9 @@ Thumbs.db
 
 # Raw captures of the CLI probes (real emails and paths): never committed
 spikes/out/
+
+# Phase 16 spike downloads (engine, models, generated audio)
+spikes/dictation/engine/
+spikes/dictation/models/
+spikes/dictation/samples/
+spikes/dictation/out/

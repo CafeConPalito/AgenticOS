@@ -403,6 +403,7 @@ def test_each_job_uses_its_default_until_the_user_chooses(client: TestClient):
             "embedding": "e5-small",
             "ocr": "ocr-latin",
             "vision": "gemma4-e2b",
+            "speech": "whisper-small",
         }
         selection.choose(db, "embedding", "bge-m3")
         selection.choose(db, "vision", "qwen3.5-2b")
@@ -506,6 +507,7 @@ def test_choosing_models_through_the_api(client: TestClient, fake_catalog):
         "embedding": "small-emb",
         "ocr": "small-ocr",
         "vision": "small-vis",
+        "speech": None,  # the fake catalog has no speech model
         "reindex": False,
     }
     changed = client.put("/api/settings/local-models", json={"embedding": "other-emb"}).json()

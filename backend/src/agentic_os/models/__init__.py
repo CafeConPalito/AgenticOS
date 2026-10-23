@@ -1,6 +1,7 @@
 from agentic_os.models.account import CliAccount, SessionState
 from agentic_os.models.agent import Agent, AgentStatus, Cli, PermissionMode, Tool
 from agentic_os.models.app_state import (
+    DICTATION,
     KNOWLEDGE,
     NOTIFICATIONS,
     SCHEDULER_PAUSED,
@@ -64,6 +65,7 @@ from agentic_os.models.team import Team
 __all__ = [
     "ACTIVE_STATUSES",
     "DEFAULT_MAX_REJECTIONS",
+    "DICTATION",
     "FINISHED_TASK_STATUSES",
     "KNOWLEDGE",
     "NOTIFICATIONS",

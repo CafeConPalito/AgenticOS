@@ -6,6 +6,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { useDictationSettings } from '@/api/dictation'
+import { keycaps } from '@/lib/dictation/shortcut'
 import { SHORTCUTS } from '@/lib/shortcuts'
 import { Kbd } from './Kbd'
 
@@ -20,6 +22,7 @@ export function ShortcutsDialog({
   onOpenChange: (open: boolean) => void
 }) {
   const { t } = useTranslation()
+  const dictation = useDictationSettings().data
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[520px] gap-0 overflow-hidden p-0 sm:max-w-[520px]">
@@ -36,7 +39,13 @@ export function ShortcutsDialog({
               {SHORTCUTS.filter((s) => s.group === group).map((shortcut) => (
                 <div key={shortcut.id} className="flex h-7 items-center gap-2">
                   <span className="flex-1">{t(`shortcuts.${shortcut.label}`)}</span>
-                  <Kbd keys={shortcut.keys} />
+                  <Kbd
+                    keys={
+                      shortcut.id === 'dictate' && dictation?.shortcut
+                        ? keycaps(dictation.shortcut, t('dictation.space'))
+                        : shortcut.keys
+                    }
+                  />
                 </div>
               ))}
             </div>

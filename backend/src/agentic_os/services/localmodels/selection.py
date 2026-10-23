@@ -1,4 +1,4 @@
-"""Which downloaded model is used for each job (embeddings, OCR, picture description).
+"""Which downloaded model is used for each job (embeddings, OCR, picture description, dictation).
 
 Stored in `app_state` (JSON). Until the user chooses, the catalog's default is the choice; a choice
 only takes effect once that model is downloaded.
@@ -16,7 +16,7 @@ from agentic_os.services.localmodels import catalog, store
 from agentic_os.services.localmodels.catalog import CatalogEntry
 
 KEY = "local_models"
-CHOOSABLE = (catalog.EMBEDDING, catalog.OCR, catalog.VISION)
+CHOOSABLE = (catalog.EMBEDDING, catalog.OCR, catalog.VISION, catalog.SPEECH)
 
 
 def stored(db: Session) -> dict[str, str]:

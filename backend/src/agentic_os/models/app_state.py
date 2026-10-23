@@ -9,6 +9,7 @@ USAGE_LIMITS = "usage_limits"  # JSON: {"claude_usd": float | null, "agy_tokens"
 LOG_RETENTION = "log_retention"  # JSON: {"days": int | null} (null: never delete)
 SWITCH_THRESHOLD = "switch_threshold"  # percent of a subscription window that triggers the alert
 KNOWLEDGE = "knowledge"  # JSON: the knowledge library's limits and switches (phase 14)
+DICTATION = "dictation"  # JSON: the dictation settings (phase 16)
 
 
 class AppState(Base):

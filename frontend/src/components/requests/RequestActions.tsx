@@ -28,13 +28,49 @@ import { ChangesButton } from '@/components/changes/ChangesSheet'
 import { DocSheet } from '@/components/knowledge/DocSheet'
 import { useDock } from '@/components/terminal/dock-store'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { api } from '@/lib/api'
 import { errorMessage } from '@/lib/form-errors'
 import { cn } from '@/lib/utils'
 import { ResumeTaskSession } from '@/pages/runs/ResumeSession'
 
 /** What can be done with a pending request, by kind. Shared by Inicio, Peticiones and the task. */
+/** A reply that grows with what is written (up to a few lines) and can be dictated: Enter
+ * sends it, Shift+Enter starts a new line. */
+function GrowingField({
+  value,
+  onChange,
+  containerClassName,
+  canSubmit,
+  ...props
+}: {
+  value: string
+  onChange: (value: string) => void
+  containerClassName?: string
+  /** Enter sends only when this is true (text written and nothing in flight). */
+  canSubmit: boolean
+  'aria-label': string
+  placeholder: string
+}) {
+  return (
+    <Textarea
+      {...props}
+      dictation
+      containerClassName={containerClassName}
+      rows={1}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+          e.preventDefault()
+          if (canSubmit) e.currentTarget.form?.requestSubmit()
+        }
+      }}
+      className="max-h-40 min-h-8 resize-none py-1 text-[13px] md:text-[13px]"
+    />
+  )
+}
+
 export function RequestActions({
   item,
   inline = false,
@@ -159,12 +195,13 @@ export function RequestActions({
               {option}
             </Button>
           ))}
-          <Input
+          <GrowingField
             aria-label={t('inbox.answerPlaceholder')}
             value={text}
-            onChange={(e) => setText(e.target.value)}
+            onChange={setText}
             placeholder={t('inbox.answerPlaceholder')}
-            className="h-8 min-w-[220px] flex-1"
+            containerClassName="w-auto min-w-[220px] flex-1"
+            canSubmit={!busy && !!text.trim()}
           />
           <Button
             type="submit"
@@ -221,12 +258,13 @@ export function RequestActions({
             )
           }}
         >
-          <Input
+          <GrowingField
             aria-label={t('inbox.reasonPlaceholder')}
             value={text}
-            onChange={(e) => setText(e.target.value)}
+            onChange={setText}
             placeholder={t('inbox.reasonPlaceholder')}
-            className="h-8 flex-1"
+            containerClassName="w-auto flex-1"
+            canSubmit={!busy && !!text.trim()}
           />
           <Button type="submit" size="sm" disabled={busy || !text.trim()}>
             {t('inbox.reviewReject')}

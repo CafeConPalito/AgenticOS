@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { useDialogs } from '@/stores/dialogs'
 import { useUiPrefs } from '@/stores/ui-prefs'
 
-export type ShortcutId = 'palette' | 'newTask' | 'shortcuts' | 'dock' | 'close'
+export type ShortcutId = 'palette' | 'newTask' | 'shortcuts' | 'dock' | 'close' | 'dictate'
 
 export interface Shortcut {
   id: ShortcutId
@@ -22,6 +22,8 @@ export const SHORTCUTS: Shortcut[] = [
   { id: 'shortcuts', group: 'general', keys: ['?'], label: 'shortcuts', global: true },
   { id: 'dock', group: 'general', keys: ['Ctrl', '`'], label: 'dock', global: false },
   { id: 'close', group: 'general', keys: ['Esc'], label: 'close', global: false },
+  // The keys are the default; the real ones are the person's choice (Ajustes › Dictado).
+  { id: 'dictate', group: 'general', keys: ['Ctrl', 'Space'], label: 'dictate', global: false },
 ]
 
 const FIELD = 'input, textarea, select, [contenteditable=""], [contenteditable="true"]'

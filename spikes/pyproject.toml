@@ -37,3 +37,5 @@ known-first-party = ["common", "pty_run", "recorder", "spike_mcp", "usage_probe"
 "knowledge/*.py" = ["E501", "E402", "E731", "E741", "B905", "SIM115"]
 # Phase 15 probes: same idea, they reuse the phase 14 environment.
 "knowledge-graph/*.py" = ["E501", "E402", "E731", "E741", "B905", "SIM115", "SIM108"]
+# Phase 16 probes: same idea.
+"dictation/*.py" = ["E501", "E402", "E731", "E741", "B905", "SIM115", "SIM108"]

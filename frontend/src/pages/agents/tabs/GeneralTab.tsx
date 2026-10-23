@@ -60,6 +60,7 @@ export function GeneralTab() {
       >
         <Textarea
           id="agent-description"
+          dictation
           rows={3}
           placeholder={t('agents.fields.descriptionPlaceholder')}
           {...register('description')}
