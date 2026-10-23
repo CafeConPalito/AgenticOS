@@ -148,7 +148,7 @@ function DownloadSpeech() {
             variant="ghost"
             onClick={() => {
               setOpen(false)
-              void navigate('/settings#models')
+              void navigate('/ajustes#models')
             }}
           >
             {t('dictation.download.another')}

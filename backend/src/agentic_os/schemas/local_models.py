@@ -19,6 +19,8 @@ class ModelRead(BaseModel):
     total: int
     error_code: str | None
     error_message: str | None
+    speed: str | None = None  # speech models: fast | medium | slow
+    quality: str | None = None  # speech models: basic | good | best
 
 
 class DiskUse(BaseModel):

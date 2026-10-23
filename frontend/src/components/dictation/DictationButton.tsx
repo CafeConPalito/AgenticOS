@@ -31,7 +31,7 @@ export function DictationButton({
 }) {
   const { t } = useTranslation()
   const id = useId()
-  const status = useDictationStatus().data
+  const { data: status, refetch } = useDictationStatus()
   const maxSeconds = useDictationSettings().data?.max_seconds ?? 300
   const deviceId = useUiPrefs((s) => s.microphoneId)
   const phase = useDictation((s) => phaseOf(s, id))
@@ -64,14 +64,19 @@ export function DictationButton({
           ? t(`dictation.errors.${error.code}`, { defaultValue: error.message ?? error.code })
           : ''
 
-  function onClick() {
+  async function onClick() {
     if (phase === 'recording') {
       void stopDictation()
       return
     }
     if (busy) return
     clearError(id)
-    if (status && !status.ready && status.reason !== 'disabled') {
+    let current = status
+    if (current && !current.ready && current.reason !== 'disabled') {
+      // A model may have been downloaded since the status was read.
+      current = (await refetch()).data ?? current
+    }
+    if (current && !current.ready && current.reason !== 'disabled') {
       useDictation.getState().setDownloadOpen(true)
       return
     }
@@ -110,7 +115,7 @@ export function DictationButton({
         disabled={busy}
         // The field keeps the focus and its selection while the microphone is used.
         onMouseDown={(event) => event.preventDefault()}
-        onClick={onClick}
+        onClick={() => void onClick()}
         className={cn(
           'flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none disabled:cursor-wait',
           phase === 'recording' &&

@@ -1,8 +1,14 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import docSheet from '@/components/knowledge/DocSheet.tsx?raw'
+import proposalReview from '@/components/knowledge/ProposalReview.tsx?raw'
+import newAgent from '@/pages/agents/NewAgentDialog.tsx?raw'
+import generalTab from '@/pages/agents/tabs/GeneralTab.tsx?raw'
+import memoryTab from '@/pages/projects/tabs/MemoryTab.tsx?raw'
+import launchRun from '@/pages/runs/LaunchRunDialog.tsx?raw'
+import newTask from '@/pages/tasks/NewTaskDialog.tsx?raw'
+import taskPage from '@/pages/tasks/TaskPage.tsx?raw'
 import { MarkdownEditor } from '@/components/MarkdownEditor'
 import es from '@/i18n/es.json'
 import { resetDictation, setRecorder } from '@/lib/dictation/controller'
@@ -105,17 +111,16 @@ describe('the fields that can be dictated', () => {
   // The remaining fields are checked in the source: they are inside dialogs and tabs that need a
   // lot of data to open, and what matters is that none loses its microphone.
   it.each([
-    ['src/pages/tasks/NewTaskDialog.tsx', 'id="task-description"'],
-    ['src/pages/tasks/TaskPage.tsx', 'id="complete-summary"'],
-    ['src/pages/tasks/TaskPage.tsx', 'id="reject-reason"'],
-    ['src/pages/agents/NewAgentDialog.tsx', 'id="new-agent-instructions"'],
-    ['src/pages/agents/tabs/GeneralTab.tsx', 'id="agent-description"'],
-    ['src/pages/projects/tabs/MemoryTab.tsx', 'projects.memory.noteLabel'],
-    ['src/pages/runs/LaunchRunDialog.tsx', 'id="launch-prompt"'],
-    ['src/components/knowledge/ProposalReview.tsx', 'id="proposal-description"'],
-    ['src/components/knowledge/DocSheet.tsx', 'knowledge.sheet.descriptionLabel'],
-  ])('%s: %s is dictatable', (file, marker) => {
-    const source = readFileSync(resolve(process.cwd(), file), 'utf-8')
+    ['NewTaskDialog', newTask, 'id="task-description"'],
+    ['TaskPage', taskPage, 'id="complete-summary"'],
+    ['TaskPage', taskPage, 'id="reject-reason"'],
+    ['NewAgentDialog', newAgent, 'id="new-agent-instructions"'],
+    ['GeneralTab', generalTab, 'id="agent-description"'],
+    ['MemoryTab', memoryTab, 'projects.memory.noteLabel'],
+    ['LaunchRunDialog', launchRun, 'id="launch-prompt"'],
+    ['ProposalReview', proposalReview, 'id="proposal-description"'],
+    ['DocSheet', docSheet, 'knowledge.sheet.descriptionLabel'],
+  ])('%s: %s is dictatable', (_file, source, marker) => {
     const at = source.indexOf(marker)
     expect(at).toBeGreaterThan(0)
     const opening = source.lastIndexOf('<Textarea', at)

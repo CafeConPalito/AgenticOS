@@ -50,6 +50,11 @@ export function setRecorder(next: Recorder): void {
   recorder = next
 }
 
+/** The microphone in use (the settings page tests it). */
+export function currentRecorder(): Recorder {
+  return recorder
+}
+
 export function registerField(id: string, field: Field): () => void {
   fields.set(id, field)
   return () => {

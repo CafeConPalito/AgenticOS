@@ -56,6 +56,8 @@ def _read(entry: CatalogEntry, models: DownloadManager, picked: dict) -> ModelRe
         total=state.total,
         error_code=state.error_code,
         error_message=state.error_message,
+        speed=entry.usage.get("speed"),
+        quality=entry.usage.get("quality"),
     )
 
 

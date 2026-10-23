@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { dictationKeys } from '@/api/dictation'
 import { api } from '@/lib/api'
 
 export type ModelKind = 'embedding' | 'ocr' | 'vision' | 'speech' | 'engine'
@@ -20,6 +21,9 @@ export interface LocalModel {
   total: number
   error_code: string | null
   error_message: string | null
+  /** Speech models: how fast and how good, as measured (phase 16). */
+  speed?: 'fast' | 'medium' | 'slow' | null
+  quality?: 'basic' | 'good' | 'best' | null
 }
 
 export interface LocalModels {
@@ -98,7 +102,10 @@ export function useSelectModel() {
     mutationFn: (
       choice: Partial<Pick<ModelSelection, 'embedding' | 'ocr' | 'vision' | 'speech'>>,
     ) => api.put<ModelSelection>('/api/settings/local-models', choice),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: localModelKeys.all }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: dictationKeys.status })
+      return queryClient.invalidateQueries({ queryKey: localModelKeys.all })
+    },
   })
 }
 

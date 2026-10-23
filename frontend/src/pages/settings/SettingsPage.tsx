@@ -5,6 +5,7 @@ import { PageContainer, PageHeader } from '@/components/page'
 import { cn } from '@/lib/utils'
 import { AboutSection } from './AboutSection'
 import { CleanupSection } from './CleanupSection'
+import { DictationSection } from './DictationSection'
 import { GeneralSection } from './GeneralSection'
 import { GitSection } from './GitSection'
 import { KnowledgeSection } from './KnowledgeSection'
@@ -19,6 +20,7 @@ export const SECTIONS = [
   'limits',
   'git',
   'knowledge',
+  'dictation',
   'models',
   'cleanup',
   'about',
@@ -126,6 +128,9 @@ export default function SettingsPage() {
           </div>
           <div id="knowledge" className="scroll-mt-4">
             <KnowledgeSection />
+          </div>
+          <div id="dictation" className="scroll-mt-4">
+            <DictationSection />
           </div>
           <div id="models" className="scroll-mt-4">
             <LocalModelsSection />

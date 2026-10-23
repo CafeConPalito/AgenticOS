@@ -166,3 +166,18 @@ def test_the_speech_models_are_in_the_catalog_and_can_be_chosen(client):
         client.put("/api/settings/local-models", json={"speech": "whisper-turbo"}).json()["speech"]
         == "whisper-turbo"
     )
+
+
+def test_the_api_lists_the_speech_models_with_their_speed_and_quality(client):
+    models = {m["id"]: m for m in client.get("/api/local-models").json()["models"]}
+    small = models["whisper-small"]
+    assert (small["kind"], small["default"], small["speed"], small["quality"]) == (
+        "speech",
+        True,
+        "medium",
+        "good",
+    )
+    assert models["whisper-base"]["speed"] == "fast"
+    assert models["whisper-turbo"]["quality"] == "best"
+    assert models["whisper-cpp"]["kind"] == "engine" and models["whisper-cpp"]["speed"] is None
+    assert models["e5-small"]["speed"] is None  # only the speech models say it
