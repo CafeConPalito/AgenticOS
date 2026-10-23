@@ -72,7 +72,7 @@ Evidencias en [`evidencias/s1-s5-skills.md`](evidencias/s1-s5-skills.md); script
    - `CLAUDE_TOOL_MATCHER` pasa a `Agent|Task|Skill`. Un `Skill` con prefijo `aos:` registra `loaded_via=native`.
    - Las de serie del CLI se quedan (son del CLI, no del usuario); con el prefijo no chocan con las nuestras.
 2. **`agy`, vía nativa**: `skills/` dentro de `.agents/plugins/agentic-os/`. `AGY_TOOL_MATCHER` pasa a `invoke_subagent|read_file`, y un `read_file` de un `SKILL.md` de nuestro plugin registra `loaded_via=native`. Una skill de más de 24 KB no va por la vía nativa, solo por `use_skill`. La ficha del agente avisa de que `agy` carga también las skills globales del usuario si las tiene (se comprueba si existe `~/.gemini/config/skills`).
-3. **Skills del repo**: **pendiente de decisión del usuario** (la fuente `project` de Claude y `.agents/skills` de `agy` las cargan). Propuesta:
+3. **Skills del repo** (**aprobado por el usuario**, 2026-10-23) (la fuente `project` de Claude y `.agents/skills` de `agy` las cargan). Propuesta:
    - mantener `project,local`, para no perder el `CLAUDE.md` del proyecto;
    - tratar las skills del repo como parte del código del proyecto;
    - enseñarlas en Proyecto › Conocimiento como «Skills del repositorio (las carga el CLI por su cuenta)», con «Importar».
@@ -89,7 +89,7 @@ Evidencias en [`evidencias/s1-s5-skills.md`](evidencias/s1-s5-skills.md); script
    - `disable-model-invocation: true` → la skill no se ofrece como candidata, pero se puede cargar con `use_skill` o fijar en Siempre;
    - topes: 300 ficheros, 1 MB por fichero, 5 MB por skill y `SKILL.md` ≤ 8 000 *tokens*;
    - el resto de campos de la cabecera se conserva y se vuelve a escribir tal cual.
-7. **CA5 (spec)**: con modelo de significado, ≥ 90 % en las 3 primeras (cumplido con los tres modelos). Sin modelo, ≥ 90 % **en tareas y skills del mismo idioma**; el idioma cruzado necesita el modelo. **Pendiente del OK del usuario.**
+7. **CA5 (spec)**: con modelo de significado, ≥ 90 % en las 3 primeras (cumplido con los tres modelos). Sin modelo, ≥ 90 % **en tareas y skills del mismo idioma**; el idioma cruzado necesita el modelo. **Aprobado por el usuario** (2026-10-23).
 8. **Fuera de la fase, anotado**: `SESSION_MARKERS` (`runs/launcher.py`) no incluye `CLAUDE_CODE_BRIDGE_SESSION_ID`, que el CLI ya exporta. Se revisa como corrección aparte.
 
 ## Diseño ([ADR 0024](../../adr/0024-skills.md), nuevo, borrador)
@@ -289,7 +289,7 @@ Las reglas de Agentic OS explican en una línea cuándo proponer: una forma de t
 | `spikes/skills/` | nuevo |
 
 ## Tareas (en orden)
-1. [x] **Bloque 0 · Spikes** S1–S5 hechos; evidencias y cambios al diseño anotados arriba (dos pendientes del OK del usuario: skills del repo y CA5 sin modelo).
+1. [x] **Bloque 0 · Spikes** S1–S5 hechos; evidencias y cambios al diseño anotados arriba (skills del repo y CA5 sin modelo aprobados por el usuario).
 2. [ ] **Bloque 1 · Datos y almacén**: migración `0019`, modelos, `InboxKind.SKILL`, `store.py`, `format.py` y uso de disco.
 3. [ ] **Bloque 2 · Biblioteca (backend)**: CRUD con versiones, validación, historial y diff, restaurar, importar (carpeta, `.zip`, CLIs), exportar, vectores y su reindexado, API.
 4. [ ] **Bloque 3 · Selección y uso (backend)**: visibles y precedencia, modos por agente y etapa, candidatas, sección «Skills», materialización, `use_skill` y `read_skill_file`, `RunSkill`, probador, API de modos y de la ejecución.
