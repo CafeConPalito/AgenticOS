@@ -1,7 +1,7 @@
 # Fase 17: Skills · Plan técnico
 
 - **Spec**: [spec.md](spec.md)
-- **Estado**: borrador
+- **Estado**: aprobado (2026-10-23) · en desarrollo (bloque 0)
 
 ## Lo que ya se sabe (revisado al escribir el plan)
 - **Niveles**: `KnowledgeScope` (`general` · `project` · `agent`) y el `CHECK` que exige `project_id` o `agent_id` según el nivel (`models/knowledge.py`) se reutilizan tal cual. Última migración: `0018_knowledge_graph`.

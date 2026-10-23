@@ -1,6 +1,6 @@
 # Fase 17: Skills · Spec
 
-- **Estado**: aprobada (2026-10-23); ampliación E (estadísticas de uso) pendiente de aprobación
+- **Estado**: aprobada (2026-10-23, con la ampliación E)
 - **Rama**: `phase/17-skills`
 - **Plan**: [plan.md](plan.md)
 
@@ -186,4 +186,4 @@ Que los agentes trabajen con **skills**: paquetes de instrucciones reutilizables
 5. **Registros públicos**: se añade un **explorador** de los registros más usados (apartado D). Cambia lo que decía `docs/vision.md`, que dejaba los registros fuera.
 
 ## Cambios tras la aprobación (2026-10-23)
-- Nuevo apartado **E** (estadísticas de uso), a petición del usuario: una vista «Uso» con cifras por skill, filtros, orden, agrupación, gráficos, CSV y la pestaña «Uso» en la ficha de cada skill. Nuevos criterios CA19–CA21. Pendiente de aprobación.
+- Nuevo apartado **E** (estadísticas de uso), a petición del usuario: una vista «Uso» con cifras por skill, filtros, orden, agrupación, gráficos, CSV y la pestaña «Uso» en la ficha de cada skill. Nuevos criterios CA19–CA21. Aprobado por el usuario el mismo día.
