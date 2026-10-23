@@ -1,7 +1,7 @@
 # Fase 16: Dictado por voz · Plan técnico
 
 - **Spec**: [spec.md](spec.md)
-- **Estado**: aprobado (2026-10-23) · en validación (ver `validacion.md`)
+- **Estado**: aprobado (2026-10-23) · cerrada (`v1.8`)
 
 ## Lo que ya se sabe (revisado al escribir el plan)
 - **Catálogo** (`services/localmodels/catalog.py`): entradas fijadas (revisión, tamaño y SHA-256) de tipo `embedding`, `ocr`, `vision` y `engine`. Los datos de Hugging Face se generan en `_pins.py` con `spikes/knowledge/s10_emit_catalog.py`. Un `engine` llega como zip (`unpack`) y su `usage.executable` dice qué programa lanzar. Las entradas tienen `platforms = ("win32",)`.

@@ -68,7 +68,7 @@ Lint                                               ruff, eslint, prettier, tsc, 
   - `ManagedServer` queda disponible para cualquier otro motor local.
 
 ## Cierre
-- [ ] OK del usuario
-- [ ] Merge a `main` (`--no-ff`)
-- [ ] Tag `v1.8`
-- [ ] `docs/roadmap.md` actualizado
+- [x] OK del usuario (2026-10-23), cerrando con las comprobaciones manuales anotadas como pendientes
+- [x] Merge a `main` (`--no-ff`)
+- [x] Tag `v1.8`
+- [x] `docs/roadmap.md` actualizado
