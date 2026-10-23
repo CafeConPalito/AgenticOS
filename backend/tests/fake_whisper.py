@@ -11,9 +11,14 @@ from agentic_os.services.localmodels import catalog, store
 from agentic_os.services.localmodels.catalog import CatalogEntry, RemoteFile
 
 
-def speech_entries(tmp_path: Path, model_id: str = "fake-whisper"):
+def speech_entries(
+    tmp_path: Path,
+    model_id: str = "fake-whisper",
+    engine_id: str = "fake-whisper-engine",
+    data_dir: Path | None = None,
+):
     """An installed engine and speech model (tiny files, with their manifests)."""
-    data_dir = tmp_path / "data"
+    data_dir = data_dir or tmp_path / "data"
     files = {"model.bin": b"m" * 100, "vad.bin": b"v" * 20}
     model = CatalogEntry(
         model_id,
@@ -24,7 +29,7 @@ def speech_entries(tmp_path: Path, model_id: str = "fake-whisper"):
         usage={"model": "model.bin", "vad": "vad.bin", "speed": "medium", "quality": "good"},
     )
     engine = CatalogEntry(
-        "fake-whisper-engine",
+        engine_id,
         catalog.ENGINE,
         "Fake engine",
         "mit",
@@ -33,11 +38,11 @@ def speech_entries(tmp_path: Path, model_id: str = "fake-whisper"):
         unpack="e.zip",
     )
     for entry in (model, engine):
-        store.downloaded_folder(data_dir, entry).mkdir(parents=True)
+        store.downloaded_folder(data_dir, entry).mkdir(parents=True, exist_ok=True)
     for name, data in files.items():
         (store.downloaded_folder(data_dir, model) / name).write_bytes(data)
     store.write_manifest(data_dir, model)
-    (store.downloaded_folder(data_dir, engine) / "Release").mkdir()
+    (store.downloaded_folder(data_dir, engine) / "Release").mkdir(exist_ok=True)
     program = store.downloaded_folder(data_dir, engine) / "Release" / "whisper-server.exe"
     program.write_bytes(b"MZ")
     store.write_manifest(data_dir, engine)
@@ -119,3 +124,25 @@ class FakeWhisperProcess:
 
 def sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
+
+
+def sine_wav(seconds: float = 2.0, amplitude: int = 3000, rate: int = 16000) -> bytes:
+    """A 16 kHz mono 16-bit WAV with a tone: loud enough not to count as silence."""
+    import io
+    import math
+    import struct
+    import wave
+
+    count = int(seconds * rate)
+    frames = b"".join(struct.pack("<h", int(amplitude * math.sin(i / 8))) for i in range(count))
+    out = io.BytesIO()
+    with wave.open(out, "wb") as wav:
+        wav.setnchannels(1)
+        wav.setsampwidth(2)
+        wav.setframerate(rate)
+        wav.writeframes(frames)
+    return out.getvalue()
+
+
+def silent_wav(seconds: float = 2.0, rate: int = 16000) -> bytes:
+    return sine_wav(seconds, amplitude=0, rate=rate)

@@ -2,6 +2,7 @@ from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
+from dictation_helpers import speech  # noqa: F401 - a fixture for the dictation tests
 from fastapi.testclient import TestClient
 
 from agentic_os.app import create_app

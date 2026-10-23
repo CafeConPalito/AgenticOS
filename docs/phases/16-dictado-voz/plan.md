@@ -153,8 +153,8 @@ El diseño de abajo da por hecho lo que se espera de los spikes: **`whisper.cpp`
 
 ## Tareas (en orden)
 1. [ ] **Bloque 0 · Spikes** S1–S5, con sus evidencias, el modelo recomendado, el atajo por defecto y los cambios al diseño anotados en este plan.
-2. [ ] **Bloque 1 · Motor y catálogo**: `ManagedServer` extraído (con los tests de `LlamaServer` en verde), `WhisperServer`, tipo `speech`, motor y modelos fijados, `selection`.
-3. [ ] **Bloque 2 · Dictado (backend)**: ajustes, validación del audio y silencio, pista, servicio, limpieza del texto, API (`transcribe`, `warmup`, `status`, ajustes), cola y nada en disco.
+2. [x] **Bloque 1 · Motor y catálogo**: `ManagedServer` extraído (con los tests de `LlamaServer` en verde), `WhisperServer`, tipo `speech`, motor y modelos fijados, `selection`.
+3. [x] **Bloque 2 · Dictado (backend)**: ajustes, validación del audio y silencio, pista, servicio, limpieza del texto, API (`transcribe`, `warmup`, `status`, ajustes), cola y nada en disco.
 4. [ ] **Bloque 3 · Núcleo del frontend**: grabador y *worklet*, WAV, cola y estado, inserción con ancla, `DictationButton`, *prop* `dictation`, atajo de mantener pulsado.
 5. [ ] **Bloque 4 · Campos**: micrófono en todos los campos de la lista y respuesta de la Inbox que crece con el texto.
 6. [ ] **Bloque 5 · Ajustes y modelos**: Ajustes › Dictado, grupo `speech` en Modelos locales, descarga desde el micrófono.

@@ -23,6 +23,7 @@ from agentic_os.services import housekeeping
 from agentic_os.services.accounts_login import AccountLogins
 from agentic_os.services.clis import CliCatalog
 from agentic_os.services.decider import DecisionService
+from agentic_os.services.dictation.service import DictationService
 from agentic_os.services.gitx.events import GitEvents
 from agentic_os.services.gitx.jobs import JobManager
 from agentic_os.services.gitx.shell import ShellSessions
@@ -159,6 +160,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             on_ready=lambda entry: knowledge.reindex() if entry.kind == EMBEDDING else None,
         )
         app.state.models = models
+        dictation = DictationService(app.state.sessionmaker, Path(settings.data_dir))
+        app.state.dictation = dictation
         if settings.check_sessions_at_startup:
             threading.Thread(
                 target=check_sessions,
@@ -192,6 +195,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             git_jobs.shutdown()
             git_shells.shutdown()
             models.stop()
+            dictation.stop()
             knowledge.stop()
             # The scheduler stops first: the runs closed by the shutdown are not "stopped by the
             # user"; their tasks are found interrupted on the next start.
