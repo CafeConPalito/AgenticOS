@@ -1,7 +1,7 @@
 # Fase 16: Dictado por voz · Plan técnico
 
 - **Spec**: [spec.md](spec.md)
-- **Estado**: aprobado (2026-10-23) · desarrollo hecho (bloques 0–7); falta el bloque 8 (revisión y validación)
+- **Estado**: aprobado (2026-10-23) · en validación (ver `validacion.md`)
 
 ## Lo que ya se sabe (revisado al escribir el plan)
 - **Catálogo** (`services/localmodels/catalog.py`): entradas fijadas (revisión, tamaño y SHA-256) de tipo `embedding`, `ocr`, `vision` y `engine`. Los datos de Hugging Face se generan en `_pins.py` con `spikes/knowledge/s10_emit_catalog.py`. Un `engine` llega como zip (`unpack`) y su `usage.executable` dice qué programa lanzar. Las entradas tienen `platforms = ("win32",)`.
@@ -164,7 +164,7 @@ El diseño de abajo da por hecho lo que se espera de los spikes: **`whisper.cpp`
 6. [x] **Bloque 5 · Ajustes y modelos**: Ajustes › Dictado, grupo `speech` en Modelos locales, descarga desde el micrófono.
 7. [~] **Bloque 6 · Tauri**: hecha la CSP (`media-src`, `worker-src`). El manejo de `PermissionRequested` en Rust y «Volver a preguntar» **no se han añadido**: dependen de lo que S1 muestre con la app instalada (ver ADR 0023).
 8. [~] **Bloque 7 · Calidad y e2e**: hechos la transcripción real, el vocabulario (CA8) y el e2e con el sidecar empaquetado (CA10). Pendientes las pruebas manuales CA1, CA3, CA5 y CA7 con la app instalada.
-9. [ ] **Bloque 8 · Cierre**: `/code-review`, ADR 0023 definitivo, README, `validacion.md`.
+9. [~] **Bloque 8 · Cierre**: hechos `/code-review`, ADR 0023, README y `validacion.md`; faltan las comprobaciones manuales y el OK del usuario.
 
 ## Tests previstos
 | Test | Cubre |
