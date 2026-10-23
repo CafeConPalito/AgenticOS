@@ -1,7 +1,7 @@
 # Fase 16: Dictado por voz · Plan técnico
 
 - **Spec**: [spec.md](spec.md)
-- **Estado**: aprobado (2026-10-23) · en desarrollo (bloque 0)
+- **Estado**: aprobado (2026-10-23) · desarrollo hecho (bloques 0–7); falta el bloque 8 (revisión y validación)
 
 ## Lo que ya se sabe (revisado al escribir el plan)
 - **Catálogo** (`services/localmodels/catalog.py`): entradas fijadas (revisión, tamaño y SHA-256) de tipo `embedding`, `ocr`, `vision` y `engine`. Los datos de Hugging Face se generan en `_pins.py` con `spikes/knowledge/s10_emit_catalog.py`. Un `engine` llega como zip (`unpack`) y su `usage.executable` dice qué programa lanzar. Las entradas tienen `platforms = ("win32",)`.
@@ -32,6 +32,10 @@ Además se graba un audio con voz real y micrófono del portátil, que se guarda
 | S3 | **Vocabulario y alucinaciones**: con el motor de S2, ¿la pista (`prompt` inicial) mejora los nombres propios del audio 2 y cuántos términos caben (≈ 224 *tokens*)? Con el audio 3, ¿qué devuelve Whisper (en español es típico «Subtítulos realizados por la comunidad de Amara.org»)? ¿Bastan el filtro de energía previo y `no_speech_thold`, o hace falta el VAD de `whisper.cpp` (`--vad`, con un modelo Silero de ~1 MB)? | Lista de frases fantasma conocidas que se quitan del resultado si son todo el texto |
 | S4 | **Atajo de mantener pulsado** en WebView2: `Ctrl+Espacio`, `Ctrl+Mayús+Espacio`, `F9` y `AltGr`. Para cada uno se comprueba: si llega `keyup`, si `preventDefault` evita escribir el carácter, la repetición de tecla (`e.repeat`), si choca con el IME o con los atajos del sistema y de WebView2, y qué pasa si se suelta con la ventana sin foco | El atajo pasa a ser de pulsar y volver a pulsar, sin mantener |
 | S5 | **Insertar con `Ctrl+Z`**: en un `Textarea` controlado por React dentro de WebView2, ¿`document.execCommand('insertText')` en un campo que no tiene el foco (se enfoca, se inserta y se devuelve el foco) entra en la pila de deshacer, dispara `onChange` y deja el cursor bien? | `setRangeText` + evento `input`, con un deshacer propio del componente (`Ctrl+Z` justo después de dictar quita lo dictado) |
+
+## Resultados de los spikes y cambios al diseño (2026-10-23)
+- **S2/S3**: `whisper.cpp` cumple; recomendado `small-q5_1` (7,9 s por minuto con VAD en un Ryzen 5 5600G); `base` y `large-v3-turbo-q5_0` como rápido y preciso. Sin VAD Whisper inventa texto con el silencio: el VAD de whisper.cpp (Silero, 885 KB, incluido en la descarga de cada modelo) va siempre activo. No se probaron `faster-whisper` ni ONNX.
+- **Cambios**: el filtro de energía previo es un simple umbral de RMS (el VAD hace el trabajo fino); la primera letra **no** se pasa a mayúscula (Whisper ya la pone); el espacio se añade por delante y por detrás según los vecinos; el atajo por defecto es `Ctrl+Espacio` sin haberlo podido contrastar en WebView2.
 
 ## Diseño ([ADR 0023](../../adr/0023-dictation.md), nuevo)
 El diseño de abajo da por hecho lo que se espera de los spikes: **`whisper.cpp` como motor descargable**, porque el sidecar no crece y repite el patrón de `llama.cpp`, y **micrófono en el navegador**. Si S1 o S2 dicen otra cosa, se anota en «Cambios al diseño por los spikes» antes de seguir.
@@ -152,14 +156,14 @@ El diseño de abajo da por hecho lo que se espera de los spikes: **`whisper.cpp`
 | `spikes/dictation/` | nuevo |
 
 ## Tareas (en orden)
-1. [ ] **Bloque 0 · Spikes** S1–S5, con sus evidencias, el modelo recomendado, el atajo por defecto y los cambios al diseño anotados en este plan.
+1. [~] **Bloque 0 · Spikes**: S2 y S3 hechos ([evidencias](evidencias/s2-s3-whisper-cpp.md)). **S1, S4 y S5 (micrófono, atajo e `Ctrl+Z` dentro de WebView2) no se han podido medir sin la app instalada y una persona**: se programó el caso esperado y quedan en las comprobaciones manuales.
 2. [x] **Bloque 1 · Motor y catálogo**: `ManagedServer` extraído (con los tests de `LlamaServer` en verde), `WhisperServer`, tipo `speech`, motor y modelos fijados, `selection`.
 3. [x] **Bloque 2 · Dictado (backend)**: ajustes, validación del audio y silencio, pista, servicio, limpieza del texto, API (`transcribe`, `warmup`, `status`, ajustes), cola y nada en disco.
 4. [x] **Bloque 3 · Núcleo del frontend**: grabador y *worklet*, WAV, cola y estado, inserción con ancla, `DictationButton`, *prop* `dictation`, atajo de mantener pulsado.
 5. [x] **Bloque 4 · Campos**: micrófono en todos los campos de la lista y respuesta de la Inbox que crece con el texto.
 6. [x] **Bloque 5 · Ajustes y modelos**: Ajustes › Dictado, grupo `speech` en Modelos locales, descarga desde el micrófono.
-7. [ ] **Bloque 6 · Tauri**: CSP, permiso de WebView2 según S1, «Volver a preguntar», prueba con el instalador.
-8. [ ] **Bloque 7 · Calidad y e2e**: transcripción real, vocabulario (CA8), e2e con el sidecar empaquetado (CA10) y pruebas manuales CA1, CA3, CA5 y CA7.
+7. [~] **Bloque 6 · Tauri**: hecha la CSP (`media-src`, `worker-src`). El manejo de `PermissionRequested` en Rust y «Volver a preguntar» **no se han añadido**: dependen de lo que S1 muestre con la app instalada (ver ADR 0023).
+8. [~] **Bloque 7 · Calidad y e2e**: hechos la transcripción real, el vocabulario (CA8) y el e2e con el sidecar empaquetado (CA10). Pendientes las pruebas manuales CA1, CA3, CA5 y CA7 con la app instalada.
 9. [ ] **Bloque 8 · Cierre**: `/code-review`, ADR 0023 definitivo, README, `validacion.md`.
 
 ## Tests previstos

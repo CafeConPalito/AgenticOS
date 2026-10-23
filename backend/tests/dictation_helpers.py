@@ -1,13 +1,15 @@
 """Fakes for the dictation tests: an installed fake engine and model, and a `whisper-server`
 that is a tiny HTTP server (see fake_whisper.py). Import `speech` in the test module."""
 
+import os
+import shutil
 from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 from fake_whisper import FakeWhisperProcess, speech_entries
 
-from agentic_os.services.localmodels import catalog, selection
+from agentic_os.services.localmodels import catalog, selection, store
 from agentic_os.services.localmodels.whisper import WhisperServer
 
 
@@ -48,3 +50,37 @@ def speech(client, monkeypatch: pytest.MonkeyPatch, tmp_path):
     yield install
     for server in servers:
         server.stop()
+
+
+# ----------------------------------------------------------------- the real engine (spikes)
+SPIKE = Path(__file__).resolve().parents[2] / "spikes" / "dictation"
+REAL_ENGINE = SPIKE / "engine" / "Release" / "whisper-server.exe"
+REAL_MODEL = SPIKE / "models" / "ggml-base.bin"
+REAL_VAD = SPIKE / "models" / "ggml-silero-v5.1.2.bin"
+real_engine_downloaded = REAL_ENGINE.is_file() and REAL_MODEL.is_file() and REAL_VAD.is_file()
+SAMPLES = Path(__file__).parent / "data" / "dictation"
+
+
+def _link(source: Path, target: Path) -> None:
+    target.parent.mkdir(parents=True, exist_ok=True)
+    if target.exists():
+        return
+    try:
+        os.link(source, target)  # no copy of 150 MB when both are on the same disk
+    except OSError:
+        shutil.copyfile(source, target)
+
+
+def install_real_whisper(data_dir: Path) -> None:
+    """The whisper.cpp engine and the base model the spikes downloaded, installed in `data_dir`
+    as the app's own downloads would be."""
+    engine, model = catalog.entry("whisper-cpp"), catalog.entry("whisper-base")
+    folder = store.downloaded_folder(data_dir, engine)
+    for source in REAL_ENGINE.parent.iterdir():
+        if source.is_file():
+            _link(source, folder / "Release" / source.name)
+    store.write_manifest(data_dir, engine)
+    for name, source in (("ggml-base.bin", REAL_MODEL), ("ggml-silero-v5.1.2.bin", REAL_VAD)):
+        _link(source, store.downloaded_folder(data_dir, model) / name)
+    store.write_manifest(data_dir, model)
+    assert store.is_installed(data_dir, engine) and store.is_installed(data_dir, model)
