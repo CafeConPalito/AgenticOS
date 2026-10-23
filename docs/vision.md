@@ -13,7 +13,7 @@ Una app de escritorio (que más adelante se podrá desplegar en un servidor) par
 - **Control**: estado de las tareas, árbol de subagentes, Inbox de aprobaciones y preguntas, y notificaciones.
 - **Consumo**: tokens, coste y duración por sesión de CLI, agregados por agente y por proyecto.
 - **Conocimiento en 3 niveles** (general, proyecto y agente): md/código, PDF/Word/Excel, URLs e imágenes. Los documentos pequeños van al contexto y los grandes a RAG local.
-- **Skills en 3 niveles**: biblioteca local (SKILL.md), autoselección por tarea y skills creadas por los agentes con aprobación.
+- **Skills en 3 niveles**: biblioteca local (SKILL.md) con historial de cambios, autoselección por tarea, skills creadas por los agentes con aprobación y explorador de los registros públicos más usados para instalar skills de terceros.
 - **Meta-agentes**: un agente Arquitecto propone nuevos agentes (Comercial, Redactor…) y tú los apruebas.
 
 ## Arquitectura de referencia
@@ -40,4 +40,3 @@ Una app de escritorio (que más adelante se podrá desplegar en un servidor) par
 
 ## Fuera de alcance (por ahora)
 - Multi-usuario y autenticación (fase 23, modo servidor).
-- Registros públicos de skills (solo biblioteca local).
