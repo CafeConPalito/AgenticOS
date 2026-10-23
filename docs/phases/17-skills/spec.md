@@ -1,6 +1,6 @@
 # Fase 17: Skills · Spec
 
-- **Estado**: borrador
+- **Estado**: aprobada (2026-10-23)
 - **Rama**: `phase/17-skills`
 
 ## Objetivo
