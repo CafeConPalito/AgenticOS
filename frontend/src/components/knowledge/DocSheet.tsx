@@ -318,6 +318,7 @@ function Details({
         />
         <Textarea
           aria-label={t('knowledge.sheet.descriptionLabel')}
+          dictation
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           placeholder={t('knowledge.sheet.descriptionPlaceholder')}

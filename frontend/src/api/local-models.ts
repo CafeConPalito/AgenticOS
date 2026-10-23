@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 
-export type ModelKind = 'embedding' | 'ocr' | 'vision' | 'engine'
+export type ModelKind = 'embedding' | 'ocr' | 'vision' | 'speech' | 'engine'
 export type ModelState = 'absent' | 'partial' | 'downloading' | 'ready' | 'error'
 
 export interface LocalModel {
@@ -31,6 +31,7 @@ export interface ModelSelection {
   embedding: string | null
   ocr: string | null
   vision: string | null
+  speech: string | null
   reindex?: boolean
 }
 
@@ -94,8 +95,9 @@ export function useModelSelection() {
 export function useSelectModel() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (choice: Partial<Pick<ModelSelection, 'embedding' | 'ocr' | 'vision'>>) =>
-      api.put<ModelSelection>('/api/settings/local-models', choice),
+    mutationFn: (
+      choice: Partial<Pick<ModelSelection, 'embedding' | 'ocr' | 'vision' | 'speech'>>,
+    ) => api.put<ModelSelection>('/api/settings/local-models', choice),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: localModelKeys.all }),
   })
 }

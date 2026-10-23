@@ -51,6 +51,7 @@ export function MarkdownEditor({
       {mode === 'edit' ? (
         <Textarea
           id={id}
+          dictation
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}

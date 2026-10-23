@@ -288,6 +288,7 @@ function NewAgentForm({ onClose, init }: { onClose: () => void; init: NewAgentIn
           <Field label={t('agents.fields.instructions')} htmlFor="new-agent-instructions">
             <Textarea
               id="new-agent-instructions"
+              dictation
               value={draft.instructions}
               onChange={(e) => set('instructions', e.target.value)}
               className="min-h-[110px]"

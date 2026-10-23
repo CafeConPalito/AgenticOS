@@ -653,6 +653,7 @@ function CompleteDialog({
         <Field label={t('tasks.actions.summary')} htmlFor="complete-summary">
           <Textarea
             id="complete-summary"
+            dictation
             value={summary}
             onChange={(e) => setSummary(e.target.value)}
             placeholder={t('tasks.actions.summaryPlaceholder')}
@@ -708,6 +709,7 @@ function RejectDialog({
         <Field label={t('tasks.actions.reason')} htmlFor="reject-reason">
           <Textarea
             id="reject-reason"
+            dictation
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             placeholder={t('tasks.actions.reasonPlaceholder')}

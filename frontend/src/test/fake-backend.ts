@@ -30,6 +30,7 @@ import type {
   WorktreeInfo,
 } from '@/api/git-more'
 import type { ProjectRepo } from '@/api/repos'
+import type { DictationSettings, DictationStatus } from '@/api/dictation'
 import type { HfToken, LocalModel, ModelSelection } from '@/api/local-models'
 import type {
   DocImage,
@@ -903,6 +904,16 @@ export function createFakeBackend(
     /** The local models catalogue (phase 14). */
     localModels?: LocalModel[]
     hfToken?: HfToken
+    /** Voice dictation (phase 16). Without it, dictation is turned off, so no page shows a
+     * microphone. With `{}` it is on and ready. */
+    dictation?: {
+      status?: Partial<DictationStatus>
+      settings?: Partial<DictationSettings>
+      /** What each transcription answers, in order: the text, or an error. The last one repeats. */
+      answers?: Array<string | { error: { status: number; code: string; message?: string } }>
+      /** Holds each transcription until this resolves (to test what happens while it works). */
+      gate?: () => Promise<void>
+    }
   } = {},
 ) {
   const usage: FakeUsage = { ...emptyUsage(), ...(seed.usage ?? {}) }
@@ -1544,7 +1555,7 @@ export function createFakeBackend(
   }
 
   const models: LocalModel[] = structuredClone(seed.localModels ?? [])
-  const modelSelection: ModelSelection = { embedding: null, ocr: null, vision: null }
+  const modelSelection: ModelSelection = { embedding: null, ocr: null, vision: null, speech: null }
   let hfToken: HfToken = seed.hfToken ?? { configured: false, source: null }
 
   function handleLocalModels(
@@ -1559,7 +1570,7 @@ export function createFakeBackend(
         const before = modelSelection.embedding
         Object.assign(modelSelection, body)
         for (const model of models) {
-          const chosen = modelSelection[model.kind as 'embedding' | 'ocr' | 'vision']
+          const chosen = modelSelection[model.kind as 'embedding' | 'ocr' | 'vision' | 'speech']
           if (model.kind !== 'engine') model.selected = chosen === model.id
         }
         return json(200, { ...modelSelection, reindex: before !== modelSelection.embedding })
@@ -2463,10 +2474,55 @@ export function createFakeBackend(
     return null
   }
 
+  const dictationSettings: DictationSettings = {
+    enabled: true,
+    language: 'es',
+    shortcut: 'Ctrl+Space',
+    max_seconds: 300,
+    vocabulary: [],
+    ...(seed.dictation?.settings ?? {}),
+  }
+  const dictationStatus: DictationStatus = {
+    enabled: Boolean(seed.dictation),
+    ready: Boolean(seed.dictation),
+    reason: seed.dictation ? null : 'disabled',
+    model: 'whisper-small',
+    state: 'stopped',
+    queued: 0,
+    ...(seed.dictation?.status ?? {}),
+  }
+  let transcriptions = 0
+
+  async function handleDictation(
+    method: string,
+    path: string,
+    body: Record<string, unknown>,
+  ): Promise<Response | null> {
+    if (path === '/api/dictation/status') return json(200, dictationStatus)
+    if (path === '/api/dictation/warmup') return json(202, null)
+    if (path === '/api/settings/dictation') {
+      if (method === 'PUT') Object.assign(dictationSettings, body)
+      return json(200, dictationSettings)
+    }
+    if (path === '/api/dictation/transcribe' && method === 'POST') {
+      await seed.dictation?.gate?.()
+      const answers = seed.dictation?.answers ?? ['texto dictado']
+      const answer = answers[Math.min(transcriptions++, answers.length - 1)]
+      if (typeof answer !== 'string') {
+        return apiError(answer.error.status, answer.error.code)
+      }
+      return json(200, { text: answer, seconds: 2, model: 'whisper-small' })
+    }
+    return null
+  }
+
   const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = new URL(typeof input === 'string' ? input : input.toString())
     const method = (init?.method ?? 'GET').toUpperCase()
-    const body = init?.body ? (JSON.parse(String(init.body)) as Record<string, unknown>) : {}
+    const body =
+      typeof init?.body === 'string'
+        ? (JSON.parse(init.body) as Record<string, unknown>)
+        : ({} as Record<string, unknown>)
     const path = url.pathname + url.search
     calls.push({
       method,
@@ -2474,6 +2530,8 @@ export function createFakeBackend(
       query: url.search,
       body: init?.body ? body : undefined,
     })
+    const dictated = await handleDictation(method, url.pathname, body)
+    if (dictated) return dictated
     return (
       handleRepos(method, url.pathname, body) ??
       handleGit(method, url.pathname, url.searchParams, body) ??
@@ -2502,6 +2560,8 @@ export function createFakeBackend(
     knowledge: library,
     localModels: models,
     knowledgeSettings,
+    dictationSettings,
+    dictationStatus,
     queueState,
     tasks,
     inbox,

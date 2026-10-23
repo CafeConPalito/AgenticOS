@@ -164,6 +164,7 @@ function LaunchRunForm({
         <Field label={t('runs.launch.prompt')} htmlFor="launch-prompt" help={t('runs.launch.hint')}>
           <Textarea
             id="launch-prompt"
+            dictation
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             onKeyDown={(e) => {
