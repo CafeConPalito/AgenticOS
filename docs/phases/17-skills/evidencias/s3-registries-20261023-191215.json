@@ -1,0 +1,456 @@
+{
+ "skills_sh_v1_search": {
+  "url": "https://skills.sh/api/v1/skills/search?q=code%20review&limit=3",
+  "status": 401,
+  "ms": 281,
+  "content_type": "application/json",
+  "limits": {},
+  "sample": {
+   "error": "authentication_required",
+   "message": "This endpoint requires authentication. Pass a Vercel OIDC token (Authorization: Bearer <VERCEL_OIDC_TOKEN>) — see https://skills.sh/docs/api#authentication."
+  }
+ },
+ "skills_sh_search": {
+  "url": "https://skills.sh/api/search?q=code%20review&limit=5",
+  "status": 200,
+  "ms": 469,
+  "content_type": "application/json",
+  "limits": {},
+  "sample": {
+   "query": "code review",
+   "searchType": "semantic",
+   "searchVersion": "algolia",
+   "skills": [
+    {
+     "id": "mattpocock/skills/code-review",
+     "source": "mattpocock/skills",
+     "skillId": "code-review",
+     "name": "code-review",
+     "installs": 785110
+    },
+    {
+     "id": "obra/superpowers/requesting-code-review",
+     "source": "obra/superpowers",
+     "skillId": "requesting-code-review",
+     "name": "requesting-code-review",
+     "installs": 261294
+    },
+    {
+     "id": "obra/superpowers/receiving-code-review",
+     "source": "obra/superpowers",
+     "skillId": "receiving-code-review",
+     "name": "receiving-code-review",
+     "installs": 220792
+    },
+    {
+     "id": "addyosmani/agent-skills/code-review-and-quality",
+     "source": "addyosmani/agent-skills",
+     "skillId": "code-review-and-quality",
+     "name": "code-review-and-quality",
+     "installs": 71081
+    },
+    {
+     "id": "vercel-labs/agent-browser/agent-browser",
+     "source": "vercel-labs/agent-browser",
+     "skillId": "agent-browser",
+     "name": "agent-browser",
+     "installs": 1152457
+    }
+   ],
+   "count": 5,
+   "duration_ms": 288,
+   "timings_ms": {
+    "rate_limit": 47.678565999958664,
+    "flags": 1.2578580002300441,
+    "visibility": 40.22612599981949,
+    "retrieval": 276.0370310000144,
+    "algolia_processing": 195,
+    "repositories": 9.628817999735475,
+    "ranking": 1.0471040001139045,
+    "search": 288,
+    "total": 335.9236730001867
+   },
+   "provider_duration_ms": 276.0370310000144
+  }
+ },
+ "skills_sh_download": {
+  "url": "https://skills.sh/api/download/mattpocock/skills/code-review",
+  "status": 200,
+  "ms": 47,
+  "content_type": "application/json",
+  "limits": {},
+  "sample": "{\"files\":[{\"path\":\"agents/openai.yaml\",\"contents\":\"interface:\\n  display_name: \\\"Code Review\\\"\\n  short_description: \\\"Review a diff on standards and spec\\\"\\n\"},{\"path\":\"SKILL.md\",\"contents\":\"---\\nname: code-review\\ndescription: \\\"Review the changes since a fixed point (commit, branch, tag, or merge-base) along two axes: Standards (does the code follow this repo's documented coding standards?) and Spec (does the code match what the originating issue/spec asked for?). Runs both reviews in parallel sub-agents and reports them side by side. Use when the user wants to review a branch, a PR, work-in-progress changes, or asks to \\\\\\\"review since X\\\\\\\".\\\"\\n---\\n\\nTwo-axis review of the diff between `HEAD` and a fixed point the user supplies:\\n\\n- **Standards**: does the code conform to this repo's documented coding standards?\\n- **Spec**: does the code faithfully implement the originating issue / spec?\\n\\nBoth axes run as **parallel sub-agents** so they don't pollute each other's context, then this skill aggregates their findings.\\n\\nThe issue tracker should have been provided to you. If not, tell the user to run `/setup-matt-pocock-skills`.\\n\\n## Process\\n\\n### 1. Pin the fixed point\\n\\nWhatever the user said is the fixed point (a commit SHA, branch name, tag, `main`, `HEAD~5`, etc.). If they didn't specify one, ask for it.\\n\\nCapture the diff command once: `git diff <fixed-point>...HEAD` (three-dot, so the comparison is against the merge-base). Also note the list of commits via `git log <fixed-point>..HEAD --oneline`.\\n\\nBefore going further, confirm the fixed point resolves (`git rev-parse <fixed-point>`) and the diff is non-empty. A bad ref or empty diff should fail here, not inside two parallel sub-agents.\\n\\n### 2. Identify the spec source\\n\\nLook for the originating spec, in this order:\\n\\n1. Issue references in the commit messages (`#123`, `Closes #45`, GitLab `!67`, etc.), fetched via the workflow in the tracker doc.\\n2. A path the user passed as an argument.\\n3. A spec file under `docs/`, `specs/`, or `.scratch/` matching the branch name or feature.\\n4. If nothing is found, ask the user where the spec is. If they say there isn't one, the **Spec** sub-agent will skip and report \\\"no spec available\\\".\\n\\n### 3. Identify the standards sources\\n\\nSearch the repo for every file that documents how code should be written. When `CODING_STANDARDS.md` or `CONTRIBUTING.md` exists, it must be on the list.\\n\\nOn top of whatever the repo documents, the Standards axis always carries the **smell baseline** below: a fixed set of Fowler code smells (_Refactoring_, ch.3) that applies even when a repo documents nothing. Two rules bind it:\\n\\n- **The repo overrides.** A documented repo standard always wins; where it endorses something the baseline would flag, suppress the smell.\\n- **Always a judgement call.** Each smell is a labelled heuristic (\\\"possible Feature Envy\\\"), never a hard violation. Like any standard here, skip anything tooling already enforces.\\n\\nEach smell reads *what it is* → *how to fix*; match it against the diff:\\n\\n- **Mysterious Name**: a function, variable, or type whose name doesn't reveal what it does or holds. → rename it; if no honest name comes, the design's murky.\\n- **Duplicated Code**: the same logic shape appears in more than one hunk or file in the change. → extract the shared shape, call it from both.\\n- **Feature Envy**: a method that reaches into another object's data more than its own. → move the method onto the data it envies.\\n- **Data Clumps**: the same few fields or params keep travelling together (a type wanting to be born). → bundle them into one type, pass that.\\n- **Primitive Obsession**: a primitive or string standing in for a domain concept that deserves its own type. → give the concept its own small type.\\n- **Repeated Switches**: the same `switch`/`if`-cascade on the same type recurs across the change. → replace with polymorphism, or one map both sites share.\\n- **Shotgun Surgery**: one logical "
+ },
+ "skills_sh_audit": {
+  "url": "https://www.skills.sh/tele/audit?source=mattpocock/skills&skills=code-review",
+  "status": 200,
+  "ms": 156,
+  "content_type": "application/json",
+  "limits": {},
+  "sample": {
+   "code-review": {
+    "ath": {
+     "risk": "safe",
+     "analyzedAt": "2026-10-07T11:26:18.718Z"
+    },
+    "socket": {
+     "risk": "safe",
+     "alerts": 0,
+     "score": 90,
+     "analyzedAt": "2026-10-07T11:26:20.376Z"
+    },
+    "snyk": {
+     "risk": "medium",
+     "analyzedAt": "2026-10-07T11:25:48.050167+00:00"
+    }
+   }
+  }
+ },
+ "anthropic_list": {
+  "url": "https://api.github.com/repos/anthropics/skills/contents/skills",
+  "status": 200,
+  "ms": 344,
+  "content_type": "application/json; charset=utf-8",
+  "limits": {
+   "x-ratelimit-limit": "60",
+   "x-ratelimit-remaining": "52",
+   "x-ratelimit-used": "8",
+   "x-ratelimit-resource": "core",
+   "x-ratelimit-reset": "1792778939"
+  },
+  "sample": "[{\"name\":\"academy-guide\",\"path\":\"skills/academy-guide\",\"sha\":\"baddb91c315ea384f9191615054ba8026eb57ba2\",\"size\":0,\"url\":\"https://api.github.com/repos/anthropics/skills/contents/skills/academy-guide?ref=main\",\"html_url\":\"https://github.com/anthropics/skills/tree/main/skills/academy-guide\",\"git_url\":\"https://api.github.com/repos/anthropics/skills/git/trees/baddb91c315ea384f9191615054ba8026eb57ba2\",\"download_url\":null,\"type\":\"dir\",\"_links\":{\"self\":\"https://api.github.com/repos/anthropics/skills/contents/skills/academy-guide?ref=main\",\"git\":\"https://api.github.com/repos/anthropics/skills/git/trees/baddb91c315ea384f9191615054ba8026eb57ba2\",\"html\":\"https://github.com/anthropics/skills/tree/main/skills/academy-guide\"}},{\"name\":\"algorithmic-art\",\"path\":\"skills/algorithmic-art\",\"sha\":\"4aef6bcad51d058ec32b1acb9da436851863e56e\",\"size\":0,\"url\":\"https://api.github.com/repos/anthropics/skills/contents/skills/algorithmic-art?ref=main\",\"html_url\":\"https://github.com/anthropics/skills/tree/main/skills/algorithmic-art\",\"git_url\":\"https://api.github.com/repos/anthropics/skills/git/trees/4aef6bcad51d058ec32b1acb9da436851863e56e\",\"download_url\":null,\"type\":\"dir\",\"_links\":{\"self\":\"https://api.github.com/repos/anthropics/skills/contents/skills/algorithmic-art?ref=main\",\"git\":\"https://api.github.com/repos/anthropics/skills/git/trees/4aef6bcad51d058ec32b1acb9da436851863e56e\",\"html\":\"https://github.com/anthropics/skills/tree/main/skills/algorithmic-art\"}},{\"name\":\"brand-guidelines\",\"path\":\"skills/brand-guidelines\",\"sha\":\"1dc8bd3584b80568edae7da16382363e24ecf0f0\",\"size\":0,\"url\":\"https://api.github.com/repos/anthropics/skills/contents/skills/brand-guidelines?ref=main\",\"html_url\":\"https://github.com/anthropics/skills/tree/main/skills/brand-guidelines\",\"git_url\":\"https://api.github.com/repos/anthropics/skills/git/trees/1dc8bd3584b80568edae7da16382363e24ecf0f0\",\"download_url\":null,\"type\":\"dir\",\"_links\":{\"self\":\"https://api.github.com/repos/anthropics/skills/contents/skills/brand-guidelines?ref=main\",\"git\":\"https://api.github.com/repos/anthropics/skills/git/trees/1dc8bd3584b80568edae7da16382363e24ecf0f0\",\"html\":\"https://github.com/anthropics/skills/tree/main/skills/brand-guidelines\"}},{\"name\":\"canvas-design\",\"path\":\"skills/canvas-design\",\"sha\":\"95095faaee2ea943e85a5d1d562fde06841e835e\",\"size\":0,\"url\":\"https://api.github.com/repos/anthropics/skills/contents/skills/canvas-design?ref=main\",\"html_url\":\"https://github.com/anthropics/skills/tree/main/skills/canvas-design\",\"git_url\":\"https://api.github.com/repos/anthropics/skills/git/trees/95095faaee2ea943e85a5d1d562fde06841e835e\",\"download_url\":null,\"type\":\"dir\",\"_links\":{\"self\":\"https://api.github.com/repos/anthropics/skills/contents/skills/canvas-design?ref=main\",\"git\":\"https://api.github.com/repos/anthropics/skills/git/trees/95095faaee2ea943e85a5d1d562fde06841e835e\",\"html\":\"https://github.com/anthropics/skills/tree/main/skills/canvas-design\"}},{\"name\":\"claude-api\",\"path\":\"skills/claude-api\",\"sha\":\"523da4b0c36e7e79fcbf9e81e748e374efa3a6c1\",\"size\":0,\"url\":\"https://api.github.com/repos/anthropics/skills/contents/skills/claude-api?ref=main\",\"html_url\":\"https://github.com/anthropics/skills/tree/main/skills/claude-api\",\"git_url\":\"https://api.github.com/repos/anthropics/skills/git/trees/523da4b0c36e7e79fcbf9e81e748e374efa3a6c1\",\"download_url\":null,\"type\":\"dir\",\"_links\":{\"self\":\"https://api.github.com/repos/anthropics/skills/contents/skills/claude-api?ref=main\",\"git\":\"https://api.github.com/repos/anthropics/skills/git/trees/523da4b0c36e7e79fcbf9e81e748e374efa3a6c1\",\"html\":\"https://github.com/anthropics/skills/tree/main/skills/claude-api\"}},{\"name\":\"discernment-nudge\",\"path\":\"skills/discernment-nudge\",\"sha\":\"290670f304c67cf36725d7612583cf203f7a4e50\",\"size\":0,\"url\":\"https://api.github.com/repos/anthropics/skills/contents/skills/discernment-nudge?ref=main\",\"html_url\":\"https://github.com/anthropics/skills/tree/main/skills/discernment-nudge\",\"git_url\":\"https://api.github.com/repos/anthropics/skills/git/trees/290670f304c67cf3"
+ },
+ "anthropic_tree": {
+  "url": "https://api.github.com/repos/anthropics/skills/git/trees/main?recursive=1",
+  "status": 200,
+  "ms": 297,
+  "content_type": "application/json; charset=utf-8",
+  "limits": {
+   "x-ratelimit-limit": "60",
+   "x-ratelimit-remaining": "51",
+   "x-ratelimit-used": "9",
+   "x-ratelimit-resource": "core",
+   "x-ratelimit-reset": "1792778939"
+  },
+  "sample": {
+   "entries": 541,
+   "skill_md": 20,
+   "truncated": false
+  }
+ },
+ "anthropic_commit": {
+  "url": "https://api.github.com/repos/anthropics/skills/commits/main",
+  "status": 200,
+  "ms": 344,
+  "content_type": "application/json; charset=utf-8",
+  "limits": {
+   "x-ratelimit-limit": "60",
+   "x-ratelimit-remaining": "50",
+   "x-ratelimit-used": "10",
+   "x-ratelimit-resource": "core",
+   "x-ratelimit-reset": "1792778939"
+  },
+  "sample": "{\"sha\":\"dbd4588f9e1033efb41dad4bef2f7947c8993d44\",\"node_id\":\"C_kwDOP0wfhtoAKGRiZDQ1ODhmOWUxMDMzZWZiNDFkYWQ0YmVmMmY3OTQ3Yzg5OTNkNDQ\",\"commit\":{\"author\":{\"name\":\"CJ Avilla\",\"email\":\"cj@anthropic.com\",\"date\":\"2026-10-09T18:45:49Z\"},\"committer\":{\"name\":\"GitHub\",\"email\":\"noreply@github.com\",\"date\":\"2026-10-09T18:45:49Z\"},\"message\":\"Update claude-api skill: dynamic workflows and the four workflow quickstarts (#1995)\\n\\nSync of the bundled claude-api skill: the Managed Agents dynamic workflows\\nguidance, the four dynamic-workflow quickstart templates, and the limited-\\nnetworking web-tool rules. Public-only trims in SKILL.md, shared/evals/ and\\nshared/model-migration.md are preserved.\\n\\nCo-authored-by: Claude <noreply@anthropic.com>\",\"tree\":{\"sha\":\"73374b8632b6c29c41ac7641e58bf97743f0aeb9\",\"url\":\"https://api.github.com/repos/anthropics/skills/git/trees/73374b8632b6c29c41ac7641e58bf97743f0aeb9\"},\"url\":\"https://api.github.com/repos/anthropics/skills/git/commits/dbd4588f9e1033efb41dad4bef2f7947c8993d44\",\"comment_count\":0,\"verification\":{\"verified\":true,\"reason\":\"valid\",\"signature\":\"-----BEGIN PGP SIGNATURE-----\\n\\nwsFcBAABCAAQBQJqyTZdCRC1aQ7uu5UhlAAArWUQAFFFdAalKSKwkhGChOXsou4K\\nb8PPYkvBxDnWlBJeziON+MCox6XgRbt4jWzSdMr56dT5nCK4rv24x8yJr0fmhzQG\\n5XmTnbRjYrOXwf8eGtirclsLWjqRV7SxJEgYeIUVM2v+cnY/EdINNVvzRkLU4rOF\\nnaR85nYIJa7wXHsOLgUQ6FNH0wV0S+xeyWjQU5oJZJP5Q7k5uvaeKf/cTeIUTShn\\nxp3zh0/EEWjZXY3kGPsklKD1L668xA1GrYRjSKT2ZZgWKz7VjJUcvjA6xvu+W9V9\\nMLxNu5ptjKcZB3QqUUWArOJBXuFJhW+JlbaHekb+vnVNbMPr6WL9PvL9dyPPIEer\\njqxehNQtUXce2de9Bz/eq18FoTNn45gVkBvu+mubxlVBY3XgR9PH5GATu7lChtdF\\nE9dezbfqbSvZaJYsgfkexhCQaPovgZpSSu1jQKgcRE+KgvuprmBhQvMaHiF6r3Q/\\n7SgijRlN3OMZUpzjqR7BkYJaseO0wxTQebVx4pvKYBe5rEmEfcq+Z3XeisGzN/ab\\nHmz+HThA6wJPi9ladvIW/iMg+iV6DmckGvvNGbELHO23LG3rNNWShwwgsJR5CrQb\\n6VUkqjdWb5NOqNhAL2VRq4J/yGcDGMmVU4LKrMilqJXWlBHFAt2tFupAc3NGCo8Y\\n4i/eyX8Cc91y6JQQjeG1\\n=B35q\\n-----END PGP SIGNATURE-----\\n\",\"payload\":\"tree 73374b8632b6c29c41ac7641e58bf97743f0aeb9\\nparent 9d630808e4add0a7146de4af9384155d5dee350a\\nauthor CJ Avilla <cj@anthropic.com> 1791571549 -0400\\ncommitter GitHub <noreply@github.com> 1791571549 +0000\\n\\nUpdate claude-api skill: dynamic workflows and the four workflow quickstarts (#1995)\\n\\nSync of the bundled claude-api skill: the Managed Agents dynamic workflows\\nguidance, the four dynamic-workflow quickstart templates, and the limited-\\nnetworking web-tool rules. Public-only trims in SKILL.md, shared/evals/ and\\nshared/model-migration.md are preserved.\\n\\nCo-authored-by: Claude <noreply@anthropic.com>\",\"verified_at\":\"2026-10-09T18:45:49Z\"}},\"url\":\"https://api.github.com/repos/anthropics/skills/commits/dbd4588f9e1033efb41dad4bef2f7947c8993d44\",\"html_url\":\"https://github.com/anthropics/skills/commit/dbd4588f9e1033efb41dad4bef2f7947c8993d44\",\"comments_url\":\"https://api.github.com/repos/anthropics/skills/commits/dbd4588f9e1033efb41dad4bef2f7947c8993d44/comments\",\"author\":{\"login\":\"cj-ant\",\"id\":286490957,\"node_id\":\"U_kgDOEROBTQ\",\"avatar_url\":\"https://avatars.githubusercontent.com/u/286490957?v=4\",\"gravatar_id\":\"\",\"url\":\"https://api.github.com/users/cj-ant\",\"html_url\":\"https://github.com/cj-ant\",\"followers_url\":\"https://api.github.com/users/cj-ant/followers\",\"following_url\":\"https://api.github.com/users/cj-ant/following{/other_user}\",\"gists_url\":\"https://api.github.com/users/cj-ant/gists{/gist_id}\",\"starred_url\":\"https://api.github.com/users/cj-ant/starred{/owner}{/repo}\",\"subscriptions_url\":\"https://api.github.com/users/cj-ant/subscriptions\",\"organizations_url\":\"https://api.github.com/users/cj-ant/orgs\",\"repos_url\":\"https://api.github.com/users/cj-ant/repos\",\"events_url\":\"https://api.github.com/users/cj-ant/events{/privacy}\",\"received_events_url\":\"https://api.github.com/users/cj-ant/received_events\",\"type\":\"User\",\"user_view_type\":\"public\",\"site_admin\":false},\"committer\":{\"login\":\"web-flow\",\"id\":19864447,\"node_id\":\"MDQ6VXNlcjE5ODY0NDQ3\",\"avatar_url\":\"https://avatars.githubusercontent.com/u/19864447?v=4\",\"gravatar_id\":\"\",\"url\":\"https://api.gith"
+ },
+ "skillsmp_search": {
+  "url": "https://skillsmp.com/api/v1/skills/search?q=code%20review&sort=stars&limit=3",
+  "status": 200,
+  "ms": 906,
+  "content_type": "application/json",
+  "limits": {
+   "x-ratelimit-daily-limit": "50",
+   "x-ratelimit-daily-remaining": "47",
+   "x-ratelimit-daily-reset": "1792800000",
+   "x-ratelimit-minute-limit": "10",
+   "x-ratelimit-minute-remaining": "9"
+  },
+  "sample": {
+   "success": true,
+   "data": {
+    "skills": [
+     {
+      "id": "openclaw-openclaw-agents-skills-autoreview-skill-md",
+      "name": "autoreview",
+      "author": "openclaw",
+      "description": "Structured Codex, Claude, Amp, Pi, or Kimi code review when explicitly requested.",
+      "contentLanguage": "en",
+      "githubUrl": "https://github.com/openclaw/openclaw/tree/main/.agents/skills/autoreview",
+      "skillUrl": "https://skillsmp.com/creators/openclaw/openclaw/agents-skills-autoreview",
+      "stars": 392094,
+      "updatedAt": 1788351039
+     },
+     {
+      "id": "openclaw-openclaw-extensions-acpx-skills-acp-router-skill-md",
+      "name": "acp-router",
+      "author": "openclaw",
+      "description": "Route plain-language requests for Claude Code, Cursor, Copilot, OpenClaw ACP, OpenCode, Gemini CLI, Qwen, Kiro, Kimi, iFlow, Factory Droid, Kilocode, or explicit ACP harness work into either OpenClaw ACP runtime sessions or direct acpx-driven sessions (\"telephone game\" flow). For coding-agent thread requests, read this skill first, then use only `sessions_spawn` for thread creation. Codex chat binding defaults to the native Codex app-server plugin unless ACP is explicit or background spawn needs ACP.",
+      "contentLanguage": "en",
+      "githubUrl": "https://github.com/openclaw/openclaw/tree/main/extensions/acpx/skills/acp-router",
+      "skillUrl": "https://skillsmp.com/creators/openclaw/openclaw/extensions-acpx-skills-acp-router",
+      "stars": 392094,
+      "updatedAt": 1787994425
+     },
+     {
+      "id": "openclaw-openclaw-skills-coding-agent-skill-md",
+      "name": "coding-agent",
+      "author": "openclaw",
+      "description": "Delegate coding work to Codex, Claude Code, or OpenCode as background workers; not simple edits or read-only code lookup.",
+      "contentLanguage": "en",
+      "githubUrl": "https://github.com/openclaw/openclaw/tree/main/skills/coding-agent",
+      "skillUrl": "https://skillsmp.com/creators/openclaw/openclaw/skills-coding-agent",
+      "stars": 392094,
+      "updatedAt": 1785303822
+     }
+    ],
+    "pagination": {
+     "page": 1,
+     "limit": 3,
+     "total": 4,
+     "totalPages": 2,
+     "hasNext": true,
+     "hasPrev": false,
+     "totalIsExact": false
+    },
+    "filters": {
+     "search": "code review",
+     "sortBy": "stars"
+    }
+   },
+   "meta": {
+    "requestId": "15db0013-48a7-450e-8919-571607137c17",
+    "responseTimeMs": 19
+   }
+  }
+ },
+ "clawhub_search": {
+  "url": "https://clawhub.ai/api/v1/search?q=code%20review&limit=3",
+  "status": 200,
+  "ms": 2484,
+  "content_type": "application/json",
+  "limits": {
+   "x-ratelimit-limit": "3000",
+   "x-ratelimit-reset": "1792775580"
+  },
+  "sample": "{\"results\":[{\"canonicalUrl\":\"/caingao/skills/smart-code-review\",\"displayName\":\"Code Review\",\"downloads\":1514,\"featured\":false,\"icon\":null,\"id\":\"clawhub:kd7689zhv09a8z78xje0dtkw2h87a922\",\"install\":{\"kind\":\"clawhub\",\"reference\":\"caingao/smart-code-review\",\"sourceUrl\":null},\"links\":{\"canonical\":\"/caingao/skills/smart-code-review\",\"source\":null},\"metrics\":{\"bookmarks\":0,\"rolling60DayInstalls\":7,\"updatedAt\":1779615724392},\"native\":{\"owner\":{\"_creationTime\":0,\"_id\":\"s17bdzn7wt8m5gmr3egcws699n87ak7y\",\"displayName\":\"VelenGao\",\"handle\":\"caingao\",\"image\":\"https://avatars.githubusercontent.com/u/7565013?v=4\",\"kind\":\"user\",\"linkedUserId\":\"kn7dfpp85z5fypb8h8x6f0awvd87bh9v\"},\"ownerHandle\":\"caingao\",\"skill\":{\"_creationTime\":1779615724392,\"_id\":\"kd7689zhv09a8z78xje0dtkw2h87a922\",\"badges\":{},\"categories\":[\"development\"],\"createdAt\":1779615724392,\"displayName\":\"Code Review\",\"isSuspicious\":false,\"latestVersionId\":\"k972bz0nyjeb6nfqsanjdaz1zd87b534\",\"ownerPublisherId\":\"s17bdzn7wt8m5gmr3egcws699n87ak7y\",\"ownerUserId\":\"kn7dfpp85z5fypb8h8x6f0awvd87bh9v\",\"slug\":\"smart-code-review\",\"stats\":{\"comments\":0,\"downloads\":1514,\"installs\":28,\"stars\":0,\"versions\":1},\"summary\":\"AI 驱动的代码审查工具。对代码变更进行多维度审查，输出结构化的 Review 意见。 **当以下情况时使用此 Skill**: (1) 需要对代码进行 Code Review (2) 需要审查 PR/MR 的代码变更 (3) 用户提到\\\"code review\\\"、\\\"代码审查\\\"、\\\"帮我看看代码\\\"、\\\"这段代码有问题吗...\",\"tags\":{\"latest\":\"k972bz0nyjeb6nfqsanjdaz1zd87b534\"},\"topics\":[\"Code Review\",\"代码审查\",\"安全\"],\"updatedAt\":1779615724392},\"version\":null},\"official\":false,\"ownerHandle\":\"caingao\",\"publisher\":{\"displayName\":\"VelenGao\",\"handle\":\"caingao\",\"image\":\"https://avatars.githubusercontent.com/u/7565013?v=4\",\"kind\":\"user\",\"official\":false},\"score\":6110,\"slug\":\"smart-code-review\",\"source\":\"clawhub\",\"sourceIdentity\":{\"host\":null,\"id\":\"kd7689zhv09a8z78xje0dtkw2h87a922\",\"lifetimeInstalls\":null,\"owner\":\"caingao\",\"repo\":null},\"summary\":\"AI 驱动的代码审查工具。对代码变更进行多维度审查，输出结构化的 Review 意见。 **当以下情况时使用此 Skill**: (1) 需要对代码进行 Code Review (2) 需要审查 PR/MR 的代码变更 (3) 用户提到\\\"code review\\\"、\\\"代码审查\\\"、\\\"帮我看看代码\\\"、\\\"这段代码有问题吗...\",\"trust\":{\"clawHubVerdict\":null,\"installability\":\"installable\",\"sourceFreshness\":\"native\",\"upstreamScanners\":null,\"visibility\":\"public\"},\"updatedAt\":1779615724392,\"version\":null,\"owner\":{\"handle\":\"caingao\",\"displayName\":\"VelenGao\",\"image\":\"https://avatars.githubusercontent.com/u/7565013?v=4\"}},{\"canonicalUrl\":\"/wpank/skills/code-review\",\"displayName\":\"Code Review\",\"downloads\":19248,\"featured\":false,\"icon\":null,\"id\":\"clawhub:kd7aypj9ks1rra80ba79cfbxzs80ws8k\",\"install\":{\"kind\":\"clawhub\",\"reference\":\"wpank/code-review\",\"sourceUrl\":null},\"links\":{\"canonical\":\"/wpank/skills/code-review\",\"source\":null},\"metrics\":{\"bookmarks\":0,\"rolling60DayInstalls\":7,\"updatedAt\":1778486991803},\"native\":{\"owner\":{\"_creationTime\":0,\"_id\":\"s17bjjbnm7xjckd29e1h2641ks8849md\",\"displayName\":\"wpank\",\"handle\":\"wpank\",\"image\":\"https://avatars.githubusercontent.com/u/9498646?v=4\",\"kind\":\"user\",\"linkedUserId\":\"kn77z49xfssappp65hpybb9gx180x56e\"},\"ownerHandle\":\"wpank\",\"skill\":{\"_creationTime\":1770729869941,\"_id\":\"kd7aypj9ks1rra80ba79cfbxzs80ws8k\",\"badges\":{},\"categories\":[\"development\"],\"createdAt\":1770729869941,\"displayName\":\"Code Review\",\"isSuspicious\":false,\"latestVersionId\":\"k9742es2pysefdg9hdt0eb08cd80x471\",\"ownerPublisherId\":\"s17bjjbnm7xjckd29e1h2641ks8849md\",\"ownerUserId\":\"kn77z49xfssappp65hpybb9gx180x56e\",\"slug\":\"code-review\",\"stats\":{\"comments\":0,\"downloads\":19248,\"installs\":557,\"stars\":20,\"versions\":1},\"summary\":\"Systematic code review patterns covering security, performance, maintainability, correctness, and testing — with severity levels, structured feedback guidance, review process, and anti-patterns to avoid. Use when reviewing PRs, establishing review standards, or improving review quality.\",\"tags\":{\"latest\":\"k9742es2pysefdg9hdt0eb08cd80x471\"},\"topics\":[\"Code Review\"],\"updatedAt\":1778486991803},\"version\":null},\"official\":false,\"ownerHandle\":\"wpank\",\"publisher\":{\"displayName\":\"wpank\",\"handle\":\"wpank\",\"image\":\"https://avatars.githubusercontent.com/u/9498646?v=4\",\"kind\":\""
+ },
+ "clawhub_popular": {
+  "url": "https://clawhub.ai/api/v1/skills?limit=3&sort=downloads",
+  "status": 200,
+  "ms": 2000,
+  "content_type": "application/json",
+  "limits": {
+   "x-ratelimit-limit": "3000",
+   "x-ratelimit-reset": "1792775580"
+  },
+  "sample": {
+   "items": [
+    {
+     "ownerHandle": "pskoett",
+     "slug": "self-improving-agent",
+     "displayName": "self-improving agent",
+     "summary": "Captures and maintains learnings, errors, and corrections. Use when a command fails, the user corrects an assumption, a capability is missing, knowledge is outdated, or a better approach is found. Review relevant saved guidance before major tasks, reuse, and promotion; revalidate it according to wha",
+     "description": null,
+     "topics": [
+      "self-improvement",
+      "context"
+     ],
+     "tags": {
+      "latest": "4.0.5"
+     },
+     "stats": {
+      "comments": 53,
+      "downloads": 487953,
+      "installs": 18503,
+      "stars": 4004,
+      "versions": 42
+     },
+     "createdAt": 1767632598365,
+     "updatedAt": 1792672926676,
+     "latestVersion": {
+      "version": "4.0.5",
+      "createdAt": 1792672635457,
+      "changelog": "## 4.0.5\n\n### Fixed\n- Disabling the hook now preserves learning history. Disable the whole hook and restart; there is no separate reminder-only switch.\n- Uninstall instructions use the actual installation paths and archive the skill and hook outside discovery directories.\n- Learning files and promoted workspace guidance are preserved during uninstall. Permanent data deletion requires separate explicit authorization, verified paths, and a verified backup.\n- Feature-request logging now requires evidence of a missing capability. Ordinary questions and follow-up tasks no longer count as automatic logging triggers.\n\n### Upgrade notes\nUpdate the installed skill and start a fresh session. Hook code is unchanged from 4.0.4, so no hook replacement or learning-data migration is needed.",
+      "license": "MIT-0"
+     },
+     "metadata": null
+    },
+    {
+     "ownerHandle": "spclaudehome",
+     "slug": "skill-vetter",
+     "displayName": "Skill Vetter",
+     "summary": "Security-first skill vetting for AI agents. Use before installing any skill from ClawdHub, GitHub, or other sources. Checks for red flags, permission scope, and suspicious patterns.",
+     "description": null,
+     "topics": [
+      "GitHub",
+      "Permission"
+     ],
+     "tags": {
+      "latest": "1.0.0"
+     },
+     "stats": {
+      "comments": 0,
+      "downloads": 279278,
+      "installs": 12262,
+      "stars": 1308,
+      "versions": 1
+     },
+     "createdAt": 1769863429632,
+     "updatedAt": 1789594554485,
+     "latestVersion": {
+      "version": "1.0.0",
+      "createdAt": 1769863429632,
+      "changelog": "Initial release - Security-first skill vetting for AI agents",
+      "license": null
+     },
+     "metadata": null
+    },
+    {
+     "ownerHandle": "ivangdavila",
+     "slug": "self-improving",
+     "displayName": "Self-Improving + Proactive Agent",
+     "summary": "Self-reflection + Self-criticism + Self-learning + Self-organizing memory. Agent evaluates its own work, catches mistakes, and improves permanently. Use when...",
+     "description": null,
+     "topics": [
+      "Self Improving",
+      "Learning"
+     ],
+     "tags": {
+      "latest": "1.2.16"
+     },
+     "stats": {
+      "comments": 0,
+      "downloads": 212719,
+      "installs": 7394,
+      "stars": 1299,
+      "versions": 22
+     },
+     "createdAt": 1771266418607,
+     "updatedAt": 1778491556797,
+     "latestVersion": {
+      "version": "1.2.16",
+      "createdAt": 1773329327755,
+      "changelog": "Clarifies the setup flow for proactive follow-through and safer installation behavior.",
+      "license": "MIT-0"
+     },
+     "metadata": {
+      "setup": [],
+      "os": [
+       "linux",
+       "darwin",
+       "win32"
+      ],
+      "systems": null
+     }
+    }
+   ],
+   "nextCursor": "{\"v\":1,\"index\":\"by_active_stats_downloads\",\"key\":[{\"__undef\":1},212719,1778491556797,1773255917793.7744,\"r1774whtkkgc7rm5ykeen9k5y582p0w6\"]}"
+  }
+ },
+ "clawhub_detail": {
+  "url": "https://clawhub.ai/api/v1/skills/self-improving-agent?ownerHandle=pskoett",
+  "status": 200,
+  "ms": 2547,
+  "content_type": "application/json",
+  "limits": {
+   "x-ratelimit-limit": "3000",
+   "x-ratelimit-reset": "1792775580"
+  },
+  "sample": "{\"skill\":{\"slug\":\"self-improving-agent\",\"displayName\":\"self-improving agent\",\"summary\":\"Captures and maintains learnings, errors, and corrections. Use when a command fails, the user corrects an assumption, a capability is missing, knowledge is outdated, or a better approach is found. Review relevant saved guidance before major tasks, reuse, and promotion; revalidate it according to wha\",\"icon\":\"lucide:Brain\",\"description\":\"---\\nname: self-improving-agent\\ndescription: \\\"Captures and maintains learnings, errors, and corrections. Use when a command fails, the user corrects an assumption, a capability is missing, knowledge is outdated, or a better approach is found. Review relevant saved guidance before major tasks, reuse, and promotion; revalidate it according to what could change and how quickly.\\\"\\nversion: \\\"4.0.5\\\"\\nmetadata:\\n---\\n\\n# Self-Improvement Skill\\n\\nLog learnings and errors to markdown files for continuous improvement. Agents can later process these into fixes, and important learnings get promoted to workspace memory. This version of the skill is built for OpenClaw only — for other agents, see the original multi-agent version at https://github.com/pskoett/pskoett-ai-skills.\\n\\nCapture, review, reuse, promotion, and maintenance are self-contained here: no companion skill, service, plugin, memory backend, or OpenClaw core change is required. The optional hook only reminds and captures possible errors; it does not enforce this workflow or revalidate claims.\\n\\n## First-Use Initialisation\\n\\nBefore logging anything, ensure the `.learnings/` directory and files exist in the project or workspace root. If any are missing, create them:\\n\\n```bash\\nmkdir -p .learnings\\n[ -f .learnings/LEARNINGS.md ] || printf \\\"# Learnings\\\\n\\\\nCorrections, insights, and knowledge gaps captured during development.\\\\n\\\\n**Categories**: correction | insight | knowledge_gap | best_practice\\\\n\\\\n---\\\\n\\\" > .learnings/LEARNINGS.md\\n[ -f .learnings/ERRORS.md ] || printf \\\"# Errors\\\\n\\\\nCommand failures and integration errors.\\\\n\\\\n---\\\\n\\\" > .learnings/ERRORS.md\\n[ -f .learnings/FEATURE_REQUESTS.md ] || printf \\\"# Feature Requests\\\\n\\\\nCapabilities requested by the user.\\\\n\\\\n---\\\\n\\\" > .learnings/FEATURE_REQUESTS.md\\n```\\n\\nNever overwrite existing files. This is a no-op if `.learnings/` is already initialised.\\n\\nDo not log secrets, tokens, private keys, environment variables, or full source/config files unless the user explicitly asks for that level of detail. Prefer short summaries or redacted excerpts over raw command output or full transcripts.\\n\\nIf you want automatic reminders and session-end error detection, enable the opt-in hook described in [Optional: Enable Hook](#optional-enable-hook).\\n\\n## Quick Reference\\n\\n| Situation | Action |\\n|-----------|--------|\\n| Command/operation fails | Log to `.learnings/ERRORS.md` |\\n| User corrects you | Log to `.learnings/LEARNINGS.md` with category `correction` |\\n| User wants missing feature | Log to `.learnings/FEATURE_REQUESTS.md` |\\n| API/external tool fails | Log to `.learnings/ERRORS.md` with integration details |\\n| Knowledge was outdated | Log to `.learnings/LEARNINGS.md` with category `knowledge_gap` |\\n| Found better approach | Log to `.learnings/LEARNINGS.md` with category `best_practice` |\\n| Simplify/Harden recurring patterns | Log/update `.learnings/LEARNINGS.md` with `Source: simplify-and-harden` and a stable `Pattern-Key` |\\n| Similar to existing entry | Search by `Pattern-Key`, confirm the same claim/scope; count only a new occurrence |\\n| Reusing or promoting saved knowledge | Review relevant/due claims using Maintenance below, including one-off/unpromoted entries |\\n| Source, decision, dependency, or task changes | Revalidate affected claims; do not expire them by age |\\n| Workflow improvements | Promote to `AGENTS.md` (workspace) |\\n| Tool gotchas | Promote to `TOOLS.md` (workspace) |\\n| Behavioral patterns | Promote to `SOUL.md` (workspace) |\\n\\n## OpenClaw Setup\\n\\nOpenCla"
+ },
+ "clawhub_download": {
+  "url": "https://clawhub.ai/api/v1/download?slug=self-improving-agent&ownerHandle=pskoett",
+  "status": 200,
+  "ms": 2625,
+  "content_type": "application/zip",
+  "limits": {
+   "x-ratelimit-limit": "1200",
+   "x-ratelimit-reset": "1792775580"
+  },
+  "sample": [
+   {
+    "path": "assets/ERRORS.md",
+    "size": 1819
+   },
+   {
+    "path": "assets/FEATURE_REQUESTS.md",
+    "size": 1654
+   },
+   {
+    "path": "assets/LEARNINGS.md",
+    "size": 3367
+   },
+   {
+    "path": "assets/SKILL-TEMPLATE.md",
+    "size": 5199
+   },
+   {
+    "path": "CHANGELOG.md",
+    "size": 10924
+   },
+   {
+    "path": "hooks/openclaw/handler.js",
+    "size": 19306
+   },
+   {
+    "path": "hooks/openclaw/handler.test.js",
+    "size": 18581
+   },
+   {
+    "path": "hooks/openclaw/handler.ts",
+    "size": 20834
+   },
+   {
+    "path": "hooks/openclaw/HOOK.md",
+    "size": 4484
+   },
+   {
+    "path": "references/examples.md",
+    "size": 14876
+   },
+   {
+    "path": "references/maintenance-evals.md",
+    "size": 7812
+   },
+   {
+    "path": "references/openclaw-integration.md",
+    "size": 16884
+   },
+   {
+    "path": "references/uninstall.md",
+    "size": 4358
+   },
+   {
+    "path": "scripts/extract-skill.sh",
+    "size": 5293
+   },
+   {
+    "path": "skill-card.md",
+    "size": 2061
+   },
+   {
+    "path": "SKILL.md",
+    "size": 26653
+   },
+   {
+    "path": "_meta.json",
+    "size": 139
+   }
+  ]
+ },
+ "best_skills_top_installs": {
+  "url": "https://raw.githubusercontent.com/LinklyAI/best-skills/main/data/latest/rankings/top-installs.csv",
+  "status": 200,
+  "ms": 218,
+  "content_type": "text/plain; charset=utf-8",
+  "limits": {},
+  "sample": {
+   "rows": 100,
+   "head": [
+    "rank,skill,skill_key,platform,vendor,source_skillssh,slug_clawhub,url,repo_url,install,match,description,description_zh,installs_skillssh,downloads_clawhub,downloads_skillhub_cn,pop_score,coverage,category,flags",
+    "1,find-skills,ss:vercel-labs/skills/find-skills,skills.sh,vercel-labs,vercel-labs/skills,,https://www.skills.sh/vercel-labs/skills/find-skills,https://github.com/vercel-labs/skills,npx skills add https://github.com/vercel-labs/skills --skill find-skills,single,,,3996428,,,1,C,ai-agent,",
+    "2,dev-god,sh:dev-god,skillhub-cn,阿客（北京）科技有限公司,,,,,,single,【全栈能力】编程大神.Skill：面向复杂真实项目的高阶全栈编程助手。不止生成代码，而是从一句目标接手陌生代码库，拆解需求、补齐实现、追到根因、完成重构、联调前后端，并把结果推进到能运行、能验证、能交付。覆盖 Web、后端、脚本、iOS、安卓、鸿蒙 ArkUI、微信小程序及其他技术栈，支持中英文工程、疑难 Bug、跨模块任务和长任务续做；用构建、日志、真实入口、设备或接口证据说明结果。仅问概念时直,【全栈能力】编程大神.Skill：面向复杂真实项目的高阶全栈编程助手。不止生成代码，而是从一句目标接手陌生代码库，拆解需求、补齐实现、追到根因、完成重构、联调前后端，并把结果推进到能运行、能验证、能交付。覆盖 Web、后端、脚本、iOS、安卓、鸿蒙 ArkUI、微信小程序及其他技术栈，支持中英文工程、疑难 Bug、跨模块任务和长任务续做；用构建、日志、真实入口、设备或接口证据说明结果。仅问概念时直,,,7628127,0.999,C,dev-programming,",
+    "3,grill-me,ss:mattpocock/skills/grill-me,skills.sh,mattpocock,mattpocock/skills,,https://www.skills.sh/mattpocock/skills/grill-me,https://github.com/mattpocock/skills,npx skills add https://github.com/mattpocock/skills --skill grill-me,single,,,1416384,,,0.999,C,dev-programming,"
+   ]
+  }
+ }
+}

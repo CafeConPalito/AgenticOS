@@ -33,6 +33,65 @@ Scripts en `spikes/skills/`; evidencias en `evidencias/`.
 | S4 | **Autoselección**: corpus de 20 skills reales (de `anthropics/skills` y propias) y 50 tareas de prueba en español e inglés. Acierto en las 3 primeras con `multilingual-e5-small`, EmbeddingGemma 2 y bge-m3 sobre «nombre + descripción», frente a palabras clave (BM25 propio). Umbral mínimo por modelo, y si añadir el primer apartado del cuerpo mejora | Ranking híbrido (RRF de vectores y palabras), como la búsqueda de la fase 14 |
 | S5 | **Formato real**: parsear 100 `SKILL.md` de los registros: rarezas de la cabecera YAML (campos extra, `allowed-tools`, multilínea, BOM, CRLF), tamaños típicos y tipos de fichero de apoyo | Parser tolerante: solo `name` y `description` son obligatorios y el resto se conserva tal cual |
 
+## Resultados de los spikes (bloque 0, 2026-10-23)
+Evidencias en [`evidencias/s1-s5-skills.md`](evidencias/s1-s5-skills.md); scripts en `spikes/skills/`.
+
+- **S1 · Claude**:
+  - con el lanzamiento actual (`--setting-sources project,local`) **no** se cargan las skills personales (`~/.claude/skills`) ni los plugins del usuario, solo las de serie del CLI;
+  - `--plugin-dir` carga las nuestras por sesión, con el prefijo del plugin (`<plugin>:<skill>`);
+  - `PreToolUse` recibe `Skill` con `{"skill": …}`;
+  - los *scripts* siguen el modo de permisos;
+  - `--safe-mode` apaga también nuestros *hooks* y la skill del plugin, y `--disable-slash-commands` apaga todas;
+  - las del **repo** (`.claude/skills` del proyecto) entran por la fuente `project`, que también trae el `CLAUDE.md`;
+  - la configuración del usuario no cambia.
+- **S2 · `agy`**:
+  - `skills/<nombre>/SKILL.md` dentro del plugin de workspace se carga y su *script* se ejecuta;
+  - la activación es un `read_file` del `SKILL.md`, visible en `PreToolUse` (`toolCall.name`, `args.Path`);
+  - no se pueden apagar las skills globales del usuario (`~/.gemini/config/`) ni las del repo (`.agents/skills/`);
+  - límites: cuerpo ≤ 24 KB y `name` = nombre de la carpeta.
+- **S3 · Registros**:
+  - **skills.sh**: rutas públicas de su CLI (`/api/search`, `/api/download/…`, `/tele/audit`); la API documentada exige OIDC de Vercel;
+  - **`anthropics/skills`**: por la API de GitHub;
+  - **SkillsMP**: 50 consultas al día sin clave, y sus estrellas son las del repo;
+  - **ClawHub**: API pública, pero su análisis de seguridad exige iniciar sesión;
+  - **«Más usadas»**: el CSV diario y abierto de `LinklyAI/best-skills` (CC BY 4.0).
+- **S4 · Autoselección**:
+  - coseno tal cual sobre «nombre + descripción»: hit@3 de **0,917** con e5, **1,000** con EmbeddingGemma 2 y **0,958** con bge-m3;
+  - centrado, híbrido y cuerpo no mejoran;
+  - BM25 sin modelo: 0,812 en total, **0,96 en el mismo idioma** y falla en idioma cruzado;
+  - umbral mínimo por modelo: e5 **0,83**, Gemma **0,62** y bge-m3 **0,52**.
+- **S5 · Formato**:
+  - 76 skills, todas con `name` y `description` y YAML válido;
+  - campos extra conservados, entre ellos `disable-model-invocation`;
+  - ficheros: percentil 90 de 68 y máximo de 200;
+  - 20 % con ejecutables.
+
+### Cambios al diseño por los spikes
+1. **Claude, vía nativa**:
+   - `<run_dir>/plugin/` con `.claude-plugin/plugin.json` (`name: "aos"`) y `skills/` → `--plugin-dir`. Se descarta `--add-dir` para las skills.
+   - `CLAUDE_TOOL_MATCHER` pasa a `Agent|Task|Skill`. Un `Skill` con prefijo `aos:` registra `loaded_via=native`.
+   - Las de serie del CLI se quedan (son del CLI, no del usuario); con el prefijo no chocan con las nuestras.
+2. **`agy`, vía nativa**: `skills/` dentro de `.agents/plugins/agentic-os/`. `AGY_TOOL_MATCHER` pasa a `invoke_subagent|read_file`, y un `read_file` de un `SKILL.md` de nuestro plugin registra `loaded_via=native`. Una skill de más de 24 KB no va por la vía nativa, solo por `use_skill`. La ficha del agente avisa de que `agy` carga también las skills globales del usuario si las tiene (se comprueba si existe `~/.gemini/config/skills`).
+3. **Skills del repo**: **pendiente de decisión del usuario** (la fuente `project` de Claude y `.agents/skills` de `agy` las cargan). Propuesta:
+   - mantener `project,local`, para no perder el `CLAUDE.md` del proyecto;
+   - tratar las skills del repo como parte del código del proyecto;
+   - enseñarlas en Proyecto › Conocimiento como «Skills del repositorio (las carga el CLI por su cuenta)», con «Importar».
+4. **Registros**:
+   - **Más usadas**: `best_skills.py`, que lee los CSV de `LinklyAI/best-skills`, con atribución en la vista.
+   - **Fuentes de búsqueda**: `skills_sh.py` (búsqueda, descarga y auditoría) y `anthropic.py`, activadas por defecto. `skillsmp.py` (con campo para la clave) y `clawhub.py`, apagadas por defecto.
+   - **Versión** de lo instalado: el *commit* en las fuentes de GitHub, el *hash* de los ficheros en skills.sh y la versión semántica en ClawHub (`SkillOrigin.commit` pasa a llamarse `revision`).
+   - **Seguridad**: la ficha muestra los tres riesgos de skills.sh, o la marca `isSuspicious` de ClawHub.
+5. **Selección**:
+   - el **coseno tal cual** de «nombre + descripción», sin híbrido ni cuerpo;
+   - **umbral mínimo por modelo** en el catálogo de modelos (e5 0,83, Gemma 0,62, bge-m3 0,52) y como mucho 5 candidatas;
+   - sin modelo, BM25 con un umbral propio, y la UI avisa de que **solo encuentra skills escritas en el idioma de la tarea**.
+6. **Formato**:
+   - `disable-model-invocation: true` → la skill no se ofrece como candidata, pero se puede cargar con `use_skill` o fijar en Siempre;
+   - topes: 300 ficheros, 1 MB por fichero, 5 MB por skill y `SKILL.md` ≤ 8 000 *tokens*;
+   - el resto de campos de la cabecera se conserva y se vuelve a escribir tal cual.
+7. **CA5 (spec)**: con modelo de significado, ≥ 90 % en las 3 primeras (cumplido con los tres modelos). Sin modelo, ≥ 90 % **en tareas y skills del mismo idioma**; el idioma cruzado necesita el modelo. **Pendiente del OK del usuario.**
+8. **Fuera de la fase, anotado**: `SESSION_MARKERS` (`runs/launcher.py`) no incluye `CLAUDE_CODE_BRIDGE_SESSION_ID`, que el CLI ya exporta. Se revisa como corrección aparte.
+
 ## Diseño ([ADR 0024](../../adr/0024-skills.md), nuevo, borrador)
 
 ### 1. Modelo de datos (migración `0019_skills`)
@@ -230,7 +289,7 @@ Las reglas de Agentic OS explican en una línea cuándo proponer: una forma de t
 | `spikes/skills/` | nuevo |
 
 ## Tareas (en orden)
-1. [ ] **Bloque 0 · Spikes** S1–S5, con evidencias y cambios al diseño anotados aquí.
+1. [x] **Bloque 0 · Spikes** S1–S5 hechos; evidencias y cambios al diseño anotados arriba (dos pendientes del OK del usuario: skills del repo y CA5 sin modelo).
 2. [ ] **Bloque 1 · Datos y almacén**: migración `0019`, modelos, `InboxKind.SKILL`, `store.py`, `format.py` y uso de disco.
 3. [ ] **Bloque 2 · Biblioteca (backend)**: CRUD con versiones, validación, historial y diff, restaurar, importar (carpeta, `.zip`, CLIs), exportar, vectores y su reindexado, API.
 4. [ ] **Bloque 3 · Selección y uso (backend)**: visibles y precedencia, modos por agente y etapa, candidatas, sección «Skills», materialización, `use_skill` y `read_skill_file`, `RunSkill`, probador, API de modos y de la ejecución.

@@ -1,0 +1,48 @@
+{
+ "skills": 31,
+ "quirks": {
+  "unquoted colon in description": 7,
+  "multi-line description": 1
+ },
+ "examples": {},
+ "frontmatter_fields": {
+  "name": 31,
+  "description": 31,
+  "disable-model-invocation": 7,
+  "allowed-tools": 5,
+  "license": 3,
+  "metadata": 2,
+  "argument-hint": 2,
+  "displayName": 1,
+  "emoji": 1,
+  "homepage": 1,
+  "hidden": 1
+ },
+ "skill_md_tokens": {
+  "median": 1631,
+  "p90": 2340,
+  "max": 5091
+ },
+ "files_per_skill": {
+  "median": 4,
+  "p90": 71,
+  "max": 122
+ },
+ "bytes_per_skill": {
+  "median": 11766,
+  "p90": 230383,
+  "max": 1269613
+ },
+ "with_executables": 5,
+ "file_kinds": {
+  ".md": 364,
+  ".mjs": 80,
+  ".html": 66,
+  ".yaml": 14,
+  ".txt": 7,
+  ".py": 5,
+  ".json": 3,
+  "(none)": 1,
+  ".sh": 1
+ }
+}

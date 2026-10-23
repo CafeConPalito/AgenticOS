@@ -1,0 +1,303 @@
+{
+ "skills": 82,
+ "tasks": 58,
+ "results": [
+  {
+   "method": "bm25",
+   "hit@1": 0.729,
+   "hit@3": 0.812,
+   "mrr": 0.795,
+   "threshold": 5.9137,
+   "positives_kept": "39/48",
+   "negatives_filtered": "10/10",
+   "misses": [
+    "Incidencia: no puedo iniciar sesión → ['prisma-mongodb-upgrade', 'migraciones-alembic', 'notas-de-version'] (esperada ['atencion-cliente'])",
+    "Revisar la rama de la tarea T-142 → ['seguridad-owasp', 'migraciones-alembic', 'setup-matt-pocock-skills'] (esperada ['code-review'])",
+    "Error intermitente en producción → ['prisma-mongodb-upgrade', 'azure-messaging', 'prisma-driver-adapter-implementation'] (esperada ['diagnosing-bugs'])",
+    "Prepara el traspaso a otro agente → ['migraciones-alembic', 'propuesta-comercial', 'notas-de-version'] (esperada ['handoff'])",
+    "Subir a Prisma 7 → ['prisma-database-setup', 'prisma-cli', 'prisma-postgres-setup'] (esperada ['prisma-upgrade-v7'])",
+    "Vídeo promocional con Remotion → ['remotion-render', 'remotion-studio', 'remotion-docs'] (esperada ['remotion-create', 'remotion-best-practices'])",
+    "Subtítulos animados en el vídeo → ['azure-ai', 'ai-avatar-video', 'remotion-render'] (esperada ['remotion-captions'])",
+    "Generar imágenes para el blog → ['migraciones-alembic', 'propuesta-comercial', 'notas-de-version'] (esperada ['ai-image-generation'])",
+    "Publicar en X el lanzamiento → ['reddit-automation', 'notas-de-version', 'ai-video-generation'] (esperada ['twitter-automation'])"
+   ]
+  },
+  {
+   "method": "e5-small",
+   "hit@1": 0.812,
+   "hit@3": 0.917,
+   "mrr": 0.873,
+   "threshold": 0.8503,
+   "positives_kept": "40/48",
+   "negatives_filtered": "9/10",
+   "misses": [
+    "Error intermitente en producción → ['atencion-cliente', 'notas-de-version', 'azure-diagnostics'] (esperada ['diagnosing-bugs'])",
+    "Rellenar el formulario de la web del proveedor → ['atencion-cliente', 'notas-de-version', 'prisma-compute'] (esperada ['agent-browser'])",
+    "Publicar en X el lanzamiento → ['notas-de-version', 'atencion-cliente', 'remotion-saas'] (esperada ['twitter-automation'])",
+    "Design the module boundaries → ['remotion-interactivity', 'remotion-saas', 'remotion-upgrade'] (esperada ['codebase-design', 'improve-codebase-architecture'])"
+   ],
+   "seconds": 3.1
+  },
+  {
+   "method": "e5-small centrado",
+   "hit@1": 0.75,
+   "hit@3": 0.938,
+   "mrr": 0.841,
+   "threshold": 0.3308,
+   "positives_kept": "33/48",
+   "negatives_filtered": "9/10",
+   "misses": [
+    "Error intermitente en producción → ['atencion-cliente', 'pruebas-e2e-playwright', 'notas-de-version'] (esperada ['diagnosing-bugs'])",
+    "Rellenar el formulario de la web del proveedor → ['atencion-cliente', 'propuesta-comercial', 'notas-de-version'] (esperada ['agent-browser'])",
+    "Publicar en X el lanzamiento → ['notas-de-version', 'atencion-cliente', 'propuesta-comercial'] (esperada ['twitter-automation'])"
+   ],
+   "seconds": 3.1
+  },
+  {
+   "method": "híbrido e5-small",
+   "hit@1": 0.792,
+   "hit@3": 0.896,
+   "mrr": 0.849,
+   "threshold": 0.0325,
+   "positives_kept": "37/48",
+   "negatives_filtered": "9/10",
+   "misses": [
+    "Error intermitente en producción → ['azure-diagnostics', 'azure-messaging', 'notas-de-version'] (esperada ['diagnosing-bugs'])",
+    "Prepara el traspaso a otro agente → ['propuesta-comercial', 'notas-de-version', 'atencion-cliente'] (esperada ['handoff'])",
+    "Subtítulos animados en el vídeo → ['remotion-render', 'remotion-studio', 'remotion-create'] (esperada ['remotion-captions'])",
+    "Rellenar el formulario de la web del proveedor → ['atencion-cliente', 'seguridad-owasp', 'pruebas-e2e-playwright'] (esperada ['agent-browser'])",
+    "Publicar en X el lanzamiento → ['notas-de-version', 'propuesta-comercial', 'atencion-cliente'] (esperada ['twitter-automation'])"
+   ]
+  },
+  {
+   "method": "gemma2",
+   "hit@1": 0.958,
+   "hit@3": 1.0,
+   "mrr": 0.979,
+   "threshold": 0.6616,
+   "positives_kept": "47/48",
+   "negatives_filtered": "10/10",
+   "misses": [],
+   "seconds": 19.6
+  },
+  {
+   "method": "gemma2 centrado",
+   "hit@1": 0.917,
+   "hit@3": 1.0,
+   "mrr": 0.951,
+   "threshold": 0.3099,
+   "positives_kept": "44/48",
+   "negatives_filtered": "9/10",
+   "misses": [],
+   "seconds": 19.6
+  },
+  {
+   "method": "híbrido gemma2",
+   "hit@1": 0.854,
+   "hit@3": 0.917,
+   "mrr": 0.892,
+   "threshold": 0.0325,
+   "positives_kept": "37/48",
+   "negatives_filtered": "9/10",
+   "misses": [
+    "Error intermitente en producción → ['azure-messaging', 'azure-diagnostics', 'notas-de-version'] (esperada ['diagnosing-bugs'])",
+    "Prepara el traspaso a otro agente → ['atencion-cliente', 'notas-de-version', 'migraciones-alembic'] (esperada ['handoff'])",
+    "Subtítulos animados en el vídeo → ['remotion-studio', 'remotion-render', 'remotion-create'] (esperada ['remotion-captions'])",
+    "Publicar en X el lanzamiento → ['reddit-automation', 'notas-de-version', 'propuesta-comercial'] (esperada ['twitter-automation'])"
+   ]
+  },
+  {
+   "method": "bge-m3",
+   "hit@1": 0.896,
+   "hit@3": 0.958,
+   "mrr": 0.93,
+   "threshold": 0.5964,
+   "positives_kept": "39/48",
+   "negatives_filtered": "10/10",
+   "misses": [
+    "Añadir columna 'telefono' a clientes → ['domain-modeling', 'atencion-cliente', 'prisma-client-api'] (esperada ['migraciones-alembic'])",
+    "Incidencia: no puedo iniciar sesión → ['diagnosing-bugs', 'seguridad-owasp', 'entra-app-registration'] (esperada ['atencion-cliente'])"
+   ],
+   "seconds": 20.7
+  },
+  {
+   "method": "bge-m3 centrado",
+   "hit@1": 0.917,
+   "hit@3": 0.938,
+   "mrr": 0.935,
+   "threshold": 0.2954,
+   "positives_kept": "40/48",
+   "negatives_filtered": "10/10",
+   "misses": [
+    "Añadir columna 'telefono' a clientes → ['atencion-cliente', 'prisma-client-api', 'domain-modeling'] (esperada ['migraciones-alembic'])",
+    "Incidencia: no puedo iniciar sesión → ['seguridad-owasp', 'prisma-postgres', 'entra-app-registration'] (esperada ['atencion-cliente'])",
+    "Rellenar el formulario de la web del proveedor → ['atencion-cliente', 'propuesta-comercial', 'prisma-driver-adapter-implementation'] (esperada ['agent-browser'])"
+   ],
+   "seconds": 20.7
+  },
+  {
+   "method": "híbrido bge-m3",
+   "hit@1": 0.833,
+   "hit@3": 0.917,
+   "mrr": 0.888,
+   "threshold": 0.0328,
+   "positives_kept": "34/48",
+   "negatives_filtered": "9/10",
+   "misses": [
+    "Error intermitente en producción → ['azure-messaging', 'notas-de-version', 'prisma-driver-adapter-implementation'] (esperada ['diagnosing-bugs'])",
+    "Prepara el traspaso a otro agente → ['propuesta-comercial', 'atencion-cliente', 'migraciones-alembic'] (esperada ['handoff'])",
+    "Subtítulos animados en el vídeo → ['remotion-render', 'remotion-studio', 'remotion-create'] (esperada ['remotion-captions'])",
+    "Publicar en X el lanzamiento → ['reddit-automation', 'notas-de-version', 'propuesta-comercial'] (esperada ['twitter-automation'])"
+   ]
+  },
+  {
+   "method": "bm25+cuerpo",
+   "hit@1": 0.688,
+   "hit@3": 0.833,
+   "mrr": 0.774,
+   "threshold": 9.1062,
+   "positives_kept": "37/48",
+   "negatives_filtered": "10/10",
+   "misses": [
+    "Incidencia: no puedo iniciar sesión → ['prisma-mongodb-upgrade', 'prisma-postgres', 'prisma-database-setup'] (esperada ['atencion-cliente'])",
+    "Revisar la rama de la tarea T-142 → ['seguridad-owasp', 'migraciones-alembic', 'setup-matt-pocock-skills'] (esperada ['code-review'])",
+    "Error intermitente en producción → ['azure-messaging', 'azure-deploy', 'remotion-render'] (esperada ['diagnosing-bugs'])",
+    "Prepara el traspaso a otro agente → ['migraciones-alembic', 'propuesta-comercial', 'notas-de-version'] (esperada ['handoff'])",
+    "Subir a Prisma 7 → ['prisma-cli', 'prisma-database-setup', 'prisma-mongodb-upgrade'] (esperada ['prisma-upgrade-v7'])",
+    "Vídeo promocional con Remotion → ['remotion-render', 'remotion-upgrade', 'remotion-maps'] (esperada ['remotion-create', 'remotion-best-practices'])",
+    "Generar imágenes para el blog → ['migraciones-alembic', 'propuesta-comercial', 'notas-de-version'] (esperada ['ai-image-generation'])",
+    "Publicar en X el lanzamiento → ['reddit-automation', 'notas-de-version', 'remotion-upgrade'] (esperada ['twitter-automation'])"
+   ]
+  },
+  {
+   "method": "e5-small+cuerpo",
+   "hit@1": 0.792,
+   "hit@3": 0.938,
+   "mrr": 0.869,
+   "threshold": 0.8476,
+   "positives_kept": "43/48",
+   "negatives_filtered": "9/10",
+   "misses": [
+    "Error intermitente en producción → ['atencion-cliente', 'azure-diagnostics', 'notas-de-version'] (esperada ['diagnosing-bugs'])",
+    "Rellenar el formulario de la web del proveedor → ['atencion-cliente', 'azure-validate', 'notas-de-version'] (esperada ['agent-browser'])",
+    "Publicar en X el lanzamiento → ['notas-de-version', 'atencion-cliente', 'code-review'] (esperada ['twitter-automation'])"
+   ],
+   "seconds": 5.6
+  },
+  {
+   "method": "e5-small centrado+cuerpo",
+   "hit@1": 0.708,
+   "hit@3": 0.896,
+   "mrr": 0.806,
+   "threshold": 0.35,
+   "positives_kept": "29/48",
+   "negatives_filtered": "9/10",
+   "misses": [
+    "Error intermitente en producción → ['atencion-cliente', 'pruebas-e2e-playwright', 'notas-de-version'] (esperada ['diagnosing-bugs'])",
+    "Desplegar la app en Azure → ['azure-prepare', 'azure-validate', 'notas-de-version'] (esperada ['azure-deploy'])",
+    "Vídeo promocional con Remotion → ['atencion-cliente', 'propuesta-comercial', 'remotion-render'] (esperada ['remotion-create', 'remotion-best-practices'])",
+    "Rellenar el formulario de la web del proveedor → ['atencion-cliente', 'propuesta-comercial', 'notas-de-version'] (esperada ['agent-browser'])",
+    "Publicar en X el lanzamiento → ['notas-de-version', 'atencion-cliente', 'propuesta-comercial'] (esperada ['twitter-automation'])"
+   ],
+   "seconds": 5.6
+  },
+  {
+   "method": "híbrido e5-small+cuerpo",
+   "hit@1": 0.771,
+   "hit@3": 0.896,
+   "mrr": 0.84,
+   "threshold": 0.0325,
+   "positives_kept": "37/48",
+   "negatives_filtered": "9/10",
+   "misses": [
+    "Incidencia: no puedo iniciar sesión → ['notas-de-version', 'migraciones-alembic', 'propuesta-comercial'] (esperada ['atencion-cliente'])",
+    "Error intermitente en producción → ['azure-messaging', 'atencion-cliente', 'propuesta-comercial'] (esperada ['diagnosing-bugs'])",
+    "Prepara el traspaso a otro agente → ['propuesta-comercial', 'notas-de-version', 'atencion-cliente'] (esperada ['handoff'])",
+    "Generar imágenes para el blog → ['notas-de-version', 'atencion-cliente', 'propuesta-comercial'] (esperada ['ai-image-generation'])",
+    "Publicar en X el lanzamiento → ['notas-de-version', 'atencion-cliente', 'propuesta-comercial'] (esperada ['twitter-automation'])"
+   ]
+  },
+  {
+   "method": "gemma2+cuerpo",
+   "hit@1": 0.896,
+   "hit@3": 1.0,
+   "mrr": 0.948,
+   "threshold": 0.6617,
+   "positives_kept": "46/48",
+   "negatives_filtered": "10/10",
+   "misses": [],
+   "seconds": 28.4
+  },
+  {
+   "method": "gemma2 centrado+cuerpo",
+   "hit@1": 0.875,
+   "hit@3": 0.958,
+   "mrr": 0.924,
+   "threshold": 0.3468,
+   "positives_kept": "43/48",
+   "negatives_filtered": "9/10",
+   "misses": [
+    "Error intermitente en producción → ['atencion-cliente', 'pruebas-e2e-playwright', 'notas-de-version'] (esperada ['diagnosing-bugs'])",
+    "Rellenar el formulario de la web del proveedor → ['atencion-cliente', 'propuesta-comercial', 'seguridad-owasp'] (esperada ['agent-browser'])"
+   ],
+   "seconds": 28.4
+  },
+  {
+   "method": "híbrido gemma2+cuerpo",
+   "hit@1": 0.792,
+   "hit@3": 0.917,
+   "mrr": 0.862,
+   "threshold": 0.0325,
+   "positives_kept": "37/48",
+   "negatives_filtered": "8/10",
+   "misses": [
+    "Incidencia: no puedo iniciar sesión → ['notas-de-version', 'propuesta-comercial', 'prisma-postgres'] (esperada ['atencion-cliente'])",
+    "Error intermitente en producción → ['azure-messaging', 'atencion-cliente', 'pruebas-e2e-playwright'] (esperada ['diagnosing-bugs'])",
+    "Prepara el traspaso a otro agente → ['migraciones-alembic', 'notas-de-version', 'propuesta-comercial'] (esperada ['handoff'])",
+    "Publicar en X el lanzamiento → ['notas-de-version', 'reddit-automation', 'atencion-cliente'] (esperada ['twitter-automation'])"
+   ]
+  },
+  {
+   "method": "bge-m3+cuerpo",
+   "hit@1": 0.938,
+   "hit@3": 0.958,
+   "mrr": 0.95,
+   "threshold": 0.5957,
+   "positives_kept": "40/48",
+   "negatives_filtered": "10/10",
+   "misses": [
+    "Añadir columna 'telefono' a clientes → ['atencion-cliente', 'prisma-client-api', 'prisma-postgres-setup'] (esperada ['migraciones-alembic'])",
+    "Incidencia: no puedo iniciar sesión → ['remotion-studio', 'seguridad-owasp', 'entra-app-registration'] (esperada ['atencion-cliente'])"
+   ],
+   "seconds": 34.6
+  },
+  {
+   "method": "bge-m3 centrado+cuerpo",
+   "hit@1": 0.938,
+   "hit@3": 0.958,
+   "mrr": 0.952,
+   "threshold": 0.2889,
+   "positives_kept": "42/48",
+   "negatives_filtered": "9/10",
+   "misses": [
+    "Añadir columna 'telefono' a clientes → ['atencion-cliente', 'prisma-client-api', 'frontend-design'] (esperada ['migraciones-alembic'])",
+    "Rellenar el formulario de la web del proveedor → ['atencion-cliente', 'propuesta-comercial', 'notas-de-version'] (esperada ['agent-browser'])"
+   ],
+   "seconds": 34.6
+  },
+  {
+   "method": "híbrido bge-m3+cuerpo",
+   "hit@1": 0.812,
+   "hit@3": 0.938,
+   "mrr": 0.882,
+   "threshold": 0.0328,
+   "positives_kept": "33/48",
+   "negatives_filtered": "9/10",
+   "misses": [
+    "Error intermitente en producción → ['azure-messaging', 'atencion-cliente', 'pruebas-e2e-playwright'] (esperada ['diagnosing-bugs'])",
+    "Prepara el traspaso a otro agente → ['propuesta-comercial', 'atencion-cliente', 'pruebas-e2e-playwright'] (esperada ['handoff'])",
+    "Publicar en X el lanzamiento → ['notas-de-version', 'reddit-automation', 'remotion-upgrade'] (esperada ['twitter-automation'])"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,57 @@
+{
+ "skills": 76,
+ "quirks": {
+  "unquoted colon in description": 27,
+  "multi-line description": 1,
+  "SKILL.md > 24 KB (agy limit)": 1
+ },
+ "examples": {},
+ "frontmatter_fields": {
+  "name": 76,
+  "description": 76,
+  "license": 35,
+  "metadata": 35,
+  "version": 12,
+  "disable-model-invocation": 7,
+  "allowed-tools": 5,
+  "argument-hint": 2,
+  "compatibility": 2,
+  "displayName": 1,
+  "emoji": 1,
+  "homepage": 1,
+  "hidden": 1
+ },
+ "skill_md_tokens": {
+  "median": 1342.5,
+  "p90": 2849,
+  "max": 7026
+ },
+ "files_per_skill": {
+  "median": 6.0,
+  "p90": 68,
+  "max": 200
+ },
+ "bytes_per_skill": {
+  "median": 20533.0,
+  "p90": 488372,
+  "max": 1269613
+ },
+ "with_executables": 15,
+ "file_kinds": {
+  ".md": 1356,
+  ".mjs": 88,
+  ".html": 66,
+  ".yaml": 52,
+  ".svg": 25,
+  ".json": 24,
+  ".py": 22,
+  ".sh": 22,
+  ".ps1": 22,
+  ".tsx": 20,
+  ".ts": 12,
+  ".txt": 8,
+  ".dockerfile": 6,
+  ".dockerignore": 6,
+  ".yml": 5
+ }
+}
