@@ -55,7 +55,13 @@ Scripts en `spikes/skills/`; evidencias en `evidencias/`.
 - **Almacén de ficheros** `<data_dir>/skills/blobs/<aa>/<sha256>`: cada fichero se guarda una vez por contenido, así que diez versiones de una skill que solo cambian el `SKILL.md` comparten el resto. Una limpieza borra los *blobs* sin referencias al borrar una skill o rechazar una propuesta. El uso de disco entra en `datadir.disk_usage`.
 - **`SkillMode`** (`skill_modes`): `skill_id`, y un `agent_id` **o** un `stage_id` (`CHECK`: uno de los dos), con `mode` (`auto` · `always` · `never`). Sin fila, el modo es `auto`. Las dos FK son `CASCADE`.
 - **`SkillOrigin`** (`skill_origins`, 1:1, solo las instaladas desde un registro): `registry`, `ref` (identificador en la fuente), `repo_url`, `path`, `commit` instalado, `license`, `security` (JSON del análisis de la fuente, si lo hay), `latest_commit`, `checked_at` y `installed_version_id`.
-- **`RunSkill`** (`run_skills`): `run_id` (`CASCADE`), `skill_id` y `version_id` (`SET NULL`), `skill_name` (copia), `offered` (`always` · `candidate`), `rank`, `score`, `loaded_via` (nulo · `context` · `tool` · `native`) y `loaded_at`. De aquí salen «Usada N veces», la fecha de la última vez y el chip «Autoseleccionada».
+- **`RunSkill`** (`run_skills`):
+  - `run_id` (`CASCADE`), `skill_id` (`CASCADE`: borrar una skill borra sus cifras, con aviso) y `version_id` (`SET NULL`), más `skill_name` (copia);
+  - `offered` (`always` · `candidate`), `rank`, `score`, `loaded_via` (nulo · `context` · `tool` · `native`) y `loaded_at`;
+  - copias para las estadísticas (apartado E de la spec), que se guardan al crear la fila: `stage_name`, `pipeline_id` y `pipeline_name`, y `team_id` y `team_name` del agente. El agente, el proyecto, el CLI, el modelo, la cuenta, el estado, el veredicto, el coste y los *tokens* ya están en `Run`, con sus nombres copiados (`agent_name`, `project_name`, `account_label`). Así las cifras sobreviven al borrado (CA21);
+  - índices por `(skill_id, loaded_at)` y `(run_id)`.
+
+  De aquí salen «Usada N veces», la fecha de la última vez, el chip «Autoseleccionada» y las estadísticas.
 - **`SkillRejection`** (`skill_rejections`): `name`, `sha256` del `SKILL.md`, `vector`, `agent_id`, `reason` y `rejected_at`.
 - `InboxKind.SKILL` (`skill`) con `skill_version_id` en el elemento (`SET NULL`).
 - `downgrade` borra lo nuevo (y la carpeta `skills/` no se toca).
@@ -141,7 +147,25 @@ Las reglas de Agentic OS explican en una línea cuándo proponer: una forma de t
 - **Caché**: búsquedas y listados 10 minutos en memoria. Una fuente que falla o va lenta (tiempo máximo 8 s) devuelve su error sin tirar las demás. Sin red, el explorador dice «Sin conexión» (CA18).
 - **Fuentes**: ajuste `skills.registries` con cada fuente activada o no. ClawHub queda apagado por defecto si S3 no encuentra un análisis de seguridad fiable.
 
-### 7. API (`api/skills.py`, `schemas/skills.py`)
+### 7. Estadísticas de uso (`services/skills/stats.py`)
+- **Una consulta agregada** sobre `run_skills` ⋈ `runs` (más `skills` para el nivel y el origen), en SQL y sin cargar filas en Python:
+  - `offered`, `loaded` (`loaded_via` no nulo) y `rate`;
+  - `runs` y `tasks` (`COUNT DISTINCT`);
+  - resultado de las ejecuciones con la skill cargada: `done`, `failed`, `approved` y `rejected` (estado y `verdict`);
+  - `avg_cost` y `avg_tokens` sobre las ejecuciones con consumo leído;
+  - `last_used` y las cargas por vía.
+- **Filtros** (todos opcionales y combinables):
+  - `from` y `to` (sobre el inicio de la ejecución);
+  - `agent_id`, `team_id`, `project_id`, `pipeline_id`, `stage_id`, `cli`, `account_id` y `model`;
+  - `scope`, `origin`, `via` y `unused` (`never_loaded` · `never_offered`; la segunda une con `skills` para incluir las que no tienen filas).
+- **Agrupar** (`group_by`: `agent` · `team` · `project` · `pipeline` · `stage` · `cli` · `account` · `model`): `GROUP BY skill, clave`, con la clave por id cuando exista y por el nombre copiado cuando el original ya no esté (CA21).
+- **Orden** por cualquier métrica (`sort`, `desc`) y paginación.
+- **Serie diaria** (`GET …/stats/daily`): cargas por día para las skills elegidas, con los mismos filtros. Se agrupa por la fecha local, como el panel de consumo de la fase 07.
+- **Ejecuciones de una cifra** (`GET …/stats/runs`): la lista con los mismos filtros más la skill (y el grupo), con la versión usada y el enlace.
+- **CSV** (`GET …/stats.csv`): la tabla filtrada, con cabeceras en español.
+- **Rendimiento** (CA20): índices de §1 más `runs(started_at)`. Si con 20 000 ejecuciones no baja de 1 s, se añade una tabla diaria precalculada (`skill_usage_daily`) que se actualiza al cerrar cada ejecución.
+
+### 8. API (`api/skills.py`, `schemas/skills.py`)
 - `GET/POST /api/skills` (filtros de nivel, proyecto, agente y `review`), `GET/PATCH/DELETE /api/skills/{id}`, `POST /api/skills/{id}/versions` (guardar = versión nueva), `GET /api/skills/{id}/versions`, `GET /api/skills/{id}/diff?from=&to=`, `POST /api/skills/{id}/restore/{version_id}`, `GET /api/skills/{id}/files/{path}` y `GET /api/skills/{id}/export`.
 - `POST /api/skills/import` (multipart: carpeta como ficheros, `.zip` o `SKILL.md`), `GET /api/skills/cli-scan` y `POST /api/skills/cli-import` (lista con nivel por skill).
 - `GET/PUT /api/agents/{id}/skill-modes` y `GET/PUT /api/stages/{id}/skill-modes`.
@@ -149,10 +173,11 @@ Las reglas de Agentic OS explican en una línea cuándo proponer: una forma de t
 - `POST /api/skills/proposals/{version_id}/accept|reject`.
 - `GET /api/skills/registries`, `GET /api/skills/registries/search`, `POST /api/skills/registries/preview`, `POST /api/skills/registries/install` y `POST /api/skills/updates/check`.
 - `GET /api/runs/{id}/skills`.
+- `GET /api/skills/stats`, `GET /api/skills/stats/daily`, `GET /api/skills/stats/runs` y `GET /api/skills/stats.csv` (§7).
 - `GET/PUT /api/settings/skills`.
 - Eventos en `/api/knowledge/events` (o en uno propio `/api/skills/events`, lo que sea más simple al llegar): `skill_changed` y `skill_proposed`.
 
-### 8. Frontend
+### 9. Frontend
 - **API** (`api/skills.ts`): consultas y mutaciones de §7, y los tipos.
 - **Navegación**: «Conocimiento y skills» (`/conocimiento`) con las pestañas **Documentos · Skills · Explorar**.
 - **Biblioteca** (`components/skills/SkillLibrary.tsx`), en Ajustes (general), Proyecto › Conocimiento y Agente › Skills, según el diseño:
@@ -174,6 +199,13 @@ Las reglas de Agentic OS explican en una línea cuándo proponer: una forma de t
   - «Instalar en…» con el selector de nivel;
   - estados «Sin conexión» y «Fuente no disponible»;
   - «Ver cambios» y «Actualizar» en las instaladas.
+- **Uso** (`components/skills/stats/`):
+  - pestaña «Uso» en Skills: barra de filtros (periodo, agente, equipo, proyecto, pipeline, etapa, CLI, cuenta, modelo, nivel, origen, vía, «nunca usadas»), con los filtros en la URL para poder compartir o volver;
+  - tabla ordenable (`TanStack Table`, como las sesiones de CLI) con skill, ofrecida, cargada, tasa, ejecuciones, tareas, resultado, coste y *tokens* medios, última vez y vía;
+  - selector «Agrupar por», que desglosa cada skill en filas por grupo;
+  - gráficos con `recharts` (como `pages/usage/DailyChart.tsx`): barras de las 10 más usadas y línea diaria de las elegidas;
+  - clic en una cifra → hoja con sus ejecuciones; botón «Exportar CSV»;
+  - pestaña «Uso» en la ficha de la skill, con el mismo componente filtrado a esa skill y sus últimas ejecuciones (con la versión).
 - **Ajustes** (`SkillsSection.tsx`): propuestas (activar, máximo), presupuestos, fuentes de registros (activar cada una, estado del *token* de GitHub) y uso de disco de las skills.
 - i18n en `es.json` y `test/fake-backend.ts` ampliado.
 
@@ -182,7 +214,7 @@ Las reglas de Agentic OS explican en una línea cuándo proponer: una forma de t
 |---|---|
 | `backend/src/agentic_os/db/migrations/versions/0019_skills.py` | nuevo |
 | `backend/src/agentic_os/models/skill.py`, `models/__init__.py`, `models/inbox.py` | nuevo / modificado |
-| `backend/src/agentic_os/services/skills/` (`store.py`, `format.py`, `library.py`, `history.py`, `importer.py`, `export.py`, `selection.py`, `context.py`, `proposals.py`, `agent_tools.py`, `config.py`, `events.py`) | nuevo |
+| `backend/src/agentic_os/services/skills/` (`store.py`, `format.py`, `library.py`, `history.py`, `importer.py`, `export.py`, `selection.py`, `context.py`, `proposals.py`, `stats.py`, `agent_tools.py`, `config.py`, `events.py`) | nuevo |
 | `backend/src/agentic_os/services/skills/registries/` (`base.py`, `github.py`, `skills_sh.py`, `anthropic.py`, `skillsmp.py`, `clawhub.py`, `github_url.py`, `cache.py`) | nuevo |
 | `backend/src/agentic_os/services/context.py`, `services/runs/manager.py`, `services/mcp_server.py`, `services/hooks.py`, `services/inbox.py`, `services/datadir.py` | modificado |
 | `backend/src/agentic_os/services/adapters/base.py`, `claude.py`, `agy.py` | modificado |
@@ -191,7 +223,7 @@ Las reglas de Agentic OS explican en una línea cuándo proponer: una forma de t
 | `backend/pyproject.toml` | `pyyaml` como dependencia directa |
 | `backend/tests/test_skills_*.py` (ver tests) | nuevo |
 | `frontend/src/api/skills.ts` | nuevo |
-| `frontend/src/components/skills/` (`SkillLibrary`, `SkillCard`, `SkillEditor`, `SkillHistory`, `SkillImportDialog`, `SkillModeSelect`, `SkillTester`, `SkillProposalReview`, `registry/RegistryExplorer`, `registry/RegistrySkillSheet`) | nuevo |
+| `frontend/src/components/skills/` (`SkillLibrary`, `SkillCard`, `SkillEditor`, `SkillHistory`, `SkillImportDialog`, `SkillModeSelect`, `SkillTester`, `SkillProposalReview`, `registry/RegistryExplorer`, `registry/RegistrySkillSheet`, `stats/SkillStats`, `stats/StatsFilters`, `stats/StatsCharts`, `stats/StatsRunsSheet`) | nuevo |
 | `frontend/src/pages/knowledge/KnowledgePage.tsx`, `pages/agents/tabs/*`, `pages/projects/tabs/pipeline/Panels.tsx`, `pages/runs/*`, `pages/InboxPage.tsx`, `pages/settings/SkillsSection.tsx`, `SettingsPage.tsx`, navegación | nuevo / modificado |
 | `frontend/src/i18n/es.json`, `test/fake-backend.ts` | modificado |
 | `docs/adr/0024-skills.md` | nuevo |
@@ -208,8 +240,9 @@ Las reglas de Agentic OS explican en una línea cuándo proponer: una forma de t
 8. [ ] **Bloque 7 · Biblioteca (frontend)**: navegación y pestañas, tarjetas, editor, historial con diff, importar, ajustes.
 9. [ ] **Bloque 8 · Uso y propuestas (frontend)**: modos en el agente y en la etapa, probador, sección de la ejecución y etiquetas, revisión de propuestas e Inbox.
 10. [ ] **Bloque 9 · Explorador (frontend)**: búsqueda, filtros, ficha, instalar en un nivel, actualizaciones, estados sin conexión.
-11. [ ] **Bloque 10 · Calidad y e2e**: corpus de S4 como test (CA5), e2e con CLI falso y MCP real (CA6, CA9), prueba manual con `claude` y `agy` reales (CA6, CA8).
-12. [ ] **Bloque 11 · Cierre**: e2e con el binario empaquetado (CA15), `/code-review`, ADR 0024 definitivo, README, validación.
+11. [ ] **Bloque 10 · Estadísticas de uso**: copias en `RunSkill`, `stats.py` (agregados, filtros, agrupación, serie diaria, ejecuciones, CSV), API, vista «Uso» y pestaña en la ficha, test de rendimiento.
+12. [ ] **Bloque 11 · Calidad y e2e**: corpus de S4 como test (CA5), e2e con CLI falso y MCP real (CA6, CA9), prueba manual con `claude` y `agy` reales (CA6, CA8).
+13. [ ] **Bloque 12 · Cierre**: e2e con el binario empaquetado (CA15), `/code-review`, ADR 0024 definitivo, README, validación.
 
 ## Tests previstos
 | Test | Cubre |
@@ -232,6 +265,9 @@ Las reglas de Agentic OS explican en una línea cuándo proponer: una forma de t
 | `test_skills_registries.py` con fuentes simuladas (`httpx.MockTransport`): más usadas, búsqueda, vista previa fijada, instalar al nivel con su primera versión «instalada desde…» + `registry-explorer.test.tsx` + manual con las fuentes reales | CA16 |
 | ídem: `commit` nuevo → aviso y diff; sin confirmación no cambia; con ediciones previas el historial queda entero | CA17 |
 | ídem: ejecutables sin abrir → 409; sin red → «Sin conexión» y la biblioteca va; una fuente que falla no tira las demás | CA18 |
+| `test_skills_stats.py`: ejecuciones de prueba con varios agentes, equipos, pipelines, etapas, CLIs, cuentas y modelos → cifras exactas por skill, con filtros combinados, cada `group_by`, `unused`, serie diaria y CSV | CA19 |
+| `skill-stats.test.tsx` (orden por columna, filtros en la URL, agrupar, gráficos, hoja de ejecuciones, exportar) + `test_skills_stats_perf.py` (50 skills, 20 000 ejecuciones, < 1 s) | CA20 |
+| `test_skills_stats.py`: borrar agente, etapa, pipeline y cuenta → las cifras siguen con su nombre | CA21 |
 
 ## Decisiones (ADR)
 - [ADR 0024](../../adr/0024-skills.md) (borrador):

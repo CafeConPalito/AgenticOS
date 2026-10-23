@@ -1,11 +1,11 @@
 # Fase 17: Skills · Spec
 
-- **Estado**: aprobada (2026-10-23)
+- **Estado**: aprobada (2026-10-23); ampliación E (estadísticas de uso) pendiente de aprobación
 - **Rama**: `phase/17-skills`
 - **Plan**: [plan.md](plan.md)
 
 ## Objetivo
-Que los agentes trabajen con **skills**: paquetes de instrucciones reutilizables (un `SKILL.md` con su descripción y, si hace falta, ficheros de apoyo) que enseñan a hacer algo concreto («revisión de código», «escribir una migración de Alembic», «redactar una propuesta comercial»). El usuario las tiene en una **biblioteca de tres niveles** (general, proyecto, agente). En cada ejecución, **la skill adecuada se carga sola** según la tarea, con cualquier CLI. Los agentes pueden **proponer skills nuevas** a partir de lo que han aprendido, que el usuario aprueba o rechaza. Cada skill tiene su **historial de cambios**. Y el usuario puede **explorar los registros públicos más usados** e instalar desde ellos las skills que quiera.
+Que los agentes trabajen con **skills**: paquetes de instrucciones reutilizables (un `SKILL.md` con su descripción y, si hace falta, ficheros de apoyo) que enseñan a hacer algo concreto («revisión de código», «escribir una migración de Alembic», «redactar una propuesta comercial»). El usuario las tiene en una **biblioteca de tres niveles** (general, proyecto, agente). En cada ejecución, **la skill adecuada se carga sola** según la tarea, con cualquier CLI. Los agentes pueden **proponer skills nuevas** a partir de lo que han aprendido, que el usuario aprueba o rechaza. Cada skill tiene su **historial de cambios**. Y el usuario puede **explorar los registros públicos más usados** e instalar desde ellos las skills que quiera. Las **estadísticas de uso** dicen qué skills se usan más, dónde y con qué resultado.
 
 ## Punto de partida (fases 04, 14 y 15)
 - Cada ejecución recibe sus instrucciones y el MCP `agentic-os` sin tocar la configuración del usuario (ADR 0004): Claude Code por *flags* y `agy` por un plugin de workspace en `.agents/plugins/agentic-os/`.
@@ -85,6 +85,28 @@ Que los agentes trabajen con **skills**: paquetes de instrucciones reutilizables
   - si la fuente da un análisis de seguridad (p. ej. el de skills.sh), se enseña en la ficha.
 - Las búsquedas se cachean un tiempo corto. Sin conexión, la vista lo dice y la biblioteca local funciona igual.
 
+**E. Estadísticas de uso**
+- Vista **«Uso»** en Skills (junto a la biblioteca y al explorador), para saber qué skills se usan más, dónde y con qué resultado.
+- **Por skill**:
+  - veces **ofrecida**, veces **cargada** y **tasa de uso** (cargada / ofrecida);
+  - **ejecuciones** y **tareas** distintas en las que se cargó;
+  - **resultado** de esas ejecuciones: terminadas, fallidas, aprobadas o rechazadas en revisión;
+  - **coste** y **tokens** medios de esas ejecuciones;
+  - **última vez** que se usó;
+  - cuántas veces se cargó por cada **vía** (contexto, `use_skill` o mecanismo nativo).
+- **Filtros**, combinables:
+  - periodo (hoy, 7 días, 30 días, todo o un rango);
+  - agente, equipo, proyecto, pipeline, etapa, CLI, cuenta y modelo;
+  - nivel, origen (usuario, agente, importada, registro) y vía;
+  - «nunca usadas» (ofrecidas pero no cargadas, o ni siquiera ofrecidas), para limpiar la biblioteca.
+- **Orden** por cualquier columna; por defecto, las más cargadas.
+- **Agrupar por** agente, equipo, proyecto, pipeline, etapa, CLI, cuenta o modelo: cada skill se desglosa en una fila por grupo. Por ejemplo, «revisión de código» por pipeline o por CLI.
+- **Gráficos**: las 10 skills más usadas con los filtros activos, y la evolución diaria de las cargas de las que se elijan.
+- **Ficha de una skill**: la pestaña «Uso» con el mismo desglose y la evolución, y la lista de sus últimas ejecuciones, cada una con un enlace a la ejecución y la versión que usó.
+- Clic en una cifra → las ejecuciones que la forman.
+- Exportar la tabla filtrada a **CSV**.
+- Las cifras **no se pierden** al borrar un agente, una etapa, un pipeline o una cuenta: se guardan los nombres, como en el panel de consumo de la fase 07. Borrar una skill sí borra sus estadísticas, pero antes se avisa.
+
 ### Fuera
 - **Publicar** skills en registros públicos, valorarlas o comentarlas. Solo se explora e instala.
 - Registros de pago o que exijan cuenta, salvo un *token* opcional de GitHub para no chocar con su límite de peticiones.
@@ -101,6 +123,7 @@ Que los agentes trabajen con **skills**: paquetes de instrucciones reutilizables
 - Como usuario, quiero que el agente use la skill que corresponde a la tarea sin que yo la elija, y ver después cuál usó.
 - Como usuario, quiero fijar una skill como «siempre» en un agente concreto o en una etapa del pipeline, o prohibirla, para tener control cuando la autoselección no basta.
 - Como usuario, quiero ver qué ha cambiado en una skill, quién lo cambió y volver a una versión anterior si la nueva funciona peor.
+- Como usuario, quiero ver qué skills son las más usadas, filtrando y ordenando por agente, pipeline, CLI, cuenta y demás, para saber cuáles aportan y cuáles sobran.
 - Como usuario, quiero buscar en los registros públicos las skills más usadas, revisar una antes de instalarla y elegir a qué nivel la instalo.
 - Como agente, quiero ver una lista corta de las skills que encajan con mi tarea y cargar la que necesito, para no llenar el contexto con todas.
 - Como usuario, quiero que un agente que ha descubierto una forma de hacer algo pueda proponerla como skill, y revisarla (sobre todo sus *scripts*) antes de que nadie la use.
@@ -126,6 +149,9 @@ Que los agentes trabajen con **skills**: paquetes de instrucciones reutilizables
 | CA16 | El explorador busca en las fuentes activas y lista por defecto las más usadas. La ficha muestra el `SKILL.md`, los ficheros (con los ejecutables marcados) y la procedencia, e instalar la copia al nivel elegido con su primera versión «instalada desde…» | tests con las fuentes simuladas + manual con las reales |
 | CA17 | Cuando la fuente publica una versión nueva, la app la avisa y enseña las diferencias. No actualiza sin confirmación, y si la skill estaba editada no se pierde nada del historial | tests |
 | CA18 | No se instala una skill con *scripts* sin haberlos abierto. Sin conexión, el explorador lo dice y la biblioteca funciona igual. Una fuente que falla no rompe las demás | tests + UI |
+| CA19 | Con un conjunto de ejecuciones de prueba (varios agentes, pipelines, etapas, CLIs, cuentas y modelos), las cifras de cada skill son exactas: ofrecida, cargada, tasa, ejecuciones, tareas, resultado, coste y tokens medios, última vez y vía. También al combinar filtros, al agrupar y con el filtro «nunca usadas» | tests |
+| CA20 | La vista «Uso» ordena por cada columna, filtra, agrupa, pinta las 10 más usadas y la evolución diaria, abre las ejecuciones de una cifra y exporta el CSV con lo filtrado. Con 50 skills y 20 000 ejecuciones responde en menos de 1 s | tests de UI + test de rendimiento |
+| CA21 | Al borrar un agente, una etapa, un pipeline o una cuenta, sus cifras siguen saliendo con su nombre | test |
 
 ## Prerrequisitos
 - **Fase 16 cerrada** (hecho).
@@ -158,3 +184,6 @@ Que los agentes trabajen con **skills**: paquetes de instrucciones reutilizables
 3. **Propuestas**: máximo **1 por ejecución** por defecto.
 4. **Versiones**: **historial de cambios completo**, con diferencias entre versiones y restauración.
 5. **Registros públicos**: se añade un **explorador** de los registros más usados (apartado D). Cambia lo que decía `docs/vision.md`, que dejaba los registros fuera.
+
+## Cambios tras la aprobación (2026-10-23)
+- Nuevo apartado **E** (estadísticas de uso), a petición del usuario: una vista «Uso» con cifras por skill, filtros, orden, agrupación, gráficos, CSV y la pestaña «Uso» en la ficha de cada skill. Nuevos criterios CA19–CA21. Pendiente de aprobación.
