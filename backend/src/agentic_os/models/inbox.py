@@ -20,6 +20,7 @@ class InboxKind(StrEnum):
     ACCOUNT = "account"  # the session of an account is logged out (phase 10)
     SWITCH = "switch"  # an agent's account is about to run out: switch CLI or stay (phase 10)
     KNOWLEDGE = "knowledge"  # an agent proposes a knowledge document to review (phase 15)
+    SKILL = "skill"  # an agent proposes a skill, or a new version of one (phase 17)
 
 
 class InboxStatus(StrEnum):
@@ -69,6 +70,9 @@ class InboxItem(IdMixin, WorkspaceMixin, TimestampMixin, Base):
     project_color: Mapped[str] = mapped_column(String(9), nullable=False, default="#7C9CFF")
     knowledge_doc_id: Mapped[str | None] = mapped_column(
         String(36), ForeignKey("knowledge_docs.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    skill_version_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("skill_versions.id", ondelete="SET NULL"), nullable=True, index=True
     )
     title: Mapped[str] = mapped_column(Text, nullable=False)
     detail: Mapped[str] = mapped_column(Text, nullable=False, default="")

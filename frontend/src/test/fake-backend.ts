@@ -1071,6 +1071,7 @@ export function createFakeBackend(
     sessions_bytes: 600_000_000,
     knowledge_bytes: 40_000_000,
     models_bytes: 118_000_000,
+    skills_bytes: 2_000_000,
     logs_bytes: 4_000_000,
     total_bytes: 1_800_000_000,
     last_error: null as string | null,

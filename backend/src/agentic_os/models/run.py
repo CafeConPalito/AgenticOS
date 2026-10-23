@@ -81,7 +81,7 @@ class Run(IdMixin, WorkspaceMixin, TimestampMixin, Base):
     cols: Mapped[int] = mapped_column(Integer, nullable=False, default=120)
     rows: Mapped[int] = mapped_column(Integer, nullable=False, default=32)
     log_path: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    started_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    started_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True, index=True)
     ended_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
     # Reported by the agent through the agentic-os MCP server.
     summary: Mapped[str | None] = mapped_column(Text, nullable=True)

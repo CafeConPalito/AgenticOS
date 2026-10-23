@@ -11,6 +11,7 @@ export interface DataDir {
   knowledge_bytes: number
   /** Downloaded models and engines. */
   models_bytes: number
+  skills_bytes: number
   logs_bytes: number
   total_bytes: number
   /** The last move that failed: the data stayed where it was. */
