@@ -129,7 +129,7 @@ Que los agentes trabajen con **la documentación que les damos**: manuales, espe
 - Que los agentes **escriban** en el conocimiento (para eso está `write_project_memory`).
 - Permisos por documento más finos que el nivel.
 - Vigilar el disco para detectar al momento que un original se ha movido o ha cambiado (se comprueba al abrir la página y antes de cada acción).
-- Subir ficheros con copia al servidor (hará falta en el modo servidor, fase 22).
+- Subir ficheros con copia al servidor (hará falta en el modo servidor, fase 23).
 
 ## Historias de usuario
 - Como usuario, quiero subir el PDF de la especificación al proyecto para que los agentes la consulten sin pegarla en cada tarea.

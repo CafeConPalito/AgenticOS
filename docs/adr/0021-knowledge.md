@@ -46,7 +46,7 @@ Los agentes solo conocían el código del proyecto y la memoria (notas cortas). 
 - Frontend: página `/conocimiento` y pestañas de proyecto y agente con la misma biblioteca, ficha con visor, monitor de recursos y Ajustes › Conocimiento y › Modelos locales.
 
 ## Consecuencias
-- **Instalador más grande** (~120 MB más) a cambio de que convertir y hacer OCR funcione sin conexión y sin configurar nada. La alternativa (un motor de conocimiento descargable) exige alojar y firmar ese artefacto; se revisará en la fase 21 (instaladores firmados) si el tamaño molesta.
+- **Instalador más grande** (~120 MB más) a cambio de que convertir y hacer OCR funcione sin conexión y sin configurar nada. La alternativa (un motor de conocimiento descargable) exige alojar y firmar ese artefacto; se revisará en la fase 22 (instaladores firmados) si el tamaño molesta.
 - **Los originales no se copian**: si el usuario los mueve o los edita, la biblioteca lo detecta pero no puede recuperarlos; el Markdown ya procesado sigue siendo utilizable.
 - **CPU primero**: ONNX y `llama.cpp` van en CPU. La GPU para ambos, `llama.cpp` para macOS y Linux y el *reranking* local quedan fuera de esta fase.
 - La gestión de modelos admite nuevos tipos sin cambios de estructura (la fase 16 añadirá los de Whisper).

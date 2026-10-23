@@ -436,5 +436,5 @@ Cada bloque se cierra con sus tests en verde y un commit (o varios) en `phase/14
 - **Concreciones tras el bloque 0** (para aprobar):
   - la parte de palabras de la búsqueda híbrida **solo se activa con términos tipo identificador**; el resto lo resuelve el vector (los spikes muestran que usar todas las palabras empeora el resultado);
   - modelo de *embeddings* por defecto `multilingual-e5-small` y de visión por defecto Gemma 4 E2B, con las demás opciones en Ajustes;
-  - **instalador**: el motor de conocimiento (conversión, OCR y *embeddings*) va **dentro del *sidecar*** (~140 MB en total, frente a 30,5 MB hoy), sin descargas obligatorias salvo los modelos. La alternativa, un ejecutable aparte que se descarga bajo demanda, exige alojar y firmar ese artefacto, y se revisará en la fase 21 (instaladores firmados) si el tamaño molesta.
-- **Fuera de esta fase**, anotado para el futuro: GPU para ONNX y `llama.cpp`, binarios de `llama.cpp` para macOS y Linux (fase 21), reranking local.
+  - **instalador**: el motor de conocimiento (conversión, OCR y *embeddings*) va **dentro del *sidecar*** (~140 MB en total, frente a 30,5 MB hoy), sin descargas obligatorias salvo los modelos. La alternativa, un ejecutable aparte que se descarga bajo demanda, exige alojar y firmar ese artefacto, y se revisará en la fase 22 (instaladores firmados) si el tamaño molesta.
+- **Fuera de esta fase**, anotado para el futuro: GPU para ONNX y `llama.cpp`, binarios de `llama.cpp` para macOS y Linux (fase 22), reranking local.

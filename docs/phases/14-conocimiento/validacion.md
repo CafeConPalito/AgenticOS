@@ -59,9 +59,9 @@ Lint                                        ruff check / format, eslint y pretti
 - **Impacto en fases futuras**:
   - La fase 15 (ampliación del conocimiento) reutiliza trozos, vectores, ficha y MCP.
   - La fase 16 (dictado por voz) añade modelos Whisper al catálogo de modelos locales sin cambios de estructura.
-  - La fase 21 (instaladores firmados) puede reabrir el tamaño del sidecar (152 MB).
+  - La fase 22 (instaladores firmados) puede reabrir el tamaño del sidecar (152 MB).
 - **Deuda anotada**:
-  - La ordenación por `created_at` sin desempate hace flaky algún test en Windows (también en las notas de memoria); conviene añadir un desempate cuando se pase a Postgres (fase 22).
+  - La ordenación por `created_at` sin desempate hace flaky algún test en Windows (también en las notas de memoria); conviene añadir un desempate cuando se pase a Postgres (fase 23).
   - GPU para ONNX y `llama.cpp`, `llama.cpp` para macOS y Linux, y reranking local quedan fuera.
 
 ## Pendiente de comprobación manual (aceptado por el usuario al cerrar)

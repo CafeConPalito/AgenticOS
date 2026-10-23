@@ -62,8 +62,8 @@ Lint                                               ruff, eslint, prettier, tsc, 
   - La indicación de velocidad y calidad de cada modelo es la medida en una sola máquina.
 - **Impacto en fases futuras**:
   - La conversación con el Arquitecto (fase 19) tiene dictado añadiendo `dictation` al campo.
-  - Fase 21 (instaladores): `whisper.cpp` y su modelo de voz solo existen para Windows x64; hay que añadir los motores de macOS y Linux al catálogo.
-  - Fase 22 (modo servidor): decidir dónde se transcribe; hoy el audio va a la máquina del backend.
+  - Fase 22 (instaladores): `whisper.cpp` y su modelo de voz solo existen para Windows x64; hay que añadir los motores de macOS y Linux al catálogo.
+  - Fase 23 (modo servidor): decidir dónde se transcribe; hoy el audio va a la máquina del backend.
   - El motor responde con `Access-Control-Allow-Origin: *` mientras está en marcha (solo `127.0.0.1`, solo transcribe); conviene revisarlo si algún día se expone.
   - `ManagedServer` queda disponible para cualquier otro motor local.
 
