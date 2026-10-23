@@ -5,6 +5,12 @@ class DictationProcessor extends AudioWorkletProcessor {
     super()
     this.block = new Float32Array(2048)
     this.filled = 0
+    // «flush»: hand over what is left of the block, then say it is done.
+    this.port.onmessage = () => {
+      if (this.filled > 0) this.port.postMessage(this.block.slice(0, this.filled))
+      this.filled = 0
+      this.port.postMessage({ flushed: true })
+    }
   }
 
   process(inputs) {

@@ -181,3 +181,31 @@ def test_the_api_lists_the_speech_models_with_their_speed_and_quality(client):
     assert models["whisper-turbo"]["quality"] == "best"
     assert models["whisper-cpp"]["kind"] == "engine" and models["whisper-cpp"]["speed"] is None
     assert models["e5-small"]["speed"] is None  # only the speech models say it
+
+
+def test_a_retired_server_finishes_its_request_and_then_goes_away(tmp_path):
+    data_dir, engine, model = speech_entries(tmp_path)
+    started: list[FakeWhisperProcess] = []
+
+    def launcher(argv, log_file):
+        process = FakeWhisperProcess(int(argv[argv.index("--port") + 1]), delay=0.4)
+        started.append(process)
+        return process
+
+    server = WhisperServer(
+        data_dir, engine, model, 2, launcher=launcher, memory=lambda: 10**12, reap_every=0.05
+    )
+    results: list[str] = []
+    thread = threading.Thread(target=lambda: results.append(server.transcribe(WAV)))
+    thread.start()
+    deadline = time.monotonic() + 3
+    while not server.busy and time.monotonic() < deadline:
+        time.sleep(0.01)
+    server.retire()  # another model was chosen while this one is working
+    thread.join()
+    assert results == ["Hola mundo."]  # the request in flight was not killed
+    deadline = time.monotonic() + 3
+    while server.running and time.monotonic() < deadline:
+        time.sleep(0.02)
+    assert not server.running and started[0].returncode == 0  # and nothing is left running
+    server.stop()

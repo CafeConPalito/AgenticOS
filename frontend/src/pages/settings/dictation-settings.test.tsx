@@ -140,6 +140,9 @@ describe('Ajustes › Dictado', () => {
     expect(within(region).getByText(d.shortcutListening)).toBeVisible()
     fireEvent.keyDown(window, { code: 'KeyA', key: 'a' })
     expect(await within(region).findByRole('alert')).toHaveTextContent(d.shortcutInvalid)
+    fireEvent.keyDown(window, { code: 'KeyA', key: 'A', shiftKey: true }) // would type a capital
+    fireEvent.keyDown(window, { code: 'KeyK', key: 'k', ctrlKey: true, altKey: true }) // AltGr
+    expect(backend.callsTo('PUT', '/api/settings/dictation')).toHaveLength(0)
     fireEvent.keyDown(window, { code: 'KeyD', key: 'd', ctrlKey: true, shiftKey: true })
     await waitFor(() =>
       expect(backend.callsTo('PUT', '/api/settings/dictation')[0].body).toEqual({

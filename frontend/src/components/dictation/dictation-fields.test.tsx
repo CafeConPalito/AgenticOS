@@ -79,6 +79,34 @@ describe('the fields that can be dictated', () => {
     })
   })
 
+  it('Enter does not send an empty answer', async () => {
+    const question = makeInboxItem({ kind: 'question', title: '¿Postgres o SQLite?' })
+    const backend = createFakeBackend({ inbox: [question], dictation: {} })
+    const user = userEvent.setup()
+    renderApp('/inbox')
+    const card = await screen.findByRole('article', {
+      name: `${es.inbox.kinds.question}: ¿Postgres o SQLite?`,
+    })
+    await user.type(within(card).getByLabelText(es.inbox.answerPlaceholder), '{Enter}')
+    expect(backend.callsTo('POST', `/api/inbox/${question.id}/answer`)).toHaveLength(0)
+  })
+
+  it('Enter does not reject a review without a reason', async () => {
+    const review = makeInboxItem({
+      kind: 'review',
+      title: 'Revisar',
+      task_id: 't',
+      task_code: 'T-1',
+    })
+    const backend = createFakeBackend({ inbox: [review], dictation: {} })
+    const user = userEvent.setup()
+    renderApp('/inbox')
+    const card = await screen.findByRole('article', { name: `${es.inbox.kinds.review}: Revisar` })
+    await user.click(await within(card).findByRole('button', { name: es.inbox.reviewReject }))
+    await user.type(within(card).getByLabelText(es.inbox.reasonPlaceholder), '{Enter}')
+    expect(backend.callsTo('POST', `/api/inbox/${review.id}/review`)).toHaveLength(0)
+  })
+
   it('the reason for rejecting a review in the Inbox can be dictated', async () => {
     const review = makeInboxItem({
       kind: 'review',

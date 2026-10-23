@@ -85,6 +85,7 @@ class ManagedServer:
         self._port = 0
         self._last_used = time.monotonic()
         self._busy = False
+        self._retired = False
         self._stop = threading.Event()
         threading.Thread(target=self._reap, name=f"{self.name}-reaper", daemon=True).start()
 
@@ -170,13 +171,22 @@ class ManagedServer:
         with self._lock:
             self._kill()
 
+    def retire(self) -> None:
+        """No longer wanted (another model was chosen), but a request may be running or waiting:
+        let it finish, and stop the process the moment nobody uses it. Unlike `stop`, a request
+        that still arrives later can start it again and it will be stopped again."""
+        self._retired = True
+
     def _reap(self) -> None:
         while not self._stop.wait(self._reap_every):
             with self._lock:
                 idle = time.monotonic() - self._last_used
-                if self.running and not self._busy and idle > self._idle:
+                limit = 0.0 if self._retired else self._idle
+                if self.running and not self._busy and idle >= limit:
                     log.info(f"{self.name}_idle")
                     self._kill()
+                if self._retired and not self._busy and not self.running:
+                    return
 
     # -------------------------------------------------------------------------- requests
     def _request(self, send: Callable[[httpx.Client, int], httpx.Response]) -> httpx.Response:

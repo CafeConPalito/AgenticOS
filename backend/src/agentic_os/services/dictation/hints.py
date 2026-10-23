@@ -16,6 +16,7 @@ from agentic_os.models.team import Team
 from agentic_os.services.dictation.config import DictationSettings
 
 BUDGET = 600  # characters
+ROWS = 100  # names read per kind: more than the budget can hold
 
 LABELS = {
     "es": ("Términos", "Agentes", "Proyectos", "Equipos", "Etapas"),
@@ -29,10 +30,10 @@ def build(db: Session, settings: DictationSettings) -> str:
     )
     groups = [
         settings.vocabulary,
-        list(db.scalars(select(Agent.name).order_by(Agent.name))),
-        list(db.scalars(select(Project.name).order_by(Project.name))),
-        list(db.scalars(select(Team.name).order_by(Team.name))),
-        list(db.scalars(select(Stage.name).order_by(Stage.name))),
+        list(db.scalars(select(Agent.name).order_by(Agent.name).limit(ROWS))),
+        list(db.scalars(select(Project.name).order_by(Project.name).limit(ROWS))),
+        list(db.scalars(select(Team.name).order_by(Team.name).limit(ROWS))),
+        list(db.scalars(select(Stage.name).order_by(Stage.name).limit(ROWS))),
     ]
     seen: set[str] = set()
     parts: list[str] = []

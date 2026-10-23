@@ -33,8 +33,15 @@ const LANGUAGES = ['es', 'en', 'ca', 'gl', 'eu', 'fr', 'de', 'it', 'pt'] as cons
 const DEFAULT_SHORTCUT = 'Ctrl+Space'
 const TEST_SECONDS = 3
 const SYSTEM_DEFAULT = '__default__'
-/** A shortcut that would type something is not allowed: it needs a modifier or to be a F key. */
-const isUsable = (text: string) => /^(Ctrl|Alt|Shift|Meta)\+/.test(text) || /^F\d+$/.test(text)
+/** A shortcut that would type something is not allowed: it needs Ctrl, Alt or Meta (Shift alone
+ * types capitals; Ctrl+Alt is AltGr, which types symbols) or to be a function key. */
+function isUsable(text: string): boolean {
+  const parts = text.split('+')
+  const keys = new Set(parts.slice(0, -1))
+  if (/^F\d+$/.test(text)) return true
+  if (keys.has('Ctrl') && keys.has('Alt')) return false
+  return keys.has('Ctrl') || keys.has('Alt') || keys.has('Meta')
+}
 
 function ShortcutField({ value, onChange }: { value: string; onChange: (value: string) => void }) {
   const { t } = useTranslation()

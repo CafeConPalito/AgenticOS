@@ -21,7 +21,6 @@ from agentic_os.services.localmodels.server import (
     Launcher,
     ManagedServer,
     ServerError,
-    free_port,  # noqa: F401  (kept importable from here)
     launch,
     memory_available,
 )

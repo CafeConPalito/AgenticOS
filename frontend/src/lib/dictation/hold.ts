@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { useDictationSettings, useDictationStatus } from '@/api/dictation'
+import { useDictation } from '@/stores/dictation'
 import { useUiPrefs } from '@/stores/ui-prefs'
 import { fieldIdOf, releaseHold, startDictation } from './controller'
 import { matches, parseShortcut, releases } from './shortcut'
@@ -11,6 +12,7 @@ export function useHoldToDictate() {
   const status = useDictationStatus().data
   const deviceId = useUiPrefs((s) => s.microphoneId)
   const enabled = Boolean(status?.enabled)
+  const ready = Boolean(status?.ready)
   const shortcut = settings?.shortcut
   const maxSeconds = settings?.max_seconds ?? 300
 
@@ -25,6 +27,11 @@ export function useHoldToDictate() {
       if (!fieldId) return // not in a field with a microphone: the key keeps its usual job
       event.preventDefault() // also the repeats of a held key
       if (event.repeat || held) return
+      if (!ready) {
+        // Nothing to talk to yet: offer the download instead of recording into the void.
+        useDictation.getState().setDownloadOpen(true)
+        return
+      }
       held = true
       void startDictation(fieldId, { mode: 'hold', maxSeconds, deviceId: deviceId ?? undefined })
     }
@@ -49,5 +56,5 @@ export function useHoldToDictate() {
       window.removeEventListener('keyup', onKeyUp, true)
       window.removeEventListener('blur', onBlur)
     }
-  }, [enabled, shortcut, maxSeconds, deviceId])
+  }, [enabled, ready, shortcut, maxSeconds, deviceId])
 }

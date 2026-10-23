@@ -59,6 +59,8 @@ export function registerField(id: string, field: Field): () => void {
   fields.set(id, field)
   return () => {
     if (fields.get(id) === field) fields.delete(id)
+    // The field is gone while it was being recorded: nobody sees the microphone any more.
+    if (session?.fieldId === id) cancelDictation()
   }
 }
 

@@ -41,11 +41,14 @@ function GrowingField({
   value,
   onChange,
   containerClassName,
+  canSubmit,
   ...props
 }: {
   value: string
   onChange: (value: string) => void
   containerClassName?: string
+  /** Enter sends only when this is true (text written and nothing in flight). */
+  canSubmit: boolean
   'aria-label': string
   placeholder: string
 }) {
@@ -60,7 +63,7 @@ function GrowingField({
       onKeyDown={(e) => {
         if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
           e.preventDefault()
-          e.currentTarget.form?.requestSubmit()
+          if (canSubmit) e.currentTarget.form?.requestSubmit()
         }
       }}
       className="max-h-40 min-h-8 resize-none py-1 text-[13px] md:text-[13px]"
@@ -198,6 +201,7 @@ export function RequestActions({
             onChange={setText}
             placeholder={t('inbox.answerPlaceholder')}
             containerClassName="w-auto min-w-[220px] flex-1"
+            canSubmit={!busy && !!text.trim()}
           />
           <Button
             type="submit"
@@ -260,6 +264,7 @@ export function RequestActions({
             onChange={setText}
             placeholder={t('inbox.reasonPlaceholder')}
             containerClassName="w-auto flex-1"
+            canSubmit={!busy && !!text.trim()}
           />
           <Button type="submit" size="sm" disabled={busy || !text.trim()}>
             {t('inbox.reviewReject')}

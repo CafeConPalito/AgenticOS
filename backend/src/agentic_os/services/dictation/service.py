@@ -62,13 +62,14 @@ def clean(text: str) -> str:
 
 
 def is_phantom(text: str) -> bool:
-    """Text Whisper invents for silence or noise: a tag like «[Música]» or a known subtitle."""
+    """Text Whisper invents for silence or noise: a tag like «[Música]» or a known subtitle. Only
+    short results count: a long dictation that mentions «suscríbete» is the person's."""
     lowered = text.lower()
-    return (
-        not text
-        or (len(text) <= 40 and bool(TAG.match(text)))
-        or any(p in lowered for p in PHANTOMS)
-    )
+    if not text:
+        return True
+    if len(text) <= 40 and TAG.match(text):
+        return True
+    return len(text) <= 100 and any(p in lowered for p in PHANTOMS)
 
 
 class DictationService:
@@ -77,6 +78,7 @@ class DictationService:
         self.data_dir = Path(data_dir)
         self._lock = threading.Lock()
         self._server: WhisperServer | None = None
+        self._retired: list[WhisperServer] = []  # replaced, finishing what they were doing
         self._pending = 0  # transcriptions in progress or waiting
 
     # ------------------------------------------------------------------------ the engine
@@ -88,15 +90,17 @@ class DictationService:
         with self._lock:
             if self._server is None or self._server.model.id != model.id:
                 if self._server is not None:
-                    self._server.stop()
+                    self._server.retire()  # it finishes what it is doing, then goes
+                    self._retired.append(self._server)
                 self._server = WhisperServer(self.data_dir, engine, model, self._threads())
             return self._server
 
     def stop(self) -> None:
         with self._lock:
-            if self._server is not None:
-                self._server.stop()
-                self._server = None
+            for server in [*self._retired, *([self._server] if self._server else [])]:
+                server.stop()
+            self._retired.clear()
+            self._server = None
 
     def _engine(self) -> CatalogEntry:
         found = catalog.entry(ENGINE_ID)

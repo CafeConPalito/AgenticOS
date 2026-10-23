@@ -240,6 +240,31 @@ describe('the microphone of a field', () => {
   })
 })
 
+describe('review fixes', () => {
+  it('closing the field while recording releases the microphone', async () => {
+    const user = userEvent.setup()
+    const recorder = fakeRecorder()
+    const { unmount, backend } = mount({ dictation: {} })
+    await user.click(await mic())
+    await screen.findByRole('button', { name: MIC.stop })
+    unmount()
+    expect(recorder.cancels).toHaveBeenCalledTimes(1)
+    expect(useDictation.getState().recording).toBeNull()
+    expect(transcriptions(backend)).toHaveLength(0)
+  })
+
+  it('holding the shortcut without a model offers the download and does not record', async () => {
+    const recorder = fakeRecorder()
+    const { field } = mount({ dictation: { status: { ready: false, reason: 'no_model' } } })
+    await mic()
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 60)))
+    field.focus()
+    fireEvent.keyDown(field, { code: 'Space', key: ' ', ctrlKey: true })
+    expect(useDictation.getState().downloadOpen).toBe(true)
+    expect(recorder.start).not.toHaveBeenCalled()
+  })
+})
+
 describe('the hold-to-dictate shortcut', () => {
   const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 

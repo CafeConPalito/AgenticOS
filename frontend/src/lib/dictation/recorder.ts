@@ -60,9 +60,18 @@ export const microphone: Recorder = {
       }
       throw problemOf(error)
     }
-    const context = new AudioContext()
+    // 16 kHz asked of the browser, which resamples with a proper filter; elsewhere the device
+    // rate is kept and `encodeWav` resamples.
+    let context: AudioContext
+    try {
+      context = new AudioContext({ sampleRate: 16_000 })
+    } catch {
+      context = new AudioContext()
+    }
     const chunks: Float32Array[] = []
     let closed = false
+    let node: AudioWorkletNode | null = null
+    let flushed: (() => void) | null = null
     const release = () => {
       if (closed) return
       closed = true
@@ -72,15 +81,18 @@ export const microphone: Recorder = {
     try {
       await context.audioWorklet.addModule('/dictation-worklet.js')
       const source = context.createMediaStreamSource(stream)
-      const node = new AudioWorkletNode(context, 'dictation-processor', {
+      const created = new AudioWorkletNode(context, 'dictation-processor', {
         numberOfInputs: 1,
         numberOfOutputs: 0,
       })
-      node.port.onmessage = (event: MessageEvent<Float32Array>) => {
-        chunks.push(event.data)
-        onLevel(level(event.data))
+      node = created
+      created.port.onmessage = (event: MessageEvent<Float32Array | { flushed: true }>) => {
+        if (event.data instanceof Float32Array) {
+          chunks.push(event.data)
+          onLevel(level(event.data))
+        } else flushed?.()
       }
-      source.connect(node)
+      source.connect(created)
     } catch (error) {
       release()
       throw problemOf(error)
@@ -88,6 +100,15 @@ export const microphone: Recorder = {
     return {
       async stop() {
         const rate = context.sampleRate
+        // The end of the last word is still in the worklet: ask for it before closing.
+        const pending = node
+        if (pending && !closed) {
+          await new Promise<void>((resolve) => {
+            flushed = resolve
+            pending.port.postMessage('flush')
+            setTimeout(resolve, 300)
+          })
+        }
         release()
         const total = chunks.reduce((sum, chunk) => sum + chunk.length, 0)
         const samples = new Float32Array(total)
