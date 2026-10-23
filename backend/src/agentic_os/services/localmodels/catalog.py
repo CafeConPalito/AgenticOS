@@ -18,8 +18,9 @@ from agentic_os.services.localmodels import _pins as pin
 EMBEDDING = "embedding"  # turns text into vectors, for the search by meaning
 OCR = "ocr"  # reads the text of pictures and scanned pages
 VISION = "vision"  # describes pictures (served by llama.cpp)
-ENGINE = "engine"  # a program the models run on (llama.cpp)
-KINDS = (EMBEDDING, OCR, VISION, ENGINE)
+SPEECH = "speech"  # turns the user's voice into text (Whisper, served by whisper.cpp)
+ENGINE = "engine"  # a program the models run on (llama.cpp, whisper.cpp)
+KINDS = (EMBEDDING, OCR, VISION, SPEECH, ENGINE)
 
 
 @dataclass(frozen=True)
@@ -87,6 +88,27 @@ def _vision(entry_id: str, title: str, repo: str, revision: str, model, projecto
         usage=_usage(model=model_name, projector=projector_name),
     )
 
+
+def _speech(
+    entry_id: str, title: str, model_name: str, model_pin, speed: str, quality: str, default=False
+):
+    """A Whisper model for dictation. The voice-activity model (Silero, under 1 MB) comes with
+    every one: it is what turns silence into an empty text instead of an invented one (S3)."""
+    return CatalogEntry(
+        entry_id,
+        SPEECH,
+        title,
+        "mit",
+        (
+            _hf(pin.WHISPER_REPO, pin.WHISPER_REVISION, model_name, model_pin),
+            _hf(pin.WHISPER_VAD_REPO, pin.WHISPER_VAD_REVISION, VAD_FILE, pin.WHISPER_VAD),
+        ),
+        default=default,
+        usage=_usage(model=model_name, vad=VAD_FILE, speed=speed, quality=quality),
+    )
+
+
+VAD_FILE = "ggml-silero-v5.1.2.bin"
 
 CATALOG: tuple[CatalogEntry, ...] = (
     # ----------------------------------------------------------------- embeddings (S4)
@@ -242,6 +264,32 @@ CATALOG: tuple[CatalogEntry, ...] = (
         ("Qwen3.5-4B-Q4_K_M.gguf", pin.QWEN3_5_4B_QWEN3_5_4B_Q4_K_M_GGUF),
         ("mmproj-F16.gguf", pin.QWEN3_5_4B_MMPROJ_F16_GGUF),
     ),
+    # ------------------------------------------------------------ dictation (phase 16, S2)
+    _speech(
+        "whisper-base",
+        "Whisper base",
+        "ggml-base.bin",
+        pin.WHISPER_BASE,
+        "fast",
+        "basic",
+    ),
+    _speech(
+        "whisper-small",
+        "Whisper small",
+        "ggml-small-q5_1.bin",
+        pin.WHISPER_SMALL_Q5,
+        "medium",
+        "good",
+        default=True,
+    ),
+    _speech(
+        "whisper-turbo",
+        "Whisper large-v3 turbo",
+        "ggml-large-v3-turbo-q5_0.bin",
+        pin.WHISPER_TURBO_Q5,
+        "slow",
+        "best",
+    ),
     # ---------------------------------------------------------------- the engine (S6)
     CatalogEntry(
         "llama-cpp",
@@ -261,6 +309,25 @@ CATALOG: tuple[CatalogEntry, ...] = (
         ),
         usage=_usage(version="b11720", executable="bin/llama-server.exe"),
         unpack="llama-b11720-bin-win-cpu-x64.zip",
+    ),
+    CatalogEntry(
+        "whisper-cpp",
+        ENGINE,
+        "whisper.cpp b5454 (CPU)",
+        "mit",
+        (
+            RemoteFile(
+                "whisper-bin-x64.zip",
+                pin.WHISPER_CPP_ENGINE[0],
+                pin.WHISPER_CPP_ENGINE[1],
+                (
+                    "https://github.com/ggml-org/whisper.cpp/releases/download/b5454/"
+                    "whisper-bin-x64.zip",
+                ),
+            ),
+        ),
+        usage=_usage(version="b5454", executable="Release/whisper-server.exe"),
+        unpack="whisper-bin-x64.zip",
     ),
 )
 

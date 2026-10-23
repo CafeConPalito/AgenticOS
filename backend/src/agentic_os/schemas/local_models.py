@@ -5,7 +5,7 @@ from pydantic import BaseModel, ConfigDict, StringConstraints
 
 class ModelRead(BaseModel):
     id: str
-    kind: str  # embedding | ocr | vision | engine
+    kind: str  # embedding | ocr | vision | speech | engine
     title: str
     license: str
     size: int  # bytes to download
@@ -40,12 +40,14 @@ class Selection(BaseModel):
     embedding: str | None = None
     ocr: str | None = None
     vision: str | None = None
+    speech: str | None = None
 
 
 class SelectionRead(BaseModel):
     embedding: str | None
     ocr: str | None
     vision: str | None
+    speech: str | None
     # An embedding model change makes the documents' vectors stale: they are indexed again.
     reindex: bool = False
 
