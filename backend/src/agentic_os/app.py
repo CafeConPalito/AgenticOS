@@ -159,6 +159,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             model=lambda: entry.id if (entry := knowledge.embedding_model()) else None,
         )
         app.state.skills = skills
+        manager.skills = skills  # the runs' skills and use_skill
         # Skills are selected by their vector: a new model gives them new ones (spike S4).
         knowledge.after_reindex.append(
             lambda: refresh_skill_vectors(app.state.sessionmaker, skills)

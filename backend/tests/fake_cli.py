@@ -465,6 +465,18 @@ def use_tools(text: str) -> int | None:
             Path(target).write_text(mcp("propose_knowledge", args_p), "utf-8")
             out(f"● MCP propose_knowledge: {title}")
             continue
+        if keyword == "SKILL" and MCP_URL is not None:  # phase 17: `SKILL: nombre|archivo`
+            name, _, target = value.rpartition("|")
+            Path(target).write_text(mcp("use_skill", {"name": name}), "utf-8")
+            out(f"● MCP use_skill: {name}")
+            continue
+        if (
+            keyword == "FICHERO_SKILL" and MCP_URL is not None
+        ):  # `FICHERO_SKILL: nombre|ruta|archivo`
+            name, path, target = [*value.split("|"), "", ""][:3]
+            Path(target).write_text(mcp("read_skill_file", {"name": name, "path": path}), "utf-8")
+            out(f"● MCP read_skill_file: {name}/{path}")
+            continue
         if keyword == "MAPA" and MCP_URL is not None:  # `MAPA: archivo`
             Path(value).write_text(mcp("knowledge_map", {}), "utf-8")
             out("● MCP knowledge_map")

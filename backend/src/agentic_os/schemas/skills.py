@@ -229,3 +229,61 @@ def read_skill(
         created_at=skill.created_at,
         updated_at=skill.updated_at,
     )
+
+
+# --------------------------------------------------------------------- use (block 3)
+ModeValue = Literal["auto", "always", "never"]
+
+
+class SkillModeRead(BaseModel):
+    skill: SkillRead
+    mode: ModeValue  # what this agent or stage says (auto when it says nothing)
+    effective: ModeValue  # what a run gets: the stage wins over the agent
+    set_by: Literal["stage", "agent", "default"]
+
+
+class ModesWrite(BaseModel):
+    """skill id → mode. «auto» removes what this agent or stage said."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    modes: dict[str, ModeValue]
+
+
+class TryRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    text: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=8000)]
+    agent_id: str | None = None
+    project_id: str | None = None
+    stage_id: str | None = None
+
+
+class TryCandidate(BaseModel):
+    skill: SkillRead
+    rank: int
+    score: float | None
+
+
+class TryExcluded(BaseModel):
+    skill: SkillRead
+    reason: Literal["never_stage", "never_agent", "manual_only", "below_floor"]
+
+
+class TryRead(BaseModel):
+    method: Literal["vector", "words", "none"]
+    always: list[SkillRead]
+    candidates: list[TryCandidate]
+    excluded: list[TryExcluded]
+    section: str
+
+
+class RunSkillRead(BaseModel):
+    skill_id: str
+    skill_name: str
+    offered: Literal["always", "candidate", "requested"]
+    rank: int
+    score: float | None
+    loaded_via: Literal["context", "tool", "native"] | None
+    loaded_at: datetime | None
+    version: int | None

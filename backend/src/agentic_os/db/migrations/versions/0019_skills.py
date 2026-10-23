@@ -180,7 +180,7 @@ def upgrade() -> None:
         sa.Column("team_name", sa.String(length=80), nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.CheckConstraint(
-            "offered IN ('always', 'candidate')", name=op.f("ck_run_skills_offered")
+            "offered IN ('always', 'candidate', 'requested')", name=op.f("ck_run_skills_offered")
         ),
         sa.CheckConstraint(
             "loaded_via IS NULL OR loaded_via IN ('context', 'tool', 'native')",

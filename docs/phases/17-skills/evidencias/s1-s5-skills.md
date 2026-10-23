@@ -75,3 +75,15 @@ Entorno: Windows 11, Claude Code 2.1.309 (`haiku`, ~0,02 USD en total), `agy` 1.
   - bytes por skill: mediana de 20 KB, percentil 90 de 488 KB y máximo de 1,27 MB;
   - 1 skill pasa de los 24 KB de `agy`.
 - **Ejecutables**: 15 de 76 (20 %) traen alguno (`.py`, `.sh`, `.ps1`, `.mjs`, `.ts`).
+
+## S4b · Palabras sin modelo, por tamaño de biblioteca (bloque 3)
+Script `spikes/skills/s4b_words.py`; datos en `s4b-words.json`. Con el mismo corpus y las mismas tareas, en subconjuntos aleatorios de 5, 10 y 20 skills que contienen la esperada (5 por tarea) y en el corpus entero:
+
+| Variante | 5 | 10 | 20 | 82 |
+|---|---|---|---|---|
+| S4 (palabras tal cual, umbral absoluto 3,0) | 0,742 | 0,812 | 0,850 | 0,833 |
+| Raíz de 5 letras sin tildes, absoluto 3,0 | 0,892 | 0,912 | 0,925 | 0,917 |
+| **Raíz + umbral relativo 0,15** | **0,979** | **0,963** | **0,958** | **0,917** |
+| Raíz + relativo 0,30 | 0,954 | 0,933 | 0,871 | 0,688 |
+
+(hit@3 en las tareas con skill). El umbral relativo es la puntuación dividida por la mejor que podría sacar la consulta en esa biblioteca. Con 0,15 se filtran las tareas sin skill en el 64, 56, 42 y 10 % de los casos (para 5, 10, 20 y 82 skills): se ofrece alguna de más.

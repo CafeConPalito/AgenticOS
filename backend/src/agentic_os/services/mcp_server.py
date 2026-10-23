@@ -90,6 +90,8 @@ class AgentBackend(Protocol):
         level: str,
         replaces: str,
     ) -> str: ...
+    def use_skill(self, run_id: str, name: str) -> str: ...
+    def read_skill_file(self, run_id: str, name: str, path: str) -> str: ...
     def request_human(self, run_id: str, title: str, detail: str, options: list[str]) -> str: ...
     def spawn_subagent(self, run_id: str, prompt: str, agent_name: str) -> str: ...
     def create_subtask(self, run_id: str, title: str, description: str, agent_name: str) -> str: ...
@@ -354,6 +356,21 @@ def build_mcp(backend: AgentBackend) -> MCPServer:
             _clip(level),
             _clip(replaces),
         )
+
+    @server.tool()
+    async def use_skill(ctx: Context, name: str = "") -> str:
+        """Carga una skill: instrucciones probadas para un tipo de tarea, que debes seguir.
+        `name`: su nombre, tal como sale en la sección «Skills» de tus instrucciones. Sin
+        nombre, lista todas las skills que tienes. Devuelve su SKILL.md entero, la carpeta
+        donde están sus ficheros (para ejecutar sus scripts) y la lista de esos ficheros."""
+        return await call(backend.use_skill, _run_id(ctx), _clip(name)[:120])
+
+    @server.tool()
+    async def read_skill_file(name: str, path: str, ctx: Context) -> str:
+        """Lee un fichero de apoyo de una skill (una plantilla, un ejemplo, una referencia).
+        `name`: la skill. `path`: la ruta del fichero dentro de ella, como la lista
+        `use_skill` (p. ej. `reference/forms.md`)."""
+        return await call(backend.read_skill_file, _run_id(ctx), _clip(name)[:120], _clip(path))
 
     @server.tool()
     async def write_project_memory(note: str, ctx: Context) -> str:

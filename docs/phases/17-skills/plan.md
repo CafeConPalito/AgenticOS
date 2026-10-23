@@ -90,7 +90,11 @@ Evidencias en [`evidencias/s1-s5-skills.md`](evidencias/s1-s5-skills.md); script
    - topes: 300 ficheros, 1 MB por fichero, 5 MB por skill y `SKILL.md` ≤ 8 000 *tokens*;
    - el resto de campos de la cabecera se conserva y se vuelve a escribir tal cual.
 7. **CA5 (spec)**: con modelo de significado, ≥ 90 % en las 3 primeras (cumplido con los tres modelos). Sin modelo, ≥ 90 % **en tareas y skills del mismo idioma**; el idioma cruzado necesita el modelo. **Aprobado por el usuario** (2026-10-23).
-8. **Fuera de la fase, anotado**: `SESSION_MARKERS` (`runs/launcher.py`) no incluye `CLAUDE_CODE_BRIDGE_SESSION_ID`, que el CLI ya exporta. Se revisa como corrección aparte.
+8. **Sin modelo, palabras con raíz y umbral relativo** (spike S4b, bloque 3, `evidencias/s4b-words.json`):
+   - el umbral fijo de BM25 de S4 no vale para bibliotecas pequeñas;
+   - con las palabras sin tildes y recortadas a 5 letras («migración» ~ «migraciones») y la puntuación dividida por la mejor posible para la consulta, el umbral **0,15** acierta entre el 92 y el 98 % en las 3 primeras con 5, 10, 20 y 82 skills (antes, entre el 74 y el 85 %);
+   - a cambio, cuando ninguna encaja se ofrece alguna de más. Se prefiere así porque ofrecer una línea de más cuesta poco.
+9. **Fuera de la fase, anotado**: `SESSION_MARKERS` (`runs/launcher.py`) no incluye `CLAUDE_CODE_BRIDGE_SESSION_ID`, que el CLI ya exporta. Se revisa como corrección aparte.
 
 ## Diseño ([ADR 0024](../../adr/0024-skills.md), nuevo, borrador)
 
@@ -292,7 +296,7 @@ Las reglas de Agentic OS explican en una línea cuándo proponer: una forma de t
 1. [x] **Bloque 0 · Spikes** S1–S5 hechos; evidencias y cambios al diseño anotados arriba (skills del repo y CA5 sin modelo aprobados por el usuario).
 2. [x] **Bloque 1 · Datos y almacén**: migración `0019`, modelos, `InboxKind.SKILL`, `store.py`, `format.py` y uso de disco.
 3. [x] **Bloque 2 · Biblioteca (backend)**: CRUD con versiones, validación, historial y diff (`difflib`), restaurar, importar por ruta local (carpeta, `.zip`, `SKILL.md`) y de los CLIs con nivel por skill, exportar, vectores (al crear o cambiar la descripción, y tras reindexar o al arrancar) y API `/api/skills…`. Cambios: `SkillError` es un `ApiError` (422; 409 si el nombre ya existe o no hay cambios); `Skill.model_invocable` como columna (en la migración 0019); la importación va por ruta, como los documentos de la fase 14.
-4. [ ] **Bloque 3 · Selección y uso (backend)**: visibles y precedencia, modos por agente y etapa, candidatas, sección «Skills», materialización, `use_skill` y `read_skill_file`, `RunSkill`, probador, API de modos y de la ejecución.
+4. [x] **Bloque 3 · Selección y uso (backend)**: visibles y precedencia, modos por agente y etapa (manda la etapa), candidatas (coseno con umbral por modelo en el catálogo, `skill_floor`; sin modelo, BM25 con raíz y umbral relativo, S4b), selección una sola vez al lanzar guardada en `run_skills`, sección «Skills» con sus presupuestos, carpeta de la ejecución (`runs/<id>/skills`, con `--add-dir`, borrada al terminar), `use_skill` (sin nombre, lista) y `read_skill_file`, clase de oferta `requested` (el agente pide una skill no ofrecida), probador `POST /api/skills/try`, modos `GET/PUT /api/agents|stages/{id}/skill-modes` y `GET /api/runs/{id}/skills`; ajustes en `app_state` (`skills`).
 5. [ ] **Bloque 4 · Nativo**: lo que confirmen S1 y S2 en los adapters, *hook* de la herramienta `Skill` y *snapshots* de la configuración del usuario.
 6. [ ] **Bloque 5 · Propuestas (backend)**: `propose_skill`, controles, Inbox, aprobar (con `opened_files`) y rechazar, versión nueva sobre una existente, reglas.
 7. [ ] **Bloque 6 · Registros (backend)**: protocolo, `github.py`, las fuentes que deje S3, vista previa fijada, instalar, actualizaciones, caché y errores por fuente, ajustes.

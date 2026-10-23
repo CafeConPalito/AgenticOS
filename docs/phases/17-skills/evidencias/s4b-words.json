@@ -1,0 +1,98 @@
+{
+ "  5 skills · S4 (sin raíz, absoluto 3.0)": {
+  "hit@3": 0.742,
+  "neg_filtered": 1.0
+ },
+ "  5 skills · raíz, absoluto 3.0": {
+  "hit@3": 0.892,
+  "neg_filtered": 0.94
+ },
+ "  5 skills · raíz, relativo 0.10": {
+  "hit@3": 0.979,
+  "neg_filtered": 0.56
+ },
+ "  5 skills · raíz, relativo 0.15": {
+  "hit@3": 0.979,
+  "neg_filtered": 0.64
+ },
+ "  5 skills · raíz, relativo 0.20": {
+  "hit@3": 0.967,
+  "neg_filtered": 0.68
+ },
+ "  5 skills · raíz, relativo 0.30": {
+  "hit@3": 0.954,
+  "neg_filtered": 0.72
+ },
+ " 10 skills · S4 (sin raíz, absoluto 3.0)": {
+  "hit@3": 0.812,
+  "neg_filtered": 0.98
+ },
+ " 10 skills · raíz, absoluto 3.0": {
+  "hit@3": 0.912,
+  "neg_filtered": 0.9
+ },
+ " 10 skills · raíz, relativo 0.10": {
+  "hit@3": 0.979,
+  "neg_filtered": 0.44
+ },
+ " 10 skills · raíz, relativo 0.15": {
+  "hit@3": 0.963,
+  "neg_filtered": 0.56
+ },
+ " 10 skills · raíz, relativo 0.20": {
+  "hit@3": 0.971,
+  "neg_filtered": 0.5
+ },
+ " 10 skills · raíz, relativo 0.30": {
+  "hit@3": 0.933,
+  "neg_filtered": 0.66
+ },
+ " 20 skills · S4 (sin raíz, absoluto 3.0)": {
+  "hit@3": 0.85,
+  "neg_filtered": 0.86
+ },
+ " 20 skills · raíz, absoluto 3.0": {
+  "hit@3": 0.925,
+  "neg_filtered": 0.58
+ },
+ " 20 skills · raíz, relativo 0.10": {
+  "hit@3": 0.971,
+  "neg_filtered": 0.36
+ },
+ " 20 skills · raíz, relativo 0.15": {
+  "hit@3": 0.958,
+  "neg_filtered": 0.42
+ },
+ " 20 skills · raíz, relativo 0.20": {
+  "hit@3": 0.95,
+  "neg_filtered": 0.42
+ },
+ " 20 skills · raíz, relativo 0.30": {
+  "hit@3": 0.871,
+  "neg_filtered": 0.56
+ },
+ " 82 skills · S4 (sin raíz, absoluto 3.0)": {
+  "hit@3": 0.833,
+  "neg_filtered": 0.5
+ },
+ " 82 skills · raíz, absoluto 3.0": {
+  "hit@3": 0.917,
+  "neg_filtered": 0.1
+ },
+ " 82 skills · raíz, relativo 0.10": {
+  "hit@3": 0.917,
+  "neg_filtered": 0.0
+ },
+ " 82 skills · raíz, relativo 0.15": {
+  "hit@3": 0.917,
+  "neg_filtered": 0.1
+ },
+ " 82 skills · raíz, relativo 0.20": {
+  "hit@3": 0.917,
+  "neg_filtered": 0.2
+ },
+ " 82 skills · raíz, relativo 0.30": {
+  "hit@3": 0.688,
+  "neg_filtered": 0.6
+ }
+}

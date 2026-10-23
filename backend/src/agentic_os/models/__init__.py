@@ -5,6 +5,7 @@ from agentic_os.models.app_state import (
     KNOWLEDGE,
     NOTIFICATIONS,
     SCHEDULER_PAUSED,
+    SKILLS,
     USAGE_LIMITS,
     AppState,
 )
@@ -87,6 +88,7 @@ __all__ = [
     "PRIORITY_RANK",
     "PROCESSING",
     "SCHEDULER_PAUSED",
+    "SKILLS",
     "USAGE_LIMITS",
     "Activity",
     "Agent",

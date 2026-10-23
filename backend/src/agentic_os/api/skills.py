@@ -12,11 +12,18 @@ from agentic_os.db.base import DEFAULT_WORKSPACE
 from agentic_os.db.session import get_session
 from agentic_os.errors import ApiError, NotFound
 from agentic_os.models import (
+    Agent,
     KnowledgeScope,
+    Pipeline,
+    Run,
+    RunSkill,
     Skill,
+    SkillMode,
+    SkillModeValue,
     SkillOriginKind,
     SkillReview,
     SkillVersion,
+    Stage,
     VersionAuthor,
 )
 from agentic_os.schemas.skills import (
@@ -27,16 +34,25 @@ from agentic_os.schemas.skills import (
     FileRead,
     ImportPath,
     ImportResult,
+    ModesWrite,
+    RunSkillRead,
     SkillCreate,
     SkillDetail,
     SkillEdit,
+    SkillModeRead,
     SkillRead,
     SkillUpdate,
+    TryCandidate,
+    TryExcluded,
+    TryRead,
+    TryRequest,
     VersionRead,
     read_skill,
     read_version,
 )
-from agentic_os.services.skills import export, history, importer
+from agentic_os.services.skills import config as skills_config
+from agentic_os.services.skills import export, history, importer, selection
+from agentic_os.services.skills import runtime as skill_runtime
 from agentic_os.services.skills.errors import SkillError
 from agentic_os.services.skills.format import (
     SKILL_MD,
@@ -346,3 +362,177 @@ def export_skill(skill_id: str, request: Request, db: DbSession) -> Response:
         media_type="application/zip",
         headers={"Content-Disposition": f'attachment; filename="{skill.name}.zip"'},
     )
+
+
+# --------------------------------------------------------------------- use (block 3)
+def _modes_view(
+    db: Session,
+    lib: SkillLibrary,
+    skills: list[Skill],
+    agent_id: str | None,
+    stage_id: str | None,
+    own: str,
+) -> list[SkillModeRead]:
+    """`own` is whose modes are edited here: «agent» or «stage»."""
+    effective = selection.modes(db, skills, agent_id, stage_id)
+    target = SkillMode.agent_id == agent_id if own == "agent" else SkillMode.stage_id == stage_id
+    rows = db.scalars(
+        select(SkillMode).where(SkillMode.skill_id.in_([s.id for s in skills]), target)
+    )
+    mine = {r.skill_id: r.mode for r in rows}
+    reads = _read(db, lib, skills)
+    return [
+        SkillModeRead(
+            skill=read,
+            mode=mine.get(skill.id, SkillModeValue.AUTO),
+            effective=effective[skill.id][0],
+            set_by=effective[skill.id][1],
+        )
+        for skill, read in zip(skills, reads, strict=True)
+    ]
+
+
+def _save_modes(
+    db: Session, modes: dict[str, str], *, agent_id: str | None = None, stage_id: str | None = None
+) -> None:
+    target = SkillMode.agent_id == agent_id if agent_id else SkillMode.stage_id == stage_id
+    for skill_id, mode in modes.items():
+        if db.get(Skill, skill_id) is None:
+            raise NotFound("skill")
+        row = db.scalar(select(SkillMode).where(SkillMode.skill_id == skill_id, target))
+        if mode == SkillModeValue.AUTO:
+            if row is not None:
+                db.delete(row)
+        elif row is None:
+            db.add(SkillMode(skill_id=skill_id, agent_id=agent_id, stage_id=stage_id, mode=mode))
+        else:
+            row.mode = mode
+
+
+def _agent_skills(db: Session, agent_id: str) -> list[Skill]:
+    """Every skill an agent may get in some run: general, its own and the projects'."""
+    return list(
+        db.scalars(
+            select(Skill)
+            .where(
+                Skill.workspace_id == DEFAULT_WORKSPACE,
+                Skill.review == SkillReview.NONE,
+                (Skill.scope != KnowledgeScope.AGENT) | (Skill.agent_id == agent_id),
+            )
+            .order_by(Skill.name)
+        )
+    )
+
+
+@router.get("/agents/{agent_id}/skill-modes")
+def get_agent_modes(agent_id: str, request: Request, db: DbSession) -> list[SkillModeRead]:
+    if db.get(Agent, agent_id) is None:
+        raise NotFound("agent")
+    lib = library(request)
+    return _modes_view(db, lib, _agent_skills(db, agent_id), agent_id, None, "agent")
+
+
+@router.put("/agents/{agent_id}/skill-modes")
+def put_agent_modes(
+    agent_id: str, payload: ModesWrite, request: Request, db: DbSession
+) -> list[SkillModeRead]:
+    if db.get(Agent, agent_id) is None:
+        raise NotFound("agent")
+    _save_modes(db, payload.modes, agent_id=agent_id)
+    db.commit()
+    return get_agent_modes(agent_id, request, db)
+
+
+def _stage_scope(db: Session, stage_id: str) -> tuple[Stage, Pipeline]:
+    stage = db.get(Stage, stage_id)
+    if stage is None:
+        raise NotFound("stage")
+    return stage, db.get(Pipeline, stage.pipeline_id)
+
+
+@router.get("/stages/{stage_id}/skill-modes")
+def get_stage_modes(stage_id: str, request: Request, db: DbSession) -> list[SkillModeRead]:
+    """The skills a run of this stage can see (its agent's, its project's and the general
+    ones), with what the stage says and what a run gets (the stage wins over the agent)."""
+    stage, pipeline = _stage_scope(db, stage_id)
+    agents = [stage.agent_id] if stage.agent_id else []
+    skills = selection.visible(db, pipeline.project_id, agents)
+    return _modes_view(db, library(request), skills, stage.agent_id, stage.id, "stage")
+
+
+@router.put("/stages/{stage_id}/skill-modes")
+def put_stage_modes(
+    stage_id: str, payload: ModesWrite, request: Request, db: DbSession
+) -> list[SkillModeRead]:
+    _stage_scope(db, stage_id)
+    _save_modes(db, payload.modes, stage_id=stage_id)
+    db.commit()
+    return get_stage_modes(stage_id, request, db)
+
+
+@router.post("/skills/try")
+def try_selection(payload: TryRequest, request: Request, db: DbSession) -> TryRead:
+    """What a run would get for this text, agent and stage: the same choice and the same
+    section (the «Probador» of the spec, B)."""
+    lib = library(request)
+    agent = db.get(Agent, payload.agent_id) if payload.agent_id else None
+    stage = db.get(Stage, payload.stage_id) if payload.stage_id else None
+    project_id = payload.project_id
+    if stage is not None and project_id is None:
+        project_id = db.get(Pipeline, stage.pipeline_id).project_id
+    skills = selection.visible(db, project_id, [agent.id] if agent else [])
+    ranker = request.app.state.run_manager.skill_ranker()
+    settings = skills_config.load(db)
+    query = selection.task_query(
+        payload.text, "", stage.name if stage else "", agent.role if agent else ""
+    )
+    chosen = selection.select_skills(
+        skills,
+        selection.modes(db, skills, agent.id if agent else None, stage.id if stage else None),
+        query,
+        limit=settings.candidates,
+        embed_query=ranker.embed_query,
+        model=ranker.model,
+        floor=ranker.floor,
+        words_floor=settings.words_floor,
+    )
+    items = [
+        skill_runtime.Item(o.kind, o.skill.name, o.skill.description, o.skill.current_version_id)
+        for o in chosen.offered
+    ]
+    every = {s.id: r for s, r in zip(skills, _read(db, lib, skills), strict=True)}
+    return TryRead(
+        method=chosen.method,
+        always=[every[o.skill.id] for o in chosen.always],
+        candidates=[
+            TryCandidate(skill=every[o.skill.id], rank=o.rank, score=o.score)
+            for o in chosen.candidates
+        ],
+        excluded=[TryExcluded(skill=every[s.id], reason=why) for s, why in chosen.excluded],
+        section=skill_runtime.render(db, lib, items, lambda name: f"<carpeta>/{name}"),
+    )
+
+
+@router.get("/runs/{run_id}/skills")
+def run_skills(run_id: str, db: DbSession) -> list[RunSkillRead]:
+    if db.get(Run, run_id) is None:
+        raise NotFound("run")
+    rows = db.execute(
+        select(RunSkill, SkillVersion.number)
+        .outerjoin(SkillVersion, SkillVersion.id == RunSkill.version_id)
+        .where(RunSkill.run_id == run_id)
+        .order_by(RunSkill.offered, RunSkill.rank, RunSkill.skill_name)
+    ).all()
+    return [
+        RunSkillRead(
+            skill_id=row.skill_id,
+            skill_name=row.skill_name,
+            offered=row.offered,
+            rank=row.rank,
+            score=row.score,
+            loaded_via=row.loaded_via,
+            loaded_at=row.loaded_at,
+            version=number,
+        )
+        for row, number in rows
+    ]

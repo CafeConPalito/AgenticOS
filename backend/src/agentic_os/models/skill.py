@@ -64,6 +64,7 @@ class SkillModeValue(StrEnum):
 class OfferKind(StrEnum):
     ALWAYS = "always"
     CANDIDATE = "candidate"
+    REQUESTED = "requested"  # not offered: the agent asked for it by name (use_skill)
 
 
 class LoadedVia(StrEnum):
