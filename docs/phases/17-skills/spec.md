@@ -2,6 +2,7 @@
 
 - **Estado**: aprobada (2026-10-23)
 - **Rama**: `phase/17-skills`
+- **Plan**: [plan.md](plan.md)
 
 ## Objetivo
 Que los agentes trabajen con **skills**: paquetes de instrucciones reutilizables (un `SKILL.md` con su descripción y, si hace falta, ficheros de apoyo) que enseñan a hacer algo concreto («revisión de código», «escribir una migración de Alembic», «redactar una propuesta comercial»). El usuario las tiene en una **biblioteca de tres niveles** (general, proyecto, agente). En cada ejecución, **la skill adecuada se carga sola** según la tarea, con cualquier CLI. Los agentes pueden **proponer skills nuevas** a partir de lo que han aprendido, que el usuario aprueba o rechaza. Cada skill tiene su **historial de cambios**. Y el usuario puede **explorar los registros públicos más usados** e instalar desde ellos las skills que quiera.
