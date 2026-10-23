@@ -126,3 +126,4 @@ Flujo de cada fase: ver `CLAUDE.md` (Spec → Plan → Desarrollo → Validació
 | 2026-10-23 | Borrador del plan de la fase 17 y del ADR 0024 (pendientes de aprobación). |
 | 2026-10-23 | Ampliación de la fase 17 (apartado E: estadísticas de uso de las skills con filtros, orden y agrupación por agente, pipeline, CLI, cuenta…), añadida a la spec y al plan; pendiente de aprobación junto con el plan. |
 | 2026-10-23 | Plan de la fase 17 aprobado (con la ampliación E). Fase 17 en dev (rama `phase/17-skills`). |
+| 2026-10-23 | Fase 17, bloque 0: spikes S1–S5 (skills nativas por ejecución en Claude con `--plugin-dir` y en `agy` dentro de su plugin; registros sondeados; autoselección por coseno con hit@3 0,92–1,00). Pendientes del OK del usuario: skills del repositorio y CA5 sin modelo. |
