@@ -159,3 +159,9 @@ Que los agentes usen **servidores MCP externos** (GitHub, una base de datos, un 
 3. **Inyección**: directa en los dos CLIs; la pasarela en el backend solo para lo que el spike demuestre que un CLI no admite.
 4. **Etapas**: se puede quitar una conexión en una etapa o rama, sin modos de autoselección.
 5. **Explorador**: se añade un explorador de los registros públicos de servidores MCP, como el de skills (apartado G).
+
+## Cambios tras la aprobación (2026-10-24)
+Tras los spikes (bloque 0), aprobado por el usuario:
+- **Explorador (apartado G)**: las fuentes son el **registro oficial de MCP** y **Smithery**, más la instalación desde un paquete npm o PyPI o un repositorio de GitHub. **Glama** (exige clave de API y atribución) y **PulseMCP** (retiró su API anterior y la nueva exige clave) quedan fuera de la fase. «Más usados» sale del `useCount` de Smithery y de las descargas semanales de npm.
+- **Conexiones SSE en `agy`**: `agy` no admite SSE; la conexión se omite en esa ejecución con un aviso.
+- **Pasarela de respaldo (apartado E)**: no hace falta, los dos CLIs admiten la inyección directa y el filtrado de herramientas.

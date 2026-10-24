@@ -133,3 +133,4 @@ Flujo de cada fase: ver `CLAUDE.md` (Spec → Plan → Desarrollo → Validació
 | 2026-10-24 | Spec de la fase 18 aprobada. Fase 18 en plan; borrador del plan (spikes S1–S6, ADR 0025 y ampliación de ADR 0018), pendiente de aprobación. |
 | 2026-10-24 | Plan de la fase 18 aprobado. Fase 18 en dev (rama `phase/18-conexiones-mcp`). |
 | 2026-10-24 | Fase 18, bloque 0: spikes S1–S6 (inyección directa en Claude y `agy` sin pasarela; `${VAR}` solo en Claude; filtrado de herramientas en los dos; OAuth con el proveedor del SDK y puerto fijo; `keyring` con troceado). Pendiente del OK del usuario: dejar Glama y PulseMCP fuera (exigen clave de API). |
+| 2026-10-24 | Fase 18: aprobados Glama y PulseMCP fuera de la fase y SSE omitido en `agy`. Sigue el desarrollo del backend (bloques 1–8). |

@@ -1,7 +1,7 @@
 # Fase 18: Conexiones MCP · Plan técnico
 
 - **Spec**: [spec.md](spec.md)
-- **Estado**: aprobado (2026-10-24) · en desarrollo (bloque 0)
+- **Estado**: aprobado (2026-10-24) · en desarrollo (bloques 1–8, backend)
 
 ## Lo que ya se sabe (revisado al escribir el plan)
 - **Lanzamiento**: `RunManager._launch` (`services/runs/manager.py`) arma el `LaunchContext` (`services/adapters/base.py`) con el agente, el proyecto, la tarea, la etapa (`task.stage_id`) y el padre de un subagente, y llama a `adapter.prepare`. Las conexiones entran igual que las skills: un campo nuevo del contexto, preparado antes de `prepare` y limpiado en `cleanup`/`_on_end`.
@@ -70,7 +70,7 @@ Evidencias en [`evidencias/s1-s6-conexiones.md`](evidencias/s1-s6-conexiones.md)
    - GitHub (remoto) y Asana no tienen registro dinámico: la UI pide el *client id* (y dice qué URI de retorno registrar), y para GitHub ofrece también el token personal en una cabecera;
    - renovar antes de lanzar = hacer una petición autenticada con el proveedor (`initialize`) y leer el almacén; la renovación es automática.
 8. **Secretos en el almacén**: se trocean en piezas de 1 000 caracteres (entrada principal con el número de piezas y `nombre#i`).
-9. **Registros**: las fuentes iniciales son el **registro oficial** y **Smithery**, más la instalación desde un paquete npm o PyPI o un repositorio de GitHub. «Más usados»: el `useCount` de Smithery y, para el registro oficial, las descargas semanales de npm de sus paquetes; los paquetes `latest` se fijan a la versión exacta al instalar. **Glama y PulseMCP quedan fuera**: exigen clave de API (Glama además, atribución visible), lo que choca con «registros que exijan cuenta» de la spec. *Pendiente del OK del usuario.*
+9. **Registros**: las fuentes iniciales son el **registro oficial** y **Smithery**, más la instalación desde un paquete npm o PyPI o un repositorio de GitHub. «Más usados»: el `useCount` de Smithery y, para el registro oficial, las descargas semanales de npm de sus paquetes; los paquetes `latest` se fijan a la versión exacta al instalar. **Glama y PulseMCP quedan fuera**: exigen clave de API (Glama además, atribución visible), lo que choca con «registros que exijan cuenta» de la spec. *Aprobado por el usuario (2026-10-24).*
 10. **API del SDK 2.x**: `httpx2` para cabeceras y autenticación, `streamable_http_client(url, http_client=…)`, `ToolAnnotations` en *snake_case* y `MCPServer` en lugar de `FastMCP`.
 11. **Importar**: se leen `~/.claude.json` (global y por proyecto), el `.mcp.json` de cada proyecto y `~/.gemini/config/mcp_config.json`; los valores de `headers` y `env` con aspecto de secreto (y todo `Authorization`) pasan al almacén.
 
@@ -144,7 +144,7 @@ Evidencias en [`evidencias/s1-s6-conexiones.md`](evidencias/s1-s6-conexiones.md)
 
 ### 9. Registros públicos (`services/connections/registries/`)
 - Protocolo `ServerRegistry` como el de skills: `popular(page)`, `search(query, category, transport, page)` → tarjetas (id, nombre, descripción, autor, uso, actualizado, transporte, oficial); `detail(id)` → paquete o URL, versión, comando exacto, variables y cabeceras (con cuáles son secretas), OAuth, herramientas declaradas, licencia, repo y seguridad.
-- Fuentes según S4: `official.py` y `smithery.py` (Glama y PulseMCP, fuera hasta el OK del usuario); y `package_url.py` para un repo de GitHub (busca `server.json` o el bloque `mcpServers` del README), un paquete npm o uno de PyPI.
+- Fuentes según S4: `official.py` y `smithery.py` (Glama y PulseMCP, fuera de la fase); y `package_url.py` para un repo de GitHub (busca `server.json` o el bloque `mcpServers` del README), un paquete npm o uno de PyPI.
 - Se reutilizan la caché de 10 min, los códigos de error por fuente, el *token* opcional de GitHub y la comprobación diaria de actualizaciones de `skills/registries/service.py` (se extrae a un módulo común si hace falta).
 - **Instalar** (`POST /api/connections/registries/install`, con `id`, nivel y valores del formulario): crea la conexión `origin=registry` con el comando fijado a la versión (`npx -y paquete@1.2.3`, `uvx paquete==1.2.3`, `docker run … imagen:1.2.3`) y su `McpOrigin`. No ejecuta nada: la prueba la lanza el usuario (CA14).
 - **Actualizaciones**: si `latest_version` ≠ `version`, aviso; «Ver cambios» compara el `manifest` instalado con el nuevo (versión, comando, variables, herramientas declaradas); «Actualizar» cambia la versión, sube `revision` y pide volver a probar (CA15).
@@ -201,7 +201,7 @@ Evidencias en [`evidencias/s1-s6-conexiones.md`](evidencias/s1-s6-conexiones.md)
 | `spikes/mcp/` | nuevo |
 
 ## Tareas (en orden)
-1. [x] **Bloque 0 · Spikes** S1–S6 hechos; evidencias y cambios al diseño anotados arriba. Pendiente del OK del usuario: dejar Glama y PulseMCP fuera de la fase (cambio 9).
+1. [x] **Bloque 0 · Spikes** S1–S6 hechos; evidencias y cambios al diseño anotados arriba. Glama y PulseMCP fuera de la fase y SSE omitido en `agy`: aprobado por el usuario (2026-10-24).
 2. [ ] **Bloque 1 · Datos y secretos**: migración `0020`, modelos, `InboxKind.CONNECTION`, `secrets.py` con `keyring` (y troceado si S5 lo pide), filtro de ocultación en la sesión.
 3. [ ] **Bloque 2 · Catálogo (backend)**: parser y validación, CRUD con `revision`, secretos por campo, plantillas, importar de los CLIs con nivel, exportar sin secretos, API.
 4. [ ] **Bloque 3 · Prueba de conexión**: cliente `stdio`/HTTP/SSE, errores en palabras con `stderr`, requisitos, herramientas guardadas, aviso de cambios, modos de herramientas y preaprobadas.

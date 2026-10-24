@@ -1,6 +1,7 @@
 from agentic_os.models.account import CliAccount, SessionState
 from agentic_os.models.agent import Agent, AgentStatus, Cli, PermissionMode, Tool
 from agentic_os.models.app_state import (
+    CONNECTIONS,
     DICTATION,
     KNOWLEDGE,
     NOTIFICATIONS,
@@ -8,6 +9,21 @@ from agentic_os.models.app_state import (
     SKILLS,
     USAGE_LIMITS,
     AppState,
+)
+from agentic_os.models.connection import (
+    McpAssignment,
+    McpAuth,
+    McpConnection,
+    McpExclusion,
+    McpOAuth,
+    McpOrigin,
+    McpOriginKind,
+    McpToolMode,
+    McpTransport,
+    OAuthStatus,
+    RunConnection,
+    RunConnectionStatus,
+    RunToolCall,
 )
 from agentic_os.models.inbox import InboxItem, InboxKind, InboxStatus, Resolution
 from agentic_os.models.knowledge import (
@@ -80,6 +96,7 @@ from agentic_os.models.team import Team
 
 __all__ = [
     "ACTIVE_STATUSES",
+    "CONNECTIONS",
     "DEFAULT_MAX_REJECTIONS",
     "DICTATION",
     "FINISHED_TASK_STATUSES",
@@ -117,7 +134,17 @@ __all__ = [
     "KnowledgeScope",
     "KnowledgeSource",
     "LoadedVia",
+    "McpAssignment",
+    "McpAuth",
+    "McpConnection",
+    "McpExclusion",
+    "McpOAuth",
+    "McpOrigin",
+    "McpOriginKind",
+    "McpToolMode",
+    "McpTransport",
     "MemoryNote",
+    "OAuthStatus",
     "OfferKind",
     "OnApprove",
     "Origin",
@@ -131,11 +158,14 @@ __all__ = [
     "Resolution",
     "Review",
     "Run",
+    "RunConnection",
+    "RunConnectionStatus",
     "RunEvent",
     "RunKind",
     "RunRepo",
     "RunSkill",
     "RunStatus",
+    "RunToolCall",
     "SessionState",
     "Skill",
     "SkillMode",

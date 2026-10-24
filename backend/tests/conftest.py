@@ -7,6 +7,16 @@ from fastapi.testclient import TestClient
 
 from agentic_os.app import create_app
 from agentic_os.config import Settings
+from agentic_os.services.connections import secrets as connection_secrets
+
+
+@pytest.fixture(autouse=True)
+def credential_store() -> Iterator[connection_secrets.MemoryStore]:
+    """Never the person's own credential manager: the secrets of the tests live in memory."""
+    store = connection_secrets.MemoryStore()
+    previous = connection_secrets.use(store)
+    yield store
+    connection_secrets.use(previous)
 
 
 @pytest.fixture
