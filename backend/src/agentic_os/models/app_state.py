@@ -10,6 +10,7 @@ LOG_RETENTION = "log_retention"  # JSON: {"days": int | null} (null: never delet
 SWITCH_THRESHOLD = "switch_threshold"  # percent of a subscription window that triggers the alert
 KNOWLEDGE = "knowledge"  # JSON: the knowledge library's limits and switches (phase 14)
 DICTATION = "dictation"  # JSON: the dictation settings (phase 16)
+SKILLS = "skills"  # JSON: the skill library's budgets, proposals and registries (phase 17)
 
 
 class AppState(Base):

@@ -37,6 +37,14 @@ class LaunchContext:
     extra_dirs: tuple[str, ...] = ()
     # The project lets agents use git freely (phase 12): no permission prompt for it.
     git_authorized: bool = False
+    # The run's skills, one folder each (phase 17): passed to the CLI's own skill mechanism.
+    skills_dir: Path | None = None
+
+    @property
+    def native_skills(self) -> list[Path]:
+        if self.skills_dir is None or not self.skills_dir.is_dir():
+            return []
+        return sorted(p for p in self.skills_dir.iterdir() if (p / "SKILL.md").is_file())
 
     @property
     def mcp_url(self) -> str:
@@ -81,7 +89,10 @@ AGENTIC_OS_TOOLS = "mcp__agentic-os__*"
 
 
 def claude_permissions(
-    mode: PermissionMode, allowed_tools: tuple[str, ...], git_authorized: bool = False
+    mode: PermissionMode,
+    allowed_tools: tuple[str, ...],
+    git_authorized: bool = False,
+    skills: bool = False,
 ) -> list[str]:
     """`--permission-mode` and `--allowedTools` for an agent (spike P6, ADR 0004).
 
@@ -93,6 +104,8 @@ def claude_permissions(
     if mode == PermissionMode.AUTONOMOUS:
         return ["--permission-mode", "bypassPermissions", "--allowedTools", AGENTIC_OS_TOOLS]
     tools = [AGENTIC_OS_TOOLS]
+    if skills:  # loading a skill only reads its instructions; its scripts still ask (S1)
+        tools.append("Skill")
     if git_authorized:
         tools += CLAUDE_TOOLS["git"]
     if mode == PermissionMode.RESTRICTED:

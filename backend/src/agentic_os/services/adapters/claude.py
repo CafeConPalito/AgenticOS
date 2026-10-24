@@ -18,6 +18,7 @@ from agentic_os.services.runs.launcher import (
     resolve_executable,
     safe_prompt,
 )
+from agentic_os.services.skills.runtime import PLUGIN_NAME
 
 
 class ClaudeAdapter(CliAdapter):
@@ -76,12 +77,21 @@ class ClaudeAdapter(CliAdapter):
             "--strict-mcp-config",
             "--append-system-prompt-file",
             str(instructions),
-            *claude_permissions(ctx.permission_mode, ctx.allowed_tools, ctx.git_authorized),
+            *claude_permissions(
+                ctx.permission_mode,
+                ctx.allowed_tools,
+                ctx.git_authorized,
+                skills=bool(ctx.native_skills),
+            ),
         ]
         if ctx.model:
             argv += ["--model", ctx.model]
         for folder in ctx.extra_dirs:  # one flag each: --add-dir is variadic
             argv += ["--add-dir", folder]
+        if ctx.native_skills:  # phase 17, spike S1: our skills for this session only
+            plugin = ctx.skills_dir.parent
+            write_json(plugin / ".claude-plugin" / "plugin.json", {"name": PLUGIN_NAME})
+            argv += ["--plugin-dir", str(plugin)]
         # The account's folder wins over a CLAUDE_CONFIG_DIR of the person (system account:
         # nothing is added and their own value, if any, is kept).
         return LaunchSpec(argv, {**clean_env(), **ctx.account_env}, session_id)

@@ -34,7 +34,7 @@ HOOK_EVENTS: dict[Cli, tuple[str, ...]] = {
     Cli.AGY: ("PreInvocation", "Stop", "PreToolUse", "PostToolUse"),
 }
 # Claude: tool hooks restricted to these tools (`matcher`).
-CLAUDE_TOOL_MATCHER = "Agent|Task"
+CLAUDE_TOOL_MATCHER = "Agent|Task|Skill"
 AGY_TOOL_MATCHER = "invoke_subagent"
 TOOL_EVENTS = {"PreToolUse", "PostToolUse"}
 TURN_START = {"UserPromptSubmit", "PreInvocation"}

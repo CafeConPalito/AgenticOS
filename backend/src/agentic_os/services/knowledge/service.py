@@ -81,6 +81,8 @@ class KnowledgeService:
         self._query_lock = threading.Lock()
         self._reindexing = False
         self._reindex_again = False
+        # Called when a re-index ends (the skills refresh their vectors, phase 17).
+        self.after_reindex: list[Callable[[], None]] = []
         self._graph_dirty = threading.Event()
         self._graph_lock = threading.Lock()  # one recompute at a time
         self._graph_announce = False  # something other than the links changed too
@@ -233,9 +235,10 @@ class KnowledgeService:
                 return None
         return vectors[0]
 
-    def embed_passages(self, texts: list[str]) -> np.ndarray | None:
+    def embed_passages(self, texts: list[str], kind: str = "passage") -> np.ndarray | None:
         """The vectors of some passages (a proposal's chunks), or None without a model. Uses the
-        worker that embeds questions, so it never waits behind a long indexing."""
+        worker that embeds questions, so it never waits behind a long indexing. `kind="query"`
+        embeds them as questions: the skills are compared with tasks that way (spike S4c)."""
         entry = self.embedding_model()
         if entry is None or not texts:
             return None
@@ -248,7 +251,7 @@ class KnowledgeService:
                 )
             try:
                 return embeddings.embed(
-                    self._query_worker, model_spec(self.data_dir, entry), texts, "passage"
+                    self._query_worker, model_spec(self.data_dir, entry), texts, kind
                 )
             except KnowledgeError as error:
                 log.warning("knowledge_passage_embedding_failed", message=error.message)
@@ -352,6 +355,11 @@ class KnowledgeService:
                 self._reindexing = False
         self.events.queue(self.state())
         self.mark_graph_dirty(announce=False)
+        for callback in self.after_reindex:
+            try:
+                callback()
+            except Exception:
+                log.exception("knowledge_after_reindex_failed")
 
     def system(self) -> dict:
         """The machine's load now. The first reading of a rate is 0: ask again a second later."""

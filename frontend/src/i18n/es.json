@@ -13,7 +13,7 @@
     "main": "Secciones",
     "home": "Inicio",
     "clis": "CLIs y cuentas",
-    "knowledge": "Conocimiento"
+    "knowledge": "Conocimiento y skills"
   },
   "header": {
     "search": "Buscar agentes, tareas o acciones…",
@@ -565,7 +565,11 @@
         "mcp_probe": "Conectando el MCP (/mcp)",
         "resumed": "Reanudada en otra ejecución",
         "session_missing": "El CLI ya no tenía la conversación",
-        "snapshot_failed": "No se pudo registrar el estado de la carpeta (sin cambios que ver)"
+        "snapshot_failed": "No se pudo registrar el estado de la carpeta (sin cambios que ver)",
+        "use_skill": "Skill cargada",
+        "read_skill_file": "Fichero de skill leído",
+        "propose_skill": "Skill propuesta",
+        "skill_native": "Skill cargada por el CLI"
       },
       "human": {
         "bypass_permissions_consent": "Claude pide aceptar el modo «Autónomo» (sin permisos). Toma el control para responder.",
@@ -1000,7 +1004,8 @@
       "quota": "Cuota agotada",
       "account": "Sesión cerrada",
       "switch": "Cambiar de CLI",
-      "knowledge": "Conocimiento propuesto"
+      "knowledge": "Conocimiento propuesto",
+      "skill": "Skill propuesta"
     },
     "approvalTitle": "¿Puedo continuar?",
     "answerPlaceholder": "Responder con texto…",
@@ -1038,7 +1043,8 @@
     "limitHint": "Se resuelve solo mañana o al subir el límite en Ajustes.",
     "openSettings": "Abrir Ajustes",
     "reconnect": "Reconectar",
-    "reviewProposal": "Revisar propuesta"
+    "reviewProposal": "Revisar propuesta",
+    "reviewSkill": "Revisar skill"
   },
   "settings": {
     "title": "Ajustes",
@@ -1164,6 +1170,7 @@
       "limits": "Límites diarios",
       "git": "Git",
       "knowledge": "Conocimiento",
+      "skills": "Skills",
       "dictation": "Dictado",
       "models": "Modelos locales",
       "cleanup": "Limpieza",
@@ -2730,5 +2737,385 @@
       "best": "Mejor calidad"
     },
     "speechNote": "{{speed}} · {{quality}}"
+  },
+  "skills": {
+    "title": "Skills",
+    "pageTabs": {
+      "docs": "Documentos",
+      "skills": "Skills",
+      "explore": "Explorar",
+      "usage": "Uso"
+    },
+    "intro": {
+      "general": "Instrucciones probadas para tareas concretas. Las generales están disponibles para todos los agentes; cada ejecución recibe solo las que encajan con su tarea.",
+      "project": "Skills de este proyecto: las reciben las ejecuciones de sus tareas.",
+      "agent": "Skills de este agente: solo las recibe él, en cualquier proyecto."
+    },
+    "count": "{{active}} activas de {{total}}",
+    "loadFailed": "No se han podido cargar las skills.",
+    "empty": {
+      "title": "Aún no hay skills",
+      "description": "Crea una, impórtala de una carpeta o de tus CLIs, o instálala desde un registro público."
+    },
+    "actions": {
+      "new": "Nueva skill",
+      "import": "Importar",
+      "explore": "Explorar registros",
+      "save": "Guardar",
+      "saving": "Guardando…",
+      "cancel": "Cancelar",
+      "delete": "Borrar",
+      "export": "Exportar .zip",
+      "move": "Mover de nivel",
+      "open": "Abrir {{name}}",
+      "enable": "Activar {{name}}",
+      "restore": "Restaurar",
+      "compare": "Comparar",
+      "close": "Cerrar"
+    },
+    "level": {
+      "general": "General",
+      "project": "Proyecto",
+      "agent": "Agente",
+      "label": "Nivel",
+      "project_pick": "Proyecto",
+      "agent_pick": "Agente"
+    },
+    "origin": {
+      "user": "Tuya",
+      "agent": "Creada por agente",
+      "import": "Importada",
+      "registry": "Instalada desde {{source}}",
+      "registry_short": "De un registro"
+    },
+    "card": {
+      "used": "Usada {{count}} veces",
+      "used_one": "Usada 1 vez",
+      "used_other": "Usada {{count}} veces",
+      "neverUsed": "Sin usar",
+      "lastUsed": "última {{when}}",
+      "files": "{{count}} ficheros",
+      "scripts": "{{count}} ejecutables",
+      "manualOnly": "Solo si se pide",
+      "update": "Actualización disponible",
+      "proposed": "Propuesta por {{agent}} – pendiente de aprobar",
+      "off": "Apagada",
+      "version": "v{{number}}"
+    },
+    "editor": {
+      "titleNew": "Nueva skill",
+      "titleEdit": "Editar {{name}}",
+      "name": "Nombre",
+      "nameHint": "Minúsculas, números y guiones (p. ej. revision-de-codigo).",
+      "description": "Descripción",
+      "descriptionHint": "Di qué hace y cuándo usarla: es lo que se usa para elegirla. {{count}}/1024",
+      "body": "Instrucciones",
+      "files": "Ficheros de apoyo",
+      "addFile": "Añadir fichero",
+      "newPath": "Ruta del fichero (p. ej. reference/guia.md)",
+      "fileContent": "Contenido de {{path}}",
+      "removeFile": "Quitar {{path}}",
+      "executable": "ejecutable",
+      "note": "¿Qué has cambiado? (opcional)",
+      "created": "Skill {{name}} creada",
+      "saved": "Guardada como versión {{number}}"
+    },
+    "sheet": {
+      "tabs": {
+        "content": "Contenido",
+        "history": "Historial",
+        "usage": "Uso",
+        "origin": "Origen"
+      },
+      "header": "Cabecera",
+      "body": "Instrucciones",
+      "files": "Ficheros",
+      "edit": "Editar",
+      "deleteTitle": "¿Borrar la skill {{name}}?",
+      "deleteDescription": "Se borran su historial y sus estadísticas de uso ({{count}} cargas). No se puede deshacer.",
+      "deleted": "Skill borrada",
+      "moved": "Skill movida"
+    },
+    "history": {
+      "title": "Versiones",
+      "current": "actual",
+      "by": {
+        "user": "Tú",
+        "agent": "{{label}} (agente)",
+        "import": "Importada · {{label}}",
+        "registry": "{{label}}",
+        "restore": "Restaurada"
+      },
+      "status": {
+        "proposed": "propuesta",
+        "rejected": "rechazada"
+      },
+      "from": "Desde",
+      "to": "Hasta",
+      "noChanges": "Sin diferencias entre estas versiones.",
+      "binary": "Fichero binario",
+      "tooLarge": "Demasiado grande para mostrarlo",
+      "restored": "Restaurada como versión {{number}}",
+      "renamed": "{{from}} → {{to}}",
+      "range": "v{{from}} → v{{to}}",
+      "restoreVersion": "Restaurar la versión {{number}}"
+    },
+    "import": {
+      "title": "Importar skills",
+      "fromPath": "Carpeta, .zip o SKILL.md",
+      "pathHint": "La carpeta de una skill (con su SKILL.md), un .zip o un SKILL.md suelto. El original no se toca.",
+      "browse": "Fichero…",
+      "importTo": "Importar en",
+      "doImport": "Importar",
+      "fromClis": "De mis CLIs",
+      "clisHint": "Skills que ya tienes en Claude Code, en agy o en los repositorios de tus proyectos. Las ejecuciones de Agentic OS no las cargan solas: impórtalas al nivel que quieras.",
+      "source": {
+        "claude_user": "Claude Code (tuyas)",
+        "claude_project": "Repositorio de {{project}} (Claude)",
+        "agy_global": "agy (globales)",
+        "agy_project": "Repositorio de {{project}} (agy)"
+      },
+      "already": "ya importada",
+      "pick": "Importar {{name}}",
+      "levelFor": "Nivel de {{name}}",
+      "importSelected": "Importar {{count}}",
+      "noneFound": "No hay skills en tus CLIs ni en los repositorios de tus proyectos.",
+      "done": "{{count}} skills importadas",
+      "renamed": "{{from}} ya existía en ese nivel: importada como {{to}}",
+      "repoSkills": "Skills del repositorio",
+      "repoSkillsHint": "Las carga el CLI por su cuenta, como parte del código del proyecto. Puedes importarlas a la biblioteca.",
+      "browseFolder": "Carpeta…"
+    },
+    "errors": {
+      "bad_name": "El nombre solo admite minúsculas, números y guiones.",
+      "no_description": "Falta la descripción.",
+      "name_taken": "Ya hay una skill con ese nombre en ese nivel.",
+      "no_changes": "No hay cambios respecto a la versión actual.",
+      "unknown": "No se ha podido completar."
+    },
+    "modes": {
+      "title": "Uso en las ejecuciones",
+      "agentHint": "Automática: se ofrece si encaja con la tarea. Siempre: va entera en todas sus ejecuciones. Nunca: no se ofrece.",
+      "stageHint": "Lo que fijes aquí manda sobre lo que diga el agente de la etapa.",
+      "auto": "Automática",
+      "always": "Siempre",
+      "never": "Nunca",
+      "inherit": "Hereda ({{mode}})",
+      "setBy": {
+        "stage": "por la etapa",
+        "agent": "por el agente",
+        "default": "por defecto"
+      },
+      "label": "Modo de {{name}}",
+      "saved": "Modos guardados",
+      "saveFirst": "Guarda el pipeline para elegir las skills de esta etapa.",
+      "none": "No hay skills visibles aquí.",
+      "agyGlobal": "agy carga también tus skills globales ({{count}}) en todas sus ejecuciones: no se pueden apagar desde aquí."
+    },
+    "tester": {
+      "title": "Probar la selección",
+      "hint": "Escribe una tarea y mira qué skills recibiría la ejecución.",
+      "text": "Tarea",
+      "agent": "Agente",
+      "stage": "Etapa",
+      "any": "Ninguno",
+      "run": "Probar",
+      "always": "Fijadas (siempre)",
+      "candidates": "Candidatas",
+      "excluded": "Fuera",
+      "score": "puntuación {{score}}",
+      "method": {
+        "vector": "Por significado (modelo local)",
+        "words": "Por palabras (sin modelo: solo encuentra skills escritas en el idioma de la tarea)",
+        "none": "Nada que ordenar"
+      },
+      "reason": {
+        "never_stage": "Nunca en esta etapa",
+        "never_agent": "Nunca en este agente",
+        "manual_only": "Solo si se pide por su nombre",
+        "below_floor": "No encaja lo suficiente"
+      },
+      "section": "Lo que recibiría el agente"
+    },
+    "run": {
+      "title": "Skills",
+      "none": "No se le ofreció ninguna skill.",
+      "offered": {
+        "always": "Fijada",
+        "candidate": "Candidata #{{rank}}",
+        "requested": "Pedida por nombre"
+      },
+      "autoselected": "Autoseleccionada",
+      "via": {
+        "context": "en el contexto",
+        "tool": "con use_skill",
+        "native": "por el CLI"
+      },
+      "notLoaded": "no la cargó",
+      "version": "v{{number}}"
+    },
+    "proposal": {
+      "title": "Skill propuesta",
+      "titleVersion": "Nueva versión de {{name}}",
+      "by": "Propuesta por {{agent}}",
+      "task": "en «{{task}}»",
+      "note": "Qué aporta",
+      "suggested": "Nivel sugerido: {{level}}",
+      "scripts": "Ficheros ejecutables: ábrelos todos antes de aprobar.",
+      "openFile": "Abrir {{path}}",
+      "opened": "abierto",
+      "approve": "Aprobar",
+      "reject": "Rechazar",
+      "rejectTitle": "¿Rechazar la skill {{name}}?",
+      "rejectDescription": "El agente que la vuelva a proponer verá tu motivo.",
+      "reason": "Motivo (opcional)",
+      "approved": "Skill aprobada",
+      "rejected": "Propuesta rechazada",
+      "pendingScripts": "Faltan por abrir: {{files}}",
+      "diff": "Cambios respecto a la versión actual",
+      "none": "No hay propuestas pendientes.",
+      "list": "Propuestas ({{count}})"
+    },
+    "explore": {
+      "title": "Explorar registros públicos",
+      "search": "Buscar skills o pegar la dirección de un repositorio de GitHub",
+      "popular": "Más usadas",
+      "results": "Resultados",
+      "source": "Fuente",
+      "allSources": "Todas",
+      "category": "Categoría",
+      "allCategories": "Todas",
+      "installs": "{{formatted}} instalaciones",
+      "stars": "{{count}} estrellas del repositorio",
+      "installed": "Instalada",
+      "warning": "Las skills de terceros pueden traer código malicioso. Revisa sus ficheros, y sobre todo sus scripts, antes de instalarlas.",
+      "offline": "Sin conexión: el explorador no puede consultar los registros. Tu biblioteca funciona igual.",
+      "sourceError": {
+        "offline": "{{source}}: sin conexión",
+        "unavailable": "{{source}}: no responde",
+        "rate_limited": "{{source}}: ha limitado las peticiones, prueba más tarde",
+        "not_found": "{{source}}: no encontrado",
+        "bad_skill": "{{source}}: skill no válida"
+      },
+      "nothing": "No se ha encontrado nada.",
+      "open": "Ver {{name}}",
+      "preview": {
+        "loading": "Descargando la skill…",
+        "license": "Licencia",
+        "noLicense": "sin indicar",
+        "revision": "Versión",
+        "repo": "Repositorio",
+        "security": "Análisis de seguridad de la fuente",
+        "risk": "{{tool}}: {{risk}}",
+        "suspicious": "ClawHub la marca como sospechosa",
+        "installTo": "Instalar en",
+        "install": "Instalar",
+        "installed": "Instalada en tu biblioteca",
+        "renamed": "Instalada como {{name}} (el nombre ya existía en ese nivel)",
+        "expired": "La vista previa caducó: vuelve a abrir la skill."
+      },
+      "updates": {
+        "check": "Buscar actualizaciones",
+        "checked": "Actualizaciones comprobadas",
+        "see": "Ver cambios",
+        "apply": "Actualizar",
+        "applied": "Actualizada a la versión {{number}}",
+        "editedWarning": "La versión nueva sustituye a tus ediciones; quedan en el historial y puedes restaurarlas.",
+        "upToDate": "Al día"
+      },
+      "sources": {
+        "ranking": "Más usadas",
+        "skills_sh": "skills.sh",
+        "anthropic": "Anthropic (oficiales)",
+        "skillsmp": "SkillsMP",
+        "clawhub": "ClawHub",
+        "github": "GitHub"
+      }
+    },
+    "stats": {
+      "title": "Uso de las skills",
+      "hint": "Qué skills se usan más, dónde y con qué resultado.",
+      "period": "Periodo",
+      "periods": {
+        "today": "Hoy",
+        "7d": "7 días",
+        "30d": "30 días",
+        "all": "Todo"
+      },
+      "filters": {
+        "agent_id": "Agente",
+        "team_id": "Equipo",
+        "project_id": "Proyecto",
+        "pipeline_id": "Pipeline",
+        "stage_id": "Etapa",
+        "cli": "CLI",
+        "account_id": "Cuenta",
+        "model": "Modelo",
+        "scope": "Nivel",
+        "origin": "Origen",
+        "via": "Vía",
+        "unused": "Nunca usadas",
+        "any": "Todos",
+        "clear": "Quitar filtros"
+      },
+      "unused": {
+        "never_loaded": "Nunca cargadas",
+        "never_offered": "Nunca ofrecidas"
+      },
+      "groupBy": "Agrupar por",
+      "noGroup": "Sin agrupar",
+      "groups": {
+        "agent": "Agente",
+        "team": "Equipo",
+        "project": "Proyecto",
+        "pipeline": "Pipeline",
+        "stage": "Etapa",
+        "cli": "CLI",
+        "account": "Cuenta",
+        "model": "Modelo"
+      },
+      "columns": {
+        "name": "Skill",
+        "group_label": "Grupo",
+        "offered": "Ofrecida",
+        "loaded": "Cargada",
+        "rate": "Tasa",
+        "runs": "Ejecuciones",
+        "tasks": "Tareas",
+        "result": "Resultado",
+        "avg_cost": "Coste medio",
+        "avg_tokens": "Tokens medios",
+        "last_used": "Última vez",
+        "via": "Vía"
+      },
+      "result": "{{done}} bien · {{failed}} fallidas · {{approved}} aprobadas · {{rejected}} rechazadas",
+      "viaShort": "ctx {{inContext}} · tool {{byTool}} · CLI {{byCli}}",
+      "sort": "Ordenar por {{column}}",
+      "top": "Las 10 más usadas",
+      "daily": "Cargas por día",
+      "dailyPick": "Elige skills en la tabla para ver su evolución.",
+      "pick": "Ver la evolución de {{name}}",
+      "export": "Exportar CSV",
+      "empty": "Aún no hay datos de uso con estos filtros.",
+      "runsTitle": "Ejecuciones de {{name}}",
+      "runsFigure": "Ver las ejecuciones de {{name}}",
+      "never": "nunca"
+    },
+    "settings": {
+      "title": "Skills",
+      "selection": "Selección",
+      "candidates": "Skills ofrecidas por ejecución",
+      "indexTokens": "Presupuesto de la lista (tokens)",
+      "alwaysTokens": "Presupuesto de las fijadas (tokens)",
+      "proposals": "Propuestas de los agentes",
+      "proposalsEnabled": "Los agentes pueden proponer skills",
+      "perRun": "Máximo por ejecución",
+      "registries": "Registros públicos",
+      "registriesHint": "Fuentes del explorador. SkillsMP y ClawHub van apagadas por defecto: SkillsMP limita las búsquedas sin clave y ClawHub no publica su análisis de seguridad.",
+      "skillsmpKey": "Clave de SkillsMP (opcional)",
+      "keySet": "Clave guardada",
+      "githubToken": "Para GitHub se usa el token que tenga git (Ajustes › Git).",
+      "saved": "Ajustes de skills guardados"
+    }
   }
 }

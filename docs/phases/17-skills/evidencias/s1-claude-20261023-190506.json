@@ -1,0 +1,100 @@
+{
+ "sandbox": "C:\\Users\\usuario\\AppData\\Local\\AgenticOS-spike\\sandbox\\s1-claude-skills-20261023-190454",
+ "config_changes": [],
+ "results": [
+  {
+   "scenario": "baseline",
+   "argv": [
+    "--model",
+    "haiku",
+    "--output-format",
+    "json",
+    "--setting-sources",
+    "project,local",
+    "--permission-mode",
+    "default",
+    "--settings",
+    "C:\\Users\\usuario\\AppData\\Local\\AgenticOS-spike\\sandbox\\s1-claude-skills-20261023-190454\\settings.json",
+    "--mcp-config",
+    "C:\\Users\\usuario\\AppData\\Local\\AgenticOS-spike\\sandbox\\s1-claude-skills-20261023-190454\\mcp.json",
+    "--strict-mcp-config"
+   ],
+   "exit": 0,
+   "seconds": 3.8,
+   "cost_usd": 0.00151998,
+   "answer": "[\"dataviz\",\"update-config\",\"keybindings-help\",\"code-review\",\"simplify\",\"fewer-permission-prompts\",\"loop\",\"schedule\",\"claude-api\",\"run\",\"plugin-authoring\",\"init\",\"security-review\"]",
+   "stderr": "",
+   "hooks": [
+    {
+     "event": "Stop",
+     "tool": null,
+     "input": null
+    }
+   ]
+  },
+  {
+   "scenario": "plugin_dir",
+   "argv": [
+    "--model",
+    "haiku",
+    "--output-format",
+    "json",
+    "--setting-sources",
+    "project,local",
+    "--permission-mode",
+    "default",
+    "--settings",
+    "C:\\Users\\usuario\\AppData\\Local\\AgenticOS-spike\\sandbox\\s1-claude-skills-20261023-190454\\settings.json",
+    "--mcp-config",
+    "C:\\Users\\usuario\\AppData\\Local\\AgenticOS-spike\\sandbox\\s1-claude-skills-20261023-190454\\mcp.json",
+    "--strict-mcp-config",
+    "--plugin-dir",
+    "C:\\Users\\usuario\\AppData\\Local\\AgenticOS-spike\\sandbox\\s1-claude-skills-20261023-190454\\plugin"
+   ],
+   "exit": 0,
+   "seconds": 3.2,
+   "cost_usd": 0.0009481600000000001,
+   "answer": "[\"agentic-os-run:aos-probe-plugin\",\"dataviz\",\"update-config\",\"keybindings-help\",\"code-review\",\"simplify\",\"fewer-permission-prompts\",\"loop\",\"schedule\",\"claude-api\",\"run\",\"plugin-authoring\",\"init\",\"security-review\"]",
+   "stderr": "",
+   "hooks": [
+    {
+     "event": "Stop",
+     "tool": null,
+     "input": null
+    }
+   ]
+  },
+  {
+   "scenario": "add_dir",
+   "argv": [
+    "--model",
+    "haiku",
+    "--output-format",
+    "json",
+    "--setting-sources",
+    "project,local",
+    "--permission-mode",
+    "default",
+    "--settings",
+    "C:\\Users\\usuario\\AppData\\Local\\AgenticOS-spike\\sandbox\\s1-claude-skills-20261023-190454\\settings.json",
+    "--mcp-config",
+    "C:\\Users\\usuario\\AppData\\Local\\AgenticOS-spike\\sandbox\\s1-claude-skills-20261023-190454\\mcp.json",
+    "--strict-mcp-config",
+    "--add-dir",
+    "C:\\Users\\usuario\\AppData\\Local\\AgenticOS-spike\\sandbox\\s1-claude-skills-20261023-190454\\extra"
+   ],
+   "exit": 0,
+   "seconds": 4.0,
+   "cost_usd": 0.00093796,
+   "answer": "[\"aos-probe-adddir\",\"dataviz\",\"update-config\",\"keybindings-help\",\"code-review\",\"simplify\",\"fewer-permission-prompts\",\"loop\",\"schedule\",\"claude-api\",\"run\",\"plugin-authoring\",\"init\",\"security-review\"]",
+   "stderr": "",
+   "hooks": [
+    {
+     "event": "Stop",
+     "tool": null,
+     "input": null
+    }
+   ]
+  }
+ ]
+}

@@ -508,6 +508,7 @@ export type InboxKind =
   | 'account'
   | 'switch'
   | 'knowledge'
+  | 'skill'
 
 export type InboxResolution =
   'approved' | 'rejected' | 'answered' | 'answered_in_terminal' | 'reviewed' | 'dismissed'
@@ -524,6 +525,8 @@ export interface InboxItem {
   run_id: string | null
   /** A «knowledge» item: the proposal to review. */
   knowledge_doc_id?: string | null
+  /** A «skill» item: the proposed version (phase 17). */
+  skill_version_id?: string | null
   agent_id: string | null
   agent_name: string
   agent_color: string

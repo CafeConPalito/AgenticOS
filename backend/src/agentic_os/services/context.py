@@ -131,6 +131,7 @@ def build_instructions(
     repos: Sequence[RepoLine] = (),
     git_authorized: bool = False,
     knowledge: str = "",
+    skills: str = "",
 ) -> str:
     """`memory` is the rendered project memory (services.memory.render_memory); `task`, the
     task and stage of a run launched by the scheduler (None for a manual run); `repos`, the
@@ -161,6 +162,8 @@ def build_instructions(
     parts.append(f"## Memoria del proyecto\n{memory}")
     if knowledge.strip():
         parts.append(knowledge.strip())
+    if skills.strip():
+        parts.append(skills.strip())
     if task is not None:
         parts.append(task_section(task))
     if subagent is not None:

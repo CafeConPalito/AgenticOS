@@ -1,0 +1,34 @@
+{
+ "cli": "claude",
+ "root": "C:\\Users\\usuario\\AppData\\Local\\Temp\\aos-skills-real-4wsuxg0g",
+ "task_status": "done",
+ "seconds": 25,
+ "run_skills": [
+  {
+   "skill_id": "0b71bcfe-5f1c-4b32-a8d9-f48e88ca6930",
+   "skill_name": "fichero-de-saludo",
+   "offered": "candidate",
+   "rank": 1,
+   "score": 0.5503,
+   "loaded_via": "native",
+   "loaded_at": "2026-10-24T13:38:28.132428Z",
+   "version": 1
+  }
+ ],
+ "events": [
+  [
+   "system",
+   "skill_native",
+   "fichero-de-saludo"
+  ],
+  [
+   "mcp",
+   "complete_task",
+   "Creado saludo.txt en el proyecto siguiendo la skill fichero-de-saludo: línea 1 \""
+  ]
+ ],
+ "cost_usd": null,
+ "saludo": "PROBE-REAL-4321\nFIRMA-8642\n",
+ "finished": true,
+ "config_changes": []
+}

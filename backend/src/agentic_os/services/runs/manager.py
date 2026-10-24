@@ -71,6 +71,10 @@ from agentic_os.services.runs.launcher import resolve_executable
 from agentic_os.services.runs.resume import SESSION_MISSING
 from agentic_os.services.runs.screen import PermissionDialog
 from agentic_os.services.runs.session import RunSession
+from agentic_os.services.skills import proposals as skill_proposals
+from agentic_os.services.skills import runtime as skill_runtime
+from agentic_os.services.skills.library import SkillLibrary
+from agentic_os.services.skills.store import SkillStore
 from agentic_os.services.tasks import task_context
 from agentic_os.services.usage.limits import title_name
 from agentic_os.services.usage.reader import UsageService
@@ -128,12 +132,32 @@ class RunManager:
         self.usage = UsageService(sessions, publish=self._publish)
         # The knowledge library's service (phase 14): set by the app once both exist.
         self.knowledge: Any = None
+        # The skill library (phase 17): set by the app; a plain one over the data folder if not.
+        self.skills: SkillLibrary | None = None
         # The installed version of a CLI, if already known (never probes: that is slow).
         self.cli_version: Callable[[Cli], str | None] = lambda cli: None
 
     @property
     def _data_dir(self) -> Path:
         return Path(self._settings.data_dir)
+
+    @property
+    def skill_library(self) -> SkillLibrary:
+        if self.skills is None:
+            self.skills = SkillLibrary(SkillStore(self._data_dir))
+        return self.skills
+
+    def skill_ranker(self) -> skill_runtime.Ranker:
+        """The meaning model the skills are chosen with, if there is one (spike S4)."""
+        entry = self.knowledge.embedding_model() if self.knowledge is not None else None
+        if entry is None:
+            return skill_runtime.Ranker()
+        return skill_runtime.Ranker(
+            self.knowledge.embed_query,
+            entry.id,
+            float(entry.usage.get("skill_floor", 0.0)),
+            float(entry.usage.get("skill_duplicate", 0.0)),
+        )
 
     @property
     def runs_dir(self) -> Path:
@@ -291,6 +315,12 @@ class RunManager:
         baseline: dict | None = None,
     ) -> Run:
         cli, account, model = target.cli, target.account, target.model
+        # The task's vector first: no row of this run is written while the model answers.
+        ranker = self.skill_ranker().for_query(
+            skill_runtime.query_text(
+                db, task.stage_id if task else None, parent is not None, prompt, agent, task
+            )
+        )
         run = Run(
             workspace_id=DEFAULT_WORKSPACE,
             agent_id=agent.id,
@@ -315,6 +345,10 @@ class RunManager:
         run.log_path = str(self.runs_dir / f"{run.id}.log")
         run.cli_version = self.cli_version(cli)
         run_dir = self.runs_dir / run.id
+        # The run's skills are chosen once, here: every get_context shows the same ones.
+        skill_runtime.prepare_run(db, self.skill_library, self.runs_dir, run, agent, task, ranker)
+        skills_folder = skill_runtime.skills_dir(self.runs_dir, run.id)
+        skills_folder.mkdir(parents=True, exist_ok=True)
         token = self.tokens.issue(run.id)
         targets = runrepos.targets_for(db, project, task)
         ctx = LaunchContext(
@@ -336,14 +370,17 @@ class RunManager:
             extra_dirs=(
                 *runrepos.extra_dirs(targets, cwd),
                 *(str(p) for p in knowledge_context.prepare_folders(self._data_dir, run.id)),
+                str(skills_folder),  # the skills' scripts run from there
             ),
             git_authorized=bool(project.agents_git_authorized),
+            skills_dir=skills_folder,
         )
         try:
             spec = adapter.prepare(ctx)
         except Exception:
             self.tokens.revoke(run.id)
             adapter.cleanup(ctx)
+            skill_runtime.clean_run(self.runs_dir, run.id)
             raise
         run.cli_session_id = spec.session_id
         db.commit()
@@ -376,6 +413,7 @@ class RunManager:
         except Exception as error:  # spawn failed (bad executable, permissions…)
             self.tokens.revoke(run.id)
             adapter.cleanup(ctx)
+            skill_runtime.clean_run(self.runs_dir, run.id)
             self._release_agy_folder(folder)
             run.status, run.error, run.ended_at = RunStatus.FAILED, str(error), utcnow()
             self._drop_changes(db, run)  # the CLI never ran: nothing to compare, no refs to keep
@@ -414,6 +452,7 @@ class RunManager:
             adapter.cleanup(ctx)
         finally:
             knowledge_context.clean_run(self._data_dir, run_id)
+            skill_runtime.clean_run(self.runs_dir, run_id)
             self._release_agy_folder(folder)
             self._close_changes(run_id)
             if ctx.resume_session:
@@ -761,6 +800,7 @@ class RunManager:
             knowledge=knowledge_context.knowledge_section(
                 db, self._data_dir, run.id, run.project_id, agents
             ),
+            skills=skill_runtime.section(db, self.skill_library, self.runs_dir, run.id),
         )
 
     @staticmethod
@@ -900,6 +940,70 @@ class RunManager:
                 db, self.knowledge, run, title, markdown, description, based_on, level, replaces
             )
         self.add_event(run_id, EventKind.MCP, "propose_knowledge", detail)
+        return answer
+
+    def _skill_tool(
+        self, run_id: str, name: str, call: Callable[[Session, Run], tuple[str, str]]
+    ) -> str:
+        with self._db() as db:
+            run = db.get(Run, run_id)
+            if run is None:
+                raise LookupError(run_id)
+            answer, detail = call(db, run)
+            db.commit()
+        self.add_event(run_id, EventKind.MCP, name, detail)
+        return answer
+
+    def use_skill(self, run_id: str, name: str) -> str:
+        return self._skill_tool(
+            run_id,
+            "use_skill",
+            lambda db, run: skill_runtime.use_skill(
+                db, self.skill_library, self.runs_dir, run, name
+            ),
+        )
+
+    def read_skill_file(self, run_id: str, name: str, path: str) -> str:
+        return self._skill_tool(
+            run_id,
+            "read_skill_file",
+            lambda db, run: skill_runtime.read_skill_file(
+                db, self.skill_library, self.runs_dir, run, name, path
+            ),
+        )
+
+    def propose_skill(
+        self,
+        run_id: str,
+        name: str,
+        description: str,
+        body: str,
+        files: dict[str, str],
+        remove: list[str],
+        level: str,
+        replaces: str,
+        note: str,
+    ) -> str:
+        threshold = self.skill_ranker().duplicate
+        with self._db() as db:
+            run = db.get(Run, run_id)
+            if run is None:
+                raise LookupError(run_id)
+            answer, detail = skill_proposals.propose(
+                db,
+                self.skill_library,
+                run,
+                name,
+                description,
+                body,
+                files,
+                remove,
+                level,
+                replaces,
+                note,
+                duplicate_threshold=threshold,
+            )
+        self.add_event(run_id, EventKind.MCP, "propose_skill", detail)
         return answer
 
     def report_status(self, run_id: str, message: str) -> None:
@@ -1338,6 +1442,15 @@ class RunManager:
                 self._native_event(run_id, "subagent_stop", node, "")
             state.by_key.clear()
 
+    def _native_skill(self, run_id: str, name: str) -> None:
+        """The CLI loaded one of the run's skills by itself (phase 17, block 4)."""
+        with self._db() as db:
+            run = db.get(Run, run_id)
+            if run is None or not skill_runtime.mark_native(db, run, name):
+                return
+            db.commit()
+        self.add_event(run_id, EventKind.SYSTEM, "skill_native", name)
+
     def _native_event(self, run_id: str, name: str, node: str, description: str) -> None:
         detail = json.dumps({"id": node, "description": description[:300]}, ensure_ascii=False)
         self.add_event(run_id, EventKind.HOOK, name, detail)
@@ -1409,6 +1522,12 @@ class RunManager:
             self._native_subagent(run_id, cli, event, payload, foreign)
         except Exception:
             log.exception("could not track a native subagent", run_id=run_id, hook=event)
+        try:
+            name = skill_runtime.native_name(cli.value, event, payload)
+            if name is not None:
+                self._native_skill(run_id, name)
+        except Exception:
+            log.exception("could not record a native skill load", run_id=run_id, hook=event)
         if foreign:
             return
         boundary = session.on_hook(effect) if session is not None else False

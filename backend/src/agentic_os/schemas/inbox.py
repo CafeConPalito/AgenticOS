@@ -22,6 +22,7 @@ class InboxItemRead(BaseModel):
     changes: ChangesTotals | None = None
     run_id: str | None
     knowledge_doc_id: str | None = None  # a «knowledge» item: the proposal to review
+    skill_version_id: str | None = None  # a «skill» item: the proposed version (phase 17)
     agent_id: str | None
     agent_name: str
     agent_color: str

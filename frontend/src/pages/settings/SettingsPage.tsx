@@ -12,6 +12,7 @@ import { KnowledgeSection } from './KnowledgeSection'
 import { LimitsSection } from './LimitsSection'
 import { LocalModelsSection } from './LocalModelsSection'
 import { NotificationsSection } from './NotificationsSection'
+import { SkillsSection } from './SkillsSection'
 
 /** The sections, in order; each one is reachable as `/ajustes#<id>`. */
 export const SECTIONS = [
@@ -20,6 +21,7 @@ export const SECTIONS = [
   'limits',
   'git',
   'knowledge',
+  'skills',
   'dictation',
   'models',
   'cleanup',
@@ -128,6 +130,9 @@ export default function SettingsPage() {
           </div>
           <div id="knowledge" className="scroll-mt-4">
             <KnowledgeSection />
+          </div>
+          <div id="skills" className="scroll-mt-4">
+            <SkillsSection />
           </div>
           <div id="dictation" className="scroll-mt-4">
             <DictationSection />

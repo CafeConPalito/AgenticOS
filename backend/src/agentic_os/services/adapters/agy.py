@@ -23,6 +23,7 @@ from agentic_os.services.adapters.base import (
 )
 from agentic_os.services.hooks import AGY_TOOL_MATCHER, HOOK_EVENTS, TOOL_EVENTS
 from agentic_os.services.runs.launcher import LaunchSpec, clean_env, resolve_executable
+from agentic_os.services.skills.format import AGY_MAX_BYTES
 
 PLUGIN = Path(".agents") / "plugins" / "agentic-os"
 EXCLUDE_LINE = ".agents/plugins/agentic-os/"
@@ -115,12 +116,14 @@ class AgyAdapter(CliAdapter):
         shutil.rmtree(folder, ignore_errors=True)  # a stale plugin of ours would be replaced
         write_json(folder / "plugin.json", {"name": "agentic-os", RUN_MARKER: ctx.run_id})
         write_json(folder / "mcp_config.json", {"mcpServers": {"agentic-os": {"url": ctx.mcp_url}}})
+        # With skills, reading their SKILL.md is how agy loads one: that read is watched too.
+        matcher = f"{AGY_TOOL_MATCHER}|read_file" if ctx.native_skills else AGY_TOOL_MATCHER
         # agy runs hooks through cmd.exe and mangles quoted paths: the short path, unquoted.
         # Tool events take a matcher and nested hooks (spike P9); the others, a flat list.
         hooks = {
             "agentic-os": {
                 event: [
-                    {"matcher": AGY_TOOL_MATCHER, "hooks": [self._hook(ctx, event)]}
+                    {"matcher": matcher, "hooks": [self._hook(ctx, event)]}
                     if event in TOOL_EVENTS
                     else self._hook(ctx, event)
                 ]
@@ -128,6 +131,11 @@ class AgyAdapter(CliAdapter):
             }
         }
         write_json(folder / "hooks.json", hooks)
+        # Phase 17, spike S2: our skills inside the plugin (agy skips a SKILL.md over 24 KB:
+        # those are only reachable with use_skill).
+        for skill in ctx.native_skills:
+            if (skill / "SKILL.md").stat().st_size <= AGY_MAX_BYTES:
+                shutil.copytree(skill, folder / "skills" / skill.name)
         rules = folder / "rules" / "AGENTS.md"
         rules.parent.mkdir(parents=True, exist_ok=True)
         rules.write_text(plugin_rules(ctx.instructions, ctx.prompt), "utf-8")

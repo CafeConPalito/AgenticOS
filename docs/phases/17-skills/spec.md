@@ -1,6 +1,6 @@
 # Fase 17: Skills · Spec
 
-- **Estado**: aprobada (2026-10-23); ampliación E (estadísticas de uso) pendiente de aprobación
+- **Estado**: aprobada (2026-10-23, con la ampliación E)
 - **Rama**: `phase/17-skills`
 - **Plan**: [plan.md](plan.md)
 
@@ -135,7 +135,7 @@ Que los agentes trabajen con **skills**: paquetes de instrucciones reutilizables
 | CA2 | Se importan una carpeta, un `.zip` y las skills de `~/.claude/skills`, eligiendo para cada una el nivel. El original no cambia (mismo hash) y la skill importada funciona igual en una ejecución | tests + manual |
 | CA3 | La sección «Skills» de una ejecución contiene solo las skills visibles para su agente y su proyecto, aplica la precedencia agente > proyecto > general, respeta «Siempre» y «Nunca» y no pasa del presupuesto de tokens | tests |
 | CA4 | Los modos de la etapa mandan sobre los del agente: una skill en Siempre en la etapa QA se carga entera aunque el agente la tenga en Automática, y una en Nunca en la etapa no se ofrece aunque el agente la tenga en Siempre. Lo mismo en una rama | tests |
-| CA5 | Con un corpus de prueba de al menos 15 skills, la skill relevante queda entre las 3 primeras candidatas en al menos el 90 % de las tareas de prueba, con modelo de significado y sin él | test de calidad (como el de la fase 14) |
+| CA5 | Con un corpus de prueba de al menos 15 skills, la skill relevante queda entre las 3 primeras candidatas en al menos el 90 % de las tareas de prueba con modelo de significado; sin él, en al menos el 90 % de las tareas escritas en el mismo idioma que la skill (el idioma cruzado necesita el modelo, y la UI lo avisa) | test de calidad (como el de la fase 14) |
 | CA6 | **La skill relevante se carga sola**: un agente (CLI falso con cliente MCP real, y `claude` y `agy` en la prueba manual) recibe una tarea que encaja con una skill, la carga con `use_skill` o por el mecanismo nativo y la sigue. El registro de la ejecución dice cuál y por qué vía | test e2e + manual |
 | CA7 | `read_skill_file` solo da ficheros de skills visibles para esa ejecución, y nunca una ruta fuera de la carpeta de la skill | tests |
 | CA8 | La configuración del usuario no cambia: `~/.claude`, sus skills y la configuración de `agy` están igual antes y después de una ejecución con skills (comparando snapshots, como en el spike de la fase 01) | test + manual |
@@ -186,4 +186,5 @@ Que los agentes trabajen con **skills**: paquetes de instrucciones reutilizables
 5. **Registros públicos**: se añade un **explorador** de los registros más usados (apartado D). Cambia lo que decía `docs/vision.md`, que dejaba los registros fuera.
 
 ## Cambios tras la aprobación (2026-10-23)
-- Nuevo apartado **E** (estadísticas de uso), a petición del usuario: una vista «Uso» con cifras por skill, filtros, orden, agrupación, gráficos, CSV y la pestaña «Uso» en la ficha de cada skill. Nuevos criterios CA19–CA21. Pendiente de aprobación.
+- Nuevo apartado **E** (estadísticas de uso), a petición del usuario: una vista «Uso» con cifras por skill, filtros, orden, agrupación, gráficos, CSV y la pestaña «Uso» en la ficha de cada skill. Nuevos criterios CA19–CA21. Aprobado por el usuario el mismo día.
+- Tras los spikes (bloque 0), aprobado por el usuario: CA5 sin modelo se mide en el mismo idioma; las skills del repositorio (`.claude/skills`, `.agents/skills`) se tratan como parte del código del proyecto, las carga el CLI y la app las muestra con la opción de importarlas.

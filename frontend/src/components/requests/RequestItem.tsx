@@ -10,6 +10,7 @@ import {
   Inbox,
   OctagonAlert,
   PackageCheck,
+  Puzzle,
   ShieldCheck,
   UserX,
 } from 'lucide-react'
@@ -36,6 +37,7 @@ export const KIND_STYLE: Record<InboxKind, { color: string; icon: typeof Inbox }
   account: { color: 'var(--status-waiting)', icon: UserX },
   switch: { color: 'var(--status-waiting)', icon: ArrowLeftRight },
   knowledge: { color: 'var(--status-review)', icon: BookPlus },
+  skill: { color: 'var(--status-review)', icon: Puzzle },
 }
 
 /** A request of the agents to the person, with its actions while pending. */

@@ -1,7 +1,7 @@
 # Fase 17: Skills · Plan técnico
 
 - **Spec**: [spec.md](spec.md)
-- **Estado**: borrador
+- **Estado**: aprobado (2026-10-23) · en desarrollo (bloque 0)
 
 ## Lo que ya se sabe (revisado al escribir el plan)
 - **Niveles**: `KnowledgeScope` (`general` · `project` · `agent`) y el `CHECK` que exige `project_id` o `agent_id` según el nivel (`models/knowledge.py`) se reutilizan tal cual. Última migración: `0018_knowledge_graph`.
@@ -32,6 +32,70 @@ Scripts en `spikes/skills/`; evidencias en `evidencias/`.
 | S3 | **Registros**: para skills.sh, `anthropics/skills`, SkillsMP y ClawHub: API pública o no, búsqueda y orden «más usadas», instalaciones o estrellas, de dónde se descargan los ficheros (casi todos apuntan a un repo de GitHub), versión o *commit*, licencia, análisis de seguridad, límites de peticiones y condiciones de uso | La fuente se lee a través de GitHub (repos indexados), o se cambia por otra de las más usadas (LobeHub, agentskill.sh) |
 | S4 | **Autoselección**: corpus de 20 skills reales (de `anthropics/skills` y propias) y 50 tareas de prueba en español e inglés. Acierto en las 3 primeras con `multilingual-e5-small`, EmbeddingGemma 2 y bge-m3 sobre «nombre + descripción», frente a palabras clave (BM25 propio). Umbral mínimo por modelo, y si añadir el primer apartado del cuerpo mejora | Ranking híbrido (RRF de vectores y palabras), como la búsqueda de la fase 14 |
 | S5 | **Formato real**: parsear 100 `SKILL.md` de los registros: rarezas de la cabecera YAML (campos extra, `allowed-tools`, multilínea, BOM, CRLF), tamaños típicos y tipos de fichero de apoyo | Parser tolerante: solo `name` y `description` son obligatorios y el resto se conserva tal cual |
+
+## Resultados de los spikes (bloque 0, 2026-10-23)
+Evidencias en [`evidencias/s1-s5-skills.md`](evidencias/s1-s5-skills.md); scripts en `spikes/skills/`.
+
+- **S1 · Claude**:
+  - con el lanzamiento actual (`--setting-sources project,local`) **no** se cargan las skills personales (`~/.claude/skills`) ni los plugins del usuario, solo las de serie del CLI;
+  - `--plugin-dir` carga las nuestras por sesión, con el prefijo del plugin (`<plugin>:<skill>`);
+  - `PreToolUse` recibe `Skill` con `{"skill": …}`;
+  - los *scripts* siguen el modo de permisos;
+  - `--safe-mode` apaga también nuestros *hooks* y la skill del plugin, y `--disable-slash-commands` apaga todas;
+  - las del **repo** (`.claude/skills` del proyecto) entran por la fuente `project`, que también trae el `CLAUDE.md`;
+  - la configuración del usuario no cambia.
+- **S2 · `agy`**:
+  - `skills/<nombre>/SKILL.md` dentro del plugin de workspace se carga y su *script* se ejecuta;
+  - la activación es un `read_file` del `SKILL.md`, visible en `PreToolUse` (`toolCall.name`, `args.Path`);
+  - no se pueden apagar las skills globales del usuario (`~/.gemini/config/`) ni las del repo (`.agents/skills/`);
+  - límites: cuerpo ≤ 24 KB y `name` = nombre de la carpeta.
+- **S3 · Registros**:
+  - **skills.sh**: rutas públicas de su CLI (`/api/search`, `/api/download/…`, `/tele/audit`); la API documentada exige OIDC de Vercel;
+  - **`anthropics/skills`**: por la API de GitHub;
+  - **SkillsMP**: 50 consultas al día sin clave, y sus estrellas son las del repo;
+  - **ClawHub**: API pública, pero su análisis de seguridad exige iniciar sesión;
+  - **«Más usadas»**: el CSV diario y abierto de `LinklyAI/best-skills` (CC BY 4.0).
+- **S4 · Autoselección**:
+  - coseno tal cual sobre «nombre + descripción»: hit@3 de **0,917** con e5, **1,000** con EmbeddingGemma 2 y **0,958** con bge-m3;
+  - centrado, híbrido y cuerpo no mejoran;
+  - BM25 sin modelo: 0,812 en total, **0,96 en el mismo idioma** y falla en idioma cruzado;
+  - umbral mínimo por modelo: e5 **0,83**, Gemma **0,62** y bge-m3 **0,52**.
+- **S5 · Formato**:
+  - 76 skills, todas con `name` y `description` y YAML válido;
+  - campos extra conservados, entre ellos `disable-model-invocation`;
+  - ficheros: percentil 90 de 68 y máximo de 200;
+  - 20 % con ejecutables.
+
+### Cambios al diseño por los spikes
+1. **Claude, vía nativa**:
+   - `<run_dir>/plugin/` con `.claude-plugin/plugin.json` (`name: "aos"`) y `skills/` → `--plugin-dir`. Se descarta `--add-dir` para las skills.
+   - `CLAUDE_TOOL_MATCHER` pasa a `Agent|Task|Skill`. Un `Skill` con prefijo `aos:` registra `loaded_via=native`.
+   - Las de serie del CLI se quedan (son del CLI, no del usuario); con el prefijo no chocan con las nuestras.
+2. **`agy`, vía nativa**: `skills/` dentro de `.agents/plugins/agentic-os/`. `AGY_TOOL_MATCHER` pasa a `invoke_subagent|read_file`, y un `read_file` de un `SKILL.md` de nuestro plugin registra `loaded_via=native`. Una skill de más de 24 KB no va por la vía nativa, solo por `use_skill`. La ficha del agente avisa de que `agy` carga también las skills globales del usuario si las tiene (se comprueba si existe `~/.gemini/config/skills`).
+3. **Skills del repo** (**aprobado por el usuario**, 2026-10-23) (la fuente `project` de Claude y `.agents/skills` de `agy` las cargan). Propuesta:
+   - mantener `project,local`, para no perder el `CLAUDE.md` del proyecto;
+   - tratar las skills del repo como parte del código del proyecto;
+   - enseñarlas en Proyecto › Conocimiento como «Skills del repositorio (las carga el CLI por su cuenta)», con «Importar».
+4. **Registros**:
+   - **Más usadas**: `best_skills.py`, que lee los CSV de `LinklyAI/best-skills`, con atribución en la vista.
+   - **Fuentes de búsqueda**: `skills_sh.py` (búsqueda, descarga y auditoría) y `anthropic.py`, activadas por defecto. `skillsmp.py` (con campo para la clave) y `clawhub.py`, apagadas por defecto.
+   - **Versión** de lo instalado: el *commit* en las fuentes de GitHub, el *hash* de los ficheros en skills.sh y la versión semántica en ClawHub (`SkillOrigin.commit` pasa a llamarse `revision`).
+   - **Seguridad**: la ficha muestra los tres riesgos de skills.sh, o la marca `isSuspicious` de ClawHub.
+5. **Selección**:
+   - el **coseno tal cual** de «nombre + descripción», sin híbrido ni cuerpo;
+   - **umbral mínimo por modelo** en el catálogo de modelos (e5 0,83, Gemma 0,62, bge-m3 0,52) y como mucho 5 candidatas;
+   - sin modelo, BM25 con un umbral propio, y la UI avisa de que **solo encuentra skills escritas en el idioma de la tarea**.
+6. **Formato**:
+   - `disable-model-invocation: true` → la skill no se ofrece como candidata, pero se puede cargar con `use_skill` o fijar en Siempre;
+   - topes: 300 ficheros, 1 MB por fichero, 5 MB por skill y `SKILL.md` ≤ 8 000 *tokens*;
+   - el resto de campos de la cabecera se conserva y se vuelve a escribir tal cual.
+7. **CA5 (spec)**: con modelo de significado, ≥ 90 % en las 3 primeras (cumplido con los tres modelos). Sin modelo, ≥ 90 % **en tareas y skills del mismo idioma**; el idioma cruzado necesita el modelo. **Aprobado por el usuario** (2026-10-23).
+8. **Sin modelo, palabras con raíz y umbral relativo** (spike S4b, bloque 3, `evidencias/s4b-words.json`):
+   - el umbral fijo de BM25 de S4 no vale para bibliotecas pequeñas;
+   - con las palabras sin tildes y recortadas a 5 letras («migración» ~ «migraciones») y la puntuación dividida por la mejor posible para la consulta, el umbral **0,15** acierta entre el 92 y el 98 % en las 3 primeras con 5, 10, 20 y 82 skills (antes, entre el 74 y el 85 %);
+   - a cambio, cuando ninguna encaja se ofrece alguna de más. Se prefiere así porque ofrecer una línea de más cuesta poco.
+9. **Vectores de las skills como consulta y umbrales recalibrados** (spike S4c, bloque 11): medido como el producto (cada texto solo), e5 subía de 0,875 a 0,925 en el corpus del test calculando las skills con el prefijo de consulta, y los otros modelos no cambian. Umbrales: e5 0,83 / 0,945, Gemma 0,60 / 0,87 y bge-m3 0,50 / 0,82 (para ofrecer / «muy parecida»).
+10. **Fuera de la fase, anotado**: `SESSION_MARKERS` (`runs/launcher.py`) no incluye `CLAUDE_CODE_BRIDGE_SESSION_ID`, que el CLI ya exporta. Se revisa como corrección aparte.
 
 ## Diseño ([ADR 0024](../../adr/0024-skills.md), nuevo, borrador)
 
@@ -230,17 +294,17 @@ Las reglas de Agentic OS explican en una línea cuándo proponer: una forma de t
 | `spikes/skills/` | nuevo |
 
 ## Tareas (en orden)
-1. [ ] **Bloque 0 · Spikes** S1–S5, con evidencias y cambios al diseño anotados aquí.
-2. [ ] **Bloque 1 · Datos y almacén**: migración `0019`, modelos, `InboxKind.SKILL`, `store.py`, `format.py` y uso de disco.
-3. [ ] **Bloque 2 · Biblioteca (backend)**: CRUD con versiones, validación, historial y diff, restaurar, importar (carpeta, `.zip`, CLIs), exportar, vectores y su reindexado, API.
-4. [ ] **Bloque 3 · Selección y uso (backend)**: visibles y precedencia, modos por agente y etapa, candidatas, sección «Skills», materialización, `use_skill` y `read_skill_file`, `RunSkill`, probador, API de modos y de la ejecución.
-5. [ ] **Bloque 4 · Nativo**: lo que confirmen S1 y S2 en los adapters, *hook* de la herramienta `Skill` y *snapshots* de la configuración del usuario.
-6. [ ] **Bloque 5 · Propuestas (backend)**: `propose_skill`, controles, Inbox, aprobar (con `opened_files`) y rechazar, versión nueva sobre una existente, reglas.
-7. [ ] **Bloque 6 · Registros (backend)**: protocolo, `github.py`, las fuentes que deje S3, vista previa fijada, instalar, actualizaciones, caché y errores por fuente, ajustes.
-8. [ ] **Bloque 7 · Biblioteca (frontend)**: navegación y pestañas, tarjetas, editor, historial con diff, importar, ajustes.
-9. [ ] **Bloque 8 · Uso y propuestas (frontend)**: modos en el agente y en la etapa, probador, sección de la ejecución y etiquetas, revisión de propuestas e Inbox.
-10. [ ] **Bloque 9 · Explorador (frontend)**: búsqueda, filtros, ficha, instalar en un nivel, actualizaciones, estados sin conexión.
-11. [ ] **Bloque 10 · Estadísticas de uso**: copias en `RunSkill`, `stats.py` (agregados, filtros, agrupación, serie diaria, ejecuciones, CSV), API, vista «Uso» y pestaña en la ficha, test de rendimiento.
+1. [x] **Bloque 0 · Spikes** S1–S5 hechos; evidencias y cambios al diseño anotados arriba (skills del repo y CA5 sin modelo aprobados por el usuario).
+2. [x] **Bloque 1 · Datos y almacén**: migración `0019`, modelos, `InboxKind.SKILL`, `store.py`, `format.py` y uso de disco.
+3. [x] **Bloque 2 · Biblioteca (backend)**: CRUD con versiones, validación, historial y diff (`difflib`), restaurar, importar por ruta local (carpeta, `.zip`, `SKILL.md`) y de los CLIs con nivel por skill, exportar, vectores (al crear o cambiar la descripción, y tras reindexar o al arrancar) y API `/api/skills…`. Cambios: `SkillError` es un `ApiError` (422; 409 si el nombre ya existe o no hay cambios); `Skill.model_invocable` como columna (en la migración 0019); la importación va por ruta, como los documentos de la fase 14.
+4. [x] **Bloque 3 · Selección y uso (backend)**: visibles y precedencia, modos por agente y etapa (manda la etapa), candidatas (coseno con umbral por modelo en el catálogo, `skill_floor`; sin modelo, BM25 con raíz y umbral relativo, S4b), selección una sola vez al lanzar guardada en `run_skills`, sección «Skills» con sus presupuestos, carpeta de la ejecución (`runs/<id>/skills`, con `--add-dir`, borrada al terminar), `use_skill` (sin nombre, lista) y `read_skill_file`, clase de oferta `requested` (el agente pide una skill no ofrecida), probador `POST /api/skills/try`, modos `GET/PUT /api/agents|stages/{id}/skill-modes` y `GET /api/runs/{id}/skills`; ajustes en `app_state` (`skills`).
+5. [x] **Bloque 4 · Nativo**: las skills de la ejecución se escriben en `runs/<id>/plugin/skills`, que es también el plugin de Claude (`--plugin-dir`, nombre `aos`, y `Skill` en `--allowedTools` cuando hay skills); `agy` recibe una copia en su plugin de workspace (sin las de más de 24 KB); el *hook* `PreToolUse` de la herramienta `Skill` (`aos:…`) o el `read_file` de un `SKILL.md` de nuestro plugin registran `loaded_via=native` y el evento `skill_native`; el *matcher* de `agy` solo vigila `read_file` si la ejecución lleva skills. Pendiente para el bloque 8: el aviso en la ficha de un agente `agy` si hay skills globales (`cli-scan` ya las da). Comprobación con los CLIs reales en la validación.
+6. [x] **Bloque 5 · Propuestas (backend)**: `propose_skill` en el MCP (skill nueva, o versión nueva con `replaces` enviando solo lo que cambia y `remove`), controles con motivo en palabras (desactivadas, 1 por ejecución, formato, nivel, copia exacta, nombre ocupado, parecida por coseno con umbral por modelo en el catálogo `skill_duplicate` —e5 0,95, Gemma 0,90, bge-m3 0,86, calibrado con el corpus de S4: por encima del p99,9 de skills distintas y por debajo de las paráfrasis— y rechazada antes), elemento `skill` de la Inbox, `GET /api/skills/proposals/pending` y `/{version_id}`, aprobar (409 `scripts_not_opened` si falta abrir algún ejecutable; ediciones y nivel en la misma versión, nota «editada al aprobar»; una versión nueva conserva el nivel) y rechazar (huella en `skill_rejections`; la skill nueva se borra; la versión nueva queda `rejected` sin ficheros), ajustes `GET/PUT /api/settings/skills`, y una línea en la sección «Skills» de todas las ejecuciones que explica cuándo proponer.
+7. [x] **Bloque 6 · Registros (backend)**: fuentes `ranking` (CSV de best-skills, «más usadas», con atribución), `skills_sh` (rutas públicas de su CLI; revisión = *hash* de los ficheros; análisis de seguridad), `anthropic` (API de GitHub + `raw`), `skillsmp` (con clave opcional) y `clawhub` (las dos últimas apagadas por defecto), y `github` para cualquier URL de repositorio; caché de 10 min, errores por fuente (`offline`, `unavailable`, `rate_limited`, `not_found`), vista previa descargada a una revisión fija que caduca a la hora, instalar al nivel elegido (409 si quedan ejecutables sin abrir) con `SkillOrigin`, comprobar actualizaciones (a demanda y una vez al día), ver el diff y aplicarlas como versión nueva; ajustes de fuentes y clave de SkillsMP (la clave no vuelve a la pantalla). Probado contra los registros reales (solo lectura).
+8. [x] **Bloque 7 · Biblioteca (frontend)**: «Conocimiento y skills» con pestañas Documentos · Skills · Explorar · Uso (`?vista=`), tarjetas (interruptor, nivel, origen, versión, ejecutables, «Solo si se pide», «Actualización disponible», «Usada N veces»), contador, editor (nombre, descripción, cuerpo, ficheros de apoyo, nota), ficha con Contenido · Historial (versiones, diff entre dos cualesquiera con el aspecto del visor de la fase 11, restaurar) · Uso · Origen, importar por ruta (carpeta, fichero) y «De mis CLIs» con nivel por fila, skills del repositorio en Proyecto › Conocimiento, Ajustes › Skills.
+9. [x] **Bloque 8 · Uso y propuestas (frontend)**: modos por agente (pestaña Skills) y por etapa (panel de la etapa, una vez guardada), aviso de skills globales de `agy`, probador, panel «Skills» en la ejecución (ofrecidas, cargadas, vía, versión, «Autoseleccionada»), etiquetas de eventos, revisión de propuestas desde la Inbox y la biblioteca con «Aprobar» deshabilitado hasta abrir los ejecutables.
+10. [x] **Bloque 9 · Explorador (frontend)**: más usadas con atribución, búsqueda (también por URL de GitHub), filtros de fuente y categoría, aviso fijo, errores por fuente y «Sin conexión», ficha con licencia, revisión, repositorio y análisis de seguridad, instalar en un nivel tras abrir los ejecutables, buscar actualizaciones y aplicar una con su diff (pestaña Origen).
+11. [x] **Bloque 10 · Estadísticas de uso**: backend (`stats.py`, consulta agregada única, filtros, agrupación por 8 dimensiones, «nunca usadas», serie diaria, ejecuciones de una cifra, CSV con BOM; 50 skills y 20 000 ejecuciones en menos de 1 s) y vista «Uso» (periodo, filtros en la URL, tabla ordenable, agrupar, 10 más usadas, evolución diaria, ejecuciones de una cifra, exportar) y pestaña «Uso» en la ficha.
 12. [ ] **Bloque 11 · Calidad y e2e**: corpus de S4 como test (CA5), e2e con CLI falso y MCP real (CA6, CA9), prueba manual con `claude` y `agy` reales (CA6, CA8).
 13. [ ] **Bloque 12 · Cierre**: e2e con el binario empaquetado (CA15), `/code-review`, ADR 0024 definitivo, README, validación.
 

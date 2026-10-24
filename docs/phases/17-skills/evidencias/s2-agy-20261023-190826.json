@@ -1,0 +1,58 @@
+{
+ "sandbox": "C:\\Users\\usuario\\AppData\\Local\\AgenticOS-spike\\sandbox\\s2-agy-skills-20261023-190756",
+ "config_changes": [],
+ "results": [
+  {
+   "scenario": "list",
+   "exit": 0,
+   "seconds": 11.2,
+   "answer": "[\"agy-customizations\", \"antigravity-guide\", \"aos-probe-agy\"]\n",
+   "stderr": "",
+   "hooks": [
+    {
+     "event": "PreInvocation"
+    },
+    {
+     "event": "Stop"
+    }
+   ]
+  },
+  {
+   "scenario": "use",
+   "exit": 0,
+   "seconds": 17.6,
+   "answer": "PROBE-SKILL-LOADED-8842\nPROBE-SCRIPT-RAN-6630\n",
+   "stderr": "",
+   "hooks": [
+    {
+     "event": "PreInvocation"
+    },
+    {
+     "event": "PreToolUse",
+     "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/bb10857a-5a2b-488f-b1fd-7bf7331f9449\", \"conversationId\": \"bb10857a-5a2b-488f-b1fd-7bf7331f9449\", \"modelName\": \"gemini-3.8-flash-high\", \"stepIdx\": 2, \"toolCall\": {\"args\": {\"Path\": \"C:\\\\Users\\\\usuario\\\\AppData\\\\Local\\\\AgenticOS-spike\\\\sandbox\\\\s2-agy-skills-20261023-190756\\\\.agents\\\\plugins\\\\agentic-os\\\\skills\\\\aos-probe-agy\\\\SKILL.md\"}, \"name\": \"read_file\"}, \"transcriptPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/bb10857a-5a2b-488f-b1fd-7bf7331f9449/.system_generated/logs/transcript_full.jsonl\", \"workspacePaths\": [\"C:/Users/usuario/AppData/Local/AgenticOS-spike/sandbox/s2-agy-skills-20261023-190756\"]}"
+    },
+    {
+     "event": "PostToolUse",
+     "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/bb10857a-5a2b-488f-b1fd-7bf7331f9449\", \"conversationId\": \"bb10857a-5a2b-488f-b1fd-7bf7331f9449\", \"error\": \"\", \"modelName\": \"gemini-3.8-flash-high\", \"stepIdx\": 2, \"toolCall\": {\"args\": {\"Path\": \"C:\\\\Users\\\\usuario\\\\AppData\\\\Local\\\\AgenticOS-spike\\\\sandbox\\\\s2-agy-skills-20261023-190756\\\\.agents\\\\plugins\\\\agentic-os\\\\skills\\\\aos-probe-agy\\\\SKILL.md\"}, \"name\": \"read_file\"}, \"transcriptPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/bb10857a-5a2b-488f-b1fd-7bf7331f9449/.system_generated/logs/transcript_full.jsonl\", \"workspacePaths\": [\"C:/Users/usuario/AppData/Local/AgenticOS-spike/sandbox/s2-agy-skills-20261023-190756\"]}"
+    },
+    {
+     "event": "PreInvocation"
+    },
+    {
+     "event": "PreToolUse",
+     "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/bb10857a-5a2b-488f-b1fd-7bf7331f9449\", \"conversationId\": \"bb10857a-5a2b-488f-b1fd-7bf7331f9449\", \"modelName\": \"gemini-3.8-flash-high\", \"stepIdx\": 4, \"toolCall\": {\"args\": {\"CommandLine\": \"python \\\"C:\\\\Users\\\\usuario\\\\AppData\\\\Local\\\\AgenticOS-spike\\\\sandbox\\\\s2-agy-skills-20261023-190756\\\\.agents\\\\plugins\\\\agentic-os\\\\skills\\\\aos-probe-agy\\\\scripts\\\\probe.py\\\"\", \"WaitMsBeforeAsync\": 10000, \"toolSummary\": \"Execute probe script\"}, \"name\": \"run_command\"}, \"transcriptPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/bb10857a-5a2b-488f-b1fd-7bf7331f9449/.system_generated/logs/transcript_full.jsonl\", \"workspacePaths\": [\"C:/Use"
+    },
+    {
+     "event": "PostToolUse",
+     "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/bb10857a-5a2b-488f-b1fd-7bf7331f9449\", \"conversationId\": \"bb10857a-5a2b-488f-b1fd-7bf7331f9449\", \"error\": \"\", \"modelName\": \"gemini-3.8-flash-high\", \"stepIdx\": 4, \"toolCall\": {\"args\": {\"CommandLine\": \"python \\\"C:\\\\Users\\\\usuario\\\\AppData\\\\Local\\\\AgenticOS-spike\\\\sandbox\\\\s2-agy-skills-20261023-190756\\\\.agents\\\\plugins\\\\agentic-os\\\\skills\\\\aos-probe-agy\\\\scripts\\\\probe.py\\\"\", \"WaitMsBeforeAsync\": 10000, \"toolSummary\": \"Execute probe script\"}, \"name\": \"run_command\"}, \"transcriptPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/bb10857a-5a2b-488f-b1fd-7bf7331f9449/.system_generated/logs/transcript_full.jsonl\", \"workspacePat"
+    },
+    {
+     "event": "PreInvocation"
+    },
+    {
+     "event": "Stop"
+    }
+   ]
+  }
+ ]
+}

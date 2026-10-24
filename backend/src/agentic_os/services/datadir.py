@@ -61,11 +61,20 @@ class Usage:
     logs: int = 0  # the backend's own logs
     knowledge: int = 0  # pictures extracted from documents, and the work folders (phase 14)
     models: int = 0  # downloaded models and engines (phase 14)
+    skills: int = 0  # the skill library and its version history (phase 17)
     other: int = 0
 
     @property
     def total(self) -> int:
-        return self.database + self.sessions + self.logs + self.knowledge + self.models + self.other
+        return (
+            self.database
+            + self.sessions
+            + self.logs
+            + self.knowledge
+            + self.models
+            + self.skills
+            + self.other
+        )
 
 
 def _tree_size(path: Path) -> int:
@@ -95,6 +104,8 @@ def disk_usage(data_dir: Path) -> Usage:
             usage.knowledge += size
         elif entry.name in ("models", "engines"):
             usage.models += size
+        elif entry.name == "skills":
+            usage.skills += size
         else:
             usage.other += size
     return usage

@@ -24,6 +24,7 @@ from agentic_os.services.accounts_login import AccountLogins
 from agentic_os.services.clis import CliCatalog
 from agentic_os.services.decider import DecisionService
 from agentic_os.services.dictation.service import DictationService
+from agentic_os.services.gitx import credentials
 from agentic_os.services.gitx.events import GitEvents
 from agentic_os.services.gitx.jobs import JobManager
 from agentic_os.services.gitx.shell import ShellSessions
@@ -35,6 +36,9 @@ from agentic_os.services.localmodels.downloads import DownloadManager
 from agentic_os.services.mcp_server import mount_app
 from agentic_os.services.runs.manager import RunManager
 from agentic_os.services.scheduler import Scheduler
+from agentic_os.services.skills.library import SkillLibrary, refresh_skill_vectors
+from agentic_os.services.skills.registries.service import RegistryService
+from agentic_os.services.skills.store import SkillStore
 from agentic_os.services.trust import TrustCleaner, account_trust_files, agy_settings, claude_config
 from agentic_os.services.usage import limits as usage_limits
 from agentic_os.services.worktrees import Worktrees
@@ -151,7 +155,35 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         )
         app.state.knowledge_events, app.state.knowledge = knowledge_events, knowledge
         manager.knowledge = knowledge  # the agents' search_knowledge uses its search
+        skills = SkillLibrary(
+            SkillStore(Path(settings.data_dir)),
+            # Skills and tasks both as questions: symmetric similarity (spike S4c).
+            embed=lambda texts: knowledge.embed_passages(texts, kind="query"),
+            model=lambda: entry.id if (entry := knowledge.embedding_model()) else None,
+        )
+        app.state.skills = skills
+        manager.skills = skills  # the runs' skills and use_skill
+        skill_registries = RegistryService(
+            Path(settings.data_dir),
+            skills,
+            github_token=lambda: credentials.token_for("github.com"),
+        )
+        app.state.skill_registries = skill_registries
+        if settings.check_sessions_at_startup:  # like the session checks: never in the tests
+            skill_registries.start(app.state.sessionmaker)
+        # Skills are selected by their vector: a new model gives them new ones (spike S4).
+        knowledge.after_reindex.append(
+            lambda: refresh_skill_vectors(app.state.sessionmaker, skills)
+        )
         knowledge.start()
+        if knowledge.mode != "off":
+            # Also warms the query worker: a run's first launch then does not wait for it.
+            threading.Thread(
+                target=refresh_skill_vectors,
+                args=(app.state.sessionmaker, skills),
+                name="skills-vectors",
+                daemon=True,
+            ).start()
         models = DownloadManager(
             Path(settings.data_dir),
             knowledge_events,
@@ -196,6 +228,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             git_shells.shutdown()
             models.stop()
             dictation.stop()
+            skill_registries.stop()
             knowledge.stop()
             # The scheduler stops first: the runs closed by the shutdown are not "stopped by the
             # user"; their tasks are found interrupted on the next start.

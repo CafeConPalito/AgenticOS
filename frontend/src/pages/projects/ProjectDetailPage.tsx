@@ -6,6 +6,8 @@ import { useOpenProjectFolder, useProject } from '@/api/projects'
 import type { Project } from '@/api/types'
 import { EmptyState } from '@/components/EmptyState'
 import { KnowledgeLibrary } from '@/components/knowledge/KnowledgeLibrary'
+import { FromClis } from '@/components/skills/SkillImportDialog'
+import { SkillLibrary } from '@/components/skills/SkillLibrary'
 import { PageContainer, RouteTabs } from '@/components/page'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -89,7 +91,21 @@ function ProjectDetail({ project, tab }: { project: Project; tab: Tab }) {
       {tab === 'git' && <GitTab project={project} />}
       {tab === 'memory' && <MemoryTab project={project} />}
       {tab === 'knowledge' && (
-        <KnowledgeLibrary level={{ scope: 'project', projectId: project.id }} />
+        <>
+          <KnowledgeLibrary level={{ scope: 'project', projectId: project.id }} />
+          <h2 className="px-6 pt-2 text-[16px] font-medium">{t('skills.title')}</h2>
+          <SkillLibrary level={{ scope: 'project', projectId: project.id }} />
+          <section className="flex flex-col gap-2 px-6 pb-8">
+            <h3 className="text-[14px] font-medium">{t('skills.import.repoSkills')}</h3>
+            <p className="text-[12.5px] text-muted-foreground">
+              {t('skills.import.repoSkillsHint')}
+            </p>
+            <FromClis
+              level={{ scope: 'project', projectId: project.id }}
+              only={(item) => item.project_id === project.id}
+            />
+          </section>
+        </>
       )}
       {tab === 'settings' && <SettingsTab project={project} />}
     </div>
