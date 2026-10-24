@@ -91,11 +91,12 @@ def test_claude_is_isolated_with_its_own_files_and_the_prompt_first(tmp_path: Pa
         "SubagentStop",
         "PreToolUse",
         "PostToolUse",
+        "PostToolUseFailure",
         "PermissionRequest",
     }
     # Tool hooks only for the native subagent tool and the skill tool (phase 17), not on every
     # tool call (no curl each time).
-    assert hooks["PreToolUse"][0]["matcher"] == "Agent|Task|Skill"
+    assert hooks["PreToolUse"][0]["matcher"] == "Agent|Task|Skill|mcp__.*"
     assert "matcher" not in hooks["Stop"][0]
     assert hooks["Stop"][0]["hooks"][0]["command"] == f'"{ctx.hook_command}" Stop'
     # Phase 07: the status line reports the session's cost through the same script.
@@ -179,7 +180,7 @@ def test_agy_workspace_plugin(tmp_path: Path):
     assert ctx.token in ctx.mcp_url
     hooks = json.loads((plugin / "hooks.json").read_text("utf-8"))["agentic-os"]
     assert set(hooks) == {"PreInvocation", "Stop", "PreToolUse", "PostToolUse"}
-    assert hooks["PreToolUse"][0]["matcher"] == "invoke_subagent"
+    assert hooks["PreToolUse"][0]["matcher"] == "invoke_subagent|call_mcp_tool"
     assert hooks["PreToolUse"][0]["hooks"][0]["type"] == "command"
     assert hooks["Stop"][0]["type"] == "command"
     command = hooks["Stop"][0]["command"]

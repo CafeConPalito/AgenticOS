@@ -376,13 +376,18 @@ def external(server: str, tool: str, args: dict) -> str:
         async with transport as (read, write, *_), ClientSession(read, write) as session:
             await session.initialize()
             result = await session.call_tool(tool, args)
+            if result.is_error:  # the server answered with an error: a failed tool call
+                raise RuntimeError(result.content[0].text)
             return result.content[0].text
 
     try:
         answer = anyio.run(go)
     except BaseException as error:
-        message = f"(connection failed: {type(error).__name__})"
-        hook_payload("PostToolUseFailure", {**after, "error": message})
+        message = f"(connection failed: {type(error).__name__}: {str(error)[:80]})"
+        if CLAUDE_MODE:
+            hook_payload("PostToolUseFailure", {**after, "error": message})
+        else:  # agy has no failure event: its PostToolUse carries the error
+            hook_payload("PostToolUse", {**after, "error": message})
         return message
     hook_payload("PostToolUse", {**after, "tool_response": answer})
     return answer

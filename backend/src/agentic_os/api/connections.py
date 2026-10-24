@@ -17,6 +17,9 @@ from agentic_os.models import (
     McpOAuth,
     McpOrigin,
     Pipeline,
+    Run,
+    RunConnection,
+    RunToolCall,
     Stage,
 )
 from agentic_os.schemas.connections import (
@@ -42,6 +45,9 @@ from agentic_os.schemas.connections import (
     ParseRequest,
     PreviewRead,
     RequirementRead,
+    RunConnectionRead,
+    RunConnectionsRead,
+    RunToolCallRead,
     SecretWrite,
     StageConnectionsRead,
     TemplateRead,
@@ -555,3 +561,56 @@ def refresh_oauth(connection_id: str, db: DbSession) -> ConnectionRead:
         raise ConnectionError_("oauth_needs_login", problem.message) from problem
     db.commit()
     return _read(db, connection)
+
+
+# -------------------------------------------------------------------- a run's connections (block 7)
+@router.get("/runs/{run_id}/connections")
+def run_connections(run_id: str, db: DbSession) -> RunConnectionsRead:
+    """The connections a run was given, what happened to each and the calls it made."""
+    if db.get(Run, run_id) is None:
+        raise NotFound("run")
+    calls = list(
+        db.scalars(
+            select(RunToolCall).where(RunToolCall.run_id == run_id).order_by(RunToolCall.started_at)
+        )
+    )
+    rows = list(
+        db.scalars(
+            select(RunConnection)
+            .where(RunConnection.run_id == run_id)
+            .order_by(RunConnection.created_at, RunConnection.connection_name)
+        )
+    )
+    return RunConnectionsRead(
+        connections=[
+            RunConnectionRead(
+                name=r.connection_name,
+                connection_id=r.connection_id,
+                status=r.status,
+                detail=r.detail,
+                level=r.level,
+                revision=r.revision,
+                calls=len([c for c in calls if c.connection_name == r.connection_name]),
+                failed_calls=len(
+                    [c for c in calls if c.connection_name == r.connection_name and c.ok is False]
+                ),
+                last_call_at=max(
+                    (c.started_at for c in calls if c.connection_name == r.connection_name),
+                    default=None,
+                ),
+            )
+            for r in rows
+        ],
+        calls=[
+            RunToolCallRead(
+                id=c.id,
+                connection=c.connection_name,
+                tool=c.tool,
+                started_at=c.started_at,
+                duration_ms=c.duration_ms,
+                ok=c.ok,
+                error=c.error,
+            )
+            for c in calls
+        ],
+    )

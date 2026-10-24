@@ -452,3 +452,31 @@ class FlowRead(BaseModel):
     redirect_uri: str
     error: str
     connection: ConnectionRead | None = None
+
+
+# -- a run's connections (block 7) --------------------------------------------------------------
+class RunConnectionRead(BaseModel):
+    name: str
+    connection_id: str | None
+    status: Literal["sent", "connected", "failed", "skipped"]
+    detail: str
+    level: str
+    revision: int
+    calls: int
+    failed_calls: int
+    last_call_at: datetime | None
+
+
+class RunToolCallRead(BaseModel):
+    id: str
+    connection: str
+    tool: str
+    started_at: datetime
+    duration_ms: int | None
+    ok: bool | None  # null: still running
+    error: str
+
+
+class RunConnectionsRead(BaseModel):
+    connections: list[RunConnectionRead]
+    calls: list[RunToolCallRead]

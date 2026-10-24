@@ -50,6 +50,7 @@ from agentic_os.services import tasks as task_ops
 from agentic_os.services.adapters import CliAdapter, LaunchContext, adapter_for
 from agentic_os.services.agent_target import Target, target_for
 from agentic_os.services.connections import runtime as connection_runtime
+from agentic_os.services.connections import usage as connection_usage
 from agentic_os.services.connections.redact import Redactor
 from agentic_os.services.context import RepoLine, build_context, build_instructions
 from agentic_os.services.gitx import activity as git_activity
@@ -115,6 +116,8 @@ class RunManager:
         self._mcp_seen: set[str] = set()
         # The «Conexiones MCP» block of each live run's instructions (phase 18).
         self._connection_sections: dict[str, str] = {}
+        # The secret values of each live run's connections: hidden from what is recorded.
+        self._run_secrets: dict[str, frozenset[str]] = {}
         self._natives: dict[str, NativeState] = {}  # native subagents being tracked, by run
         # Claude's PermissionRequest hook: what the open dialog asks, by run (the screen
         # cannot always be read cleanly).
@@ -356,6 +359,7 @@ class RunManager:
             db, run, agent, project, task.stage_id if task else None, cli.value
         )
         self._connection_sections[run.id] = connection_runtime.section(connections)
+        self._run_secrets[run.id] = frozenset(connections.secret_values)
         skills_folder = skill_runtime.skills_dir(self.runs_dir, run.id)
         skills_folder.mkdir(parents=True, exist_ok=True)
         token = self.tokens.issue(run.id)
@@ -464,6 +468,7 @@ class RunManager:
             adapter.cleanup(ctx)
         finally:
             self._connection_sections.pop(run_id, None)
+            self._run_secrets.pop(run_id, None)
             knowledge_context.clean_run(self._data_dir, run_id)
             skill_runtime.clean_run(self.runs_dir, run_id)
             self._release_agy_folder(folder)
@@ -1487,6 +1492,18 @@ class RunManager:
             log.exception("could not record the account status", account_id=account_id)
 
     # ------------------------------------------------------------------ CLI hooks
+    def _external_call(self, run_id: str, cli: Cli, event: str, payload: object) -> None:
+        """A tool of an external MCP server was called (phase 18)."""
+        call = connection_usage.parse(cli.value, event, payload)
+        if call is None:
+            return
+        with self._db() as db:
+            run = db.get(Run, run_id)
+            if run is not None and connection_usage.record(
+                db, run, call, self._run_secrets.get(run_id, frozenset())
+            ):
+                db.commit()
+
     def on_hook(self, run_id: str, event: str, payload: object) -> None:
         session = self.get(run_id)
         with self._db() as db:
@@ -1536,6 +1553,10 @@ class RunManager:
             self._native_subagent(run_id, cli, event, payload, foreign)
         except Exception:
             log.exception("could not track a native subagent", run_id=run_id, hook=event)
+        try:
+            self._external_call(run_id, cli, event, payload)
+        except Exception:
+            log.exception("could not record a call to an external server", run_id=run_id)
         try:
             name = skill_runtime.native_name(cli.value, event, payload)
             if name is not None:

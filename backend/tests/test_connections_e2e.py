@@ -99,7 +99,7 @@ def test_an_agent_uses_the_tools_of_external_servers(tmp_path: Path, cli: str):
             from agentic_os.models import RunConnection
 
             rows = {r.connection_name: r for r in db.query(RunConnection).filter_by(run_id=run_id)}
-        assert {n: r.status for n, r in rows.items()} == {"probe": "sent", "web": "sent"}
+        assert {n: r.status for n, r in rows.items()} == {"probe": "connected", "web": "connected"}
         assert (
             rows["probe"].revision == made["probe"]["revision"] and rows["probe"].level == "general"
         )
@@ -195,7 +195,7 @@ def test_a_connection_that_cannot_be_given_is_skipped_and_the_run_goes_on(tmp_pa
                 for r in db.query(RunConnection).filter_by(run_id=done["last_run_id"])
             }
         assert rows["sinclave"].status == "skipped" and "TOKEN" in rows["sinclave"].detail
-        assert rows["probe"].status == "sent" and ok["id"] == rows["probe"].connection_id
+        assert rows["probe"].status == "connected" and ok["id"] == rows["probe"].connection_id
         assert wait_until(lambda: True)
 
 
