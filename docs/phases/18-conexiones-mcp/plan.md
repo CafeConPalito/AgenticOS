@@ -1,7 +1,7 @@
 # Fase 18: Conexiones MCP · Plan técnico
 
 - **Spec**: [spec.md](spec.md)
-- **Estado**: aprobado (2026-10-24) · en desarrollo (bloques 1–8, backend)
+- **Estado**: aprobado (2026-10-24) · en desarrollo (backend: bloques 1–2 hechos)
 
 ## Lo que ya se sabe (revisado al escribir el plan)
 - **Lanzamiento**: `RunManager._launch` (`services/runs/manager.py`) arma el `LaunchContext` (`services/adapters/base.py`) con el agente, el proyecto, la tarea, la etapa (`task.stage_id`) y el padre de un subagente, y llama a `adapter.prepare`. Las conexiones entran igual que las skills: un campo nuevo del contexto, preparado antes de `prepare` y limpiado en `cleanup`/`_on_end`.
@@ -202,8 +202,8 @@ Evidencias en [`evidencias/s1-s6-conexiones.md`](evidencias/s1-s6-conexiones.md)
 
 ## Tareas (en orden)
 1. [x] **Bloque 0 · Spikes** S1–S6 hechos; evidencias y cambios al diseño anotados arriba. Glama y PulseMCP fuera de la fase y SSE omitido en `agy`: aprobado por el usuario (2026-10-24).
-2. [ ] **Bloque 1 · Datos y secretos**: migración `0020`, modelos, `InboxKind.CONNECTION`, `secrets.py` con `keyring` (y troceado si S5 lo pide), filtro de ocultación en la sesión.
-3. [ ] **Bloque 2 · Catálogo (backend)**: parser y validación, CRUD con `revision`, secretos por campo, plantillas, importar de los CLIs con nivel, exportar sin secretos, API.
+2. [x] **Bloque 1 · Datos y secretos**: migración `0020`, modelos, `InboxKind.CONNECTION`, `secrets.py` con `keyring` y troceado en piezas de 1 000, filtro de ocultación en la sesión (`redact.py`, que retiene el final de cada trozo por si el secreto llega partido) y almacén en memoria en los tests (`conftest`). Cambio: los valores secretos son marcadores de texto `${secret:CLAVE}` / `${env:NOMBRE}` en `env`, `headers`, `args` y `url`, no `{"secret": id}`.
+3. [x] **Bloque 2 · Catálogo (backend)**: parser y validación, CRUD con `revision`, secretos por campo, plantillas, importar de los CLIs con nivel, exportar sin secretos, API.
 4. [ ] **Bloque 3 · Prueba de conexión**: cliente `stdio`/HTTP/SSE, errores en palabras con `stderr`, requisitos, herramientas guardadas, aviso de cambios, modos de herramientas y preaprobadas.
 5. [ ] **Bloque 4 · Asignación**: asignaciones por nivel, exclusiones por agente y por etapa, resolución para una ejecución (subagente, *headless*), «qué recibiría» del agente, API.
 6. [ ] **Bloque 5 · Inyección**: `prepare_run`, Claude (`mcp.json`, entorno, `--allowedTools`/`--disallowedTools`), `agy` (plugin, espera de conexión), conexión que falla sin tumbar la ejecución, cierre de procesos, *snapshots* de la configuración del usuario.

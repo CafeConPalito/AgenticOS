@@ -5,6 +5,7 @@ from agentic_os.api import (
     agents,
     changes,
     clis,
+    connections,
     dictation,
     forges,
     git,
@@ -40,6 +41,8 @@ api_router.include_router(git.router)
 api_router.include_router(git_more.router)
 api_router.include_router(forges.router)
 api_router.include_router(knowledge.router)
+api_router.include_router(connections.static)
+api_router.include_router(connections.router)
 api_router.include_router(skills.static)
 api_router.include_router(skills.router)
 api_router.include_router(local_models.router)
