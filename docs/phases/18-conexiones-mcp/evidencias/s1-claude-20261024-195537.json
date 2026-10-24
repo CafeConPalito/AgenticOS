@@ -1,0 +1,190 @@
+{
+ "sandbox": "C:\\Users\\usuario\\AppData\\Local\\AgenticOS-spike\\sandbox\\s1-claude-mcp-20261024-195514",
+ "claude": "2.1.310 (Claude Code)",
+ "a": {
+  "init": {
+   "mcp_servers": [
+    {
+     "name": "agentic-os",
+     "status": "failed",
+     "source": "dynamic"
+    },
+    {
+     "name": "probe",
+     "status": "connected",
+     "source": "dynamic"
+    },
+    {
+     "name": "web",
+     "status": "connected",
+     "source": "dynamic"
+    },
+    {
+     "name": "fs",
+     "status": "connected",
+     "source": "dynamic"
+    }
+   ],
+   "tools": [
+    "mcp__fs__create_directory",
+    "mcp__fs__directory_tree",
+    "mcp__fs__edit_file",
+    "mcp__fs__get_file_info",
+    "mcp__fs__list_allowed_directories",
+    "mcp__fs__list_directory",
+    "mcp__fs__list_directory_with_sizes",
+    "mcp__fs__move_file",
+    "mcp__fs__read_file",
+    "mcp__fs__read_media_file",
+    "mcp__fs__read_multiple_files",
+    "mcp__fs__read_text_file",
+    "mcp__fs__search_files",
+    "mcp__fs__write_file",
+    "mcp__probe__pid",
+    "mcp__probe__read_note",
+    "mcp__probe__show_env",
+    "mcp__probe__write_note",
+    "mcp__web__ping"
+   ]
+  },
+  "calls": [
+   {
+    "tool": "ToolSearch",
+    "input": {
+     "query": "select:mcp__probe__read_note,mcp__web__ping,mcp__fs__list_allowed_directories",
+     "max_results": 3
+    }
+   },
+   {
+    "tool": "mcp__probe__read_note",
+    "input": {
+     "topic": "a"
+    }
+   },
+   {
+    "tool": "mcp__web__ping",
+    "input": {
+     "text": "b"
+    }
+   },
+   {
+    "tool": "mcp__fs__list_allowed_directories",
+    "input": {}
+   }
+  ],
+  "results": [
+   {
+    "error": null,
+    "text": "  "
+   },
+   {
+    "error": null,
+    "text": "{\"result\":\"NOTE[a]=PROBE-READ-4417\"}"
+   },
+   {
+    "error": null,
+    "text": "{\"result\":\"PONG[b]=PROBE-HTTP-5521\"}"
+   },
+   {
+    "error": null,
+    "text": "{\"content\":\"Allowed directories:\\nC:\\\\Users\\\\usuario\\\\AppData\\\\Local\\\\AgenticOS-spike\\\\sandbox\\\\s1-claude-mcp-20261024-195514\"}"
+   }
+  ],
+  "answer": "NOTE[a]=PROBE-READ-4417\nPONG[b]=PROBE-HTTP-5521\nAllowed directories:\nC:\\Users\\usuario\\AppData\\Local\\AgenticOS-spike\\sandbox\\s1-claude-mcp-20261024-195514",
+  "denials": [],
+  "cost": 0.00289758,
+  "exit": 0,
+  "seconds": 12.0,
+  "stderr": ""
+ },
+ "b": {
+  "init": {
+   "mcp_servers": [
+    {
+     "name": "agentic-os",
+     "status": "failed",
+     "source": "dynamic"
+    },
+    {
+     "name": "probe",
+     "status": "connected",
+     "source": "dynamic"
+    },
+    {
+     "name": "web",
+     "status": "connected",
+     "source": "dynamic"
+    }
+   ],
+   "tools": [
+    "mcp__probe__pid",
+    "mcp__probe__read_note",
+    "mcp__probe__show_env",
+    "mcp__probe__write_note",
+    "mcp__web__ping"
+   ]
+  },
+  "calls": [
+   {
+    "tool": "ToolSearch",
+    "input": {
+     "query": "select:mcp__probe__show_env,mcp__web__ping",
+     "max_results": 2
+    }
+   },
+   {
+    "tool": "mcp__probe__show_env",
+    "input": {
+     "name": "PROBE_SECRET"
+    }
+   },
+   {
+    "tool": "mcp__probe__show_env",
+    "input": {
+     "name": "PROBE_LITERAL"
+    }
+   },
+   {
+    "tool": "mcp__probe__show_env",
+    "input": {
+     "name": "AOS_SECRET"
+    }
+   },
+   {
+    "tool": "mcp__web__ping",
+    "input": {
+     "text": "b"
+    }
+   }
+  ],
+  "results": [
+   {
+    "error": null,
+    "text": " "
+   },
+   {
+    "error": null,
+    "text": "{\"result\":\"ENV[PROBE_SECRET]=S3CRET-VALUE-8841\"}"
+   },
+   {
+    "error": null,
+    "text": "{\"result\":\"ENV[PROBE_LITERAL]=plain\"}"
+   },
+   {
+    "error": null,
+    "text": "{\"result\":\"ENV[AOS_SECRET]=S3CRET-VALUE-8841\"}"
+   },
+   {
+    "error": null,
+    "text": "{\"result\":\"PONG[b]=PROBE-HTTP-5521\"}"
+   }
+  ],
+  "answer": "ENV[PROBE_SECRET]=S3CRET-VALUE-8841\nENV[PROBE_LITERAL]=plain\nENV[AOS_SECRET]=S3CRET-VALUE-8841\nPONG[b]=PROBE-HTTP-5521",
+  "denials": [],
+  "cost": 0.0018745300000000001,
+  "exit": 0,
+  "seconds": 6.6,
+  "stderr": ""
+ },
+ "config_changes": []
+}

@@ -1,0 +1,606 @@
+{
+ "sandbox": "C:\\Users\\usuario\\AppData\\Local\\AgenticOS-spike\\sandbox\\s1-claude-mcp-20261024-195545",
+ "claude": "2.1.310 (Claude Code)",
+ "c_disallow_default": {
+  "init": {
+   "mcp_servers": [
+    {
+     "name": "agentic-os",
+     "status": "failed",
+     "source": "dynamic"
+    },
+    {
+     "name": "probe",
+     "status": "connected",
+     "source": "dynamic"
+    }
+   ],
+   "tools": [
+    "mcp__probe__pid",
+    "mcp__probe__read_note",
+    "mcp__probe__show_env"
+   ]
+  },
+  "calls": [
+   {
+    "tool": "ToolSearch",
+    "input": {
+     "query": "select:mcp__probe__write_note,mcp__probe__read_note",
+     "max_results": 5
+    }
+   },
+   {
+    "tool": "mcp__probe__read_note",
+    "input": {
+     "topic": "a"
+    }
+   }
+  ],
+  "results": [
+   {
+    "error": null,
+    "text": ""
+   },
+   {
+    "error": null,
+    "text": "{\"result\":\"NOTE[a]=PROBE-READ-4417\"}"
+   }
+  ],
+  "answer": "DENIED: mcp__probe__write_note\nNOTE[a]=PROBE-READ-4417",
+  "denials": [],
+  "cost": 0.0023266400000000005,
+  "exit": 0,
+  "seconds": 10.9,
+  "stderr": "Warning: no stdin data received in 3s, proceeding without it. If piping from a slow command, redirect stdin explicitly: < /dev/null to skip, or wait longer."
+ },
+ "c_disallow_acceptEdits": {
+  "init": {
+   "mcp_servers": [
+    {
+     "name": "agentic-os",
+     "status": "failed",
+     "source": "dynamic"
+    },
+    {
+     "name": "probe",
+     "status": "connected",
+     "source": "dynamic"
+    }
+   ],
+   "tools": [
+    "mcp__probe__pid",
+    "mcp__probe__read_note",
+    "mcp__probe__show_env"
+   ]
+  },
+  "calls": [
+   {
+    "tool": "ToolSearch",
+    "input": {
+     "query": "select:mcp__probe__write_note,mcp__probe__read_note",
+     "max_results": 5
+    }
+   },
+   {
+    "tool": "ToolSearch",
+    "input": {
+     "query": "mcp__probe write_note",
+     "max_results": 5
+    }
+   },
+   {
+    "tool": "mcp__probe__read_note",
+    "input": {
+     "topic": "a"
+    }
+   }
+  ],
+  "results": [
+   {
+    "error": null,
+    "text": ""
+   },
+   {
+    "error": null,
+    "text": "No matching deferred tools found. Note: these configured MCP servers failed to connect, so their tools are unavailable for this session: agentic-os (ECONNREFUSED): \"ECONNREFUSED: Unable to connect. Is the computer able to access the url?\". Treat this as a connection failure — do not conclude the cap"
+   },
+   {
+    "error": null,
+    "text": "{\"result\":\"NOTE[a]=PROBE-READ-4417\"}"
+   }
+  ],
+  "answer": "DENIED: mcp__probe__write_note\nPROBE-READ-4417",
+  "denials": [],
+  "cost": 0.0013380400000000004,
+  "exit": 0,
+  "seconds": 12.5,
+  "stderr": "Warning: no stdin data received in 3s, proceeding without it. If piping from a slow command, redirect stdin explicitly: < /dev/null to skip, or wait longer."
+ },
+ "c_disallow_bypassPermissions": {
+  "init": {
+   "mcp_servers": [
+    {
+     "name": "agentic-os",
+     "status": "failed",
+     "source": "dynamic"
+    },
+    {
+     "name": "probe",
+     "status": "connected",
+     "source": "dynamic"
+    }
+   ],
+   "tools": [
+    "mcp__probe__pid",
+    "mcp__probe__read_note",
+    "mcp__probe__show_env"
+   ]
+  },
+  "calls": [
+   {
+    "tool": "ToolSearch",
+    "input": {
+     "query": "select:mcp__probe__write_note,mcp__probe__read_note",
+     "max_results": 5
+    }
+   },
+   {
+    "tool": "mcp__probe__read_note",
+    "input": {
+     "topic": "a"
+    }
+   }
+  ],
+  "results": [
+   {
+    "error": null,
+    "text": ""
+   },
+   {
+    "error": null,
+    "text": "{\"result\":\"NOTE[a]=PROBE-READ-4417\"}"
+   }
+  ],
+  "answer": "DENIED: write_note\nNOTE[a]=PROBE-READ-4417",
+  "denials": [],
+  "cost": 0.00098057,
+  "exit": 0,
+  "seconds": 10.6,
+  "stderr": "Warning: no stdin data received in 3s, proceeding without it. If piping from a slow command, redirect stdin explicitly: < /dev/null to skip, or wait longer."
+ },
+ "c_unlisted_default": {
+  "init": {
+   "mcp_servers": [
+    {
+     "name": "agentic-os",
+     "status": "failed",
+     "source": "dynamic"
+    },
+    {
+     "name": "probe",
+     "status": "connected",
+     "source": "dynamic"
+    }
+   ],
+   "tools": [
+    "mcp__probe__pid",
+    "mcp__probe__read_note",
+    "mcp__probe__show_env",
+    "mcp__probe__write_note"
+   ]
+  },
+  "calls": [
+   {
+    "tool": "ToolSearch",
+    "input": {
+     "query": "select:mcp__probe__write_note,mcp__probe__read_note",
+     "max_results": 2
+    }
+   },
+   {
+    "tool": "mcp__probe__write_note",
+    "input": {
+     "topic": "a",
+     "text": "b"
+    }
+   },
+   {
+    "tool": "mcp__probe__read_note",
+    "input": {
+     "topic": "a"
+    }
+   }
+  ],
+  "results": [
+   {
+    "error": null,
+    "text": " "
+   },
+   {
+    "error": true,
+    "text": "Claude requested permissions to use mcp__probe__write_note, but you haven't granted it yet."
+   },
+   {
+    "error": null,
+    "text": "{\"result\":\"NOTE[a]=PROBE-READ-4417\"}"
+   }
+  ],
+  "answer": "DENIED: mcp__probe__write_note\nNOTE[a]=PROBE-READ-4417",
+  "denials": [
+   {
+    "tool": "mcp__probe__write_note",
+    "input": {
+     "topic": "a",
+     "text": "b"
+    }
+   }
+  ],
+  "cost": 0.0019518,
+  "exit": 0,
+  "seconds": 10.9,
+  "stderr": "Warning: no stdin data received in 3s, proceeding without it. If piping from a slow command, redirect stdin explicitly: < /dev/null to skip, or wait longer."
+ },
+ "c_unlisted_accept": {
+  "init": {
+   "mcp_servers": [
+    {
+     "name": "agentic-os",
+     "status": "failed",
+     "source": "dynamic"
+    },
+    {
+     "name": "probe",
+     "status": "connected",
+     "source": "dynamic"
+    }
+   ],
+   "tools": [
+    "mcp__probe__pid",
+    "mcp__probe__read_note",
+    "mcp__probe__show_env",
+    "mcp__probe__write_note"
+   ]
+  },
+  "calls": [
+   {
+    "tool": "ToolSearch",
+    "input": {
+     "query": "select:mcp__probe__write_note,mcp__probe__read_note",
+     "max_results": 2
+    }
+   },
+   {
+    "tool": "mcp__probe__write_note",
+    "input": {
+     "topic": "a",
+     "text": "b"
+    }
+   },
+   {
+    "tool": "mcp__probe__read_note",
+    "input": {
+     "topic": "a"
+    }
+   }
+  ],
+  "results": [
+   {
+    "error": null,
+    "text": " "
+   },
+   {
+    "error": true,
+    "text": "Claude requested permissions to use mcp__probe__write_note, but you haven't granted it yet."
+   },
+   {
+    "error": null,
+    "text": "{\"result\":\"NOTE[a]=PROBE-READ-4417\"}"
+   }
+  ],
+  "answer": "DENIED: mcp__probe__write_note\nPROBE-READ-4417",
+  "denials": [
+   {
+    "tool": "mcp__probe__write_note",
+    "input": {
+     "topic": "a",
+     "text": "b"
+    }
+   }
+  ],
+  "cost": 0.0012489900000000002,
+  "exit": 0,
+  "seconds": 11.2,
+  "stderr": "Warning: no stdin data received in 3s, proceeding without it. If piping from a slow command, redirect stdin explicitly: < /dev/null to skip, or wait longer."
+ },
+ "d_crash": {
+  "init": {
+   "mcp_servers": [
+    {
+     "name": "agentic-os",
+     "status": "failed",
+     "source": "dynamic"
+    },
+    {
+     "name": "bad",
+     "status": "failed",
+     "source": "dynamic"
+    },
+    {
+     "name": "probe",
+     "status": "connected",
+     "source": "dynamic"
+    }
+   ],
+   "tools": [
+    "mcp__probe__pid",
+    "mcp__probe__read_note",
+    "mcp__probe__show_env",
+    "mcp__probe__write_note"
+   ]
+  },
+  "calls": [
+   {
+    "tool": "ToolSearch",
+    "input": {
+     "query": "select:mcp__probe__read_note",
+     "max_results": 1
+    }
+   },
+   {
+    "tool": "mcp__probe__read_note",
+    "input": {
+     "topic": "a"
+    }
+   }
+  ],
+  "results": [
+   {
+    "error": null,
+    "text": ""
+   },
+   {
+    "error": null,
+    "text": "{\"result\":\"NOTE[a]=PROBE-READ-4417\"}"
+   }
+  ],
+  "answer": "NOTE[a]=PROBE-READ-4417",
+  "denials": [],
+  "cost": 0.00158881,
+  "exit": 0,
+  "seconds": 10.6,
+  "stderr": "Warning: no stdin data received in 3s, proceeding without it. If piping from a slow command, redirect stdin explicitly: < /dev/null to skip, or wait longer."
+ },
+ "d_missing_command": {
+  "init": {
+   "mcp_servers": [
+    {
+     "name": "agentic-os",
+     "status": "failed",
+     "source": "dynamic"
+    },
+    {
+     "name": "bad",
+     "status": "failed",
+     "source": "dynamic"
+    },
+    {
+     "name": "probe",
+     "status": "connected",
+     "source": "dynamic"
+    }
+   ],
+   "tools": [
+    "mcp__probe__pid",
+    "mcp__probe__read_note",
+    "mcp__probe__show_env",
+    "mcp__probe__write_note"
+   ]
+  },
+  "calls": [
+   {
+    "tool": "ToolSearch",
+    "input": {
+     "query": "select:mcp__probe__read_note",
+     "max_results": 1
+    }
+   },
+   {
+    "tool": "mcp__probe__read_note",
+    "input": {
+     "topic": "a"
+    }
+   }
+  ],
+  "results": [
+   {
+    "error": null,
+    "text": ""
+   },
+   {
+    "error": null,
+    "text": "{\"result\":\"NOTE[a]=PROBE-READ-4417\"}"
+   }
+  ],
+  "answer": "NOTE[a]=PROBE-READ-4417",
+  "denials": [],
+  "cost": 0.0007226,
+  "exit": 0,
+  "seconds": 9.9,
+  "stderr": "Warning: no stdin data received in 3s, proceeding without it. If piping from a slow command, redirect stdin explicitly: < /dev/null to skip, or wait longer."
+ },
+ "d_slow_start": {
+  "init": {
+   "mcp_servers": [
+    {
+     "name": "agentic-os",
+     "status": "failed",
+     "source": "dynamic"
+    },
+    {
+     "name": "probe",
+     "status": "connected",
+     "source": "dynamic"
+    }
+   ],
+   "tools": [
+    "mcp__probe__pid",
+    "mcp__probe__read_note",
+    "mcp__probe__show_env",
+    "mcp__probe__write_note"
+   ]
+  },
+  "calls": [
+   {
+    "tool": "ToolSearch",
+    "input": {
+     "query": "select:mcp__probe__read_note",
+     "max_results": 1
+    }
+   },
+   {
+    "tool": "mcp__probe__read_note",
+    "input": {
+     "topic": "a"
+    }
+   }
+  ],
+  "results": [
+   {
+    "error": null,
+    "text": ""
+   },
+   {
+    "error": null,
+    "text": "{\"result\":\"NOTE[a]=PROBE-READ-4417\"}"
+   }
+  ],
+  "answer": "NOTE[a]=PROBE-READ-4417",
+  "denials": [],
+  "cost": 0.0014851100000000002,
+  "exit": 0,
+  "seconds": 33.6,
+  "stderr": "Warning: no stdin data received in 3s, proceeding without it. If piping from a slow command, redirect stdin explicitly: < /dev/null to skip, or wait longer."
+ },
+ "f_hooks": {
+  "init": {
+   "mcp_servers": [
+    {
+     "name": "agentic-os",
+     "status": "failed",
+     "source": "dynamic"
+    },
+    {
+     "name": "probe",
+     "status": "connected",
+     "source": "dynamic"
+    },
+    {
+     "name": "web",
+     "status": "connected",
+     "source": "dynamic"
+    }
+   ],
+   "tools": [
+    "mcp__probe__pid",
+    "mcp__probe__read_note",
+    "mcp__probe__show_env",
+    "mcp__probe__write_note",
+    "mcp__web__ping"
+   ]
+  },
+  "calls": [
+   {
+    "tool": "ToolSearch",
+    "input": {
+     "query": "select:mcp__probe__read_note,mcp__web__ping,mcp__probe__write_note",
+     "max_results": 5
+    }
+   },
+   {
+    "tool": "mcp__probe__read_note",
+    "input": {
+     "topic": "a"
+    }
+   },
+   {
+    "tool": "mcp__web__ping",
+    "input": {
+     "text": "b"
+    }
+   },
+   {
+    "tool": "mcp__probe__write_note",
+    "input": {
+     "text": ""
+    }
+   }
+  ],
+  "results": [
+   {
+    "error": null,
+    "text": "  "
+   },
+   {
+    "error": null,
+    "text": "{\"result\":\"NOTE[a]=PROBE-READ-4417\"}"
+   },
+   {
+    "error": null,
+    "text": "{\"result\":\"PONG[b]=PROBE-HTTP-5521\"}"
+   },
+   {
+    "error": true,
+    "text": "Error executing tool write_note: 1 validation error for write_noteArguments\ntopic\n  Field required [type=missing, input_value={'text': ''}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.14/v/missing"
+   }
+  ],
+  "answer": "done",
+  "denials": [],
+  "cost": 0.00221045,
+  "exit": 0,
+  "seconds": 12.4,
+  "stderr": "Warning: no stdin data received in 3s, proceeding without it. If piping from a slow command, redirect stdin explicitly: < /dev/null to skip, or wait longer.",
+  "hooks": [
+   {
+    "event": "PreToolUse",
+    "tool": "mcp__probe__read_note",
+    "input": {
+     "topic": "a"
+    },
+    "response": null
+   },
+   {
+    "event": "PostToolUse",
+    "tool": "mcp__probe__read_note",
+    "input": {
+     "topic": "a"
+    },
+    "response": "{\"result\":\"NOTE[a]=PROBE-READ-4417\"}"
+   },
+   {
+    "event": "PreToolUse",
+    "tool": "mcp__web__ping",
+    "input": {
+     "text": "b"
+    },
+    "response": null
+   },
+   {
+    "event": "PostToolUse",
+    "tool": "mcp__web__ping",
+    "input": {
+     "text": "b"
+    },
+    "response": "{\"result\":\"PONG[b]=PROBE-HTTP-5521\"}"
+   },
+   {
+    "event": "PreToolUse",
+    "tool": "mcp__probe__write_note",
+    "input": {
+     "text": ""
+    },
+    "response": null
+   }
+  ]
+ },
+ "config_changes": []
+}

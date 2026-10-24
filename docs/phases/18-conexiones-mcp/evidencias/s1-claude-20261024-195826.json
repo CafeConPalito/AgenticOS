@@ -1,0 +1,19 @@
+{
+ "sandbox": "C:\\Users\\usuario\\AppData\\Local\\AgenticOS-spike\\sandbox\\s1-claude-mcp-20261024-195802",
+ "claude": "2.1.310 (Claude Code)",
+ "e_processes": {
+  "clean_exit": {
+   "result": "PID=20476",
+   "leaked_pids": []
+  },
+  "hard_kill": {
+   "server_pid_seen": "1448",
+   "alive_before_kill": true,
+   "survivors_after_kill_of_launcher": [
+    1448,
+    20600
+   ]
+  }
+ },
+ "config_changes": []
+}

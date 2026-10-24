@@ -1,0 +1,86 @@
+{
+ "local": {
+  "dynamic_random_port": {
+   "label": "dynamic registration, random loopback port",
+   "redirect_uri": "http://127.0.0.1:56192/callback",
+   "first_connect": {
+    "tools": [
+     "whoami"
+    ],
+    "call": "WHOAMI=probe-user@example.test"
+   },
+   "client_id": "dyn-e76af0ef",
+   "token_writes": 1,
+   "has_refresh_token": true,
+   "after_expiry": {
+    "tools": [
+     "whoami"
+    ],
+    "call": "WHOAMI=probe-user@example.test"
+   },
+   "refreshed": true,
+   "browser_opened_times": 1,
+   "revoked_server_side": 1
+  },
+  "dynamic_other_port": {
+   "label": "same, another random port (new registration)",
+   "redirect_uri": "http://127.0.0.1:56208/callback",
+   "first_connect": {
+    "tools": [
+     "whoami"
+    ],
+    "call": "WHOAMI=probe-user@example.test"
+   },
+   "client_id": "dyn-bef9f955",
+   "token_writes": 1,
+   "has_refresh_token": true,
+   "after_expiry": {
+    "tools": [
+     "whoami"
+    ],
+    "call": "WHOAMI=probe-user@example.test"
+   },
+   "refreshed": true,
+   "browser_opened_times": 1,
+   "revoked_server_side": 2
+  },
+  "pasted_client_fixed_port": {
+   "label": "pasted client_id, fixed port 53682",
+   "redirect_uri": "http://127.0.0.1:53682/callback",
+   "first_connect": {
+    "tools": [
+     "whoami"
+    ],
+    "call": "WHOAMI=probe-user@example.test"
+   },
+   "client_id": "pasted-client",
+   "token_writes": 1,
+   "has_refresh_token": true,
+   "after_expiry": {
+    "tools": [
+     "whoami"
+    ],
+    "call": "WHOAMI=probe-user@example.test"
+   },
+   "refreshed": true,
+   "browser_opened_times": 1,
+   "revoked_server_side": 3
+  },
+  "pasted_client_wrong_port": {
+   "label": "pasted client_id, other port",
+   "redirect_uri": "http://127.0.0.1:56239/callback",
+   "error": "ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)"
+  },
+  "auth_server_log": [
+   "register dyn-e76af0ef ['http://127.0.0.1:56192/callback']",
+   "authorize ok http://127.0.0.1:56192/callback",
+   "refresh used",
+   "register dyn-bef9f955 ['http://127.0.0.1:56208/callback']",
+   "authorize ok http://127.0.0.1:56208/callback",
+   "refresh used",
+   "authorize ok http://127.0.0.1:53682/callback",
+   "refresh used",
+   "authorize REJECTED redirect http://127.0.0.1:56239/callback"
+  ]
+ }
+}

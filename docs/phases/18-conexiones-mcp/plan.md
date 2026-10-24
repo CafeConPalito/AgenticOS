@@ -29,6 +29,51 @@ Scripts en `spikes/mcp/`; evidencias en `evidencias/`. Servidores de prueba: uno
 | S5 | **`keyring` empaquetado**: con el *sidecar* de PyInstaller en Windows, guardar, leer y borrar en el Administrador de credenciales; tamaño máximo de un secreto (un *token* OAuth puede pasar de 2,5 KB); qué pasa si no hay almacén (Linux sin Secret Service, para la fase 22) | Trocear los secretos grandes en varias entradas; sin almacén, la conexión dice que no puede guardar secretos y solo admite `${VAR}` |
 | S6 | **Importar**: estructura real de `~/.claude.json` (servidores globales y los de cada proyecto en `projects.<ruta>.mcpServers`), de `.mcp.json` y de la configuración MCP de `agy` (`~/.gemini/…`); qué campos aparecen (`type`, `env`, `headers`, OAuth) y cómo distinguir un secreto | Se importan solo los campos conocidos y el resto se enseña como «no importado» |
 
+## Resultados de los spikes (bloque 0, 2026-10-24)
+Evidencias en [`evidencias/s1-s6-conexiones.md`](evidencias/s1-s6-conexiones.md); scripts en `spikes/mcp/`. La configuración del usuario no cambió en ninguna prueba.
+
+- **S1 · Claude**:
+  - `stdio`, HTTP y `npx` junto a `agentic-os` con `--strict-mcp-config`: ✅;
+  - `${VAR}` se expande en `command`, `args`, `env`, `url` y `headers`: ✅ (los secretos no se escriben en el fichero);
+  - `--disallowedTools mcp__srv__tool` quita la herramienta en los tres modos, también en `bypassPermissions`: ✅; una herramienta en ninguna lista se deniega en *headless* y pide permiso en PTY;
+  - un servidor que falla queda `failed` y la sesión sigue; Claude espera hasta **30 s** a uno lento (también en PTY, con el prompt posicional) y `MCP_TIMEOUT` lo amplía;
+  - sin huérfanos tras `-p`, `/exit` y `terminate` del PTY; matar solo el lanzador (sin su árbol) sí los deja;
+  - hooks `mcp__.*`: `PreToolUse` y `PostToolUse` con `tool_name`, `tool_input` y `tool_response`, y **`PostToolUseFailure`** con `error`, `mcp_server` y `duration_ms` si falla;
+  - ⚠️ el servidor `stdio` hereda todo el entorno del CLI.
+- **S2 · `agy`**:
+  - `stdio` (`command`/`args`/`env`), HTTP con `headers` y `npx` en el `mcp_config.json` del plugin: ✅; **SSE no se admite**;
+  - **`${VAR}` no se expande** (lo dice el propio binario);
+  - `enabledTools` / `disabledTools` por servidor filtran las herramientas: ✅;
+  - los servidores se llaman `agentic-os_<nombre>` y el hook ve `call_mcp_tool` con `ServerName`, `ToolName` y `Arguments` (`PostToolUse` con `error`);
+  - un servidor caído no rompe la ejecución, pero el modelo se puso a investigar el equipo;
+  - **no hay señal por servidor** de que hayan conectado, y escribir el prompt antes de que conecte funciona (el modelo reintenta, más despacio);
+  - sin huérfanos.
+- **S3 · OAuth**:
+  - Linear, Notion, Atlassian, Sentry y Stripe anuncian registro dinámico, revocación y PKCE `S256`; **GitHub remoto y Asana no tienen registro dinámico**;
+  - el proveedor del SDK completa el flujo con registro dinámico y un puerto aleatorio, renueva solo y se puede revocar; un *client id* pegado exige el **puerto exacto** registrado.
+- **S4 · Registros**:
+  - el registro oficial y Smithery son abiertos; el oficial no da métrica de uso y Smithery da `useCount`, `verified` y las herramientas;
+  - **Glama exige clave de API** (y atribución) y **PulseMCP** retiró la `v0beta` y la `v0.1` exige clave;
+  - npm y PyPI tienen API abierta.
+- **S5 · `keyring`**: tope de **1 280 caracteres** por entrada en Windows; troceando en 1 000 funciona hasta 9 000, con Unicode y borrado; empaquetado con PyInstaller sin ajustes.
+- **S6 · Importar**: `~/.claude.json` (`mcpServers` global y por proyecto), `.mcp.json` y la configuración de `agy` comparten el esquema `type`/`url`/`headers`/`command`/`args`/`env`; hay cabeceras `Authorization` en claro.
+
+### Cambios al diseño por los spikes
+1. **Sin pasarela.** Los dos CLIs admiten la inyección directa y el filtrado de herramientas por servidor, así que se elimina `gateway.py`, `RunConnection.via` y todo lo que dependía de ella.
+2. **Claude**: los secretos van como `${AOS_MCP_<N>_<CLAVE>}` en `mcp.json` y como variables del proceso. `CLAUDE_TOOL_MATCHER` gana `mcp__.*` (menos `mcp__agentic-os__`), y se registra además `PostToolUseFailure`. `MCP_TIMEOUT` = `connections.startup_timeout` (60 s por defecto, para el primer `npx`).
+3. **`agy`**: como no expande variables, los valores secretos de `env` y `headers` se escriben **literales** en el `mcp_config.json` del plugin (que ya vive solo durante la ejecución, fuera de git y con el token de la ejecución dentro; ADR 0004). El filtrado va con `disabledTools` (las no permitidas) en el mismo fichero. `AGY_TOOL_MATCHER` gana `call_mcp_tool`; el hook se descarta si `ServerName` es `agentic-os_agentic-os`, y el nombre de la conexión es `ServerName` sin el prefijo `agentic-os_`.
+4. **`agy` y SSE**: una conexión SSE se omite en `agy` con un aviso (`RunConnection.status = skipped`, «`agy` no admite SSE: usa la versión HTTP o un puente `stdio`»).
+5. **`agy` y la espera**: sin señal por servidor, `deferred_prompt` espera a `agentic-os` como hasta ahora y añade una pausa fija `connections.agy_grace` (5 s si hay conexiones). Las instrucciones de toda ejecución con conexiones dicen: «si una herramienta de una conexión no aparece o falla, reinténtalo y, si sigue sin funcionar, continúa sin ella y dilo; no investigues el equipo».
+6. **Procesos**: `_on_end` cierra el árbol del CLI con `psutil` tras la salida ordenada como red de seguridad (matar solo el lanzador deja huérfanos); en PTY no hacía falta, pero cuesta poco.
+7. **OAuth**:
+   - la escucha del retorno usa un puerto fijo `connections.oauth_port` (53682 por defecto), abierto solo mientras dura «Conectar»; si está ocupado y la conexión usa registro dinámico, se prueba otro y se vuelve a registrar; con *client id* pegado se avisa de que hay que liberarlo o cambiarlo y registrar esa URI de retorno;
+   - GitHub (remoto) y Asana no tienen registro dinámico: la UI pide el *client id* (y dice qué URI de retorno registrar), y para GitHub ofrece también el token personal en una cabecera;
+   - renovar antes de lanzar = hacer una petición autenticada con el proveedor (`initialize`) y leer el almacén; la renovación es automática.
+8. **Secretos en el almacén**: se trocean en piezas de 1 000 caracteres (entrada principal con el número de piezas y `nombre#i`).
+9. **Registros**: las fuentes iniciales son el **registro oficial** y **Smithery**, más la instalación desde un paquete npm o PyPI o un repositorio de GitHub. «Más usados»: el `useCount` de Smithery y, para el registro oficial, las descargas semanales de npm de sus paquetes; los paquetes `latest` se fijan a la versión exacta al instalar. **Glama y PulseMCP quedan fuera**: exigen clave de API (Glama además, atribución visible), lo que choca con «registros que exijan cuenta» de la spec. *Pendiente del OK del usuario.*
+10. **API del SDK 2.x**: `httpx2` para cabeceras y autenticación, `streamable_http_client(url, http_client=…)`, `ToolAnnotations` en *snake_case* y `MCPServer` en lugar de `FastMCP`.
+11. **Importar**: se leen `~/.claude.json` (global y por proyecto), el `.mcp.json` de cada proyecto y `~/.gemini/config/mcp_config.json`; los valores de `headers` y `env` con aspecto de secreto (y todo `Authorization`) pasan al almacén.
+
 ## Diseño ([ADR 0025](../../adr/0025-mcp-connections.md), nuevo, y ampliación de [ADR 0018](../../adr/0018-forges-and-credentials.md))
 
 ### 1. Modelo de datos (migración `0020_mcp_connections`)
@@ -43,7 +88,7 @@ Scripts en `spikes/mcp/`; evidencias en `evidencias/`. Servidores de prueba: uno
 - **`McpExclusion`** (`mcp_exclusions`): `connection_id` y un `agent_id` **o** un `stage_id` (`CHECK`: uno de los dos), las dos FK `CASCADE`.
 - **`McpOAuth`** (`mcp_oauth`, 1:1): `issuer`, `client_id`, `client_registered` (dinámico o pegado), `scopes`, `account_label`, `expires_at`, `status` (`connected` · `needs_reauth` · `disconnected`). Los *tokens* y el secreto del cliente van al almacén.
 - **`McpOrigin`** (`mcp_origins`, 1:1, solo las instaladas desde un registro): `registry`, `ref`, `package_type` (`npm` · `pypi` · `oci` · `remote`), `package`, `version`, `repo_url`, `license`, `official`, `latest_version`, `checked_at`, y `manifest` (JSON del `server.json` o equivalente que se instaló, para enseñar qué cambia en una actualización).
-- **`RunConnection`** (`run_connections`): `run_id` (`CASCADE`), `connection_id` (`SET NULL`) y `connection_name` (copia), `revision`, `via` (`direct` · `gateway`), `status` (`sent` · `connected` · `failed` · `skipped`) y `detail` (motivo en palabras: «OAuth caducado», «no arrancó: …»).
+- **`RunConnection`** (`run_connections`): `run_id` (`CASCADE`), `connection_id` (`SET NULL`) y `connection_name` (copia), `revision`, `status` (`sent` · `connected` · `failed` · `skipped`) y `detail` (motivo en palabras: «OAuth caducado», «no arrancó: …»).
 - **`RunToolCall`** (`run_tool_calls`): `run_id` (`CASCADE`), `connection_name`, `tool`, `started_at`, `duration_ms`, `ok`, `error` (recortado y sin secretos). Índices por `run_id` y por `(connection_name, started_at)`.
 - `InboxKind.CONNECTION` (`connection`) con `connection_id` en el elemento (`SET NULL`).
 - `downgrade` borra lo nuevo. Los secretos del almacén se borran al borrar cada conexión, no en la migración.
@@ -80,9 +125,9 @@ Scripts en `spikes/mcp/`; evidencias en `evidencias/`. Servidores de prueba: uno
   - cada conexión entra en `<run_dir>/mcp.json` con su nombre, y los secretos como `${AOS_MCP_…}` (o en claro dentro de `<run_dir>` si S1(b) falla; la carpeta se borra al terminar);
   - las variables van en el `env` de `LaunchSpec`;
   - `claude_permissions` gana `connections`: en *Restringido* y *Preguntar*, `mcp__<n>__<herramienta>` preaprobadas en `--allowedTools`; en todos los modos, las no permitidas en `--disallowedTools` (si S1(c) confirma que bloquea también con `bypassPermissions`).
-- **`agy`** (según S2): las conexiones entran en el `mcp_config.json` del plugin junto a `agentic-os`; el entorno, en `LaunchSpec`. `deferred_prompt` espera a que conecten todas o a `connections.startup_timeout` (90 s), y las que no llegan quedan `failed`.
-- **Pasarela** (`services/connections/gateway.py`, solo si S1 o S2 la piden): ruta `/r/<token>/mcp/x/<nombre>` del backend que hace de servidor MCP *streamable HTTP* para la ejecución y de cliente del servidor externo (lo arranca el backend si es `stdio`, con los secretos), con `list_tools` filtrado y cada `call_tool` registrado. Los procesos que arranca la pasarela son de la ejecución y se cierran en `_on_end`. `RunConnection.via = gateway`.
-- **Fin de la ejecución**: si S1(e) o S2(f) muestran procesos sueltos, `_on_end` cierra el árbol de procesos del CLI (`psutil`) tras la salida ordenada de ADR 0007 (CA11).
+- **`agy`** (S2): las conexiones entran en el `mcp_config.json` del plugin junto a `agentic-os`, con el prefijo del plugin (`agentic-os_<nombre>`). Los valores secretos de `env` y `headers` van literales (el CLI no expande variables) y las herramientas no permitidas, en `disabledTools`. Las conexiones SSE se omiten con aviso. `deferred_prompt` espera a `agentic-os` y una pausa fija `connections.agy_grace` (5 s).
+- **Pasarela**: descartada (S1 y S2). Los dos CLIs admiten la inyección directa y el filtrado por servidor.
+- **Fin de la ejecución**: `_on_end` cierra el árbol de procesos del CLI (`psutil`) tras la salida ordenada de ADR 0007, como red de seguridad (S1(e): matar solo el lanzador deja huérfanos) (CA11).
 - La configuración del usuario no se toca (CA10: *snapshots* como en el spike de la fase 01).
 
 ### 7. OAuth (`services/connections/oauth.py`)
@@ -93,13 +138,13 @@ Scripts en `spikes/mcp/`; evidencias en `evidencias/`. Servidores de prueba: uno
 - Una ejecución recibe el *token* de acceso como cabecera `Authorization: Bearer ${AOS_MCP_…}`; nunca el de renovación.
 
 ### 8. Registro y uso (`services/connections/usage.py`)
-- Las llamadas a herramientas externas llegan por los *hooks* (S1(f), S2(d)): el *matcher* gana `mcp__.*` (sin las de `agentic-os`, que ya se registran en el servidor) y `PreToolUse`/`PostToolUse` crean y cierran la fila `RunToolCall` y el evento `mcp_external`. Si un CLI no da la información, se lee del transcript (`usage/parsers.py`) al cerrar la ejecución; con la pasarela, la registra ella.
-- El estado `connected`/`failed` de cada `RunConnection` sale de la primera llamada, del aviso del CLI (S1(d), S2(e)) o de la pasarela.
+- Las llamadas a herramientas externas llegan por los *hooks* (S1(f), S2(d)): el *matcher* gana `mcp__.*` (sin las de `agentic-os`, que ya se registran en el servidor) y `PreToolUse`/`PostToolUse` crean y cierran la fila `RunToolCall` y el evento `mcp_external`. Los fallos llegan por `PostToolUseFailure` (Claude) o por el campo `error` de `PostToolUse` (`agy`, `call_mcp_tool` con `ServerName`/`ToolName`). Si un CLI no da la información, se lee del transcript (`usage/parsers.py`) al cerrar la ejecución.
+- El estado `connected`/`failed` de cada `RunConnection` sale de la primera llamada, o del aviso del CLI (`init` de Claude, S1(d)); en `agy` no hay aviso y queda `sent` hasta la primera llamada.
 - Uso de la tarjeta: ejecuciones distintas, llamadas y última fecha, por `connection_name` (sobrevive al borrado de la conexión).
 
 ### 9. Registros públicos (`services/connections/registries/`)
 - Protocolo `ServerRegistry` como el de skills: `popular(page)`, `search(query, category, transport, page)` → tarjetas (id, nombre, descripción, autor, uso, actualizado, transporte, oficial); `detail(id)` → paquete o URL, versión, comando exacto, variables y cabeceras (con cuáles son secretas), OAuth, herramientas declaradas, licencia, repo y seguridad.
-- Fuentes según S4: `official.py`, `smithery.py`, `glama.py`, `pulsemcp.py`; y `package_url.py` para un repo de GitHub (busca `server.json` o el bloque `mcpServers` del README), un paquete npm o uno de PyPI.
+- Fuentes según S4: `official.py` y `smithery.py` (Glama y PulseMCP, fuera hasta el OK del usuario); y `package_url.py` para un repo de GitHub (busca `server.json` o el bloque `mcpServers` del README), un paquete npm o uno de PyPI.
 - Se reutilizan la caché de 10 min, los códigos de error por fuente, el *token* opcional de GitHub y la comprobación diaria de actualizaciones de `skills/registries/service.py` (se extrae a un módulo común si hace falta).
 - **Instalar** (`POST /api/connections/registries/install`, con `id`, nivel y valores del formulario): crea la conexión `origin=registry` con el comando fijado a la versión (`npx -y paquete@1.2.3`, `uvx paquete==1.2.3`, `docker run … imagen:1.2.3`) y su `McpOrigin`. No ejecuta nada: la prueba la lanza el usuario (CA14).
 - **Actualizaciones**: si `latest_version` ≠ `version`, aviso; «Ver cambios» compara el `manifest` instalado con el nuevo (versión, comando, variables, herramientas declaradas); «Actualizar» cambia la versión, sube `revision` y pide volver a probar (CA15).
@@ -138,11 +183,11 @@ Scripts en `spikes/mcp/`; evidencias en `evidencias/`. Servidores de prueba: uno
 |---|---|
 | `backend/src/agentic_os/db/migrations/versions/0020_mcp_connections.py` | nuevo |
 | `backend/src/agentic_os/models/connection.py`, `models/__init__.py`, `models/inbox.py` | nuevo / modificado |
-| `backend/src/agentic_os/services/connections/` (`secrets.py`, `format.py`, `library.py`, `templates.py`, `importer.py`, `export.py`, `probe.py`, `resolve.py`, `runtime.py`, `gateway.py`, `oauth.py`, `usage.py`, `config.py`, `events.py`) | nuevo |
-| `backend/src/agentic_os/services/connections/registries/` (`base.py`, `official.py`, `smithery.py`, `glama.py`, `pulsemcp.py`, `package_url.py`, `service.py`) | nuevo |
+| `backend/src/agentic_os/services/connections/` (`secrets.py`, `format.py`, `library.py`, `templates.py`, `importer.py`, `export.py`, `probe.py`, `resolve.py`, `runtime.py`, `oauth.py`, `usage.py`, `config.py`, `events.py`) | nuevo |
+| `backend/src/agentic_os/services/connections/registries/` (`base.py`, `official.py`, `smithery.py`, `package_url.py`, `service.py`) | nuevo |
 | `backend/src/agentic_os/services/skills/registries/` (caché y errores comunes, si se extraen) | modificado |
 | `backend/src/agentic_os/services/adapters/base.py`, `claude.py`, `agy.py` | modificado |
-| `backend/src/agentic_os/services/runs/manager.py`, `runs/session.py` (ocultar secretos), `services/hooks.py`, `services/inbox.py`, `services/mcp_server.py` (pasarela, si hace falta) | modificado |
+| `backend/src/agentic_os/services/runs/manager.py`, `runs/session.py` (ocultar secretos), `services/hooks.py`, `services/inbox.py`, `services/mcp_server.py` | modificado |
 | `backend/src/agentic_os/api/connections.py`, `schemas/connections.py`, `api/agents.py`, `api/pipelines.py`, `api/runs.py`, `api/settings.py`, `app.py` | nuevo / modificado |
 | `backend/pyproject.toml` | `keyring` como dependencia |
 | `backend/agentic_os.spec` (o el fichero de PyInstaller que corresponda) | *backends* de `keyring` incluidos |
@@ -156,12 +201,12 @@ Scripts en `spikes/mcp/`; evidencias en `evidencias/`. Servidores de prueba: uno
 | `spikes/mcp/` | nuevo |
 
 ## Tareas (en orden)
-1. [ ] **Bloque 0 · Spikes** S1–S6, evidencias y cambios al diseño anotados aquí (los que cambien la spec, con el OK del usuario).
+1. [x] **Bloque 0 · Spikes** S1–S6 hechos; evidencias y cambios al diseño anotados arriba. Pendiente del OK del usuario: dejar Glama y PulseMCP fuera de la fase (cambio 9).
 2. [ ] **Bloque 1 · Datos y secretos**: migración `0020`, modelos, `InboxKind.CONNECTION`, `secrets.py` con `keyring` (y troceado si S5 lo pide), filtro de ocultación en la sesión.
 3. [ ] **Bloque 2 · Catálogo (backend)**: parser y validación, CRUD con `revision`, secretos por campo, plantillas, importar de los CLIs con nivel, exportar sin secretos, API.
 4. [ ] **Bloque 3 · Prueba de conexión**: cliente `stdio`/HTTP/SSE, errores en palabras con `stderr`, requisitos, herramientas guardadas, aviso de cambios, modos de herramientas y preaprobadas.
 5. [ ] **Bloque 4 · Asignación**: asignaciones por nivel, exclusiones por agente y por etapa, resolución para una ejecución (subagente, *headless*), «qué recibiría» del agente, API.
-6. [ ] **Bloque 5 · Inyección**: `prepare_run`, Claude (`mcp.json`, entorno, `--allowedTools`/`--disallowedTools`), `agy` (plugin, espera de conexión), conexión que falla sin tumbar la ejecución, cierre de procesos, pasarela si S1/S2 la piden, *snapshots* de la configuración del usuario.
+6. [ ] **Bloque 5 · Inyección**: `prepare_run`, Claude (`mcp.json`, entorno, `--allowedTools`/`--disallowedTools`), `agy` (plugin, espera de conexión), conexión que falla sin tumbar la ejecución, cierre de procesos, *snapshots* de la configuración del usuario.
 7. [ ] **Bloque 6 · OAuth**: inicio, retorno, registro dinámico y *client id* pegado, renovación antes de lanzar y en segundo plano, `needs_reauth` con elemento en la Inbox, desconectar y revocar.
 8. [ ] **Bloque 7 · Registro y uso**: *matcher* `mcp__.*`, `RunToolCall`, estado de cada `RunConnection`, uso de la tarjeta, API de la ejecución.
 9. [ ] **Bloque 8 · Registros (backend)**: fuentes según S4, búsqueda y «más usados», ficha con comando y requisitos, instalar fijado a versión, actualizaciones con diferencias, ajustes de fuentes.
@@ -180,7 +225,7 @@ Scripts en `spikes/mcp/`; evidencias en `evidencias/`. Servidores de prueba: uno
 | `test_connections_probe.py`: herramientas con esquema del servidor de prueba; comando inexistente (con «falta Node» para `npx`), proceso que se cae (con `stderr`), *timeout*, 401 y URL inaccesible | CA4 |
 | `test_connections_resolve.py`: niveles general, proyecto y agente, exclusión por agente, subagente con su agente, *headless* sin conexiones, apagadas fuera | CA5 |
 | ídem: exclusión en una etapa y en una vía de la fase 13; las demás etapas la reciben | CA6 |
-| `test_connections_permissions.py`: argumentos de Claude por modo (`--allowedTools` con las preaprobadas, `--disallowedTools` con las no permitidas), herramientas nuevas fuera de una selección; pasarela con `list_tools` filtrado si se usa; manual con `claude` en *Restringido* | CA7 |
+| `test_connections_permissions.py`: argumentos de Claude por modo (`--allowedTools` con las preaprobadas, `--disallowedTools` con las no permitidas), herramientas nuevas fuera de una selección; `disabledTools` en el plugin de `agy`; manual con `claude` en *Restringido* | CA7 |
 | `test_connections_oauth.py`: servidor de autorización simulado (descubrimiento, registro dinámico y *client id* pegado, PKCE, retorno, renovación antes de lanzar, fallo → `needs_reauth` + Inbox, desconectar borra); manual con un servicio real | CA8 |
 | `test_connections_import.py`: `~/.claude.json` y `.mcp.json` falsos con servidores globales y por proyecto; secretos al almacén; *hash* del original igual | CA9 |
 | `test_connections_isolation.py`: *snapshots* de `~/.claude`, `~/.claude.json` y la carpeta de `agy` (falsos) antes y después de preparar y limpiar una ejecución con conexiones; manual con los CLIs reales | CA10 |
@@ -195,9 +240,9 @@ Scripts en `spikes/mcp/`; evidencias en `evidencias/`. Servidores de prueba: uno
 - [ADR 0025](../../adr/0025-mcp-connections.md) (borrador):
   - conexiones como catálogo global con asignaciones por nivel y exclusiones por agente y por etapa (no una copia por nivel, para que el *token* de GitHub se dé una vez y valga para varios proyectos);
   - secretos en el almacén del sistema, pasados al CLI por variables de entorno y ocultados en la salida;
-  - inyección directa en la configuración por ejecución de cada CLI, con la pasarela solo de respaldo;
+  - inyección directa en la configuración por ejecución de cada CLI, sin pasarela (descartada en los spikes);
   - OAuth hecho por la app con el proveedor del SDK de MCP;
   - registros detrás de un protocolo, con la instalación fijada a una versión.
 - **Ampliación de ADR 0018**: «la app no guarda secretos propios» pasa a «la app no guarda secretos en sus ficheros»: los *tokens* de git siguen en el *helper* de git y los de las conexiones van al almacén del sistema.
-- **Límite conocido**: el agente puede leer las variables de entorno de su proceso (y en Claude, sin S1(b), el `mcp.json` de su ejecución). Es inevitable si el CLI arranca el servidor; la pasarela lo evitaría a costa de más complejidad, y se usa solo donde haga falta. Se documenta en el ADR y en el aviso al crear una conexión.
-- Pendiente de los spikes: `${VAR}` y `--disallowedTools` en Claude (S1), qué admite el plugin de `agy` y si hace falta la pasarela (S2), puerto de retorno de OAuth (S3), fuentes y «más usados» (S4), tamaño de los secretos en el almacén (S5) y formatos de importación (S6).
+- **Límite conocido**: el agente puede leer las variables de entorno de su proceso (el servidor `stdio` hereda todo el entorno del CLI, y en `agy` los secretos de `env` y `headers` están en el `mcp_config.json` del plugin, durante la ejecución). Es inevitable si el CLI arranca el servidor. Se documenta en el ADR y en el aviso al crear una conexión.
+- Resuelto en los spikes: `${VAR}` en Claude sí y en `agy` no, filtrado de herramientas en los dos, sin pasarela, puerto fijo de OAuth, fuentes de los registros, troceado de secretos y formatos de importación (ver arriba).

@@ -1,0 +1,354 @@
+{
+ "sandbox": "C:\\Users\\usuario\\AppData\\Local\\AgenticOS-spike\\sandbox\\s2-agy-mcp-20261024-200612",
+ "agy": "1.4.7",
+ "a_basic": {
+  "exit": 0,
+  "seconds": 317.2,
+  "answer": "call_mcp_tool => NOTE[a]=PROBE-READ-4417\ncall_mcp_tool => PONG[b]=PROBE-HTTP-5521\ncall_mcp_tool => WROTE[a]=PROBE-WRITE-9082\ncall_mcp_tool => ENV[AOS_SECRET]=INHERITED-5531\ncall_mcp_tool => Allowed directories: C:\\Users\\usuario\\AppData\\Local\\AgenticOS-spike\\sandbox\\s2-agy-mcp-20261024-200612\n",
+  "stderr": "",
+  "hooks": [
+   {
+    "event": "PreToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with topic 'a' and te"
+   },
+   {
+    "event": "PostToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"error\": \"\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with top"
+   },
+   {
+    "event": "PreToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with topic 'a' and te"
+   },
+   {
+    "event": "PostToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"error\": \"\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with top"
+   },
+   {
+    "event": "PreToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with topic 'a' and te"
+   },
+   {
+    "event": "PostToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"error\": \"\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with top"
+   },
+   {
+    "event": "PreToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with topic 'a' and te"
+   },
+   {
+    "event": "PostToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"error\": \"\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with top"
+   },
+   {
+    "event": "PreToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with topic 'a' and te"
+   },
+   {
+    "event": "PostToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"error\": \"\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with top"
+   },
+   {
+    "event": "PreToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with topic 'a' and te"
+   },
+   {
+    "event": "PostToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"error\": \"\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with top"
+   },
+   {
+    "event": "PreToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with topic 'a' and te"
+   },
+   {
+    "event": "PostToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"error\": \"\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with top"
+   },
+   {
+    "event": "PreToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with topic 'a' and te"
+   },
+   {
+    "event": "PostToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"error\": \"\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with top"
+   },
+   {
+    "event": "PreToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with topic 'a' and te"
+   },
+   {
+    "event": "PostToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"error\": \"\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with top"
+   },
+   {
+    "event": "PreToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with topic 'a' and te"
+   },
+   {
+    "event": "PostToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"error\": \"\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with top"
+   },
+   {
+    "event": "PreToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with topic 'a' and te"
+   },
+   {
+    "event": "PostToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"error\": \"\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with top"
+   },
+   {
+    "event": "PreToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with topic 'a' and te"
+   },
+   {
+    "event": "PostToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"error\": \"\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with top"
+   },
+   {
+    "event": "PreToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with topic 'a' and te"
+   },
+   {
+    "event": "PostToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"error\": \"\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with top"
+   },
+   {
+    "event": "PreToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with topic 'a' and te"
+   },
+   {
+    "event": "PostToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"error\": \"\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with top"
+   },
+   {
+    "event": "PreToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with topic 'a' and te"
+   },
+   {
+    "event": "PostToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"error\": \"\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with top"
+   },
+   {
+    "event": "PreToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with topic 'a' and te"
+   },
+   {
+    "event": "PostToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"error\": \"\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with top"
+   },
+   {
+    "event": "PreToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with topic 'a' and te"
+   },
+   {
+    "event": "PostToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"error\": \"\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with top"
+   },
+   {
+    "event": "PreToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with topic 'a' and te"
+   },
+   {
+    "event": "PostToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"error\": \"\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with top"
+   },
+   {
+    "event": "PreToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with topic 'a' and te"
+   },
+   {
+    "event": "PostToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"error\": \"\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with top"
+   },
+   {
+    "event": "PreToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with topic 'a' and te"
+   },
+   {
+    "event": "PreToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with topic 'a' and te"
+   },
+   {
+    "event": "PostToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"error\": \"\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with top"
+   },
+   {
+    "event": "PreToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with topic 'a' and te"
+   },
+   {
+    "event": "PostToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"error\": \"\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with top"
+   },
+   {
+    "event": "PreToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with topic 'a' and te"
+   },
+   {
+    "event": "PostToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"error\": \"\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with top"
+   },
+   {
+    "event": "PreToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with topic 'a' and te"
+   },
+   {
+    "event": "PostToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"error\": \"\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with top"
+   },
+   {
+    "event": "PreToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with topic 'a' and te"
+   },
+   {
+    "event": "PostToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"error\": \"\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with top"
+   },
+   {
+    "event": "PreToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with topic 'a' and te"
+   },
+   {
+    "event": "PostToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"error\": \"\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with top"
+   },
+   {
+    "event": "PreToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with topic 'a' and te"
+   },
+   {
+    "event": "PostToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"error\": \"\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with top"
+   },
+   {
+    "event": "PreToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with topic 'a' and te"
+   },
+   {
+    "event": "PostToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"error\": \"\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with top"
+   },
+   {
+    "event": "PreToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with topic 'a' and te"
+   },
+   {
+    "event": "PostToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"error\": \"\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with top"
+   },
+   {
+    "event": "PreToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with topic 'a' and te"
+   },
+   {
+    "event": "PostToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"error\": \"\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with top"
+   },
+   {
+    "event": "PreToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with topic 'a' and te"
+   },
+   {
+    "event": "PostToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"error\": \"\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with top"
+   },
+   {
+    "event": "PreToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with topic 'a' and te"
+   },
+   {
+    "event": "PostToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"error\": \"\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with top"
+   },
+   {
+    "event": "PreToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with topic 'a' and te"
+   },
+   {
+    "event": "PostToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"error\": \"\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with top"
+   },
+   {
+    "event": "PreToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with topic 'a' and te"
+   },
+   {
+    "event": "PostToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"error\": \"\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with top"
+   },
+   {
+    "event": "PreToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with topic 'a' and te"
+   },
+   {
+    "event": "PostToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"error\": \"\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with top"
+   },
+   {
+    "event": "PreToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with topic 'a' and te"
+   },
+   {
+    "event": "PreToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with topic 'a' and te"
+   },
+   {
+    "event": "PostToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"error\": \"\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with top"
+   },
+   {
+    "event": "PreToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with topic 'a' and te"
+   },
+   {
+    "event": "PostToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"error\": \"\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with top"
+   },
+   {
+    "event": "PreToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with topic 'a' and te"
+   },
+   {
+    "event": "PostToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"error\": \"\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with top"
+   },
+   {
+    "event": "PreToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with topic 'a' and te"
+   },
+   {
+    "event": "PostToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"error\": \"\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with top"
+   },
+   {
+    "event": "PreToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with topic 'a' and te"
+   },
+   {
+    "event": "PostToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"error\": \"\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with top"
+   },
+   {
+    "event": "PreToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with topic 'a' and te"
+   },
+   {
+    "event": "PreToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with topic 'a' and te"
+   },
+   {
+    "event": "PostToolUse",
+    "payload": "{\"artifactDirectoryPath\": \"C:/Users/usuario/.gemini/antigravity-cli/brain/ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"conversationId\": \"ab6dd12f-3d97-4f85-93bc-7ea3516b37ed\", \"error\": \"\", \"lastUserInput\": \"Call the tools below and then answer ONLY with one line per call: <exact tool name you used> => <raw text it returned>. Calls: read_note with topic 'a' (server probe); ping with text 'b' (server web); write_note with top"
+   }
+  ],
+  "server_pids_alive_after": []
+ },
+ "b_vars": {
+  "exit": 0,
+  "seconds": 49.6,
+  "answer": "NOT AVAILABLE read_note\nNOT AVAILABLE ping\nNOT AVAILABLE write_note\nNOT AVAILABLE show_env\nNOT AVAILABLE show_env\n",
+  "stderr": "",
+  "hooks": [],
+  "server_pids_alive_after": []
+ },
+ "config_changes": []
+}

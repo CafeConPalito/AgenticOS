@@ -1,0 +1,34 @@
+[
+ {
+  "name": "wait",
+  "delay": 12,
+  "mode": "wait",
+  "trusted": false,
+  "ready_screen": true,
+  "cache_signal_after_s": null,
+  "first_turn": "no-tool",
+  "seconds_to_answer": 4.0,
+  "server_pids_during": [
+   3980,
+   8412
+  ],
+  "leaked_after_end": [],
+  "screen_tail": "t answer exactly NO-TOOL. ▸ Thought for 3s, 222 tokens NO-TOOL ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────── > 1u ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────── Resume with -c (or command below): agy --conversation=91cf4aa0-06c5-4d7a-b8e8-07ffed682a03"
+ },
+ {
+  "name": "early",
+  "delay": 12,
+  "mode": "early",
+  "trusted": false,
+  "ready_screen": true,
+  "cache_signal_after_s": null,
+  "first_turn": "no-tool",
+  "seconds_to_answer": 4.0,
+  "server_pids_during": [
+   7456,
+   7952
+  ],
+  "leaked_after_end": [],
+  "screen_tail": "t answer exactly NO-TOOL. ▸ Thought for 3s, 225 tokens NO-TOOL ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────── > 1u ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────── Resume with -c (or command below): agy --conversation=49d075b8-8311-46e6-a900-50b70b0b288b"
+ }
+]
