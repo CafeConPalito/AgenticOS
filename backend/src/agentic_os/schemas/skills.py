@@ -287,3 +287,55 @@ class RunSkillRead(BaseModel):
     loaded_via: Literal["context", "tool", "native"] | None
     loaded_at: datetime | None
     version: int | None
+
+
+# ------------------------------------------------------------- proposals (block 5)
+class ProposalRead(BaseModel):
+    skill: SkillRead
+    version: VersionRead
+    new_skill: bool  # a new skill, or a new version of `skill`
+    suggested_scope: str  # what the agent suggested ("" for nothing)
+    body: str
+    header: dict
+    files: list[FileRead]
+    executables: list[str]  # to open before approving (CA13)
+    inbox_item_id: str | None
+
+
+class ProposalAccept(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    opened_files: list[PathStr] = Field(default_factory=list)
+    name: str | None = None
+    description: str | None = None
+    body: str | None = None
+    files: dict[PathStr, FileInput | None] = Field(default_factory=dict)
+    scope: KnowledgeScope | None = None
+    project_id: str | None = None
+    agent_id: str | None = None
+
+
+class ProposalReject(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    reason: Annotated[str, StringConstraints(strip_whitespace=True, max_length=500)] = ""
+
+
+class SkillSettingsRead(BaseModel):
+    candidates: int
+    index_tokens: int
+    always_tokens: int
+    words_floor: float
+    proposals_enabled: bool
+    proposals_per_run: int
+
+
+class SkillSettingsWrite(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    candidates: int | None = None
+    index_tokens: int | None = None
+    always_tokens: int | None = None
+    words_floor: float | None = None
+    proposals_enabled: bool | None = None
+    proposals_per_run: int | None = None

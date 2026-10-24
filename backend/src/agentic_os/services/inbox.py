@@ -47,6 +47,7 @@ SETTING_FOR = {
     InboxKind.ACCOUNT: "limits",
     InboxKind.SWITCH: "limits",
     InboxKind.KNOWLEDGE: "review",  # a proposal is a review of the agents' work
+    InboxKind.SKILL: "review",
 }
 
 
@@ -61,6 +62,7 @@ def create(
     command: str | None = None,
     options: list[str] | None = None,
     knowledge_doc_id: str | None = None,
+    skill_version_id: str | None = None,
 ) -> InboxItem:
     """A new pending item. Agent and project are copied from the run, else from the task."""
     item = InboxItem(
@@ -72,6 +74,7 @@ def create(
         run_id=run.id if run else None,
         command=command,
         knowledge_doc_id=knowledge_doc_id,
+        skill_version_id=skill_version_id,
         options=[str(o)[:80] for o in (options or []) if str(o).strip()][:8],
     )
     agent_id = task.agent_id if task is not None else None
@@ -123,7 +126,9 @@ def pending(
     else:
         # An agent's proposal outlives the task and the run it came from: only the person (or
         # the document going away) resolves it.
-        query = query.where(InboxItem.kind != InboxKind.KNOWLEDGE.value)
+        query = query.where(
+            InboxItem.kind.not_in([InboxKind.KNOWLEDGE.value, InboxKind.SKILL.value])
+        )
     return list(db.scalars(query.order_by(InboxItem.created_at)))
 
 

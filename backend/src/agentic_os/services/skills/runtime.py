@@ -41,6 +41,10 @@ Las skills son instrucciones probadas para tareas concretas. Antes de empezar, s
 lista encaja con lo que tienes que hacer, cárgala con `use_skill` (por su nombre) y síguela; sus \
 ficheros de apoyo se leen con `read_skill_file` y sus scripts están en la carpeta que te indica. \
 `use_skill` sin nombre lista todas las que tienes."""
+PROPOSE_NOTE = (
+    "Si descubres una forma de trabajar comprobada y reutilizable que no está en ninguna skill, "
+    "puedes proponerla con `propose_skill` (la persona la revisa antes de que nadie la use)."
+)
 FILE_CHARS = 60_000  # more than this of one file: the agent reads it on disk
 
 
@@ -51,6 +55,7 @@ class Ranker:
     embed_query: Callable[[str], np.ndarray | None] | None = None
     model: str | None = None
     floor: float = 0.0
+    duplicate: float = 0.0  # a proposal this close to a skill is «muy parecida» (block 5)
 
 
 PLUGIN_NAME = "aos"  # Claude shows our skills as «aos:<name>» (spike S1)
@@ -226,10 +231,10 @@ def section(db: Session, lib: SkillLibrary, runs_dir: Path, run_id: str) -> str:
 def render(db: Session, lib: SkillLibrary, items: list[Item], folder: Callable[[str], str]) -> str:
     """The section for `items` («always» first, then the candidates in order), within the
     budgets of the settings. An «always» skill that does not fit goes to the list."""
-    if not items:
-        return ""
     settings = skills_config.load(db)
-    lines = [HEADER]
+    if not items:
+        return f"## Skills\n{PROPOSE_NOTE}" if settings.proposals_enabled else ""
+    lines = [HEADER, *([PROPOSE_NOTE] if settings.proposals_enabled else [])]
     listed: list[str] = []
     fixed: list[str] = []
     budget_list, budget_fixed = settings.index_tokens, settings.always_tokens

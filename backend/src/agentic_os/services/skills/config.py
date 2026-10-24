@@ -19,12 +19,16 @@ class SkillSettings:
     # Share of the best BM25 a query could get from which a skill is offered without a model
     # (spike S4b: holds for libraries of 5 to 80 skills).
     words_floor: float = 0.15
+    # Skills the agents propose (block 5)
+    proposals_enabled: bool = True
+    proposals_per_run: int = 1  # a skill is more delicate than a document (spec, decision 3)
 
 
 _LIMITS = {
     "candidates": (0, 20),
     "index_tokens": (100, 5_000),
     "always_tokens": (0, 50_000),
+    "proposals_per_run": (1, 10),
 }
 _FLOAT_LIMITS = {"words_floor": (0.0, 1.0)}
 
@@ -42,6 +46,10 @@ def normalized(base: SkillSettings, values: dict) -> SkillSettings:
     result = SkillSettings(**asdict(base))
     for field in fields(result):
         value = values.get(field.name)
+        if field.name == "proposals_enabled":
+            if isinstance(value, bool):
+                result.proposals_enabled = value
+            continue
         if value is None or isinstance(value, bool):
             continue
         if field.name in _LIMITS and isinstance(value, int):

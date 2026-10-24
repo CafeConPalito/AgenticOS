@@ -71,6 +71,7 @@ from agentic_os.services.runs.launcher import resolve_executable
 from agentic_os.services.runs.resume import SESSION_MISSING
 from agentic_os.services.runs.screen import PermissionDialog
 from agentic_os.services.runs.session import RunSession
+from agentic_os.services.skills import proposals as skill_proposals
 from agentic_os.services.skills import runtime as skill_runtime
 from agentic_os.services.skills.library import SkillLibrary
 from agentic_os.services.skills.store import SkillStore
@@ -152,7 +153,10 @@ class RunManager:
         if entry is None:
             return skill_runtime.Ranker()
         return skill_runtime.Ranker(
-            self.knowledge.embed_query, entry.id, float(entry.usage.get("skill_floor", 0.0))
+            self.knowledge.embed_query,
+            entry.id,
+            float(entry.usage.get("skill_floor", 0.0)),
+            float(entry.usage.get("skill_duplicate", 0.0)),
         )
 
     @property
@@ -961,6 +965,40 @@ class RunManager:
                 db, self.skill_library, self.runs_dir, run, name, path
             ),
         )
+
+    def propose_skill(
+        self,
+        run_id: str,
+        name: str,
+        description: str,
+        body: str,
+        files: dict[str, str],
+        remove: list[str],
+        level: str,
+        replaces: str,
+        note: str,
+    ) -> str:
+        threshold = self.skill_ranker().duplicate
+        with self._db() as db:
+            run = db.get(Run, run_id)
+            if run is None:
+                raise LookupError(run_id)
+            answer, detail = skill_proposals.propose(
+                db,
+                self.skill_library,
+                run,
+                name,
+                description,
+                body,
+                files,
+                remove,
+                level,
+                replaces,
+                note,
+                duplicate_threshold=threshold,
+            )
+        self.add_event(run_id, EventKind.MCP, "propose_skill", detail)
+        return answer
 
     def report_status(self, run_id: str, message: str) -> None:
         with self._db() as db:

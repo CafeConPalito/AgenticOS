@@ -92,6 +92,18 @@ class AgentBackend(Protocol):
     ) -> str: ...
     def use_skill(self, run_id: str, name: str) -> str: ...
     def read_skill_file(self, run_id: str, name: str, path: str) -> str: ...
+    def propose_skill(
+        self,
+        run_id: str,
+        name: str,
+        description: str,
+        body: str,
+        files: dict[str, str],
+        remove: list[str],
+        level: str,
+        replaces: str,
+        note: str,
+    ) -> str: ...
     def request_human(self, run_id: str, title: str, detail: str, options: list[str]) -> str: ...
     def spawn_subagent(self, run_id: str, prompt: str, agent_name: str) -> str: ...
     def create_subtask(self, run_id: str, title: str, description: str, agent_name: str) -> str: ...
@@ -371,6 +383,41 @@ def build_mcp(backend: AgentBackend) -> MCPServer:
         `name`: la skill. `path`: la ruta del fichero dentro de ella, como la lista
         `use_skill` (p. ej. `reference/forms.md`)."""
         return await call(backend.read_skill_file, _run_id(ctx), _clip(name)[:120], _clip(path))
+
+    @server.tool()
+    async def propose_skill(
+        ctx: Context,
+        name: str = "",
+        description: str = "",
+        body: str = "",
+        files: dict[str, str] | None = None,
+        remove: list[str] | None = None,
+        level: str = "",
+        replaces: str = "",
+        note: str = "",
+    ) -> str:
+        """Propone una skill NUEVA (o una versión nueva de una que ya tienes) con una forma de
+        trabajar comprobada y reutilizable que has descubierto; no un resumen de esta tarea. La
+        persona la revisa antes de que nadie la use; tú sigues trabajando. `name`: en
+        minúsculas con guiones (p. ej. `migraciones-alembic`). `description`: una o dos
+        frases que digan qué hace y cuándo usarla (es lo que se usa para elegirla). `body`:
+        las instrucciones en Markdown. `files`: ficheros de apoyo {ruta: texto} (plantillas,
+        ejemplos, scripts). Para una versión nueva: `replaces` con el nombre de la skill; solo
+        envía lo que cambia (`remove`: rutas a quitar). `level`: «general», «project» o
+        «agent» si tienes preferencia. `note`: qué aporta o qué cambia. Hay un máximo por
+        ejecución; si algo no se puede, la respuesta te explica por qué."""
+        return await call(
+            backend.propose_skill,
+            _run_id(ctx),
+            _clip(name)[:64],
+            description.strip()[:1_100],
+            body,
+            {str(k)[:240]: str(v) for k, v in (files or {}).items()},
+            [str(p)[:240] for p in (remove or [])][:50],
+            _clip(level),
+            _clip(replaces)[:120],
+            note.strip()[:500],
+        )
 
     @server.tool()
     async def write_project_memory(note: str, ctx: Context) -> str:

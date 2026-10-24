@@ -1,5 +1,6 @@
 """Skill library (phase 17, block 2): skills, their versions and history, import and export."""
 
+from dataclasses import asdict
 from pathlib import Path
 from typing import Annotated
 
@@ -13,6 +14,8 @@ from agentic_os.db.session import get_session
 from agentic_os.errors import ApiError, NotFound
 from agentic_os.models import (
     Agent,
+    InboxItem,
+    InboxStatus,
     KnowledgeScope,
     Pipeline,
     Run,
@@ -25,6 +28,7 @@ from agentic_os.models import (
     SkillVersion,
     Stage,
     VersionAuthor,
+    VersionStatus,
 )
 from agentic_os.schemas.skills import (
     CliImport,
@@ -35,12 +39,17 @@ from agentic_os.schemas.skills import (
     ImportPath,
     ImportResult,
     ModesWrite,
+    ProposalAccept,
+    ProposalRead,
+    ProposalReject,
     RunSkillRead,
     SkillCreate,
     SkillDetail,
     SkillEdit,
     SkillModeRead,
     SkillRead,
+    SkillSettingsRead,
+    SkillSettingsWrite,
     SkillUpdate,
     TryCandidate,
     TryExcluded,
@@ -52,6 +61,7 @@ from agentic_os.schemas.skills import (
 )
 from agentic_os.services.skills import config as skills_config
 from agentic_os.services.skills import export, history, importer, selection
+from agentic_os.services.skills import proposals as skill_proposals
 from agentic_os.services.skills import runtime as skill_runtime
 from agentic_os.services.skills.errors import SkillError
 from agentic_os.services.skills.format import (
@@ -536,3 +546,94 @@ def run_skills(run_id: str, db: DbSession) -> list[RunSkillRead]:
         )
         for row, number in rows
     ]
+
+
+# ------------------------------------------------------------- proposals (block 5)
+def _proposal(db: Session, lib: SkillLibrary, version: SkillVersion) -> ProposalRead:
+    skill = db.get(Skill, version.skill_id)
+    parsed = lib.parsed(version)
+    item = db.scalar(
+        select(InboxItem.id).where(
+            InboxItem.skill_version_id == version.id, InboxItem.status == InboxStatus.PENDING
+        )
+    )
+    return ProposalRead(
+        skill=_read(db, lib, [skill])[0],
+        version=read_version(version, skill.current_version_id),
+        new_skill=skill.review == SkillReview.PROPOSED,
+        suggested_scope=version.suggested_scope,
+        body=parsed.body,
+        header=parsed.meta,
+        files=[
+            FileRead(path=p, size=e["size"], executable=bool(e.get("executable")))
+            for p, e in sorted(version.manifest.items(), key=lambda kv: (kv[0] != SKILL_MD, kv[0]))
+        ],
+        executables=sorted(p for p, e in version.manifest.items() if e.get("executable")),
+        inbox_item_id=item,
+    )
+
+
+@router.get("/skills/proposals/pending")
+def list_proposals(request: Request, db: DbSession) -> list[ProposalRead]:
+    """What the agents proposed and waits for the person, newest first."""
+    lib = library(request)
+    versions = db.scalars(
+        select(SkillVersion)
+        .join(Skill, Skill.id == SkillVersion.skill_id)
+        .where(
+            Skill.workspace_id == DEFAULT_WORKSPACE,
+            SkillVersion.status == VersionStatus.PROPOSED,
+        )
+        .order_by(SkillVersion.created_at.desc())
+    )
+    return [_proposal(db, lib, v) for v in versions]
+
+
+@router.get("/skills/proposals/{version_id}")
+def get_proposal(version_id: str, request: Request, db: DbSession) -> ProposalRead:
+    _, version = skill_proposals.proposal(db, version_id)
+    return _proposal(db, library(request), version)
+
+
+@router.post("/skills/proposals/{version_id}/accept")
+def accept_proposal(
+    version_id: str, payload: ProposalAccept, request: Request, db: DbSession
+) -> SkillDetail:
+    """The person approves it, maybe edited and (a new skill) at another level. Every
+    executable file must have been opened first (CA13)."""
+    lib = library(request)
+    skill = skill_proposals.accept(
+        db,
+        lib,
+        version_id,
+        opened=payload.opened_files,
+        name=payload.name,
+        description=payload.description,
+        body=payload.body,
+        changes={p: (f.data() if f is not None else None) for p, f in payload.files.items()},
+        scope=payload.scope,
+        project_id=payload.project_id,
+        agent_id=payload.agent_id,
+    )
+    db.commit()
+    return _detail(db, lib, skill)
+
+
+@router.post("/skills/proposals/{version_id}/reject", status_code=status.HTTP_204_NO_CONTENT)
+def reject_proposal(
+    version_id: str, payload: ProposalReject, request: Request, db: DbSession
+) -> None:
+    skill_proposals.reject(db, library(request), version_id, payload.reason)
+    db.commit()
+
+
+@router.get("/settings/skills")
+def get_skill_settings(db: DbSession) -> SkillSettingsRead:
+    return SkillSettingsRead(**asdict(skills_config.load(db)))
+
+
+@router.put("/settings/skills")
+def put_skill_settings(payload: SkillSettingsWrite, db: DbSession) -> SkillSettingsRead:
+    saved = skills_config.save(db, payload.model_dump(exclude_none=True))
+    db.commit()
+    return SkillSettingsRead(**asdict(saved))

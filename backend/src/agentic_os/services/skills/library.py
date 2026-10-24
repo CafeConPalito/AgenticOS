@@ -242,6 +242,27 @@ class SkillLibrary:
             skill.model_invocable = checked.parsed.model_invocable
         return version
 
+    def accept(self, db: Session, skill: Skill, version: SkillVersion) -> None:
+        """A proposed version (block 5) becomes the current one."""
+        checked = check_files(self.files(version))
+        if checked.parsed.name != skill.name:
+            self._name_free(
+                db, checked.parsed.name, skill.scope, skill.project_id, skill.agent_id, skill.id
+            )
+        version.status = VersionStatus.ACCEPTED
+        version.decided_at = utcnow()
+        skill.review = SkillReview.NONE
+        self._make_current(skill, version, checked.parsed.name)
+        skill.model_invocable = checked.parsed.model_invocable
+
+    def replace_files(self, version: SkillVersion, files: Mapping[str, bytes]) -> CheckedSkill:
+        """Rewrites a pending proposal with the person's edits (it is still one version)."""
+        checked = check_files(dict(files))
+        version.manifest = self.store.put_files(checked.files)
+        version.description = checked.parsed.description
+        version.tokens = checked.tokens
+        return checked
+
     def _make_current(self, skill: Skill, version: SkillVersion, name: str) -> None:
         changed = (skill.name, skill.description) != (name, version.description)
         skill.current_version_id = version.id
