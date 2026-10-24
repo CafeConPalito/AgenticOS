@@ -364,3 +364,70 @@ class RequirementRead(BaseModel):
     program: str
     found: bool
     path: str = ""
+
+
+# -- who gets which connection (block 4) --------------------------------------------------------
+class ConnectionBrief(BaseModel):
+    id: str
+    name: str
+    description: str
+    icon: str
+    transport: str
+    auth: str
+    enabled: bool
+
+
+def brief(connection: McpConnection) -> ConnectionBrief:
+    return ConnectionBrief(
+        id=connection.id,
+        name=connection.name,
+        description=connection.description,
+        icon=connection.icon,
+        transport=connection.transport,
+        auth=connection.auth,
+        enabled=connection.enabled,
+    )
+
+
+class EffectiveRead(BaseModel):
+    connection: ConnectionBrief
+    level: str  # the most concrete level it came from
+    tools: int
+    tokens: int  # about what its tools cost in the agent's context
+
+
+class ExcludedRead(BaseModel):
+    connection: ConnectionBrief
+    level: str
+    reason: Literal["disabled", "agent", "stage"]
+
+
+class PreviewRead(BaseModel):
+    effective: list[EffectiveRead]
+    excluded: list[ExcludedRead]
+    total_tools: int
+    total_tokens: int
+
+
+class AgentConnectionsRead(PreviewRead):
+    excluded_ids: list[str]  # taken away from this agent
+    available: list[ConnectionBrief]  # not given to this agent yet
+
+
+class StageConnectionsRead(PreviewRead):
+    excluded_ids: list[str]  # taken away in this stage
+    agent_id: str | None
+
+
+class ExclusionsWrite(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    excluded: list[str] = Field(default_factory=list, max_length=500)
+
+
+class TryRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    agent_id: str | None = None
+    project_id: str | None = None
+    stage_id: str | None = None

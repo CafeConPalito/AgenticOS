@@ -10,14 +10,27 @@ from sqlalchemy.orm import Session
 
 from agentic_os.db.session import get_session
 from agentic_os.errors import NotFound
-from agentic_os.models import McpAssignment, McpConnection, McpOAuth, McpOrigin
+from agentic_os.models import (
+    Agent,
+    McpAssignment,
+    McpConnection,
+    McpOAuth,
+    McpOrigin,
+    Pipeline,
+    Stage,
+)
 from agentic_os.schemas.connections import (
+    AgentConnectionsRead,
+    AssignmentRead,
     ConnectionCreate,
     ConnectionRead,
     ConnectionSettingsRead,
     ConnectionSettingsWrite,
     ConnectionUpdate,
     DraftRead,
+    EffectiveRead,
+    ExcludedRead,
+    ExclusionsWrite,
     FoundRead,
     FromTemplate,
     ImportProblem,
@@ -25,15 +38,20 @@ from agentic_os.schemas.connections import (
     ImportResult,
     ParseRead,
     ParseRequest,
+    PreviewRead,
     RequirementRead,
     SecretWrite,
+    StageConnectionsRead,
     TemplateRead,
     TestRead,
+    TryRequest,
+    brief,
     read_connection,
 )
+from agentic_os.schemas.knowledge import Level
 from agentic_os.services.connections import config as connection_config
 from agentic_os.services.connections import format as fmt
-from agentic_os.services.connections import importer, library, probe, templates
+from agentic_os.services.connections import importer, library, probe, resolve, templates
 from agentic_os.services.connections.errors import ConnectionError_
 from agentic_os.services.connections.render import render
 from agentic_os.services.trust import claude_config
@@ -327,3 +345,124 @@ def test_connection(
     if wait:
         test.done.wait(timeout + 10)
     return _test_read(request, db, test)
+
+
+# -------------------------------------------------------------------- who gets what (block 4)
+@router.get("/connections/{connection_id}/assignments")
+def list_assignments(connection_id: str, db: DbSession) -> list[AssignmentRead]:
+    library.get(db, connection_id)
+    return [
+        AssignmentRead(id=a.id, scope=a.scope, project_id=a.project_id, agent_id=a.agent_id)
+        for a in library.assignments(db, connection_id)
+    ]
+
+
+@router.post("/connections/{connection_id}/assignments", status_code=status.HTTP_201_CREATED)
+def add_assignment(connection_id: str, level: Level, db: DbSession) -> ConnectionRead:
+    """Gives the connection to a level (general, a project or an agent). Idempotent."""
+    connection = library.get(db, connection_id)
+    library.assign(db, connection, level.scope, level.project_id, level.agent_id)
+    db.commit()
+    return _read(db, connection)
+
+
+@router.delete(
+    "/connections/{connection_id}/assignments/{assignment_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def remove_assignment(connection_id: str, assignment_id: str, db: DbSession) -> Response:
+    library.unassign(db, library.get(db, connection_id), assignment_id)
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+def _preview(report: resolve.Report) -> dict:
+    return {
+        "effective": [
+            EffectiveRead(
+                connection=brief(e.connection), level=e.level, tools=len(e.tools), tokens=e.tokens
+            )
+            for e in report.effective
+        ],
+        "excluded": [
+            ExcludedRead(connection=brief(x.connection), level=x.level, reason=x.reason)
+            for x in report.excluded
+        ],
+        "total_tools": report.total_tools,
+        "total_tokens": report.total_tokens,
+    }
+
+
+def _stage(db: Session, stage_id: str) -> tuple[Stage, Pipeline]:
+    stage = db.get(Stage, stage_id)
+    if stage is None:
+        raise NotFound("stage")
+    return stage, db.get(Pipeline, stage.pipeline_id)
+
+
+@static.post("/connections/try")
+def try_resolution(payload: TryRequest, db: DbSession) -> PreviewRead:
+    """What a run of this agent, in this project and stage, would receive."""
+    project_id, agent_id = payload.project_id, payload.agent_id
+    if payload.stage_id:
+        stage, pipeline = _stage(db, payload.stage_id)
+        agent_id = agent_id or stage.agent_id
+        project_id = project_id or pipeline.project_id
+    return PreviewRead(**_preview(resolve.resolve(db, agent_id, project_id, payload.stage_id)))
+
+
+@router.get("/agents/{agent_id}/connections")
+def get_agent_connections(
+    agent_id: str, db: DbSession, project_id: Annotated[str | None, Query()] = None
+) -> AgentConnectionsRead:
+    """What an agent receives (in a project, if given), what is taken away from it and what
+    could still be given to it."""
+    if db.get(Agent, agent_id) is None:
+        raise NotFound("agent")
+    report = resolve.resolve(db, agent_id, project_id, None)
+    given = set(
+        db.scalars(select(McpAssignment.connection_id).where(McpAssignment.agent_id == agent_id))
+    )
+    return AgentConnectionsRead(
+        **_preview(report),
+        excluded_ids=resolve.excluded_ids(db, agent_id=agent_id),
+        available=[brief(c) for c in library.list_all(db) if c.id not in given],
+    )
+
+
+@router.put("/agents/{agent_id}/connections")
+def put_agent_connections(
+    agent_id: str,
+    payload: ExclusionsWrite,
+    db: DbSession,
+    project_id: Annotated[str | None, Query()] = None,
+) -> AgentConnectionsRead:
+    """Replaces the connections taken away from the agent."""
+    if db.get(Agent, agent_id) is None:
+        raise NotFound("agent")
+    resolve.set_exclusions(db, payload.excluded, agent_id=agent_id)
+    db.commit()
+    return get_agent_connections(agent_id, db, project_id)
+
+
+@router.get("/stages/{stage_id}/connections")
+def get_stage_connections(stage_id: str, db: DbSession) -> StageConnectionsRead:
+    """What a run of this stage receives (its agent's, its project's and the general ones, minus
+    what the agent and the stage take away)."""
+    stage, pipeline = _stage(db, stage_id)
+    report = resolve.resolve(db, stage.agent_id, pipeline.project_id, stage.id)
+    return StageConnectionsRead(
+        **_preview(report),
+        excluded_ids=resolve.excluded_ids(db, stage_id=stage.id),
+        agent_id=stage.agent_id,
+    )
+
+
+@router.put("/stages/{stage_id}/connections")
+def put_stage_connections(
+    stage_id: str, payload: ExclusionsWrite, db: DbSession
+) -> StageConnectionsRead:
+    _stage(db, stage_id)
+    resolve.set_exclusions(db, payload.excluded, stage_id=stage_id)
+    db.commit()
+    return get_stage_connections(stage_id, db)

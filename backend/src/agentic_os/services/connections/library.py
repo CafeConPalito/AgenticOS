@@ -264,6 +264,14 @@ def assign(
     return row
 
 
+def unassign(db: Session, connection: McpConnection, assignment_id: str) -> None:
+    row = db.get(McpAssignment, assignment_id)
+    if row is None or row.connection_id != connection.id:
+        raise NotFound("assignment")
+    db.delete(row)
+    db.flush()
+
+
 def assignments(db: Session, connection_id: str) -> list[McpAssignment]:
     return list(
         db.scalars(
