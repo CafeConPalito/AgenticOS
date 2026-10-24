@@ -266,3 +266,47 @@ def test_no_server_process_outlives_the_run(tmp_path: Path, how: str):
             api.post(f"/api/runs/{run_id}/stop")
             assert wait_until(lambda: not _alive(pid), timeout=30), "the server is still running"
     assert wait_until(lambda: not _alive(pid), timeout=30), "the server survived the backend"
+
+
+def test_a_run_reaches_an_oauth_server_with_the_stored_token(tmp_path: Path):
+    """CA8 on a real run: the account is connected from the app, the run gets the access token
+    as a header (a ${AOS_MCP_…} reference) and the protected server answers; neither the terminal
+    nor the run's files hold the token."""
+    import time
+
+    import httpx
+    from oauth_server import Running as OAuthServer
+
+    settings = settings_for(tmp_path)
+    folder = tmp_path / "web-claude"
+    with OAuthServer(_free_port()) as remote, live_server(settings) as server:
+        api = Api(server)
+        agent, project = _setup(api, tmp_path, "claude")
+        made = api.post(
+            "/api/connections",
+            {
+                "name": "linear",
+                "transport": "http",
+                "url": remote.url,
+                "auth": "oauth",
+                "level": {"scope": "general"},
+            },
+        )[0]
+        flow = api.post(f"/api/connections/{made['id']}/oauth/start", {})
+        assert flow["state"] == "waiting"
+        httpx.get(flow["authorization_url"], follow_redirects=True, timeout=15)
+        assert wait_until(
+            lambda: api.get(f"/api/connections/oauth/flows/{flow['id']}")["state"] == "done", 30
+        )
+        title = _title("CONEXION: linear|whoami||quien.txt")
+        task = api.post("/api/tasks", {"project_id": project, "agent_id": agent, "title": title})
+        done = api.wait_status(task["id"], "done")
+        assert "WHOAMI=probe-user@example.test" in (folder / "quien.txt").read_text("utf-8")
+        token = next(iter(remote.auth.access))
+        run_dir = Path(settings.data_dir) / "runs"
+        log = (run_dir / f"{done['last_run_id']}.log").read_text("utf-8", "replace")
+        assert token not in log
+        for file in (run_dir / done["last_run_id"]).rglob("*"):
+            if file.is_file():
+                assert token not in file.read_text("utf-8", "replace"), file
+        _ = time

@@ -31,11 +31,13 @@ from agentic_os.schemas.connections import (
     EffectiveRead,
     ExcludedRead,
     ExclusionsWrite,
+    FlowRead,
     FoundRead,
     FromTemplate,
     ImportProblem,
     ImportRequest,
     ImportResult,
+    OAuthStart,
     ParseRead,
     ParseRequest,
     PreviewRead,
@@ -51,7 +53,7 @@ from agentic_os.schemas.connections import (
 from agentic_os.schemas.knowledge import Level
 from agentic_os.services.connections import config as connection_config
 from agentic_os.services.connections import format as fmt
-from agentic_os.services.connections import importer, library, probe, resolve, templates
+from agentic_os.services.connections import importer, library, oauth, probe, resolve, templates
 from agentic_os.services.connections.errors import ConnectionError_
 from agentic_os.services.connections.render import render
 from agentic_os.services.trust import claude_config
@@ -182,6 +184,39 @@ def put_connection_settings(
     connection_config.save(db, payload.model_dump(exclude_none=True))
     db.commit()
     return _settings_read(db)
+
+
+def _flow_read(db: Session, flow: oauth.Flow) -> FlowRead:
+    connection = None
+    if flow.state == "done":
+        row = db.get(McpConnection, flow.connection_id)
+        if row is not None:
+            db.refresh(row)
+            connection = _read(db, row)
+    return FlowRead(
+        id=flow.id,
+        connection_id=flow.connection_id,
+        state=flow.state,
+        authorization_url=flow.authorization_url,
+        redirect_uri=flow.redirect_uri,
+        error=flow.error,
+        connection=connection,
+    )
+
+
+@static.get("/connections/oauth/flows/{flow_id}")
+def get_oauth_flow(flow_id: str, request: Request, db: DbSession) -> FlowRead:
+    flow = request.app.state.oauth_flows.get(flow_id)
+    if flow is None:
+        raise NotFound("flow")
+    return _flow_read(db, flow)
+
+
+@static.delete("/connections/oauth/flows/{flow_id}", status_code=status.HTTP_204_NO_CONTENT)
+def cancel_oauth_flow(flow_id: str, request: Request) -> Response:
+    if not request.app.state.oauth_flows.cancel(flow_id):
+        raise NotFound("flow")
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 PROGRAMS = ("node", "npx", "uvx", "uv", "python", "docker", "git")
@@ -331,6 +366,14 @@ def test_connection(
     the background; `wait=true` waits for it."""
     connection = library.get(db, connection_id)
     rendered = render(connection)  # a missing secret is explained here, before starting anything
+    auth = None
+    if connection.auth == "oauth":
+        login = db.get(McpOAuth, connection.id)
+        if login is None or login.status != "connected":
+            raise ConnectionError_(
+                "oauth_needs_login", f"Conecta la cuenta de «{connection.name}» antes de probarla."
+            )
+        auth = oauth.provider_for(connection)
     timeout = connection_config.load(db).probe_timeout
     sessionmaker = request.app.state.sessionmaker
 
@@ -341,7 +384,9 @@ def test_connection(
                 library.apply_probe(session, row, test.result)
                 session.commit()
 
-    test = request.app.state.connection_probes.start(connection_id, rendered, timeout, on_done=keep)
+    test = request.app.state.connection_probes.start(
+        connection_id, rendered, timeout, auth=auth, on_done=keep
+    )
     if wait:
         test.done.wait(timeout + 10)
     return _test_read(request, db, test)
@@ -466,3 +511,47 @@ def put_stage_connections(
     resolve.set_exclusions(db, payload.excluded, stage_id=stage_id)
     db.commit()
     return get_stage_connections(stage_id, db)
+
+
+# -------------------------------------------------------------------- OAuth (block 6)
+def _oauth_connection(db: Session, connection_id: str) -> McpConnection:
+    connection = library.get(db, connection_id)
+    if connection.auth != "oauth" or connection.transport == "stdio":
+        raise ConnectionError_(
+            "oauth_not_applicable",
+            "Esta conexión no inicia sesión con OAuth: solo las remotas (HTTP) que lo piden.",
+        )
+    return connection
+
+
+@router.post("/connections/{connection_id}/oauth/start")
+def start_oauth(
+    connection_id: str, payload: OAuthStart, request: Request, db: DbSession
+) -> FlowRead:
+    """Starts the login: the answer holds the page the person has to open in the browser."""
+    connection = _oauth_connection(db, connection_id)
+    flow = request.app.state.oauth_flows.start(
+        connection, oauth.settings_port(db), payload.client_id, payload.client_secret
+    )
+    return _flow_read(db, flow)
+
+
+@router.post("/connections/{connection_id}/oauth/disconnect")
+def disconnect_oauth(connection_id: str, db: DbSession) -> ConnectionRead:
+    connection = _oauth_connection(db, connection_id)
+    oauth.disconnect(db, connection)
+    db.commit()
+    return _read(db, connection)
+
+
+@router.post("/connections/{connection_id}/oauth/refresh")
+def refresh_oauth(connection_id: str, db: DbSession) -> ConnectionRead:
+    """Renews the token now (it is done by itself before a run when it is about to expire)."""
+    connection = _oauth_connection(db, connection_id)
+    try:
+        oauth.renew(db, connection)
+    except oauth.NeedsLogin as problem:
+        db.commit()
+        raise ConnectionError_("oauth_needs_login", problem.message) from problem
+    db.commit()
+    return _read(db, connection)

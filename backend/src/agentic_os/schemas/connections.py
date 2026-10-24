@@ -431,3 +431,24 @@ class TryRequest(BaseModel):
     agent_id: str | None = None
     project_id: str | None = None
     stage_id: str | None = None
+
+
+# -- OAuth (block 6) ----------------------------------------------------------------------------
+class OAuthStart(BaseModel):
+    """Connect the account. A service without dynamic registration needs the `client_id` (and
+    the secret, if it has one) the person registered there with the redirect address shown."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    client_id: str = ""
+    client_secret: str = ""
+
+
+class FlowRead(BaseModel):
+    id: str
+    connection_id: str
+    state: Literal["starting", "waiting", "done", "failed", "cancelled"]
+    authorization_url: str  # the page the person has to open
+    redirect_uri: str
+    error: str
+    connection: ConnectionRead | None = None
