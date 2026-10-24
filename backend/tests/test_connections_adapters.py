@@ -4,7 +4,6 @@ of the adapters, what is skipped and why (CA12), and that nothing outside the ru
 from __future__ import annotations
 
 import json
-import sys
 from dataclasses import replace
 from pathlib import Path
 
@@ -259,4 +258,3 @@ def test_nothing_outside_the_run_changes(client: TestClient, tmp_path: Path, mon
         adapter_for(cli).cleanup(ctx)
     assert _tree(home) == before
     assert not plugin_dir(tmp_path / "proyecto").exists()
-    _ = sys  # the probes of the other tests use it

@@ -8,7 +8,6 @@ import socket
 import time
 
 import httpx
-import pytest
 from fastapi.testclient import TestClient
 from oauth_server import Running
 
@@ -298,4 +297,3 @@ def test_the_expiry_check(client: TestClient):
     )
     assert oauth.expires_soon("c1") and not oauth.expires_soon("c1", 10)
     assert oauth.expires_soon("nothing")
-    _ = pytest

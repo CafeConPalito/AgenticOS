@@ -272,8 +272,6 @@ def test_a_run_reaches_an_oauth_server_with_the_stored_token(tmp_path: Path):
     """CA8 on a real run: the account is connected from the app, the run gets the access token
     as a header (a ${AOS_MCP_…} reference) and the protected server answers; neither the terminal
     nor the run's files hold the token."""
-    import time
-
     import httpx
     from oauth_server import Running as OAuthServer
 
@@ -309,4 +307,3 @@ def test_a_run_reaches_an_oauth_server_with_the_stored_token(tmp_path: Path):
         for file in (run_dir / done["last_run_id"]).rglob("*"):
             if file.is_file():
                 assert token not in file.read_text("utf-8", "replace"), file
-        _ = time

@@ -25,25 +25,32 @@ from agentic_os.models import (
 from agentic_os.schemas.connections import (
     AgentConnectionsRead,
     AssignmentRead,
+    CardRead,
     ConnectionCreate,
     ConnectionRead,
     ConnectionSettingsRead,
     ConnectionSettingsWrite,
     ConnectionUpdate,
+    DetailRead,
     DraftRead,
     EffectiveRead,
     ExcludedRead,
     ExclusionsWrite,
+    FieldRead,
     FlowRead,
     FoundRead,
     FromTemplate,
     ImportProblem,
     ImportRequest,
     ImportResult,
+    InstallRequest,
+    ListingRead,
     OAuthStart,
+    OptionRead,
     ParseRead,
     ParseRequest,
     PreviewRead,
+    RegistrySourceRead,
     RequirementRead,
     RunConnectionRead,
     RunConnectionsRead,
@@ -52,7 +59,10 @@ from agentic_os.schemas.connections import (
     StageConnectionsRead,
     TemplateRead,
     TestRead,
+    ToolRead,
     TryRequest,
+    UpdatePreviewRead,
+    UpdateRead,
     brief,
     read_connection,
 )
@@ -61,6 +71,7 @@ from agentic_os.services.connections import config as connection_config
 from agentic_os.services.connections import format as fmt
 from agentic_os.services.connections import importer, library, oauth, probe, resolve, templates
 from agentic_os.services.connections.errors import ConnectionError_
+from agentic_os.services.connections.registries import service as registries
 from agentic_os.services.connections.render import render
 from agentic_os.services.trust import claude_config
 
@@ -175,7 +186,7 @@ def import_cli_connections(payload: ImportRequest, request: Request, db: DbSessi
 
 def _settings_read(db: Session) -> ConnectionSettingsRead:
     values = connection_config.load(db)
-    return ConnectionSettingsRead(**values.__dict__)
+    return ConnectionSettingsRead(**{**values.__dict__, "registries": registries.enabled(db)})
 
 
 @static.get("/settings/connections")
@@ -187,7 +198,12 @@ def get_connection_settings(db: DbSession) -> ConnectionSettingsRead:
 def put_connection_settings(
     payload: ConnectionSettingsWrite, db: DbSession
 ) -> ConnectionSettingsRead:
-    connection_config.save(db, payload.model_dump(exclude_none=True))
+    values = payload.model_dump(exclude_none=True)
+    if "registries" in values:
+        values["registries"] = {
+            k: v for k, v in values["registries"].items() if k in registries.SWITCHABLE
+        }
+    connection_config.save(db, values)
     db.commit()
     return _settings_read(db)
 
@@ -614,3 +630,127 @@ def run_connections(run_id: str, db: DbSession) -> RunConnectionsRead:
             for c in calls
         ],
     )
+
+
+# -------------------------------------------------------------------- public registries (block 8)
+def explorer(request: Request) -> registries.RegistryService:
+    return request.app.state.mcp_registries
+
+
+def _card_read(db: Session, card, installed: dict) -> CardRead:
+    return CardRead(
+        **{k: getattr(card, k) for k in CardRead.model_fields if k != "installed_connection_id"},
+        installed_connection_id=installed.get((card.source, card.ref)),
+    )
+
+
+def _listing_read(db: Session, listing: registries.Listing) -> ListingRead:
+    installed = {(o.source, o.ref): o.connection_id for o in db.scalars(select(McpOrigin))}
+    return ListingRead(
+        cards=[_card_read(db, c, installed) for c in listing.cards], errors=listing.errors
+    )
+
+
+@static.get("/connections/registries")
+def list_registries(request: Request, db: DbSession) -> list[RegistrySourceRead]:
+    return [RegistrySourceRead(**s) for s in explorer(request).status(db)]
+
+
+@static.get("/connections/registries/search")
+def search_registries(
+    request: Request,
+    db: DbSession,
+    query: Annotated[str, Query()] = "",
+    source: Annotated[str | None, Query()] = None,
+    transport: Annotated[str | None, Query()] = None,
+    page: Annotated[int, Query(ge=1)] = 1,
+) -> ListingRead:
+    """The most used (without a query) or the search, across the registries that are on. A name
+    or address of a package or repository (npm:…, pypi:…, a GitHub URL) goes to its own source."""
+    return _listing_read(db, explorer(request).search(db, query, source, transport, page))
+
+
+@static.get("/connections/registries/detail")
+def registry_detail(
+    request: Request, db: DbSession, source: Annotated[str, Query()], ref: Annotated[str, Query()]
+) -> DetailRead:
+    view = explorer(request).view(db, source, ref)
+    detail = view.detail
+    installed = {(o.source, o.ref): o.connection_id for o in db.scalars(select(McpOrigin))}
+    return DetailRead(
+        card=_card_read(db, detail.card, installed),
+        options=[
+            OptionRead(
+                index=i,
+                kind=o.kind,
+                label=o.label,
+                package=o.package,
+                version=o.version,
+                transport=o.transport,
+                url=o.url,
+                oauth=o.oauth,
+                command=view.commands[i],
+                fields=[FieldRead(**f.__dict__) for f in o.fields],
+                requires=list(o.requires),
+                missing=view.missing.get(str(i), []),
+            )
+            for i, o in enumerate(detail.options)
+        ],
+        license=detail.license,
+        repo_url=detail.repo_url,
+        website=detail.website,
+        tools=[ToolRead(**t) for t in detail.tools],
+        security=detail.security,
+        note=detail.note,
+        installed_as=view.installed_as,
+    )
+
+
+@static.post("/connections/registries/install", status_code=status.HTTP_201_CREATED)
+def install_from_registry(
+    payload: InstallRequest, request: Request, db: DbSession
+) -> ConnectionRead:
+    """Creates the connection from the registry's entry, pinned to a version. Nothing is run:
+    the person tests it afterwards."""
+    connection = explorer(request).install(
+        db,
+        payload.source,
+        payload.ref,
+        payload.option,
+        payload.values,
+        payload.name,
+        payload.level,
+        payload.oauth,
+    )
+    db.commit()
+    return _read(db, connection)
+
+
+@static.post("/connections/updates/check")
+def check_updates(request: Request, db: DbSession) -> list[UpdateRead]:
+    newer = explorer(request).check_updates(db)
+    db.commit()
+    names = {c.id: c.name for c in library.list_all(db)}
+    return [
+        UpdateRead(
+            connection_id=o.connection_id,
+            name=names.get(o.connection_id, ""),
+            version=o.version,
+            latest=o.latest_version,
+        )
+        for o in newer
+    ]
+
+
+@router.get("/connections/{connection_id}/update")
+def update_preview(connection_id: str, request: Request, db: DbSession) -> UpdatePreviewRead:
+    """What an update would change, before anything changes."""
+    preview = explorer(request).update_preview(db, library.get(db, connection_id))
+    return UpdatePreviewRead.model_validate(preview)
+
+
+@router.post("/connections/{connection_id}/update")
+def apply_update(connection_id: str, request: Request, db: DbSession) -> ConnectionRead:
+    connection = explorer(request).apply_update(db, library.get(db, connection_id))
+    db.commit()
+    return _read(db, connection)

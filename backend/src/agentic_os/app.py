@@ -24,6 +24,9 @@ from agentic_os.services.accounts_login import AccountLogins
 from agentic_os.services.clis import CliCatalog
 from agentic_os.services.connections.oauth import FlowManager, Renewer
 from agentic_os.services.connections.probe import ProbeRunner
+from agentic_os.services.connections.registries.service import (
+    RegistryService as McpRegistryService,
+)
 from agentic_os.services.decider import DecisionService
 from agentic_os.services.dictation.service import DictationService
 from agentic_os.services.gitx import credentials
@@ -166,6 +169,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         app.state.skills = skills
         app.state.connection_probes = ProbeRunner()  # tests of MCP connections (phase 18)
         app.state.oauth_flows = FlowManager(app.state.sessionmaker)
+        mcp_registries = McpRegistryService(
+            github_token=lambda: credentials.token_for("github.com")
+        )
+        app.state.mcp_registries = mcp_registries
+        if settings.check_sessions_at_startup:  # never in the tests: it asks the network
+            mcp_registries.start(app.state.sessionmaker)
         oauth_renewer = Renewer(app.state.sessionmaker)
         oauth_renewer.start()
         manager.skills = skills  # the runs' skills and use_skill
@@ -236,6 +245,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             dictation.stop()
             skill_registries.stop()
             oauth_renewer.stop()
+            mcp_registries.stop()
             knowledge.stop()
             # The scheduler stops first: the runs closed by the shutdown are not "stopped by the
             # user"; their tasks are found interrupted on the next start.

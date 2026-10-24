@@ -336,7 +336,7 @@ class ConnectionSettingsRead(BaseModel):
     startup_timeout: int
     agy_grace: int
     oauth_port: int
-    registries: dict[str, bool]
+    registries: dict[str, bool]  # every switchable source, with its effective state
 
 
 class ConnectionSettingsWrite(BaseModel):
@@ -480,3 +480,108 @@ class RunToolCallRead(BaseModel):
 class RunConnectionsRead(BaseModel):
     connections: list[RunConnectionRead]
     calls: list[RunToolCallRead]
+
+
+# -- the public registries (block 8) ------------------------------------------------------------
+class RegistrySourceRead(BaseModel):
+    id: str
+    title: str
+    enabled: bool
+    switchable: bool
+    has_popular: bool
+
+
+class CardRead(BaseModel):
+    source: str
+    ref: str
+    name: str
+    description: str
+    author: str
+    uses: int | None
+    stars: int | None
+    updated_at: str | None
+    category: str
+    url: str
+    transport: str
+    verified: bool
+    version: str
+    installed_connection_id: str | None = None
+
+
+class ListingRead(BaseModel):
+    cards: list[CardRead]
+    errors: dict[str, str]  # source → code (offline, unavailable, rate_limited…)
+
+
+class FieldRead(BaseModel):
+    key: str
+    label: str
+    where: str
+    name: str
+    secret: bool
+    required: bool
+    default: str
+    description: str
+
+
+class OptionRead(BaseModel):
+    index: int
+    kind: str
+    label: str
+    package: str
+    version: str
+    transport: str
+    url: str
+    oauth: bool
+    command: str  # exactly what would run
+    fields: list[FieldRead]
+    requires: list[str]
+    missing: list[str]  # of those, the ones this machine does not have
+
+
+class DetailRead(BaseModel):
+    card: CardRead
+    options: list[OptionRead]
+    license: str
+    repo_url: str
+    website: str
+    tools: list[ToolRead]
+    security: dict
+    note: str
+    installed_as: str | None
+
+
+class InstallRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    source: str
+    ref: str
+    option: int = 0
+    name: Text = ""
+    values: dict[str, str] = Field(default_factory=dict)
+    oauth: bool | None = None
+    level: Level | None = None
+
+
+class UpdateRead(BaseModel):
+    connection_id: str
+    name: str
+    version: str
+    latest: str
+
+
+class UpdateChange(BaseModel):
+    field: str
+    label: str
+    from_: object = Field(default=None, alias="from")
+    to: object = None
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class UpdatePreviewRead(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    from_: str = Field(alias="from")
+    to: str
+    changes: list[UpdateChange]
