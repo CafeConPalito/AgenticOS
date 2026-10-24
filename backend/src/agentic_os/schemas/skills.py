@@ -430,3 +430,59 @@ class ApplyUpdate(BaseModel):
 
     preview_id: str
     opened_files: list[PathStr] = Field(default_factory=list)
+
+
+# ------------------------------------------------------------ usage statistics (block 10)
+class StatsRowRead(BaseModel):
+    skill_id: str
+    name: str
+    scope: str
+    origin: str
+    group_key: str | None
+    group_label: str
+    offered: int
+    loaded: int
+    rate: float | None
+    runs: int
+    tasks: int
+    done: int
+    failed: int
+    approved: int
+    rejected: int
+    avg_cost: float | None
+    avg_tokens: float | None
+    last_used: datetime | None
+    via_context: int
+    via_tool: int
+    via_native: int
+
+
+class StatsTableRead(BaseModel):
+    rows: list[StatsRowRead]
+    total: int
+
+
+class StatsDayRead(BaseModel):
+    day: str
+    loads: dict[str, int]  # skill id → loads that day
+
+
+class StatsRunRead(BaseModel):
+    run_id: str
+    started_at: datetime
+    skill_id: str
+    skill_name: str
+    version: int | None
+    offered: str
+    loaded_via: str | None
+    agent_name: str
+    project_name: str
+    stage_name: str
+    pipeline_name: str
+    cli: str
+    model: str
+    account_label: str
+    status: str
+    verdict: str | None
+    cost_usd: float | None
+    task_id: str | None

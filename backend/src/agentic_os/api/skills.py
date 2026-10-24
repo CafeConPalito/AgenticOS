@@ -1,8 +1,9 @@
 """Skill library (phase 17, block 2): skills, their versions and history, import and export."""
 
 from dataclasses import asdict
+from datetime import date
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Query, Request, status
 from fastapi.responses import Response
@@ -61,6 +62,10 @@ from agentic_os.schemas.skills import (
     SkillSettingsRead,
     SkillSettingsWrite,
     SkillUpdate,
+    StatsDayRead,
+    StatsRowRead,
+    StatsRunRead,
+    StatsTableRead,
     TryCandidate,
     TryExcluded,
     TryRead,
@@ -74,6 +79,7 @@ from agentic_os.services.skills import config as skills_config
 from agentic_os.services.skills import export, history, importer, selection
 from agentic_os.services.skills import proposals as skill_proposals
 from agentic_os.services.skills import runtime as skill_runtime
+from agentic_os.services.skills import stats as skill_stats
 from agentic_os.services.skills.errors import SkillError
 from agentic_os.services.skills.format import (
     SKILL_MD,
@@ -85,6 +91,8 @@ from agentic_os.services.skills.library import Author, SkillLibrary
 from agentic_os.services.skills.registries import service as registries
 
 router = APIRouter(tags=["skills"])
+# Fixed paths of two segments (/skills/<word>): registered before /skills/{skill_id}.
+static = APIRouter(tags=["skills"])
 DbSession = Annotated[Session, Depends(get_session)]
 LEVEL_FIELDS = {"scope", "project_id", "agent_id"}
 USER = Author(VersionAuthor.USER, "Tú")
@@ -161,7 +169,7 @@ def list_skills(
     return _read(db, library(request), skills)
 
 
-@router.get("/skills/cli-scan")
+@static.get("/skills/cli-scan")
 def scan_cli_skills(db: DbSession) -> list[CliSkillRead]:
     """The skills the CLIs load by themselves: the person's own and the repositories'."""
     return [CliSkillRead(**vars(item)) for item in importer.scan_cli_skills(db)]
@@ -703,7 +711,7 @@ def _preview_read(db: Session, preview: registries.Preview) -> PreviewRead:
     )
 
 
-@router.get("/skills/registries")
+@static.get("/skills/registries")
 def list_registries(request: Request, db: DbSession) -> list[RegistryRead]:
     return [RegistryRead(**s) for s in explorer(request).status(db)]
 
@@ -816,3 +824,110 @@ def apply_update(
     explorer(request).apply_update(db, skill, payload.preview_id, payload.opened_files)
     db.commit()
     return _detail(db, lib, skill)
+
+
+# ------------------------------------------------------------ usage statistics (block 10)
+def _filters(
+    from_: Annotated[date | None, Query(alias="from")] = None,
+    to: date | None = None,
+    agent_id: str | None = None,
+    team_id: str | None = None,
+    project_id: str | None = None,
+    pipeline_id: str | None = None,
+    stage_id: str | None = None,
+    cli: str | None = None,
+    account_id: str | None = None,
+    model: str | None = None,
+    scope: KnowledgeScope | None = None,
+    origin: SkillOriginKind | None = None,
+    via: Literal["context", "tool", "native"] | None = None,
+    unused: Literal["never_loaded", "never_offered"] | None = None,
+    skill_id: str | None = None,
+) -> skill_stats.Filters:
+    return skill_stats.Filters(
+        from_,
+        to,
+        agent_id,
+        team_id,
+        project_id,
+        pipeline_id,
+        stage_id,
+        cli,
+        account_id,
+        model,
+        scope,
+        origin,
+        via,
+        unused,
+        skill_id,
+    )
+
+
+StatsFilters = Annotated[skill_stats.Filters, Depends(_filters)]
+GroupBy = Literal["agent", "team", "project", "pipeline", "stage", "cli", "account", "model"]
+
+
+@static.get("/skills/stats")
+def stats_table(
+    db: DbSession,
+    filters: StatsFilters,
+    group_by: GroupBy | None = None,
+    sort: str = "loaded",
+    desc: bool = True,
+    limit: int = Query(200, ge=1, le=1000),
+    offset: int = Query(0, ge=0),
+) -> StatsTableRead:
+    """The figures of every skill (or of each skill per group), filtered and sorted (spec E)."""
+    result = skill_stats.table(db, filters, group_by, sort, desc, limit, offset)
+    return StatsTableRead(rows=[StatsRowRead(**asdict(r)) for r in result.rows], total=result.total)
+
+
+@router.get("/skills/stats/daily")
+def stats_daily(
+    db: DbSession, filters: StatsFilters, skill_ids: str = Query("", max_length=4000)
+) -> list[StatsDayRead]:
+    ids = [s for s in skill_ids.split(",") if s]
+    return [StatsDayRead(**d) for d in skill_stats.daily(db, filters, ids)]
+
+
+@router.get("/skills/stats/runs")
+def stats_runs(
+    db: DbSession,
+    filters: StatsFilters,
+    group_by: GroupBy | None = None,
+    group_key: str | None = None,
+) -> list[StatsRunRead]:
+    """The runs behind a figure (spec E: «clic en una cifra»), newest first."""
+    return [
+        StatsRunRead(
+            run_id=run.id,
+            started_at=run.started_at or run.created_at,
+            skill_id=row.skill_id,
+            skill_name=row.skill_name,
+            version=number,
+            offered=row.offered,
+            loaded_via=row.loaded_via,
+            agent_name=run.agent_name,
+            project_name=run.project_name,
+            stage_name=row.stage_name,
+            pipeline_name=row.pipeline_name,
+            cli=run.cli,
+            model=run.model,
+            account_label=run.account_label,
+            status=run.status,
+            verdict=run.verdict,
+            cost_usd=run.cost_usd,
+            task_id=run.task_id,
+        )
+        for row, run, number in skill_stats.runs(db, filters, group_by, group_key)
+    ]
+
+
+@static.get("/skills/stats.csv")
+def stats_csv(db: DbSession, filters: StatsFilters, group_by: GroupBy | None = None) -> Response:
+    result = skill_stats.table(db, filters, group_by, limit=100_000)
+    return Response(
+        skill_stats.to_csv(result.rows, grouped=group_by is not None),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="uso-de-skills.csv"'},
+    )
