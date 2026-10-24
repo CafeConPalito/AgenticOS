@@ -23,6 +23,7 @@ from agentic_os.models import (
     Skill,
     SkillMode,
     SkillModeValue,
+    SkillOrigin,
     SkillOriginKind,
     SkillReview,
     SkillVersion,
@@ -31,6 +32,8 @@ from agentic_os.models import (
     VersionStatus,
 )
 from agentic_os.schemas.skills import (
+    ApplyUpdate,
+    CardRead,
     CliImport,
     CliSkillRead,
     DiffFile,
@@ -38,10 +41,17 @@ from agentic_os.schemas.skills import (
     FileRead,
     ImportPath,
     ImportResult,
+    InstallRead,
+    InstallRequest,
+    ListingRead,
     ModesWrite,
+    OriginRead,
+    PreviewRead,
+    PreviewRequest,
     ProposalAccept,
     ProposalRead,
     ProposalReject,
+    RegistryRead,
     RunSkillRead,
     SkillCreate,
     SkillDetail,
@@ -55,6 +65,7 @@ from agentic_os.schemas.skills import (
     TryExcluded,
     TryRead,
     TryRequest,
+    UpdatePreviewRead,
     VersionRead,
     read_skill,
     read_version,
@@ -71,6 +82,7 @@ from agentic_os.services.skills.format import (
     parse_skill_md,
 )
 from agentic_os.services.skills.library import Author, SkillLibrary
+from agentic_os.services.skills.registries import service as registries
 
 router = APIRouter(tags=["skills"])
 DbSession = Annotated[Session, Depends(get_session)]
@@ -627,13 +639,180 @@ def reject_proposal(
     db.commit()
 
 
+def _settings_read(db: Session) -> SkillSettingsRead:
+    values = asdict(skills_config.load(db))
+    key = values.pop("skillsmp_key")
+    values["registries"] = registries.enabled(db)
+    return SkillSettingsRead(**values, skillsmp_key_set=bool(key))
+
+
 @router.get("/settings/skills")
 def get_skill_settings(db: DbSession) -> SkillSettingsRead:
-    return SkillSettingsRead(**asdict(skills_config.load(db)))
+    return _settings_read(db)
 
 
 @router.put("/settings/skills")
 def put_skill_settings(payload: SkillSettingsWrite, db: DbSession) -> SkillSettingsRead:
-    saved = skills_config.save(db, payload.model_dump(exclude_none=True))
+    values = payload.model_dump(exclude_none=True)
+    if "registries" in values:
+        values["registries"] = {
+            k: v for k, v in values["registries"].items() if k in registries.SWITCHABLE
+        }
+    skills_config.save(db, values)
     db.commit()
-    return SkillSettingsRead(**asdict(saved))
+    return _settings_read(db)
+
+
+# ------------------------------------------------------------- registries (block 6)
+def explorer(request: Request) -> registries.RegistryService:
+    return request.app.state.skill_registries
+
+
+def _cards(db: Session, listing: registries.Listing) -> ListingRead:
+    installed = {(o.source, o.ref): o.skill_id for o in db.scalars(select(SkillOrigin))}
+    return ListingRead(
+        cards=[
+            CardRead(**asdict(c), installed_skill_id=installed.get((c.source, c.ref)))
+            for c in listing.cards
+        ],
+        errors=listing.errors,
+        attribution=listing.attribution,
+    )
+
+
+def _preview_read(db: Session, preview: registries.Preview) -> PreviewRead:
+    fetched = preview.fetched
+    parsed = parse_skill_md(fetched.files[SKILL_MD].decode("utf-8"))
+    card = _cards(db, registries.Listing(cards=[fetched.card])).cards[0]
+    return PreviewRead(
+        id=preview.id,
+        card=card,
+        revision=fetched.revision,
+        repo_url=fetched.repo_url,
+        path=fetched.path,
+        license=fetched.license,
+        security=fetched.security,
+        name=preview.name,
+        body=parsed.body,
+        header=parsed.meta,
+        files=[
+            FileRead(path=p, size=len(d), executable=p in preview.executables)
+            for p, d in sorted(fetched.files.items(), key=lambda kv: (kv[0] != SKILL_MD, kv[0]))
+        ],
+        executables=preview.executables,
+    )
+
+
+@router.get("/skills/registries")
+def list_registries(request: Request, db: DbSession) -> list[RegistryRead]:
+    return [RegistryRead(**s) for s in explorer(request).status(db)]
+
+
+@router.get("/skills/registries/popular")
+def popular_skills(
+    request: Request, db: DbSession, source: str | None = None, page: int = Query(1, ge=1)
+) -> ListingRead:
+    """The most used skills (the open ranking plus the sources that list without a query)."""
+    return _cards(db, explorer(request).popular(db, source, page))
+
+
+@router.get("/skills/registries/search")
+def search_skills(
+    request: Request,
+    db: DbSession,
+    q: str = Query(..., min_length=1, max_length=500),
+    source: str | None = None,
+    page: int = Query(1, ge=1),
+) -> ListingRead:
+    """Search in every enabled source (a GitHub address lists that repository's skills). A source
+    that fails is in `errors`: the others still answer (CA18)."""
+    return _cards(db, explorer(request).search(db, q, source, page))
+
+
+@router.post("/skills/registries/preview")
+def preview_skill(payload: PreviewRequest, request: Request, db: DbSession) -> PreviewRead:
+    """Downloads the skill at a fixed revision, to review it before installing (CA16)."""
+    return _preview_read(db, explorer(request).preview(db, payload.source, payload.ref))
+
+
+@router.get("/skills/registries/previews/{preview_id}/files/{path:path}")
+def preview_file(preview_id: str, path: str, request: Request) -> Response:
+    preview = explorer(request).load(preview_id)
+    data = preview.fetched.files.get(normalize_path(path))
+    if data is None:
+        raise NotFound("skill_file")
+    try:
+        data.decode("utf-8")
+        media = "text/plain; charset=utf-8"
+    except UnicodeDecodeError:
+        media = "application/octet-stream"
+    return Response(data, media_type=media)
+
+
+@router.post("/skills/registries/install", status_code=status.HTTP_201_CREATED)
+def install_skill(payload: InstallRequest, request: Request, db: DbSession) -> InstallRead:
+    """Installs exactly what was previewed, at the chosen level. Every executable file must have
+    been opened first."""
+    lib = library(request)
+    skill, renamed_to = explorer(request).install(
+        db,
+        payload.preview_id,
+        payload.scope,
+        payload.project_id,
+        payload.agent_id,
+        payload.opened_files,
+    )
+    db.commit()
+    return InstallRead(skill=_detail(db, lib, skill), renamed_to=renamed_to)
+
+
+def _origin_read(origin: SkillOrigin) -> OriginRead:
+    return OriginRead(
+        source=origin.source,
+        title=registries.SOURCES[origin.source].title,
+        ref=origin.ref,
+        repo_url=origin.repo_url,
+        revision=origin.revision,
+        latest_revision=origin.latest_revision,
+        update_available=bool(origin.latest_revision and origin.latest_revision != origin.revision),
+        license=origin.license,
+        security=origin.security,
+        checked_at=origin.checked_at,
+    )
+
+
+@router.get("/skills/{skill_id}/origin")
+def skill_origin(skill_id: str, request: Request, db: DbSession) -> OriginRead | None:
+    library(request).get(db, skill_id)
+    origin = db.get(SkillOrigin, skill_id)
+    return _origin_read(origin) if origin else None
+
+
+@router.post("/skills/updates/check")
+def check_updates(request: Request, db: DbSession) -> dict[str, str]:
+    """Asks the sources for news of what was installed; returns the skills whose source failed."""
+    failed = explorer(request).check_updates(db)
+    db.commit()
+    return failed
+
+
+@router.post("/skills/{skill_id}/update-preview")
+def update_preview(skill_id: str, request: Request, db: DbSession) -> UpdatePreviewRead:
+    """The source's current version and what it changes against the skill now (CA17)."""
+    skill = library(request).get(db, skill_id)
+    preview, pairs = explorer(request).update_preview(db, skill)
+    return UpdatePreviewRead(
+        preview=_preview_read(db, preview),
+        files=[DiffFile(change=p.change, diff=p.diff) for p in pairs],
+    )
+
+
+@router.post("/skills/{skill_id}/update")
+def apply_update(
+    skill_id: str, payload: ApplyUpdate, request: Request, db: DbSession
+) -> SkillDetail:
+    lib = library(request)
+    skill = lib.get(db, skill_id)
+    explorer(request).apply_update(db, skill, payload.preview_id, payload.opened_files)
+    db.commit()
+    return _detail(db, lib, skill)

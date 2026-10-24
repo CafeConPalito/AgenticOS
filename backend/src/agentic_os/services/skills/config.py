@@ -4,7 +4,7 @@ settings. Registries and proposals add theirs in later blocks."""
 from __future__ import annotations
 
 import json
-from dataclasses import asdict, dataclass, fields
+from dataclasses import asdict, dataclass, field, fields
 
 from sqlalchemy.orm import Session
 
@@ -22,6 +22,10 @@ class SkillSettings:
     # Skills the agents propose (block 5)
     proposals_enabled: bool = True
     proposals_per_run: int = 1  # a skill is more delicate than a document (spec, decision 3)
+    # Public registries (block 6): source id → on/off (missing: the source's default), and the
+    # optional SkillsMP key (without it, 50 searches a day).
+    registries: dict = field(default_factory=dict)
+    skillsmp_key: str = ""
 
 
 _LIMITS = {
@@ -44,20 +48,30 @@ def load(db: Session) -> SkillSettings:
 
 def normalized(base: SkillSettings, values: dict) -> SkillSettings:
     result = SkillSettings(**asdict(base))
-    for field in fields(result):
-        value = values.get(field.name)
-        if field.name == "proposals_enabled":
+    for item in fields(result):
+        value = values.get(item.name)
+        if item.name == "registries":
+            if isinstance(value, dict):
+                merged = dict(result.registries)
+                merged.update({str(k): v for k, v in value.items() if isinstance(v, bool)})
+                result.registries = merged
+            continue
+        if item.name == "skillsmp_key":
+            if isinstance(value, str):
+                result.skillsmp_key = value.strip()[:200]
+            continue
+        if item.name == "proposals_enabled":
             if isinstance(value, bool):
                 result.proposals_enabled = value
             continue
         if value is None or isinstance(value, bool):
             continue
-        if field.name in _LIMITS and isinstance(value, int):
-            low, high = _LIMITS[field.name]
-            setattr(result, field.name, max(low, min(high, value)))
-        elif field.name in _FLOAT_LIMITS and isinstance(value, (int, float)):
-            low, high = _FLOAT_LIMITS[field.name]
-            setattr(result, field.name, max(low, min(high, float(value))))
+        if item.name in _LIMITS and isinstance(value, int):
+            low, high = _LIMITS[item.name]
+            setattr(result, item.name, max(low, min(high, value)))
+        elif item.name in _FLOAT_LIMITS and isinstance(value, (int, float)):
+            low, high = _FLOAT_LIMITS[item.name]
+            setattr(result, item.name, max(low, min(high, float(value))))
     return result
 
 

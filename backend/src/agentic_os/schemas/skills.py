@@ -328,6 +328,8 @@ class SkillSettingsRead(BaseModel):
     words_floor: float
     proposals_enabled: bool
     proposals_per_run: int
+    registries: dict[str, bool]  # every switchable source, with its effective state
+    skillsmp_key_set: bool  # the key itself never goes back to the screen
 
 
 class SkillSettingsWrite(BaseModel):
@@ -339,3 +341,92 @@ class SkillSettingsWrite(BaseModel):
     words_floor: float | None = None
     proposals_enabled: bool | None = None
     proposals_per_run: int | None = None
+    registries: dict[str, bool] | None = None
+    skillsmp_key: str | None = None  # "" removes it
+
+
+# ------------------------------------------------------------- registries (block 6)
+class RegistryRead(BaseModel):
+    id: str
+    title: str
+    enabled: bool
+    switchable: bool
+    default_enabled: bool
+    has_popular: bool
+
+
+class CardRead(BaseModel):
+    source: str
+    ref: str
+    name: str
+    description: str
+    author: str
+    installs: int | None
+    stars: int | None
+    updated_at: str | None
+    category: str
+    url: str
+    installed_skill_id: str | None = None  # already in the library from this same source
+
+
+class ListingRead(BaseModel):
+    cards: list[CardRead]
+    errors: dict[str, str]  # source → offline · unavailable · rate_limited · not_found
+    attribution: str
+
+
+class PreviewRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    source: str
+    ref: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=1000)]
+
+
+class PreviewRead(BaseModel):
+    id: str  # to install exactly this (it expires in an hour)
+    card: CardRead
+    revision: str
+    repo_url: str
+    path: str
+    license: str
+    security: dict
+    name: str
+    body: str
+    header: dict
+    files: list[FileRead]
+    executables: list[str]
+
+
+class InstallRequest(Level):
+    preview_id: str
+    opened_files: list[PathStr] = Field(default_factory=list)
+
+
+class InstallRead(BaseModel):
+    skill: SkillDetail
+    renamed_to: str | None
+
+
+class OriginRead(BaseModel):
+    source: str
+    title: str
+    ref: str
+    repo_url: str
+    revision: str
+    latest_revision: str
+    update_available: bool
+    license: str
+    security: dict
+    checked_at: datetime | None
+
+
+class UpdatePreviewRead(BaseModel):
+    preview: PreviewRead
+    files: list[DiffFile]
+
+
+class ApplyUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    preview_id: str
+    opened_files: list[PathStr] = Field(default_factory=list)
