@@ -115,7 +115,12 @@ class AgyAdapter(CliAdapter):
         folder = plugin_dir(ctx.cwd)
         shutil.rmtree(folder, ignore_errors=True)  # a stale plugin of ours would be replaced
         write_json(folder / "plugin.json", {"name": "agentic-os", RUN_MARKER: ctx.run_id})
-        write_json(folder / "mcp_config.json", {"mcpServers": {"agentic-os": {"url": ctx.mcp_url}}})
+        # agy expands no variables: the external connections carry their values in clear
+        # (spike S2). The folder is ours alone, out of git, and removed when the run ends.
+        servers = {"agentic-os": {"url": ctx.mcp_url}}
+        if ctx.connections:
+            servers |= ctx.connections.servers
+        write_json(folder / "mcp_config.json", {"mcpServers": servers})
         # With skills, reading their SKILL.md is how agy loads one: that read is watched too.
         matcher = f"{AGY_TOOL_MATCHER}|read_file" if ctx.native_skills else AGY_TOOL_MATCHER
         # agy runs hooks through cmd.exe and mangles quoted paths: the short path, unquoted.

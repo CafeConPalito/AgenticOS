@@ -91,6 +91,7 @@ class RunSession:
         on_permission_gone: Callable[[], None] | None = None,
         on_quota: Callable[[str], None] | None = None,
         redactor: Redactor | None = None,
+        mcp_grace: float = 0.0,
     ) -> None:
         self.run_id = run_id
         self.cli = cli
@@ -102,6 +103,9 @@ class RunSession:
         self.cols, self.rows = cols, rows
         # agy: the prompt is typed once its MCP server is connected (ADR 0004).
         self.deferred_prompt = deferred_prompt
+        # agy: seconds the external MCP servers get to connect after `/mcp`, before the prompt
+        # (agy does not say when each one is up: spike S2).
+        self.mcp_grace = mcp_grace
         self.on_end = on_end
         self.on_system_event = on_system_event or (lambda *args, **kwargs: None)
         # A permission dialog of the CLI appeared / went away (Inbox «Aprobación», phase 06).
@@ -377,7 +381,7 @@ class RunSession:
                     self._pty.write(ESC)  # close the /mcp panel
             self._mcp_panel_closed_at = now
             return
-        if self._closing_mcp_panel and now - self._mcp_panel_closed_at > 0.8:
+        if self._closing_mcp_panel and now - self._mcp_panel_closed_at > 0.8 + self.mcp_grace:
             self._send_deferred_prompt(mcp_timeout=not self.mcp_connected)
 
     def _send_deferred_prompt(self, mcp_timeout: bool) -> None:

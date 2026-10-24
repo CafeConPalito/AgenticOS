@@ -36,6 +36,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shlex
 import signal
 import subprocess
@@ -127,7 +128,7 @@ def parse_argv(argv: list[str]) -> tuple[str, dict[str, list[str]]]:
         if current in VALUE_OPTIONS and not options[current]:
             options[current].append(arg)
             current = None
-        elif current in ("--allowedTools", "--add-dir"):  # variadic: every value is theirs
+        elif current in ("--allowedTools", "--disallowedTools", "--add-dir"):  # variadic
             options[current].append(arg)
         elif current == "-i":
             positional.append(arg)
@@ -216,6 +217,39 @@ def load_config() -> tuple[str | None, dict[str, str], dict[str, str]]:
 
 
 MCP_URL, MCP_HEADERS, HOOKS = load_config()
+
+
+def _expand(value):
+    """Claude expands ${VAR} from its environment in the servers' command, args, env, url and
+    headers (spike S1); agy expands nothing (spike S2)."""
+    if not CLAUDE_MODE:
+        return value
+    if isinstance(value, str):
+        return re.sub(r"\$\{([A-Za-z_]\w*)\}", lambda m: os.environ.get(m.group(1), ""), value)
+    if isinstance(value, list):
+        return [_expand(v) for v in value]
+    if isinstance(value, dict):
+        return {k: _expand(v) for k, v in value.items()}
+    return value
+
+
+def load_external() -> dict[str, dict]:
+    """The external MCP servers of the run (phase 18): every one but agentic-os."""
+    try:
+        if CLAUDE_MODE:
+            servers = json.loads(Path(OPTIONS["--mcp-config"][0]).read_text("utf-8"))["mcpServers"]
+        elif AGY_MODE:
+            servers = json.loads((PLUGIN / "mcp_config.json").read_text("utf-8"))["mcpServers"]
+        else:
+            return {}
+    except (OSError, ValueError, KeyError):
+        return {}
+    return {name: _expand(cfg) for name, cfg in servers.items() if name != "agentic-os"}
+
+
+EXTERNAL = load_external()
+HELD: list[subprocess.Popen] = []  # servers this fake CLI started and still owns
+DISALLOWED = set(OPTIONS.get("--disallowedTools", []))
 always_allowed: set[str] = set()
 # Phase 07: the transcript the CLI writes (reported in every hook, like the real ones), the
 # usage so far and the price of a token (only for the status line's cost).
@@ -297,6 +331,63 @@ def mcp(tool: str | None, args: dict | None = None) -> str:
         return f"(mcp error: {error!r})"
 
 
+def external(server: str, tool: str, args: dict) -> str:
+    """Calls a tool of an external MCP server with the configuration the CLI was given, and fires
+    the hooks of a real CLI (phase 18: `mcp__server__tool` in Claude, `call_mcp_tool` in agy)."""
+    import anyio
+    import httpx2
+    from mcp import ClientSession, StdioServerParameters
+    from mcp.client.stdio import stdio_client
+    from mcp.client.streamable_http import streamable_http_client
+
+    config = EXTERNAL.get(server)
+    if config is None:
+        return "(no such server)"
+    call_id = str(uuid.uuid4())
+    if CLAUDE_MODE:
+        name = f"mcp__{server}__{tool}"
+        if name in DISALLOWED:
+            return "(tool not available)"
+        before = {"tool_name": name, "tool_input": args, "tool_use_id": call_id}
+        after = {**before, "mcp_server": server}
+    else:
+        if tool in config.get("disabledTools", []) or (
+            "enabledTools" in config and tool not in config["enabledTools"]
+        ):
+            return "(tool not available)"
+        call = {
+            "name": "call_mcp_tool",
+            "args": {"ServerName": f"agentic-os_{server}", "ToolName": tool, "Arguments": args},
+        }
+        before = after = {"toolCall": call}
+    hook_payload("PreToolUse", before)
+
+    async def go() -> str:
+        if "command" in config:
+            params = StdioServerParameters(
+                command=config["command"],
+                args=config.get("args", []),
+                env={**os.environ, **config.get("env", {})},
+            )
+            transport = stdio_client(params, errlog=subprocess.DEVNULL)
+        else:
+            http = httpx2.AsyncClient(headers=config.get("headers") or None)
+            transport = streamable_http_client(config["url"], http_client=http)
+        async with transport as (read, write, *_), ClientSession(read, write) as session:
+            await session.initialize()
+            result = await session.call_tool(tool, args)
+            return result.content[0].text
+
+    try:
+        answer = anyio.run(go)
+    except BaseException as error:
+        message = f"(connection failed: {type(error).__name__})"
+        hook_payload("PostToolUseFailure", {**after, "error": message})
+        return message
+    hook_payload("PostToolUse", {**after, "tool_response": answer})
+    return answer
+
+
 def agy_permission(tool_id: str) -> bool:
     """agy's dialog before an MCP call (any mode but autonomous)."""
     if SKIP_PERMISSIONS or tool_id in always_allowed:
@@ -351,7 +442,9 @@ def use_tools(text: str) -> int | None:
     is a line break), `ANADE: ruta=a` appends lines to it and `COMMIT: mensaje` commits the whole
     folder, so a run can commit halfway and leave other work uncommitted. Phase 12: `EN: sub`
     moves the directives that follow into a subfolder (`EN: .` goes back), to work in several
-    repositories. Phase 06:
+    repositories. Phase 18: `CONEXION: servidor|herramienta|k=v,k=v|archivo` calls a tool of an
+    external MCP server of the run's configuration and writes the answer, and
+    `SERVIDOR: servidor|archivo` starts one and keeps it (its pid goes to the file). Phase 06:
     `PREGUNTA: título|opción|…` → request_human (ends the turn; a later «Respuesta de la
     persona…» message completes the task);
     `PERMISO: comando` → shows the CLI's permission dialog (Claude's or agy's real texts) and
@@ -487,6 +580,27 @@ def use_tools(text: str) -> int | None:
             }
             Path(target).write_text(mcp("propose_skill", args_s), "utf-8")
             out(f"● MCP propose_skill: {name}")
+            continue
+        if keyword == "SERVIDOR":  # phase 18: `SERVIDOR: servidor|archivo` starts it and keeps it
+            server, target = [*value.split("|"), ""][:2]
+            config = EXTERNAL.get(server, {})
+            started = subprocess.Popen(
+                [config["command"], *config.get("args", [])],
+                env={**os.environ, **config.get("env", {})},
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+            )
+            HELD.append(started)  # like a real CLI, which owns its servers until it ends
+            Path(target).write_text(str(started.pid), "utf-8")
+            out(f"● servidor {server} arrancado ({started.pid})")
+            continue
+        if keyword == "CONEXION":  # phase 18: `CONEXION: servidor|herramienta|k=v,k=v|archivo`
+            server, tool, pairs, target = [*value.split("|"), "", "", "", ""][:4]
+            call_args = dict(p.split("=", 1) for p in pairs.split(",") if "=" in p)
+            answer_text = external(server, tool, call_args)
+            Path(target).write_text(answer_text, "utf-8")
+            out(f"● MCP {server}/{tool}: {answer_text[:120]}")
             continue
         if keyword == "MAPA" and MCP_URL is not None:  # `MAPA: archivo`
             Path(value).write_text(mcp("knowledge_map", {}), "utf-8")
