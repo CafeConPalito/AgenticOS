@@ -63,5 +63,5 @@ def test_the_matching_skill_is_offered_loaded_and_recorded(tmp_path: Path):
         listed = {s["id"]: s for s in api.get("/api/skills")}
         assert listed[skill["id"]]["used"] == 1
         # the run's copies of the skills are removed when it ends
-        folder = Path(settings.data_dir) / "runs" / run_id / "skills"
+        folder = Path(settings.data_dir) / "runs" / run_id / "plugin"
         assert wait_until(lambda: not folder.exists(), timeout=10)

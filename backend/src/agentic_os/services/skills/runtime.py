@@ -53,12 +53,56 @@ class Ranker:
     floor: float = 0.0
 
 
+PLUGIN_NAME = "aos"  # Claude shows our skills as «aos:<name>» (spike S1)
+AGY_SKILLS = Path(".agents") / "plugins" / "agentic-os" / "skills"
+
+
+def plugin_dir(runs_dir: Path, run_id: str) -> Path:
+    """The run's skills as a Claude plugin: `--plugin-dir` loads it for that session only."""
+    return Path(runs_dir) / run_id / "plugin"
+
+
 def skills_dir(runs_dir: Path, run_id: str) -> Path:
-    return Path(runs_dir) / run_id / "skills"
+    return plugin_dir(runs_dir, run_id) / "skills"
 
 
 def clean_run(runs_dir: Path, run_id: str) -> None:
-    shutil.rmtree(skills_dir(runs_dir, run_id), ignore_errors=True)
+    shutil.rmtree(plugin_dir(runs_dir, run_id), ignore_errors=True)
+
+
+def native_name(cli: str, event: str, payload: object) -> str | None:
+    """The skill of ours a CLI loaded by its own means, from a PreToolUse hook: Claude's
+    `Skill` tool with «aos:<name>», or agy reading the SKILL.md of its workspace plugin
+    (spikes S1, S2). None for anything else."""
+    data = payload if isinstance(payload, dict) else {}
+    if event != "PreToolUse":
+        return None
+    if cli == "claude":
+        if data.get("tool_name") != "Skill":
+            return None
+        tool_input = data.get("tool_input") if isinstance(data.get("tool_input"), dict) else {}
+        name = str(tool_input.get("skill") or "")
+        prefix = f"{PLUGIN_NAME}:"
+        return name[len(prefix) :] if name.startswith(prefix) else None
+    call = data.get("toolCall") if isinstance(data.get("toolCall"), dict) else {}
+    if call.get("name") != "read_file":
+        return None
+    args = call.get("args") if isinstance(call.get("args"), dict) else {}
+    parts = str(args.get("Path") or "").replace("\\", "/").lower().split("/")
+    marker = [p.lower() for p in AGY_SKILLS.parts]
+    for i in range(len(parts) - len(marker) - 1):
+        if parts[i : i + len(marker)] == marker and parts[i + len(marker) + 1] == "skill.md":
+            return parts[i + len(marker)]
+    return None
+
+
+def mark_native(db: Session, run: Run, name: str) -> bool:
+    """Records that the CLI loaded `name` by itself; False if the run was not offered it."""
+    row = db.scalar(select(RunSkill).where(RunSkill.run_id == run.id, RunSkill.skill_name == name))
+    if row is None:
+        return False
+    mark_loaded(row, LoadedVia.NATIVE)
+    return True
 
 
 def agent_ids(db: Session, run: Run) -> list[str]:

@@ -93,8 +93,9 @@ def test_claude_is_isolated_with_its_own_files_and_the_prompt_first(tmp_path: Pa
         "PostToolUse",
         "PermissionRequest",
     }
-    # Tool hooks only for the native subagent tool (no curl on every tool call).
-    assert hooks["PreToolUse"][0]["matcher"] == "Agent|Task"
+    # Tool hooks only for the native subagent tool and the skill tool (phase 17), not on every
+    # tool call (no curl each time).
+    assert hooks["PreToolUse"][0]["matcher"] == "Agent|Task|Skill"
     assert "matcher" not in hooks["Stop"][0]
     assert hooks["Stop"][0]["hooks"][0]["command"] == f'"{ctx.hook_command}" Stop'
     # Phase 07: the status line reports the session's cost through the same script.

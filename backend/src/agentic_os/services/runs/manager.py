@@ -365,6 +365,7 @@ class RunManager:
                 str(skills_folder),  # the skills' scripts run from there
             ),
             git_authorized=bool(project.agents_git_authorized),
+            skills_dir=skills_folder,
         )
         try:
             spec = adapter.prepare(ctx)
@@ -1397,6 +1398,15 @@ class RunManager:
                 self._native_event(run_id, "subagent_stop", node, "")
             state.by_key.clear()
 
+    def _native_skill(self, run_id: str, name: str) -> None:
+        """The CLI loaded one of the run's skills by itself (phase 17, block 4)."""
+        with self._db() as db:
+            run = db.get(Run, run_id)
+            if run is None or not skill_runtime.mark_native(db, run, name):
+                return
+            db.commit()
+        self.add_event(run_id, EventKind.SYSTEM, "skill_native", name)
+
     def _native_event(self, run_id: str, name: str, node: str, description: str) -> None:
         detail = json.dumps({"id": node, "description": description[:300]}, ensure_ascii=False)
         self.add_event(run_id, EventKind.HOOK, name, detail)
@@ -1468,6 +1478,9 @@ class RunManager:
             self._native_subagent(run_id, cli, event, payload, foreign)
         except Exception:
             log.exception("could not track a native subagent", run_id=run_id, hook=event)
+        name = skill_runtime.native_name(cli.value, event, payload)
+        if name is not None:
+            self._native_skill(run_id, name)
         if foreign:
             return
         boundary = session.on_hook(effect) if session is not None else False

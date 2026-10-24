@@ -221,7 +221,7 @@ def test_a_run_records_its_offer_and_its_section_stays_in_budget(
         fixed = next(r for r in rows if r.skill_id == revision)
         assert (fixed.offered, fixed.loaded_via, fixed.stage_name) == ("always", "context", "QA")
         assert fixed.pipeline_name == "Web"
-        assert (tmp_path / run.id / "skills" / "revision-codigo" / "SKILL.md").exists()
+        assert (tmp_path / run.id / "plugin" / "skills" / "revision-codigo" / "SKILL.md").exists()
         text = runtime.section(db, lib, tmp_path, run.id)
     assert text.startswith("## Skills")
     # too big for the budget: listed to load with use_skill instead of written whole
