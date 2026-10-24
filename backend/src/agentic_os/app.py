@@ -157,7 +157,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         manager.knowledge = knowledge  # the agents' search_knowledge uses its search
         skills = SkillLibrary(
             SkillStore(Path(settings.data_dir)),
-            embed=knowledge.embed_passages,
+            # Skills and tasks both as questions: symmetric similarity (spike S4c).
+            embed=lambda texts: knowledge.embed_passages(texts, kind="query"),
             model=lambda: entry.id if (entry := knowledge.embedding_model()) else None,
         )
         app.state.skills = skills

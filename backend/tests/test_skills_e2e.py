@@ -65,3 +65,49 @@ def test_the_matching_skill_is_offered_loaded_and_recorded(tmp_path: Path):
         # the run's copies of the skills are removed when it ends
         folder = Path(settings.data_dir) / "runs" / run_id / "plugin"
         assert wait_until(lambda: not folder.exists(), timeout=10)
+
+
+def test_import_run_propose_and_approve(tmp_path: Path):
+    """CA15 (also with the packaged app): import a skill folder, a run loads it, the agent
+    proposes another one, the person approves it from the Inbox's data and the next run gets it."""
+    from test_hitl_e2e import setup
+
+    source = tmp_path / "mis-skills" / "informes-semanales"
+    source.mkdir(parents=True)
+    (source / "SKILL.md").write_text(
+        "---\nname: informes-semanales\ndescription: Redactar el informe semanal del proyecto "
+        "con lo hecho y lo pendiente.\n---\n\n# Informe\n1. Lista lo hecho.\n",
+        "utf-8",
+    )
+    project_folder = tmp_path / "web-claude"
+    with live_server(settings_for(tmp_path)) as server:
+        api = Api(server)
+        agent, project = setup(api, tmp_path, "claude")
+        imported = api.post("/api/skills/import", {"scope": "general", "path": str(source)})
+        assert imported["skill"]["name"] == "informes-semanales"
+        title = (
+            "Redactar el informe semanal; SKILL: informes-semanales|skill.txt; "
+            "PROPONE_SKILL: plantilla-de-actas|propuesta.txt; TERMINA: hecho"
+        )
+        task = api.post("/api/tasks", {"project_id": project, "agent_id": agent, "title": title})
+        done = api.wait_status(task["id"], "done")
+        assert "Lista lo hecho." in (project_folder / "skill.txt").read_text("utf-8")
+        assert "Propuesta registrada" in (project_folder / "propuesta.txt").read_text("utf-8")
+        rows = api.get(f"/api/runs/{done['last_run_id']}/skills")
+        assert rows[0]["skill_name"] == "informes-semanales" and rows[0]["loaded_via"] == "tool"
+
+        item = next(i for i in api.get("/api/inbox") if i["kind"] == "skill")
+        proposal = api.get(f"/api/skills/proposals/{item['skill_version_id']}")
+        assert proposal["new_skill"] and proposal["executables"] == []
+        api.post(f"/api/skills/proposals/{item['skill_version_id']}/accept", {"scope": "general"})
+
+        second = api.post(
+            "/api/tasks",
+            {
+                "project_id": project,
+                "agent_id": agent,
+                "title": "Las actas; SKILL: plantilla-de-actas|segunda.txt; TERMINA: hecho",
+            },
+        )
+        api.wait_status(second["id"], "done")
+        assert "Primer paso comprobado." in (project_folder / "segunda.txt").read_text("utf-8")

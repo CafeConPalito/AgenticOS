@@ -1,0 +1,23 @@
+{
+ "cli": "claude",
+ "root": "C:\\Users\\usuario\\AppData\\Local\\Temp\\aos-skills-real-r0vft0vv",
+ "task_status": "running",
+ "seconds": 600,
+ "run_skills": [
+  {
+   "skill_id": "e96dbaff-0bfd-4280-965d-1e1002ca8ebe",
+   "skill_name": "fichero-de-saludo",
+   "offered": "candidate",
+   "rank": 1,
+   "score": 0.5503,
+   "loaded_via": null,
+   "loaded_at": null,
+   "version": 1
+  }
+ ],
+ "events": [],
+ "cost_usd": null,
+ "saludo": null,
+ "finished": false,
+ "config_changes": []
+}

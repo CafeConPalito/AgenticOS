@@ -477,6 +477,17 @@ def use_tools(text: str) -> int | None:
             Path(target).write_text(mcp("read_skill_file", {"name": name, "path": path}), "utf-8")
             out(f"● MCP read_skill_file: {name}/{path}")
             continue
+        if keyword == "PROPONE_SKILL" and MCP_URL is not None:  # `PROPONE_SKILL: nombre|archivo`
+            name, _, target = value.rpartition("|")
+            args_s = {
+                "name": name,
+                "description": f"Cómo hacer {name.replace('-', ' ')} paso a paso.",
+                "body": f"# {name}\n1. Primer paso comprobado.\n2. Segundo paso.\n",
+                "note": "Aprendido en esta tarea",
+            }
+            Path(target).write_text(mcp("propose_skill", args_s), "utf-8")
+            out(f"● MCP propose_skill: {name}")
+            continue
         if keyword == "MAPA" and MCP_URL is not None:  # `MAPA: archivo`
             Path(value).write_text(mcp("knowledge_map", {}), "utf-8")
             out("● MCP knowledge_map")

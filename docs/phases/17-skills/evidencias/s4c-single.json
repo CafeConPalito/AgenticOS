@@ -1,0 +1,162 @@
+{
+ "S4 (82)": {
+  "e5-small": {
+   "raw": {
+    "hit@3": 0.917,
+    "floor_p10": 0.843
+   },
+   "sym": {
+    "hit@3": 0.938,
+    "floor_p10": 0.873
+   },
+   "centred": {
+    "hit@3": 0.917,
+    "floor_p10": 0.252
+   },
+   "csym": {
+    "hit@3": 0.938,
+    "floor_p10": 0.263
+   },
+   "hybrid": {
+    "hit@3": 0.938,
+    "floor_p10": 0.033
+   },
+   "hybrid csym": {
+    "hit@3": 0.938,
+    "floor_p10": 0.033
+   }
+  },
+  "gemma2": {
+   "raw": {
+    "hit@3": 1.0,
+    "floor_p10": 0.68
+   },
+   "sym": {
+    "hit@3": 1.0,
+    "floor_p10": 0.683
+   },
+   "centred": {
+    "hit@3": 1.0,
+    "floor_p10": 0.281
+   },
+   "csym": {
+    "hit@3": 0.979,
+    "floor_p10": 0.329
+   },
+   "hybrid": {
+    "hit@3": 0.979,
+    "floor_p10": 0.033
+   },
+   "hybrid csym": {
+    "hit@3": 0.979,
+    "floor_p10": 0.033
+   }
+  },
+  "bge-m3": {
+   "raw": {
+    "hit@3": 0.958,
+    "floor_p10": 0.578
+   },
+   "sym": {
+    "hit@3": 0.958,
+    "floor_p10": 0.578
+   },
+   "centred": {
+    "hit@3": 0.958,
+    "floor_p10": 0.27
+   },
+   "csym": {
+    "hit@3": 0.958,
+    "floor_p10": 0.27
+   },
+   "hybrid": {
+    "hit@3": 0.958,
+    "floor_p10": 0.032
+   },
+   "hybrid csym": {
+    "hit@3": 0.979,
+    "floor_p10": 0.032
+   }
+  }
+ },
+ "test (20)": {
+  "e5-small": {
+   "raw": {
+    "hit@3": 0.875,
+    "floor_p10": 0.836
+   },
+   "sym": {
+    "hit@3": 0.925,
+    "floor_p10": 0.864
+   },
+   "centred": {
+    "hit@3": 0.875,
+    "floor_p10": 0.216
+   },
+   "csym": {
+    "hit@3": 0.925,
+    "floor_p10": 0.191
+   },
+   "hybrid": {
+    "hit@3": 0.95,
+    "floor_p10": 0.032
+   },
+   "hybrid csym": {
+    "hit@3": 0.95,
+    "floor_p10": 0.033
+   }
+  },
+  "gemma2": {
+   "raw": {
+    "hit@3": 1.0,
+    "floor_p10": 0.667
+   },
+   "sym": {
+    "hit@3": 1.0,
+    "floor_p10": 0.676
+   },
+   "centred": {
+    "hit@3": 1.0,
+    "floor_p10": 0.217
+   },
+   "csym": {
+    "hit@3": 0.975,
+    "floor_p10": 0.24
+   },
+   "hybrid": {
+    "hit@3": 0.95,
+    "floor_p10": 0.033
+   },
+   "hybrid csym": {
+    "hit@3": 0.95,
+    "floor_p10": 0.033
+   }
+  },
+  "bge-m3": {
+   "raw": {
+    "hit@3": 0.975,
+    "floor_p10": 0.529
+   },
+   "sym": {
+    "hit@3": 0.975,
+    "floor_p10": 0.529
+   },
+   "centred": {
+    "hit@3": 0.975,
+    "floor_p10": 0.221
+   },
+   "csym": {
+    "hit@3": 0.975,
+    "floor_p10": 0.221
+   },
+   "hybrid": {
+    "hit@3": 0.95,
+    "floor_p10": 0.032
+   },
+   "hybrid csym": {
+    "hit@3": 0.975,
+    "floor_p10": 0.032
+   }
+  }
+ }
+}

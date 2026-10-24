@@ -142,8 +142,8 @@ CATALOG: tuple[CatalogEntry, ...] = (
             pooling="mean",
             inputs=("input_ids", "attention_mask", "token_type_ids"),
             related_raw=0.91,  # raw cosine that links two documents in a tiny library (phase 15)
-            skill_floor=0.83,  # cosine from which a skill is offered for a task (phase 17, S4)
-            skill_duplicate=0.95,  # a proposal this close to a skill is «muy parecida» (block 5)
+            skill_floor=0.83,  # cosine from which a skill is offered for a task (phase 17, S4c)
+            skill_duplicate=0.945,  # a proposal this close to a skill is «muy parecida» (S4c)
         ),
     ),
     CatalogEntry(
@@ -175,8 +175,8 @@ CATALOG: tuple[CatalogEntry, ...] = (
             document_prefix="title: none | text: ",
             pooling="sentence_embedding",
             related_raw=0.80,
-            skill_floor=0.62,
-            skill_duplicate=0.90,
+            skill_floor=0.60,
+            skill_duplicate=0.87,
             inputs=("input_ids", "attention_mask"),
             # The text model still asks for the picture, video and audio features: empty ones.
             empty_inputs=("image_features", "video_features", "audio_features"),
@@ -205,8 +205,8 @@ CATALOG: tuple[CatalogEntry, ...] = (
             document_prefix="",
             pooling="cls",
             related_raw=0.68,
-            skill_floor=0.52,
-            skill_duplicate=0.86,
+            skill_floor=0.50,
+            skill_duplicate=0.82,
             inputs=("input_ids", "attention_mask"),
         ),
     ),

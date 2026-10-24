@@ -87,3 +87,24 @@ Script `spikes/skills/s4b_words.py`; datos en `s4b-words.json`. Con el mismo cor
 | Raíz + relativo 0,30 | 0,954 | 0,933 | 0,871 | 0,688 |
 
 (hit@3 en las tareas con skill). El umbral relativo es la puntuación dividida por la mejor que podría sacar la consulta en esa biblioteca. Con 0,15 se filtran las tareas sin skill en el 64, 56, 42 y 10 % de los casos (para 5, 10, 20 y 82 skills): se ofrece alguna de más.
+
+## S4c · Medido como el producto (bloque 11)
+El test de calidad (CA5) con el producto daba con e5 un 77,5 % en las 3 primeras (85 % sin umbral), lejos del 91,7 % de S4. Hay dos causas:
+1. **Lotes**: S4 calculaba los vectores en lotes, y el producto calcula cada texto solo. El relleno mueve el vector un poco (coseno de 0,9968 entre el mismo texto solo y en lote), y con e5 las puntuaciones de skills distintas están a milésimas.
+2. **Idioma**: el corpus del test tiene más skills en español (7 de 20). e5 acerca las tareas en español a las skills en español aunque encaje mejor una en inglés.
+
+`spikes/skills/s4c_single.py` (datos en `s4c-single.json`), con cada texto calculado solo:
+
+| Corpus · modelo | Tal cual | **Consulta en los dos lados** | Centrado | Híbrido RRF |
+|---|---|---|---|---|
+| S4 (82) · e5 | 0,917 | **0,938** | 0,917 | 0,938 |
+| Test (20) · e5 | 0,875 | **0,925** | 0,875 | 0,950 |
+| S4 (82) · Gemma | 1,000 | **1,000** | 1,000 | 0,979 |
+| Test (20) · Gemma | 1,000 | **1,000** | 1,000 | 0,950 |
+| S4 (82) · bge-m3 | 0,958 | **0,958** | 0,958 | 0,958 |
+| Test (20) · bge-m3 | 0,975 | **0,975** | 0,975 | 0,950 |
+
+**Decisión**:
+- las skills se calculan con el prefijo de **consulta**, igual que las tareas: es la similitud simétrica que recomienda e5. Mejora e5 y no cambia los otros dos modelos;
+- el híbrido se descarta porque empeora Gemma;
+- **umbrales recalibrados** (mínimo para ofrecer / «muy parecida»): e5 0,83 / 0,945, Gemma 0,60 / 0,87 y bge-m3 0,50 / 0,82. Con el mínimo, el acierto en las 3 primeras no baja en ningún corpus salvo bge-m3 en el de test (de 0,975 a 0,950). «Muy parecida» queda entre el p99,9 de las skills distintas y la paráfrasis más baja (e5 0,942 / 0,949; Gemma 0,854 / 0,883; bge-m3 0,777 / 0,864).

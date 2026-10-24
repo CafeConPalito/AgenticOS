@@ -94,7 +94,8 @@ Evidencias en [`evidencias/s1-s5-skills.md`](evidencias/s1-s5-skills.md); script
    - el umbral fijo de BM25 de S4 no vale para bibliotecas pequeñas;
    - con las palabras sin tildes y recortadas a 5 letras («migración» ~ «migraciones») y la puntuación dividida por la mejor posible para la consulta, el umbral **0,15** acierta entre el 92 y el 98 % en las 3 primeras con 5, 10, 20 y 82 skills (antes, entre el 74 y el 85 %);
    - a cambio, cuando ninguna encaja se ofrece alguna de más. Se prefiere así porque ofrecer una línea de más cuesta poco.
-9. **Fuera de la fase, anotado**: `SESSION_MARKERS` (`runs/launcher.py`) no incluye `CLAUDE_CODE_BRIDGE_SESSION_ID`, que el CLI ya exporta. Se revisa como corrección aparte.
+9. **Vectores de las skills como consulta y umbrales recalibrados** (spike S4c, bloque 11): medido como el producto (cada texto solo), e5 subía de 0,875 a 0,925 en el corpus del test calculando las skills con el prefijo de consulta, y los otros modelos no cambian. Umbrales: e5 0,83 / 0,945, Gemma 0,60 / 0,87 y bge-m3 0,50 / 0,82 (para ofrecer / «muy parecida»).
+10. **Fuera de la fase, anotado**: `SESSION_MARKERS` (`runs/launcher.py`) no incluye `CLAUDE_CODE_BRIDGE_SESSION_ID`, que el CLI ya exporta. Se revisa como corrección aparte.
 
 ## Diseño ([ADR 0024](../../adr/0024-skills.md), nuevo, borrador)
 

@@ -235,9 +235,10 @@ class KnowledgeService:
                 return None
         return vectors[0]
 
-    def embed_passages(self, texts: list[str]) -> np.ndarray | None:
+    def embed_passages(self, texts: list[str], kind: str = "passage") -> np.ndarray | None:
         """The vectors of some passages (a proposal's chunks), or None without a model. Uses the
-        worker that embeds questions, so it never waits behind a long indexing."""
+        worker that embeds questions, so it never waits behind a long indexing. `kind="query"`
+        embeds them as questions: the skills are compared with tasks that way (spike S4c)."""
         entry = self.embedding_model()
         if entry is None or not texts:
             return None
@@ -250,7 +251,7 @@ class KnowledgeService:
                 )
             try:
                 return embeddings.embed(
-                    self._query_worker, model_spec(self.data_dir, entry), texts, "passage"
+                    self._query_worker, model_spec(self.data_dir, entry), texts, kind
                 )
             except KnowledgeError as error:
                 log.warning("knowledge_passage_embedding_failed", message=error.message)
