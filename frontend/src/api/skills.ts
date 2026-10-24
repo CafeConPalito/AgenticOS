@@ -304,6 +304,9 @@ export const skillKeys = {
   statsRuns: (params: string) => ['skills', 'stats-runs', params] as const,
 }
 
+/** A file path in a URL: each segment encoded («run#1.py», «a?b.md»…), the slashes kept. */
+export const encodePath = (path: string) => path.split('/').map(encodeURIComponent).join('/')
+
 function levelQuery(level: KnowledgeLevel | 'all'): string {
   if (level === 'all') return ''
   const params = new URLSearchParams({ scope: level.scope })
@@ -427,7 +430,7 @@ export function useRestoreVersion(id: string) {
 export async function fetchSkillFile(id: string, path: string, version?: string): Promise<string> {
   const base = await getApiBaseUrl()
   const query = version ? `?version=${encodeURIComponent(version)}` : ''
-  const response = await fetch(`${base}/api/skills/${id}/files/${path}${query}`)
+  const response = await fetch(`${base}/api/skills/${id}/files/${encodePath(path)}${query}`)
   if (!response.ok) throw new Error(`HTTP ${response.status}`)
   return response.text()
 }
@@ -626,7 +629,9 @@ export function usePreviewSkill() {
 
 export async function fetchPreviewFile(previewId: string, path: string): Promise<string> {
   const base = await getApiBaseUrl()
-  const response = await fetch(`${base}/api/skills/registries/previews/${previewId}/files/${path}`)
+  const response = await fetch(
+    `${base}/api/skills/registries/previews/${previewId}/files/${encodePath(path)}`,
+  )
   if (!response.ok) throw new Error(`HTTP ${response.status}`)
   return response.text()
 }

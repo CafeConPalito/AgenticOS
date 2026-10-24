@@ -268,3 +268,52 @@ def test_rejecting_a_new_skill_deletes_it(server: LiveServer, tmp_path: Path):
     assert api(server, "GET", "/skills").json() == []
     again = api(server, "POST", f"/skills/proposals/{proposal['version']['id']}/accept", json={})
     assert again.status_code == 404 or again.json()["detail"]["code"] == "not_proposed"
+
+
+def test_approving_at_a_level_where_the_name_exists_says_so(server: LiveServer, tmp_path: Path):
+    """Code review: no 500 from the unique index, the person is told the name is taken."""
+    api(
+        server,
+        "POST",
+        "/skills",
+        json={"scope": "general", "name": "migraciones-alembic", "description": "Otra cosa."},
+    )
+    propose(new_run(server, tmp_path), body="Otro cuerpo.")  # an agent-level proposal
+    [proposal] = pending(server)
+    response = api(
+        server,
+        "POST",
+        f"/skills/proposals/{proposal['version']['id']}/accept",
+        json={"scope": "general"},
+    )
+    assert response.status_code == 409
+    assert response.json()["detail"]["code"] == "name_taken"
+
+
+def test_the_same_pending_version_twice_is_refused(server: LiveServer, tmp_path: Path):
+    api(
+        server,
+        "POST",
+        "/skills",
+        json={"scope": "general", "name": "revision", "description": "Revisar.", "body": "v1"},
+    )
+    args = {"replaces": "revision", "body": "v2 igual"}
+    call(new_run(server, tmp_path)["url"], "propose_skill", args)
+    again = call(new_run(server, tmp_path)["url"], "propose_skill", args)
+    assert "Ya hay una propuesta igual pendiente de revisar: «revision»" in again
+    assert len(pending(server)) == 1
+
+
+def test_deleting_a_skill_dismisses_its_pending_proposals(server: LiveServer, tmp_path: Path):
+    created = api(
+        server,
+        "POST",
+        "/skills",
+        json={"scope": "general", "name": "revision", "description": "Revisar.", "body": "v1"},
+    ).json()
+    call(new_run(server, tmp_path)["url"], "propose_skill", {"replaces": "revision", "body": "v2"})
+    api(server, "DELETE", f"/skills/{created['id']}")
+    assert not [i for i in api(server, "GET", "/inbox").json() if i["kind"] == "skill"]
+    with server.db() as db:
+        item = db.scalar(select(InboxItem).where(InboxItem.kind == "skill"))
+        assert item.resolution == "dismissed"

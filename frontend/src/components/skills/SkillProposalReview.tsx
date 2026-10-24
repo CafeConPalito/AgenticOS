@@ -81,11 +81,14 @@ function Review({ versionId, onClose }: { versionId: string; onClose: () => void
   const [name, setName] = useState(data.skill.name)
   const [description, setDescription] = useState(String(data.header.description ?? ''))
   const [level, setLevel] = useState<KnowledgeLevel>(() => {
-    const suggested = (data.suggested_scope || data.skill.scope) as KnowledgeScope
+    const scope = (data.suggested_scope || data.skill.scope) as KnowledgeScope
     return {
-      scope: suggested,
-      projectId: data.skill.project_id ?? undefined,
-      agentId: data.skill.agent_id ?? data.version.author.agent_id ?? undefined,
+      scope,
+      projectId: scope === 'project' ? (data.skill.project_id ?? undefined) : undefined,
+      agentId:
+        scope === 'agent'
+          ? (data.skill.agent_id ?? data.version.author.agent_id ?? undefined)
+          : undefined,
     }
   })
   const [opened, setOpened] = useState<Set<string>>(new Set())

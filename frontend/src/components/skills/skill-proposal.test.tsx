@@ -91,3 +91,34 @@ describe('Reviewing a skill an agent proposed (CA9, CA13)', () => {
     )
   })
 })
+
+describe('Regressions of the code review', () => {
+  it('approves a project-level proposal without an agent', async () => {
+    installFakeWebSocket()
+    const project = proposal()
+    project.skill = { ...project.skill, scope: 'project', project_id: 'p1', agent_id: null }
+    project.suggested_scope = 'project'
+    project.executables = []
+    project.files = [skillFile('SKILL.md')]
+    const backend = createFakeBackend({
+      inbox: [makeInboxItem({ id: 'i1', kind: 'skill', skill_version_id: 'pv1' })],
+      skills: { proposals: [project] },
+    })
+    const user = userEvent.setup()
+    renderApp('/inbox')
+    await user.click(await screen.findByRole('button', { name: es.inbox.reviewSkill }))
+    await user.click(await screen.findByRole('button', { name: p.approve }))
+    await waitFor(() => expect(backend.skills.accepted).toHaveLength(1))
+    expect(backend.skills.accepted[0].body).toMatchObject({
+      scope: 'project',
+      project_id: 'p1',
+      agent_id: null,
+    })
+  })
+
+  it('encodes file paths segment by segment', async () => {
+    const { encodePath } = await import('@/api/skills')
+    expect(encodePath('scripts/run#1.py')).toBe('scripts/run%231.py')
+    expect(encodePath('docs/a?b.md')).toBe('docs/a%3Fb.md')
+  })
+})

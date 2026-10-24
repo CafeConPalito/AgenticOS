@@ -262,7 +262,7 @@ def test_sources_can_be_switched_and_a_github_address_lists_its_skills(client: T
         params={"q": "https://github.com/anthropics/skills/tree/main/skills"},
     ).json()
     assert [(c["source"], c["ref"], c["name"]) for c in listing["cards"]] == [
-        ("github", "anthropics/skills/skills/pdf", "pdf")
+        ("github", "anthropics/skills/skills/pdf@main", "pdf")
     ]
 
 
@@ -292,3 +292,19 @@ def test_a_zip_from_clawhub_is_read_like_an_import():
     assert fetched.revision == "4.0.5"
     assert fetched.security == {"clawhub": {"suspicious": False}}
     assert json.loads(json.dumps(fetched.security))  # stored as JSON on the origin
+
+
+def test_a_github_address_with_a_branch_installs_from_that_branch(client: TestClient, web):
+    """Code review: the branch of the pasted address travels with the card."""
+    listing = client.get(
+        "/api/skills/registries/search",
+        params={"q": "https://github.com/anthropics/skills/tree/dev/skills"},
+    ).json()
+    [card] = listing["cards"]
+    assert card["ref"] == "anthropics/skills/skills/pdf@dev"
+    web.calls.clear()
+    preview = client.post(
+        "/api/skills/registries/preview", json={"source": "github", "ref": card["ref"]}
+    )
+    assert preview.status_code == 200, preview.text
+    assert "api.github.com/repos/anthropics/skills/commits/dev" in web.calls

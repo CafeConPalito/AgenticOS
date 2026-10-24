@@ -177,6 +177,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         )
         knowledge.start()
         if knowledge.mode != "off":
+            # Also warms the query worker: a run's first launch then does not wait for it.
             threading.Thread(
                 target=refresh_skill_vectors,
                 args=(app.state.sessionmaker, skills),

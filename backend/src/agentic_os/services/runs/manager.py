@@ -315,6 +315,12 @@ class RunManager:
         baseline: dict | None = None,
     ) -> Run:
         cli, account, model = target.cli, target.account, target.model
+        # The task's vector first: no row of this run is written while the model answers.
+        ranker = self.skill_ranker().for_query(
+            skill_runtime.query_text(
+                db, task.stage_id if task else None, parent is not None, prompt, agent, task
+            )
+        )
         run = Run(
             workspace_id=DEFAULT_WORKSPACE,
             agent_id=agent.id,
@@ -340,9 +346,7 @@ class RunManager:
         run.cli_version = self.cli_version(cli)
         run_dir = self.runs_dir / run.id
         # The run's skills are chosen once, here: every get_context shows the same ones.
-        skill_runtime.prepare_run(
-            db, self.skill_library, self.runs_dir, run, agent, task, self.skill_ranker()
-        )
+        skill_runtime.prepare_run(db, self.skill_library, self.runs_dir, run, agent, task, ranker)
         skills_folder = skill_runtime.skills_dir(self.runs_dir, run.id)
         skills_folder.mkdir(parents=True, exist_ok=True)
         token = self.tokens.issue(run.id)
@@ -376,6 +380,7 @@ class RunManager:
         except Exception:
             self.tokens.revoke(run.id)
             adapter.cleanup(ctx)
+            skill_runtime.clean_run(self.runs_dir, run.id)
             raise
         run.cli_session_id = spec.session_id
         db.commit()
@@ -408,6 +413,7 @@ class RunManager:
         except Exception as error:  # spawn failed (bad executable, permissions…)
             self.tokens.revoke(run.id)
             adapter.cleanup(ctx)
+            skill_runtime.clean_run(self.runs_dir, run.id)
             self._release_agy_folder(folder)
             run.status, run.error, run.ended_at = RunStatus.FAILED, str(error), utcnow()
             self._drop_changes(db, run)  # the CLI never ran: nothing to compare, no refs to keep
@@ -1516,9 +1522,12 @@ class RunManager:
             self._native_subagent(run_id, cli, event, payload, foreign)
         except Exception:
             log.exception("could not track a native subagent", run_id=run_id, hook=event)
-        name = skill_runtime.native_name(cli.value, event, payload)
-        if name is not None:
-            self._native_skill(run_id, name)
+        try:
+            name = skill_runtime.native_name(cli.value, event, payload)
+            if name is not None:
+                self._native_skill(run_id, name)
+        except Exception:
+            log.exception("could not record a native skill load", run_id=run_id, hook=event)
         if foreign:
             return
         boundary = session.on_hook(effect) if session is not None else False

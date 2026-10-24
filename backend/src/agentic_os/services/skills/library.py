@@ -15,6 +15,9 @@ from sqlalchemy.orm import Session
 from agentic_os.db.base import DEFAULT_WORKSPACE, utcnow
 from agentic_os.errors import ApiError, NotFound
 from agentic_os.models import (
+    InboxItem,
+    InboxStatus,
+    Resolution,
     RunSkill,
     Skill,
     SkillOriginKind,
@@ -23,6 +26,7 @@ from agentic_os.models import (
     VersionAuthor,
     VersionStatus,
 )
+from agentic_os.services import inbox
 from agentic_os.services.knowledge.docs import validate_level
 from agentic_os.services.skills import history
 from agentic_os.services.skills.errors import SkillError
@@ -146,6 +150,18 @@ class SkillLibrary:
                 f"Ya hay una skill llamada «{name}» en ese nivel.",
                 name=name,
             )
+
+    @staticmethod
+    def check_name(
+        db: Session,
+        name: str,
+        scope: str,
+        project_id: str | None,
+        agent_id: str | None,
+        exclude: str | None = None,
+    ) -> None:
+        """SkillError «name_taken» if another skill has `name` at that level."""
+        SkillLibrary._name_free(db, name, scope, project_id, agent_id, exclude)
 
     @staticmethod
     def free_name(
@@ -369,7 +385,15 @@ class SkillLibrary:
         skill.updated_at = utcnow()
 
     def delete(self, db: Session, skill: Skill) -> None:
-        """Deletes the skill, its versions and its usage (the UI warns first), then its files."""
+        """Deletes the skill, its versions and its usage (the UI warns first), then its files.
+        Its proposals waiting in the Inbox no longer apply."""
+        versions = select(SkillVersion.id).where(SkillVersion.skill_id == skill.id)
+        for item in db.scalars(
+            select(InboxItem).where(
+                InboxItem.skill_version_id.in_(versions), InboxItem.status == InboxStatus.PENDING
+            )
+        ):
+            inbox.resolve(db, item, Resolution.DISMISSED)
         db.delete(skill)
         db.flush()
         self.collect(db)
@@ -420,7 +444,10 @@ class SkillLibrary:
 
 
 def refresh_skill_vectors(sessions, library: SkillLibrary) -> int:
-    """`library.refresh_stale` in a session of its own (at startup and after a re-index)."""
+    """`library.refresh_stale` in a session of its own (at startup and after a re-index). At
+    startup it also starts the embedding worker, so the first launch does not wait for it."""
+    if library.embed is not None and library.model is not None and library.model():
+        library.embed(["warm up"])
     with sessions() as db:
         done = library.refresh_stale(db)
         db.commit()

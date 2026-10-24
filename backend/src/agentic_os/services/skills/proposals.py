@@ -115,6 +115,13 @@ def _similar(
         if entry and entry["sha256"] == sha:
             state = "pendiente de revisar" if skill.review == SkillReview.PROPOSED else "ya existe"
             return f"Ya hay una skill igual: «{skill.name}» ({state})."
+    for version in db.scalars(
+        select(SkillVersion).where(SkillVersion.status == VersionStatus.PROPOSED)
+    ):
+        entry = (version.manifest or {}).get(SKILL_MD)
+        if entry and entry["sha256"] == sha:
+            owner = db.get(Skill, version.skill_id)
+            return f"Ya hay una propuesta igual pendiente de revisar: «{owner.name}»."
     for rejection in db.scalars(select(SkillRejection).where(SkillRejection.md_sha256 == sha)):
         return _rejected(rejection)
     vector, model = _vector(lib, name, description)
@@ -379,6 +386,8 @@ def accept(
         if skill.review != SkillReview.PROPOSED:
             raise ApiError(422, "level_mismatch", "a new version keeps the skill's level", "scope")
         validate_level(db, scope, project_id, agent_id)
+        final = lib.parsed(version).name
+        SkillLibrary.check_name(db, final, scope, project_id, agent_id, exclude=skill.id)
         skill.scope, skill.project_id, skill.agent_id = scope, project_id, agent_id
     lib.accept(db, skill, version)
     for item in _pending_items(db, version):

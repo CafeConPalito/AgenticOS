@@ -57,6 +57,14 @@ class Ranker:
     floor: float = 0.0
     duplicate: float = 0.0  # a proposal this close to a skill is «muy parecida» (block 5)
 
+    def for_query(self, text: str) -> Ranker:
+        """The same ranker with `text` already embedded: the launch embeds the task before it
+        writes the run, so no database lock is held while the model answers (code review)."""
+        if self.embed_query is None or self.model is None:
+            return self
+        vector = self.embed_query(text)
+        return Ranker(lambda _: vector, self.model, self.floor, self.duplicate)
+
 
 PLUGIN_NAME = "aos"  # Claude shows our skills as «aos:<name>» (spike S1)
 AGY_SKILLS = Path(".agents") / "plugins" / "agentic-os" / "skills"
@@ -116,12 +124,24 @@ def agent_ids(db: Session, run: Run) -> list[str]:
     return [a for a in (run.agent_id, parent.agent_id if parent else None) if a]
 
 
-def query_for(db: Session, run: Run, agent: Agent | None, task: Task | None) -> str:
-    stage = db.get(Stage, run.stage_id) if run.stage_id else None
+def query_text(
+    db: Session,
+    stage_id: str | None,
+    subagent: bool,
+    prompt: str,
+    agent: Agent | None,
+    task: Task | None,
+) -> str:
+    """What the run's task is compared with (spike S4)."""
+    stage = db.get(Stage, stage_id) if stage_id else None
     role = agent.role if agent else ""
-    if task is not None and not run.parent_run_id:
+    if task is not None and not subagent:
         return sel.task_query(task.title, task.description, stage.name if stage else "", role)
-    return sel.task_query(run.prompt[:2_000], "", stage.name if stage else "", role)
+    return sel.task_query(prompt[:2_000], "", stage.name if stage else "", role)
+
+
+def query_for(db: Session, run: Run, agent: Agent | None, task: Task | None) -> str:
+    return query_text(db, run.stage_id, bool(run.parent_run_id), run.prompt, agent, task)
 
 
 def _copies(db: Session, run: Run, agent: Agent | None) -> dict:

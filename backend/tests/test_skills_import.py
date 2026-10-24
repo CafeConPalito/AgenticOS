@@ -145,3 +145,14 @@ def test_cli_skills_are_imported_each_to_its_level(client: TestClient, tmp_path,
     assert _tree_hash(source) == before
     found = {s["name"]: s for s in client.get("/api/skills/cli-scan").json()}
     assert found["mi-revision"]["imported"] and not found["rota"]["imported"]
+
+
+def test_a_zip_made_by_macos_finder_is_unwrapped(client: TestClient, tmp_path):
+    """Code review: «Compress» on macOS adds __MACOSX/ with «._» files next to the folder."""
+    archive = tmp_path / "informes.zip"
+    with zipfile.ZipFile(archive, "w") as z:
+        z.writestr("informes/SKILL.md", MD.format(name="informes", description="d"))
+        z.writestr("__MACOSX/informes/._SKILL.md", "\0\0")
+        z.writestr("informes/._plantilla.md", "\0")
+    result = _import(client, archive)
+    assert result["skill"]["files"] == 1, result

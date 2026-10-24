@@ -132,15 +132,25 @@ class GitHubUrlSource(Source):
         cards = []
         for folder in GitHub.skill_folders(tree, under)[:100]:
             data = hub.raw(repo, sha, f"{folder}/SKILL.md" if folder else "SKILL.md")
-            card = card_from({"SKILL.md": data}, self.id, f"{repo.owner}/{repo.repo}/{folder}")
+            ref_id = f"{repo.owner}/{repo.repo}/{folder}" + (f"@{ref}" if ref else "")
+            card = card_from({"SKILL.md": data}, self.id, ref_id)
             card.author, card.url = repo.owner, f"{repo.url}/tree/{sha}/{folder}"
             cards.append(card)
         return cards
 
+    @staticmethod
+    def _split(ref: str) -> tuple[Repo, str, str | None]:
+        """«owner/repo/folder@branch» (the branch only when the address had one)."""
+        path, _, branch = ref.partition("@")
+        owner, repo, *rest = path.split("/")
+        return Repo(owner, repo), "/".join(rest), branch or None
+
     def fetch(self, ref: str) -> Fetched:
-        owner, repo, *rest = ref.split("/")
-        return GitHub(self.http).fetch(Repo(owner, repo), "/".join(rest), None, self.id)
+        repo, folder, branch = self._split(ref)
+        fetched = GitHub(self.http).fetch(repo, folder, branch, self.id)
+        fetched.card.ref = ref
+        return fetched
 
     def latest(self, ref: str) -> str:
-        owner, repo, *_ = ref.split("/")
-        return GitHub(self.http).commit(Repo(owner, repo))
+        repo, _, branch = self._split(ref)
+        return GitHub(self.http).commit(repo, branch)

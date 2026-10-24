@@ -25,7 +25,7 @@ from agentic_os.services.skills.format import (
 )
 
 # Never part of a skill, even if they sit in its folder.
-SKIPPED_DIRS = frozenset({".git", "__pycache__", "node_modules", ".venv", ".DS_Store"})
+SKIPPED_DIRS = frozenset({".git", "__pycache__", "node_modules", ".venv", ".DS_Store", "__MACOSX"})
 SKIPPED_FILES = frozenset({".DS_Store", "Thumbs.db", "desktop.ini"})
 
 
@@ -74,7 +74,10 @@ def read_zip(data: bytes) -> dict[str, bytes]:
     entries = [
         i
         for i, n in zip(entries, names, strict=True)
-        if not any(part in SKIPPED_DIRS or part in SKIPPED_FILES for part in n.split("/"))
+        if not any(
+            part in SKIPPED_DIRS or part in SKIPPED_FILES or part.startswith("._")
+            for part in n.split("/")
+        )
     ]
     if len(entries) > MAX_FILES:
         raise SkillError("too_many_files", f"La skill tiene más de {MAX_FILES} ficheros.")

@@ -476,3 +476,20 @@ def test_list_filters(app_client: TestClient, tmp_path: Path):
     assert app_client.get("/api/runs", params={"active": True}).json()[0]["id"] == run["id"]
     assert app_client.get("/api/runs", params={"active": False}).json() == []
     assert app_client.get("/api/runs", params={"agent_id": "otro"}).json() == []
+
+
+def test_a_failed_spawn_leaves_no_skill_files(tmp_path: Path, monkeypatch):
+    """Phase 17 (code review): the run's skills folder goes away when the CLI cannot start."""
+
+    def no_such_cli(*args, **kwargs):
+        raise FileNotFoundError("no-existe.exe")
+
+    monkeypatch.setattr(session_module.pty_service, "spawn", no_such_cli)
+    with TestClient(create_app(make_settings(tmp_path))) as client:
+        client.post(
+            "/api/skills", json={"scope": "general", "name": "saludo", "description": "Saluda."}
+        )
+        run = launch(client, tmp_path, prompt="saluda")
+        assert run["status"] == "failed"
+        plugin = Path(client.app.state.settings.data_dir) / "runs" / run["id"] / "plugin"
+        assert not plugin.exists()
