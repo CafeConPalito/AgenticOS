@@ -221,6 +221,7 @@ class ConnectionUpdate(BaseModel):
     tool_mode: Literal["all", "selected"] | None = None
     allowed_tools: list[str] | None = None
     preapproved_tools: list[str] | None = None
+    tools_changed: bool | None = None  # false: the person has seen the change
     secrets: dict[str, str] | None = None  # values to set
     remove_secrets: list[str] | None = None
 
@@ -346,3 +347,20 @@ class ConnectionSettingsWrite(BaseModel):
     agy_grace: int | None = None
     oauth_port: int | None = None
     registries: dict[str, bool] | None = None
+
+
+class TestRead(BaseModel):
+    __test__ = False  # pytest: not a test class
+
+    id: str
+    connection_id: str
+    state: Literal["running", "done", "cancelled"]
+    seconds: float
+    result: dict | None = None
+    connection: ConnectionRead | None = None
+
+
+class RequirementRead(BaseModel):
+    program: str
+    found: bool
+    path: str = ""

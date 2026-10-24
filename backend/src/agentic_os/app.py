@@ -22,6 +22,7 @@ from agentic_os.services import accounts as account_ops
 from agentic_os.services import housekeeping
 from agentic_os.services.accounts_login import AccountLogins
 from agentic_os.services.clis import CliCatalog
+from agentic_os.services.connections.probe import ProbeRunner
 from agentic_os.services.decider import DecisionService
 from agentic_os.services.dictation.service import DictationService
 from agentic_os.services.gitx import credentials
@@ -162,6 +163,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             model=lambda: entry.id if (entry := knowledge.embedding_model()) else None,
         )
         app.state.skills = skills
+        app.state.connection_probes = ProbeRunner()  # tests of MCP connections (phase 18)
         manager.skills = skills  # the runs' skills and use_skill
         skill_registries = RegistryService(
             Path(settings.data_dir),

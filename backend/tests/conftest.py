@@ -1,3 +1,4 @@
+import sys
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -8,6 +9,9 @@ from fastapi.testclient import TestClient
 from agentic_os.app import create_app
 from agentic_os.config import Settings
 from agentic_os.services.connections import secrets as connection_secrets
+
+# The MCP servers of the connection tests (phase 18) import each other by name.
+sys.path.insert(0, str(Path(__file__).parent / "fixtures" / "mcp_servers"))
 
 
 @pytest.fixture(autouse=True)

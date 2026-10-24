@@ -40,7 +40,7 @@ CONFIG_FIELDS = (
     "allowed_tools",
     "preapproved_tools",
 )
-EDITABLE = (*CONFIG_FIELDS, "description", "icon", "enabled")
+EDITABLE = (*CONFIG_FIELDS, "description", "icon", "enabled", "tools_changed")
 # Secrets the app itself keeps for a connection (OAuth), apart from the ones the person declares.
 RESERVED_PREFIX = "_oauth"
 
@@ -159,6 +159,7 @@ def update(
         headers=connection.headers,
     )
     fmt.check(draft)
+    _check_tools(connection)
     for key, value in (set_secrets or {}).items():
         secrets.put(connection.id, key, value)
     for key in remove_secrets or []:
@@ -174,6 +175,39 @@ def update(
     connection.updated_at = utcnow()
     db.flush()
     return connection
+
+
+def _check_tools(connection: McpConnection) -> None:
+    """The tools the person allows or pre-approves have to be ones the server has (the ones the
+    last test found). Before any test there is nothing to compare with."""
+    known = {tool["name"] for tool in connection.tools}
+    if not known:
+        return
+    for names in (connection.allowed_tools, connection.preapproved_tools):
+        unknown = [n for n in names if n not in known]
+        if unknown:
+            raise ConnectionError_(
+                "tool_unknown",
+                f"El servidor «{connection.name}» no tiene la herramienta «{unknown[0]}». "
+                "Vuelve a probar la conexión para ver las que tiene.",
+                tool=unknown[0],
+            )
+
+
+def apply_probe(db: Session, connection: McpConnection, result) -> None:
+    """Keeps what a test found. A failed test keeps the tools of the last good one."""
+    connection.tested_at = utcnow()
+    if result.ok:
+        before = {tool["name"] for tool in connection.tools}
+        after = {tool["name"] for tool in result.tools}
+        connection.tools_changed = bool(before) and before != after
+        connection.tools = result.tools
+        connection.resources = result.resources
+        connection.prompts = result.prompts
+        connection.test_error = None
+    else:
+        connection.test_error = result.error.as_dict()
+    db.flush()
 
 
 def set_secret(db: Session, connection: McpConnection, key: str, value: str) -> None:

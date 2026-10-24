@@ -1,12 +1,15 @@
 """MCP connections (phase 18): the catalog, its secrets, the templates and the import."""
 
+import shutil
+import time
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Request, Response, status
+from fastapi import APIRouter, Depends, Query, Request, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from agentic_os.db.session import get_session
+from agentic_os.errors import NotFound
 from agentic_os.models import McpAssignment, McpConnection, McpOAuth, McpOrigin
 from agentic_os.schemas.connections import (
     ConnectionCreate,
@@ -22,14 +25,17 @@ from agentic_os.schemas.connections import (
     ImportResult,
     ParseRead,
     ParseRequest,
+    RequirementRead,
     SecretWrite,
     TemplateRead,
+    TestRead,
     read_connection,
 )
 from agentic_os.services.connections import config as connection_config
 from agentic_os.services.connections import format as fmt
-from agentic_os.services.connections import importer, library, templates
+from agentic_os.services.connections import importer, library, probe, templates
 from agentic_os.services.connections.errors import ConnectionError_
+from agentic_os.services.connections.render import render
 from agentic_os.services.trust import claude_config
 
 router = APIRouter(tags=["connections"])
@@ -160,6 +166,50 @@ def put_connection_settings(
     return _settings_read(db)
 
 
+PROGRAMS = ("node", "npx", "uvx", "uv", "python", "docker", "git")
+
+
+@static.get("/connections/requirements")
+def requirements() -> list[RequirementRead]:
+    """Which of the programs the servers usually need are installed."""
+    return [
+        RequirementRead(program=p, found=bool(shutil.which(p)), path=shutil.which(p) or "")
+        for p in PROGRAMS
+    ]
+
+
+def _test_read(request: Request, db: Session, test: probe.Test) -> TestRead:
+    connection = None
+    if test.state == "done":
+        row = db.get(McpConnection, test.connection_id)
+        if row is not None:
+            db.refresh(row)
+            connection = _read(db, row)
+    return TestRead(
+        id=test.id,
+        connection_id=test.connection_id,
+        state=test.state,
+        seconds=round(time.monotonic() - test.started_at, 1),
+        result=test.result.as_dict() if test.result else None,
+        connection=connection,
+    )
+
+
+@static.get("/connections/tests/{test_id}")
+def get_test(test_id: str, request: Request, db: DbSession) -> TestRead:
+    test = request.app.state.connection_probes.get(test_id)
+    if test is None:
+        raise NotFound("test")
+    return _test_read(request, db, test)
+
+
+@static.delete("/connections/tests/{test_id}", status_code=status.HTTP_204_NO_CONTENT)
+def cancel_test(test_id: str, request: Request) -> Response:
+    if not request.app.state.connection_probes.cancel(test_id):
+        raise NotFound("test")
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
 # -------------------------------------------------------------------- the catalog
 @router.get("/connections")
 def list_connections(db: DbSession) -> list[ConnectionRead]:
@@ -250,3 +300,30 @@ def delete_secret(connection_id: str, key: str, db: DbSession) -> ConnectionRead
 def export_connection(connection_id: str, db: DbSession) -> dict:
     """The `mcpServers` JSON, without secrets (`${NAME}` where they were)."""
     return library.export(library.get(db, connection_id))
+
+
+@router.post("/connections/{connection_id}/test", status_code=status.HTTP_202_ACCEPTED)
+def test_connection(
+    connection_id: str,
+    request: Request,
+    db: DbSession,
+    wait: Annotated[bool, Query()] = False,
+) -> TestRead:
+    """Starts the server (or calls its URL) as an MCP client and lists what it offers. It runs in
+    the background; `wait=true` waits for it."""
+    connection = library.get(db, connection_id)
+    rendered = render(connection)  # a missing secret is explained here, before starting anything
+    timeout = connection_config.load(db).probe_timeout
+    sessionmaker = request.app.state.sessionmaker
+
+    def keep(test: probe.Test) -> None:
+        with sessionmaker() as session:
+            row = session.get(McpConnection, connection_id)
+            if row is not None and test.result is not None:
+                library.apply_probe(session, row, test.result)
+                session.commit()
+
+    test = request.app.state.connection_probes.start(connection_id, rendered, timeout, on_done=keep)
+    if wait:
+        test.done.wait(timeout + 10)
+    return _test_read(request, db, test)
