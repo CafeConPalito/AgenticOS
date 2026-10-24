@@ -20,6 +20,7 @@ import { errorMessage } from '@/lib/form-errors'
 import { formatDateTime, formatDuration } from '@/lib/time'
 import { SessionUsage } from '@/components/usage/SessionUsage'
 import { RunEventsPanel } from './RunEventsPanel'
+import { RunSkillsPanel } from '@/components/skills/RunSkillsPanel'
 import { ResumeSessionButton } from './ResumeSession'
 import { RunStatusBadge } from './RunStatusBadge'
 import { useProjectColor } from './RunsTable'
@@ -135,6 +136,7 @@ function RunDetail({ run }: { run: Run }) {
         </div>
         <aside className="flex min-h-0 flex-col overflow-auto border-l p-4 [&>*]:shrink-0">
           <SessionUsage run={run} />
+          <RunSkillsPanel runId={run.id} />
           <RunEventsPanel runId={run.id} />
         </aside>
       </div>

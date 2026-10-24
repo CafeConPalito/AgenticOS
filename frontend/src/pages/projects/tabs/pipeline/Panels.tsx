@@ -15,6 +15,7 @@ import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { graphOf, linksFrom, newLink, type Draft, type DraftLink, type DraftStage } from './model'
 import { rejectCandidates } from './validate'
+import { SkillModes } from '@/components/skills/SkillModes'
 
 const NONE = '__none__'
 
@@ -147,6 +148,12 @@ export function StagePanel({
             </label>
           ))}
         </fieldset>
+      )}
+
+      {stage.id ? (
+        <SkillModes stageId={stage.id} />
+      ) : (
+        <p className="text-[12.5px] text-muted-foreground">{t('skills.modes.saveFirst')}</p>
       )}
 
       <div className="grid gap-1.5">

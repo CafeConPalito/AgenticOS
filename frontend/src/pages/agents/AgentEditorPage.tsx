@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { BookOpen, Copy, MoreHorizontal, Pencil, Plus, Puzzle, Trash2 } from 'lucide-react'
+import { BookOpen, Copy, MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { FormProvider, useForm, useWatch } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
@@ -17,7 +17,9 @@ import { AgentAvatar, StatusBadge } from '@/components/agentic/primitives'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { EmptyState } from '@/components/EmptyState'
 import { KnowledgeLibrary } from '@/components/knowledge/KnowledgeLibrary'
-import { ComingSoonTab, PageContainer, RouteTabs } from '@/components/page'
+import { SkillLibrary } from '@/components/skills/SkillLibrary'
+import { SkillModes } from '@/components/skills/SkillModes'
+import { PageContainer, RouteTabs } from '@/components/page'
 import { UnsavedChangesGuard } from '@/components/UnsavedChangesGuard'
 import { Button } from '@/components/ui/button'
 import {
@@ -242,12 +244,19 @@ function AgentEditor({ agent, tab }: { agent: Agent; tab: Tab }) {
         {tab === 'general' && <GeneralTab />}
         {tab === 'instructions' && <InstructionsTab />}
         {tab === 'execution' && <ExecutionTab />}
-        {tab === 'skills' && <ComingSoonTab icon={Puzzle} />}
         {tab === 'history' && <HistoryTab agentId={agent.id} />}
         {tab === 'changes' && <ChangesTab agentId={agent.id} />}
       </form>
       {/* Outside the form: the library has forms of its own. */}
       {tab === 'knowledge' && <KnowledgeLibrary level={{ scope: 'agent', agentId: agent.id }} />}
+      {tab === 'skills' && (
+        <>
+          <SkillLibrary level={{ scope: 'agent', agentId: agent.id }} />
+          <div className="px-6 pb-8">
+            <SkillModes agentId={agent.id} agentCli={agent.cli} />
+          </div>
+        </>
+      )}
       <ConfirmDialog
         open={confirmDelete}
         onOpenChange={setConfirmDelete}

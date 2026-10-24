@@ -387,7 +387,7 @@ function HunkCheckbox({ hunk, selection }: { hunk: Hunk; selection: DiffSelectio
   )
 }
 
-function LineRow({ line, selection }: { line: DiffLine; selection?: DiffSelection }) {
+export function LineRow({ line, selection }: { line: DiffLine; selection?: DiffSelection }) {
   const { t } = useTranslation()
   const marker = line.kind === 'add' ? '+' : line.kind === 'del' ? '−' : ' '
   const key = lineKey(line)

@@ -26,6 +26,7 @@ import { taskKeys } from '@/api/tasks'
 import type { InboxItem } from '@/api/types'
 import { ChangesButton } from '@/components/changes/ChangesSheet'
 import { DocSheet } from '@/components/knowledge/DocSheet'
+import { SkillProposalReview } from '@/components/skills/SkillProposalReview'
 import { useDock } from '@/components/terminal/dock-store'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -100,6 +101,7 @@ export function RequestActions({
   const [text, setText] = useState('')
   const [rejecting, setRejecting] = useState(false)
   const [reviewingProposal, setReviewingProposal] = useState<string | null>(null)
+  const [reviewingSkill, setReviewingSkill] = useState<string | null>(null)
   const busy =
     answer.isPending ||
     permission.isPending ||
@@ -270,6 +272,19 @@ export function RequestActions({
             {t('inbox.reviewReject')}
           </Button>
         </form>
+      )}
+      {item.kind === 'skill' && item.skill_version_id && (
+        <>
+          <Button
+            size="sm"
+            onClick={() => setReviewingSkill(item.skill_version_id ?? null)}
+            className="bg-primary-action text-white hover:bg-primary-action-hover"
+          >
+            <BookOpenCheck />
+            {t('inbox.reviewSkill')}
+          </Button>
+          <SkillProposalReview versionId={reviewingSkill} onClose={() => setReviewingSkill(null)} />
+        </>
       )}
       {item.kind === 'knowledge' && item.knowledge_doc_id && (
         <>

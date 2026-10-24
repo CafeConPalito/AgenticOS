@@ -43,6 +43,7 @@ import type {
   SystemLoad,
 } from '@/api/knowledge'
 import type { ProjectBranches, ProjectSnapshots } from '@/api/maintenance'
+import { createSkillsBackend, type SkillsSeed } from './fake-skills'
 import {
   ACTIVE_RUN_STATUSES,
   type Account,
@@ -853,6 +854,8 @@ export function createFakeBackend(
     teams?: Team[]
     /** agy's opt-in quota line (default: available, off). */
     agyQuota?: AgyQuotaState
+    /** The skills of phase 17 (library, proposals, registries, statistics). */
+    skills?: SkillsSeed
     /** The diffs (phase 11) by `run:<id>` or `task:<id>`: the file list, each file's diff and
      * the lines `/changes/lines` serves. Anything else answers «no snapshots». */
     /** What git says about each repository, by repository id. */
@@ -2517,6 +2520,7 @@ export function createFakeBackend(
     return null
   }
 
+  const skillsBackend = createSkillsBackend(seed.skills)
   const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = new URL(typeof input === 'string' ? input : input.toString())
     const method = (init?.method ?? 'GET').toUpperCase()
@@ -2533,6 +2537,8 @@ export function createFakeBackend(
     })
     const dictated = await handleDictation(method, url.pathname, body)
     if (dictated) return dictated
+    const skilled = skillsBackend.handle(method, url.pathname, url.searchParams, body)
+    if (skilled) return skilled
     return (
       handleRepos(method, url.pathname, body) ??
       handleGit(method, url.pathname, url.searchParams, body) ??
@@ -2572,6 +2578,7 @@ export function createFakeBackend(
     snapshots,
     repos,
     calls,
+    skills: skillsBackend,
     callsTo: (method: string, path: string) =>
       calls.filter((c) => c.method === method && c.path === path),
   }
