@@ -15,6 +15,7 @@ import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { graphOf, linksFrom, newLink, type Draft, type DraftLink, type DraftStage } from './model'
 import { rejectCandidates } from './validate'
+import { StageConnections } from '@/components/connections/AgentConnections'
 import { SkillModes } from '@/components/skills/SkillModes'
 
 const NONE = '__none__'
@@ -155,6 +156,7 @@ export function StagePanel({
       ) : (
         <p className="text-[12.5px] text-muted-foreground">{t('skills.modes.saveFirst')}</p>
       )}
+      {stage.id && <StageConnections stageId={stage.id} />}
 
       <div className="grid gap-1.5">
         <h3 className="text-[12.5px] text-muted-foreground">{t('pipeline.next')}</h3>

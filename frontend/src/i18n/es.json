@@ -13,7 +13,8 @@
     "main": "Secciones",
     "home": "Inicio",
     "clis": "CLIs y cuentas",
-    "knowledge": "Conocimiento y skills"
+    "knowledge": "Conocimiento y skills",
+    "connections": "Conexiones"
   },
   "header": {
     "search": "Buscar agentes, tareas o acciones…",
@@ -209,7 +210,8 @@
       "knowledge": "Conocimiento",
       "skills": "Skills",
       "history": "Historial",
-      "changes": "Cambios"
+      "changes": "Cambios",
+      "connections": "Conexiones"
     },
     "fields": {
       "name": "Nombre",
@@ -340,7 +342,8 @@
       "git": "Git",
       "memory": "Memoria del proyecto",
       "knowledge": "Conocimiento",
-      "settings": "Ajustes"
+      "settings": "Ajustes",
+      "connections": "Conexiones"
     },
     "fields": {
       "name": "Nombre",
@@ -1005,7 +1008,8 @@
       "account": "Sesión cerrada",
       "switch": "Cambiar de CLI",
       "knowledge": "Conocimiento propuesto",
-      "skill": "Skill propuesta"
+      "skill": "Skill propuesta",
+      "connection": "Volver a conectar"
     },
     "approvalTitle": "¿Puedo continuar?",
     "answerPlaceholder": "Responder con texto…",
@@ -1174,7 +1178,8 @@
       "dictation": "Dictado",
       "models": "Modelos locales",
       "cleanup": "Limpieza",
-      "about": "Acerca de"
+      "about": "Acerca de",
+      "connections": "Conexiones MCP"
     },
     "git": {
       "title": "Git",
@@ -1580,7 +1585,8 @@
       "inbox": "Peticiones",
       "settings": "Ajustes",
       "clis": "CLIs y cuentas",
-      "knowledge": "Conocimiento"
+      "knowledge": "Conocimiento",
+      "connections": "Conexiones MCP"
     },
     "schedulerPaused": "Scheduler en pausa",
     "schedulerResumed": "Scheduler en marcha"
@@ -3116,6 +3122,318 @@
       "keySet": "Clave guardada",
       "githubToken": "Para GitHub se usa el token que tenga git (Ajustes › Git).",
       "saved": "Ajustes de skills guardados"
+    }
+  },
+  "connections": {
+    "intro": "Servidores MCP externos (GitHub, una base de datos, un navegador, un servicio tuyo…) que los agentes pueden usar. Los configuras una vez aquí y se los das a todos los agentes, a un proyecto o a un agente; en cada ejecución se pasan al CLI sin tocar su configuración.",
+    "pageTabs": {
+      "catalog": "Catálogo",
+      "explore": "Explorar"
+    },
+    "loadFailed": "No se han podido cargar las conexiones.",
+    "count": "{{active}} activas de {{total}}",
+    "empty": {
+      "title": "Aún no hay conexiones",
+      "description": "Crea una desde una plantilla, pega el JSON de un servidor, importa las que ya tienes en Claude Code o explora los registros públicos."
+    },
+    "actions": {
+      "new": "Nueva conexión",
+      "fromTemplate": "Desde plantilla",
+      "import": "Importar de mis CLIs",
+      "explore": "Explorar registros",
+      "open": "Abrir {{name}}",
+      "enable": "Activar {{name}}",
+      "save": "Guardar",
+      "giveExisting": "Dar una existente",
+      "give": "Dar"
+    },
+    "transport": {
+      "stdio": "Local (stdio)",
+      "http": "Remoto (HTTP)",
+      "sse": "Remoto (SSE)"
+    },
+    "origin": {
+      "template": "Plantilla",
+      "import": "Importada",
+      "registry": "De un registro",
+      "user": "Propia"
+    },
+    "level": {
+      "general": "Todos los agentes",
+      "project": "Proyecto",
+      "agent": "Agente",
+      "project_named": "Proyecto {{name}}",
+      "agent_named": "Agente {{name}}"
+    },
+    "card": {
+      "unassigned": "Sin dar a nadie",
+      "connect": "Conectar cuenta",
+      "reconnect": "Volver a conectar",
+      "missingSecret_one": "Falta 1 secreto",
+      "missingSecret_other": "Faltan {{count}} secretos",
+      "newTools": "Herramientas nuevas",
+      "update": "Actualización disponible",
+      "testFailed": "La última prueba falló",
+      "tested_one": "Probada · 1 herramienta",
+      "tested_other": "Probada · {{count}} herramientas",
+      "untested": "Sin probar",
+      "used": "{{runs}} ejecuciones · {{calls}} llamadas",
+      "lastUsed": "última {{when}}",
+      "neverUsed": "Sin usar"
+    },
+    "form": {
+      "name": "Nombre",
+      "nameHint": "Es el nombre del servidor para el agente: minúsculas, números, «-» o «_».",
+      "description": "Descripción",
+      "transport": "Tipo",
+      "stdioWarning": "Un servidor local es un programa que se ejecuta en tu equipo con tus permisos. Usa solo los que conozcas.",
+      "command": "Comando",
+      "args": "Argumentos (uno por línea)",
+      "argsHint": "Puedes escribir ${secret:CLAVE} para usar un secreto y ${env:NOMBRE} para una variable de tu sistema.",
+      "env": "Variables de entorno",
+      "variable": "Variable",
+      "url": "Dirección (URL)",
+      "headers": "Cabeceras",
+      "header": "Cabecera",
+      "oauth": "Inicia sesión con tu cuenta (OAuth)",
+      "addRow": "Añadir",
+      "removeRow": "Quitar {{name}}",
+      "valueOf": "Valor de {{name}}",
+      "secret": "Secreto",
+      "secretOf": "Secreto: {{name}}",
+      "secrets": "Secretos",
+      "secretsHint": "Se guardan en el almacén de credenciales de tu sistema, nunca en la base de datos ni en los registros. Dejar el campo vacío mantiene el valor guardado.",
+      "secretValue": "Valor secreto de {{key}}",
+      "secretKept": "Guardado (déjalo vacío para mantenerlo)",
+      "secretMissing": "Falta: escribe el valor",
+      "secretClear": "Borrar",
+      "saved": "Conexión «{{name}}» guardada",
+      "created": "Conexión «{{name}}» creada"
+    },
+    "editor": {
+      "titleNew": "Nueva conexión",
+      "description": "Un servidor MCP que los agentes podrán usar.",
+      "tabForm": "Formulario",
+      "tabJson": "Pegar JSON"
+    },
+    "paste": {
+      "hint": "Pega el bloque «mcpServers» que da el README del servidor (o la configuración de otro CLI). Los valores que parecen secretos se guardan aparte.",
+      "label": "JSON de la configuración",
+      "name": "Nombre (si el JSON es un solo servidor sin nombre)",
+      "preview": "Servidores que se crearán",
+      "review": "Revisar",
+      "create_one": "Crear 1 conexión",
+      "create_other": "Crear {{count}} conexiones",
+      "created_one": "1 conexión creada",
+      "created_other": "{{count}} conexiones creadas",
+      "secrets": "Secretos que guardará: {{keys}}",
+      "ignored": "No importado: {{fields}}"
+    },
+    "templates": {
+      "title": "Desde plantilla",
+      "description": "Los servidores más usados: solo se rellena el formulario, no se instala nada hasta que la pruebes.",
+      "account": "con tu cuenta",
+      "name": "Nombre (opcional)",
+      "create": "Crear conexión",
+      "help": "Cómo conseguirlo",
+      "oauth": "Esta conexión se conecta con tu cuenta: después de crearla pulsa «Conectar».",
+      "missing": "Para usarla necesitas instalar: {{programs}}."
+    },
+    "tools": {
+      "test": "Probar conexión",
+      "testing": "Probando…",
+      "works": "Funciona: {{tools}} herramientas ({{seconds}} s)",
+      "lastTest": "Última prueba {{when}}",
+      "none": "Aún no se sabe qué herramientas tiene: pruébala.",
+      "changed": "El servidor tiene herramientas nuevas o ha quitado alguna desde la última vez.",
+      "seen": "Entendido",
+      "mode": "Qué herramientas reciben los agentes",
+      "mode_all": "Todas",
+      "mode_selected": "Solo las que elija",
+      "count_one": "1 herramienta",
+      "count_other": "{{count}} herramientas",
+      "allow": "Permitir {{name}}",
+      "preapprove": "Sin preguntar: {{name}}",
+      "noAsk": "Sin preguntar",
+      "noAskHint": "«Sin preguntar» solo cuenta cuando el agente está en modo Restringido o Preguntar; en Autónomo no se pregunta nunca.",
+      "readOnly": "solo lectura",
+      "destructive": "escribe o borra",
+      "save": "Guardar herramientas",
+      "saved": "Herramientas guardadas",
+      "resources": "Recursos",
+      "prompts": "Prompts"
+    },
+    "oauth": {
+      "title": "Inicio de sesión",
+      "status_connected": "Conectada",
+      "status_needs_reauth": "Hay que volver a conectar",
+      "status_disconnected": "Sin conectar",
+      "account": "Cuenta: {{label}}",
+      "expires": "caduca {{when}}",
+      "connect": "Conectar",
+      "connectAgain": "Volver a conectar",
+      "reconnect": "Reconectar",
+      "renew": "Renovar ahora",
+      "renewed": "Sesión renovada",
+      "disconnect": "Desconectar",
+      "waiting": "Esperando a que termines en el navegador…",
+      "openAgain": "Abrir de nuevo",
+      "own": "Usar un client id propio (el servicio no se registra solo)",
+      "ownHint": "Registra en el servicio esta dirección de retorno exacta: {{address}}",
+      "clientId": "Client id",
+      "clientSecret": "Client secret (si tiene)"
+    },
+    "assign": {
+      "hint": "Una conexión llega a las ejecuciones del nivel al que se da: todos los agentes, un proyecto o un agente. Se puede quitar a un agente o a una etapa del pipeline.",
+      "none": "No se ha dado a nadie: ningún agente la recibe.",
+      "levelLabel": "Nivel al que dar la conexión",
+      "add": "Dar",
+      "remove": "Quitar de {{name}}"
+    },
+    "sheet": {
+      "description": "Una conexión a un servidor MCP.",
+      "config": "Configuración",
+      "tools": "Herramientas",
+      "where": "Dónde se usa",
+      "usage": "Uso"
+    },
+    "usage": {
+      "runs": "Ejecuciones que la usaron",
+      "calls": "Llamadas",
+      "failed_one": "1 falló",
+      "failed_other": "{{count}} fallaron",
+      "last": "Último uso",
+      "revision": "Revisión de la configuración",
+      "origin": "Origen",
+      "from": "Instalada desde {{source}}: {{package}}",
+      "official": "publicado por su autor",
+      "export": "Copiar JSON sin secretos",
+      "exported": "JSON copiado (los secretos van como ${NOMBRE})"
+    },
+    "update": {
+      "title": "Hay una versión nueva: {{from}} → {{to}}",
+      "never": "Nunca se actualiza sola: revisa lo que cambia y aplícala tú.",
+      "apply": "Actualizar",
+      "done": "Conexión actualizada: vuelve a probarla"
+    },
+    "delete": {
+      "title": "¿Borrar la conexión {{name}}?",
+      "description": "Se borran también sus secretos y dónde estaba dada. Las ejecuciones ya hechas conservan su registro."
+    },
+    "import": {
+      "title": "Importar de mis CLIs",
+      "description": "Los servidores MCP que ya tienes en Claude Code y en Antigravity. Se copian sin tocar los originales; los secretos pasan al almacén seguro.",
+      "empty": "No hay servidores MCP en la configuración de tus CLIs.",
+      "pick": "Importar {{name}}",
+      "already": "ya importada",
+      "secrets": "Trae secretos: pasarán al almacén seguro.",
+      "levelOf": "Nivel de {{name}}",
+      "action_one": "Importar 1",
+      "action_other": "Importar {{count}}",
+      "done_one": "1 conexión importada",
+      "done_other": "{{count}} conexiones importadas"
+    },
+    "agentTab": {
+      "intro": "Las conexiones MCP que recibe este agente: las de todos los agentes, las de su proyecto y las suyas. Puedes quitarle alguna sin borrarla.",
+      "pick": "Conexión que dar al agente",
+      "pickPlaceholder": "Dar otra conexión…",
+      "give": "Dar al agente"
+    },
+    "stageSection": {
+      "title": "Conexiones MCP",
+      "hint": "Quita una conexión solo en esta etapa (por ejemplo, que QA no escriba en la base de datos)."
+    },
+    "received": {
+      "none_agent": "Este agente no recibe ninguna conexión.",
+      "none_stage": "Esta etapa no recibe ninguna conexión.",
+      "cost": "{{tools}} herramientas · ~{{tokens}} tokens",
+      "disabled": "apagada",
+      "taken_agent": "quitada a este agente",
+      "taken_stage": "quitada en esta etapa",
+      "switch_agent": "Que {{name}} llegue a este agente",
+      "switch_stage": "Que {{name}} llegue en esta etapa",
+      "total": "En total: {{tools}} herramientas, unos {{tokens}} tokens de contexto.",
+      "heavy": "Es mucho: considera limitar las herramientas."
+    },
+    "run": {
+      "title": "Conexiones MCP",
+      "status_sent": "enviada",
+      "status_connected": "conectada",
+      "status_failed": "falló",
+      "status_skipped": "no enviada",
+      "calls_one": "1 llamada",
+      "calls_other": "{{count}} llamadas",
+      "failedCalls_one": "1 falló",
+      "failedCalls_other": "{{count}} fallaron",
+      "callsTitle": "Llamadas a herramientas externas",
+      "failed": "falló"
+    },
+    "explore": {
+      "warning": "Los servidores de terceros ejecutan código en tu equipo o reciben lo que el agente les manda. Mira siempre el comando y lo que piden antes de instalar.",
+      "search": "Buscar servidores",
+      "searchPlaceholder": "Nombre, npm:paquete, pypi:paquete o la dirección de GitHub",
+      "searchButton": "Buscar",
+      "source": "Registro",
+      "allSources": "Todos los registros",
+      "kind": "Tipo",
+      "anyKind": "Local o remoto",
+      "transport_stdio": "Local",
+      "transport_http": "Remoto",
+      "transport_both": "Local y remoto",
+      "mostUsed": "Los más usados",
+      "checkUpdates": "Buscar actualizaciones",
+      "noUpdates": "Todo está al día",
+      "updates_one": "1 conexión tiene una versión nueva",
+      "updates_other": "{{count}} conexiones tienen una versión nueva",
+      "updatesFailed": "No se pudo consultar las versiones",
+      "offline": "Sin conexión: no se pueden consultar los registros. El catálogo de tus conexiones funciona igual.",
+      "sourceFailed": "{{source}} no responde ({{reason}}).",
+      "error_offline": "sin conexión",
+      "error_unavailable": "no disponible",
+      "error_rate_limited": "demasiadas peticiones",
+      "error_not_found": "no encontrado",
+      "empty": "No se ha encontrado nada",
+      "emptyHint": "Prueba con otro nombre, o pega la dirección de un paquete o repositorio.",
+      "open": "Abrir {{name}}",
+      "verified": "Publicado por su autor",
+      "installedChip": "Instalada",
+      "uses_one": "1 uso",
+      "uses_other": "{{value}} usos",
+      "author": "Autor",
+      "license": "Licencia",
+      "version": "Versión",
+      "repo": "Repositorio",
+      "ways": "Formas de ejecutarlo",
+      "willRun": "Esto es lo que se ejecutará",
+      "missing": "En este equipo falta: {{programs}}. Instálalo antes de probar la conexión.",
+      "login": "Se conecta con tu cuenta (OAuth)",
+      "name": "Nombre de la conexión (opcional)",
+      "give": "Darla ya a un nivel",
+      "levelLabel": "Nivel al que darla",
+      "install": "Instalar",
+      "installed": "Conexión «{{name}}» creada: pruébala para ver sus herramientas",
+      "alreadyInstalled": "Ya está instalada como «{{name}}».",
+      "declaredTools_one": "1 herramienta declarada",
+      "declaredTools_other": "{{count}} herramientas declaradas"
+    },
+    "settings": {
+      "title": "Conexiones MCP",
+      "probeTimeout": "Espera de la prueba (s)",
+      "probeTimeoutHint": "Cuánto espera una prueba a un servidor. La primera vez, un paquete se descarga.",
+      "startupTimeout": "Espera de arranque en Claude (s)",
+      "startupTimeoutHint": "Cuánto espera Claude Code a que arranque un servidor lento.",
+      "agyGrace": "Margen en agy (s)",
+      "agyGraceHint": "Segundos que agy tiene para conectar los servidores antes de escribirle la tarea.",
+      "oauthPort": "Puerto de retorno del inicio de sesión",
+      "oauthPortHint": "Un client id propio exige esta dirección exacta registrada en el servicio.",
+      "registries": "Registros de servidores",
+      "registriesHint": "Dónde busca el explorador. También puedes buscar un paquete o un repositorio por su nombre o dirección.",
+      "programs": "Programas en este equipo",
+      "programsHint": "Los servidores locales suelen necesitar Node (npx), uv (uvx) o Docker.",
+      "found": "instalado",
+      "missing": "no está",
+      "store": "Los secretos y los tokens de las cuentas se guardan en el almacén de credenciales de tu sistema.",
+      "saved": "Ajustes de conexiones guardados"
     }
   }
 }

@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { useOpenProjectFolder, useProject } from '@/api/projects'
 import type { Project } from '@/api/types'
 import { EmptyState } from '@/components/EmptyState'
+import { ConnectionList } from '@/components/connections/ConnectionList'
 import { KnowledgeLibrary } from '@/components/knowledge/KnowledgeLibrary'
 import { FromClis } from '@/components/skills/SkillImportDialog'
 import { SkillLibrary } from '@/components/skills/SkillLibrary'
@@ -21,7 +22,16 @@ import { SettingsTab } from './tabs/SettingsTab'
 import { SummaryTab } from './tabs/SummaryTab'
 import { TasksTab } from './tabs/TasksTab'
 
-const TABS = ['summary', 'tasks', 'pipeline', 'git', 'memory', 'knowledge', 'settings'] as const
+const TABS = [
+  'summary',
+  'tasks',
+  'pipeline',
+  'git',
+  'memory',
+  'knowledge',
+  'connections',
+  'settings',
+] as const
 type Tab = (typeof TABS)[number]
 
 export default function ProjectDetailPage() {
@@ -106,6 +116,9 @@ function ProjectDetail({ project, tab }: { project: Project; tab: Tab }) {
             />
           </section>
         </>
+      )}
+      {tab === 'connections' && (
+        <ConnectionList onlyLevel={{ scope: 'project', projectId: project.id }} />
       )}
       {tab === 'settings' && <SettingsTab project={project} />}
     </div>

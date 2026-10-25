@@ -55,3 +55,12 @@ def reveal_in_file_manager(path: str) -> None:
         subprocess.Popen(["open", "-R", path])
     else:
         subprocess.Popen(["xdg-open", os.path.dirname(path)])
+
+
+def open_url(url: str) -> bool:
+    """Opens a web page in the person's browser (the UI has no shell of its own). Only http(s)."""
+    import webbrowser
+
+    if not url.startswith(("http://", "https://")):
+        raise ValueError("only web addresses can be opened")
+    return webbrowser.open(url)

@@ -67,6 +67,7 @@ from agentic_os.schemas.connections import (
     read_connection,
 )
 from agentic_os.schemas.knowledge import Level
+from agentic_os.services import proc
 from agentic_os.services.connections import config as connection_config
 from agentic_os.services.connections import format as fmt
 from agentic_os.services.connections import importer, library, oauth, probe, resolve, templates
@@ -232,6 +233,16 @@ def get_oauth_flow(flow_id: str, request: Request, db: DbSession) -> FlowRead:
     if flow is None:
         raise NotFound("flow")
     return _flow_read(db, flow)
+
+
+@static.post("/connections/oauth/flows/{flow_id}/open", status_code=status.HTTP_204_NO_CONTENT)
+def open_oauth_page(flow_id: str, request: Request) -> Response:
+    """Opens the login page of a flow in the system's browser (and only that page)."""
+    flow = request.app.state.oauth_flows.get(flow_id)
+    if flow is None or not flow.authorization_url:
+        raise NotFound("flow")
+    proc.open_url(flow.authorization_url)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @static.delete("/connections/oauth/flows/{flow_id}", status_code=status.HTTP_204_NO_CONTENT)

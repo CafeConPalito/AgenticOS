@@ -195,6 +195,7 @@ function PaletteContent({ onClose }: { onClose: () => void }) {
         ['usage', '/consumo'],
         ['clis', '/clis'],
         ['knowledge', '/conocimiento'],
+        ['connections', '/conexiones'],
         ['inbox', '/inbox'],
         ['settings', '/ajustes'],
       ] as const

@@ -10,6 +10,7 @@ import {
   Inbox,
   OctagonAlert,
   PackageCheck,
+  Plug,
   Puzzle,
   ShieldCheck,
   UserX,
@@ -38,6 +39,7 @@ export const KIND_STYLE: Record<InboxKind, { color: string; icon: typeof Inbox }
   switch: { color: 'var(--status-waiting)', icon: ArrowLeftRight },
   knowledge: { color: 'var(--status-review)', icon: BookPlus },
   skill: { color: 'var(--status-review)', icon: Puzzle },
+  connection: { color: 'var(--status-waiting)', icon: Plug },
 }
 
 /** A request of the agents to the person, with its actions while pending. */

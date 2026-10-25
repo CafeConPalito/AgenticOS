@@ -297,3 +297,24 @@ def test_the_expiry_check(client: TestClient):
     )
     assert oauth.expires_soon("c1") and not oauth.expires_soon("c1", 10)
     assert oauth.expires_soon("nothing")
+
+
+def test_the_login_page_is_opened_by_the_backend(client: TestClient, monkeypatch):
+    opened: list[str] = []
+    monkeypatch.setattr("agentic_os.services.proc.open_url", lambda url: opened.append(url) or True)
+    with Running(_free_port()) as server:
+        made = _connection(client, server)
+        started = client.post(f"/api/connections/{made['id']}/oauth/start", json={}).json()
+        assert client.post(f"/api/connections/oauth/flows/{started['id']}/open").status_code == 204
+        assert opened == [started["authorization_url"]]
+        assert client.post("/api/connections/oauth/flows/none/open").status_code == 404
+        client.delete(f"/api/connections/oauth/flows/{started['id']}")
+
+
+def test_only_web_addresses_can_be_opened():
+    import pytest as _pytest
+
+    from agentic_os.services import proc
+
+    with _pytest.raises(ValueError):
+        proc.open_url("file:///etc/passwd")
