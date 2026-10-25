@@ -24,7 +24,7 @@ from agentic_os.schemas.agent import (
     AgentTemplate,
     AgentUpdate,
 )
-from agentic_os.services import accounts
+from agentic_os.services import accounts, proposals
 from agentic_os.services.knowledge import docs as knowledge_docs
 from agentic_os.services.tasks import wait_for_human
 from agentic_os.services.templates import BY_ID, TEMPLATES
@@ -171,6 +171,10 @@ def update_agent(agent_id: str, payload: AgentUpdate, session: DbSession) -> Age
         # Radix selects emit "" for «none».
         changes["fallback_account_id"] = changes["fallback_account_id"] or None
     _check_fallback(session, agent, changes)
+    # Phase 19: the History tab lists which fields were edited by hand.
+    proposals.record_hand_edit(
+        session, agent, [f for f, value in changes.items() if getattr(agent, f) != value]
+    )
     for field, value in changes.items():
         setattr(agent, field, value)
     if not agent.fallback_account_id:
