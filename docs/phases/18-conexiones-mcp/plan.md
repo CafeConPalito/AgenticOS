@@ -247,9 +247,10 @@ Evidencias en [`evidencias/s1-s6-conexiones.md`](evidencias/s1-s6-conexiones.md)
 - **Límite conocido**: el agente puede leer las variables de entorno de su proceso (el servidor `stdio` hereda todo el entorno del CLI, y en `agy` los secretos de `env` y `headers` están en el `mcp_config.json` del plugin, durante la ejecución). Es inevitable si el CLI arranca el servidor. Se documenta en el ADR y en el aviso al crear una conexión.
 - Resuelto en los spikes: `${VAR}` en Claude sí y en `agy` no, filtrado de herramientas en los dos, sin pasarela, puerto fijo de OAuth, fuentes de los registros, troceado de secretos y formatos de importación (ver arriba).
 
-## Estado al cerrar la sesión (2026-10-24)
-- **Rama** `phase/18-conexiones-mcp`, todo commiteado (último: `feat(mcp): public registries explorer (phase 18, block 8)`). Árbol de trabajo limpio.
-- **Hecho**: bloques 0–8 (spikes y todo el backend). Tests propios en `backend/tests/test_connections_*.py` y `test_migration_0020.py`, todos en verde.
-- **Pendiente de comprobar**: la suite completa del backend (`cd backend && uv run pytest -q -p no:warnings`) estaba corriendo y no llegó a terminar; sin fallos hasta donde llegó. Hay que relanzarla y arreglar lo que salga (se tocaron `hooks.py`, `inbox.py`, `session.py`, `manager.py`, `adapters/*`, `fake_cli.py`, `conftest.py`).
-- **Siguiente**: bloques 9–11 (frontend: página «Conexiones», editor con secretos y OAuth, prueba y herramientas, importar, pestañas del agente/proyecto/etapa, sección en la ejecución, Inbox, explorador, Ajustes), luego 12 (e2e y prueba manual con `claude`/`agy` reales y un servicio OAuth real) y 13 (cierre: binario empaquetado, `/code-review`, ADR 0025, ampliar ADR 0018, README, validación).
+## Estado (2026-10-25)
+- **Rama** `phase/18-conexiones-mcp`, todo commiteado.
+- **Hecho**: bloques 0–11 (spikes, backend e interfaz) y la prueba con los CLIs reales del bloque 12. Suite completa del backend en verde; frontend con lint, tipos y vitest en verde.
+- **Prueba real** (`backend/scripts/real_cli_connections.py`, sin tocar la configuración del usuario): `claude` y `agy` llaman a las dos herramientas de un servidor `stdio` con un secreto, las llamadas quedan registradas, la conexión pasa a «conectada», el secreto no aparece en el log ni en los ficheros y el plugin de `agy` se retira. Hallazgo: en modo restringido Claude pregunta por cada herramienta de una conexión nueva; solo las marcadas como pre-aprobadas no preguntan (es el diseño).
+- **Pendiente del bloque 12**: probar OAuth con un servicio real (Linear o Notion; necesita cuenta y navegador del usuario) y el binario empaquetado (CA16).
+- **Siguiente**: bloque 13 (cierre): `/code-review`, ADR 0025, ampliar ADR 0018, README, `validacion.md`, OK del usuario, merge `--no-ff`, tag `v1.10`.
 - **Tener en cuenta**: la UI consulta cada segundo `GET /api/connections/tests/{id}` y `/oauth/flows/{id}` (no hay eventos en vivo); en la prueba con el binario empaquetado los tests escribirían en el Administrador de credenciales real (hay que borrar lo que creen); los tests de `npx` real van con `AGENTIC_OS_REAL_NPX=1`.
