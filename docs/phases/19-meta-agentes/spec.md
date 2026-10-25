@@ -151,3 +151,7 @@ Crear agentes **hablando** en lugar de rellenar un formulario. El **Agente Arqui
 3. **Mejorar agentes activos** con el Arquitecto: dentro (apartado F), como propuesta de cambios con aprobación.
 4. **`propose_agent`**: dentro (apartado G), con permiso por agente y una propuesta por ejecución.
 5. **Equipos y pipelines completos**: dentro (apartado H), para proyectos existentes, con propuesta compuesta y aprobación total o parcial; también mejorar equipos y pipelines existentes.
+
+## Cambios tras la aprobación (2026-10-25)
+Al revisar el plan, aprobado por el usuario:
+- **Un solo CLI por conversación**: el Arquitecto es un CLI interactivo que vive mientras dura la conversación (no un proceso por pregunta); «Nueva conversación» y «Reiniciar» arrancan uno limpio. Por eso las respuestas llegan **por bloques** en lugar de letra a letra (apartado A y CA2); la ficha sigue rellenándose en vivo. Riesgo y alternativa en el ADR 0026.
