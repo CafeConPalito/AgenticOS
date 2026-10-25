@@ -162,9 +162,7 @@ class Running:
         self.base = f"http://127.0.0.1:{port}"
         self.url = f"{self.base}/mcp/"
         self.auth = Auth(self.base, pasted_redirect, access_ttl)
-        config = uvicorn.Config(
-            build_app(self.auth), host="127.0.0.1", port=port, log_level="error"
-        )
+        config = uvicorn.Config(build_app(self.auth), host="127.0.0.1", port=port, log_config=None)
         self.server = uvicorn.Server(config)
         self.thread = threading.Thread(target=self.server.run, daemon=True)
 

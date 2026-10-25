@@ -149,6 +149,7 @@ describe('Settings · índice y atajos', () => {
       '#git',
       '#knowledge',
       '#skills',
+      '#connections',
       '#dictation',
       '#models',
       '#cleanup',

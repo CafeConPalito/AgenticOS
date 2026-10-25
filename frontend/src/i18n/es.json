@@ -1175,11 +1175,11 @@
       "git": "Git",
       "knowledge": "Conocimiento",
       "skills": "Skills",
+      "connections": "Conexiones MCP",
       "dictation": "Dictado",
       "models": "Modelos locales",
       "cleanup": "Limpieza",
-      "about": "Acerca de",
-      "connections": "Conexiones MCP"
+      "about": "Acerca de"
     },
     "git": {
       "title": "Git",

@@ -39,9 +39,7 @@ class Running:
 
     def __init__(self, key: str, port: int) -> None:
         app = build_app(key)
-        config = uvicorn.Config(
-            app, host="127.0.0.1", port=port, log_level="error", lifespan="auto"
-        )
+        config = uvicorn.Config(app, host="127.0.0.1", port=port, lifespan="auto", log_config=None)
         self.server = uvicorn.Server(config)
         self.url = f"http://127.0.0.1:{port}/mcp"
         self.thread = threading.Thread(target=self.server.run, daemon=True)

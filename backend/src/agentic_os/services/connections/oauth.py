@@ -627,7 +627,7 @@ async def _listen(port: int, code: asyncio.Future) -> uvicorn.Server:
             Starlette(routes=[Route("/callback", callback)]),
             host="127.0.0.1",
             port=port,
-            log_level="error",
+            log_config=None,  # never reconfigure the app's own logging
         )
     )
     asyncio.get_running_loop().create_task(server.serve())
