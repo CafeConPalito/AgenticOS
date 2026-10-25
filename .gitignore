@@ -39,3 +39,6 @@ spikes/dictation/engine/
 spikes/dictation/models/
 spikes/dictation/samples/
 spikes/dictation/out/
+
+# Progress of the full backend test suite
+backend/.test-progress.log

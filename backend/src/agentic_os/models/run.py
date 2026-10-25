@@ -39,6 +39,7 @@ class RunKind(StrEnum):
     AGENT = "agent"  # an agent's CLI session in a terminal
     DECISION = "decision"  # a call that picked the branches of a fork (phase 13): no terminal
     DESCRIBE = "describe"  # a call that described an image of a document (phase 14): no terminal
+    ARCHITECT = "architect"  # the CLI of a conversation with the Architect (phase 19): no task
 
 
 class Run(IdMixin, WorkspaceMixin, TimestampMixin, Base):
@@ -57,7 +58,7 @@ class Run(IdMixin, WorkspaceMixin, TimestampMixin, Base):
         ),
     )
 
-    kind: Mapped[str] = mapped_column(String(8), nullable=False, default=RunKind.AGENT)
+    kind: Mapped[str] = mapped_column(String(12), nullable=False, default=RunKind.AGENT)
     agent_id: Mapped[str | None] = mapped_column(
         String(36), ForeignKey("agents.id", ondelete="SET NULL"), nullable=True, index=True
     )

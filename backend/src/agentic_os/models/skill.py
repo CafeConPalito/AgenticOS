@@ -39,6 +39,7 @@ class SkillOriginKind(StrEnum):
     AGENT = "agent"
     IMPORT = "import"  # a folder, a .zip or the skills of a CLI
     REGISTRY = "registry"  # installed from a public registry
+    ARCHITECT = "architect"  # written by the Architect for an agent it designs (phase 19)
 
 
 class VersionStatus(StrEnum):
@@ -53,6 +54,7 @@ class VersionAuthor(StrEnum):
     IMPORT = "import"
     REGISTRY = "registry"
     RESTORE = "restore"  # a copy of an older version
+    ARCHITECT = "architect"  # phase 19
 
 
 class SkillModeValue(StrEnum):
@@ -115,7 +117,7 @@ class Skill(IdMixin, WorkspaceMixin, TimestampMixin, Base):
     review: Mapped[str] = mapped_column(
         String(8), nullable=False, default=SkillReview.NONE, index=True
     )
-    origin: Mapped[str] = mapped_column(String(8), nullable=False, default=SkillOriginKind.USER)
+    origin: Mapped[str] = mapped_column(String(12), nullable=False, default=SkillOriginKind.USER)
     # The version in use. Not a foreign key: versions and skills point at each other, and a
     # version is only deleted with its skill. None only while a proposed skill is pending.
     current_version_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
@@ -147,7 +149,7 @@ class SkillVersion(IdMixin, Base):
     manifest: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
     description: Mapped[str] = mapped_column(Text, nullable=False, default="")
     tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    author_kind: Mapped[str] = mapped_column(String(8), nullable=False, default=VersionAuthor.USER)
+    author_kind: Mapped[str] = mapped_column(String(12), nullable=False, default=VersionAuthor.USER)
     author_label: Mapped[str] = mapped_column(String(120), nullable=False, default="")
     agent_id: Mapped[str | None] = mapped_column(
         String(36), ForeignKey("agents.id", ondelete="SET NULL"), nullable=True
