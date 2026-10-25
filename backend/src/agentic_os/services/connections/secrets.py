@@ -167,7 +167,13 @@ def delete_all(connection_id: str, keys: list[str]) -> None:
 
 def status(connection_id: str, keys: list[str]) -> dict[str, bool]:
     """Which of the declared secrets are set. Never the values."""
-    return {key: has(connection_id, key) for key in keys}
+    found = {}
+    for key in keys:
+        try:
+            found[key] = has(connection_id, key)
+        except ConnectionError_:  # the store is not there: it can still be listed
+            found[key] = False
+    return found
 
 
 # -- placeholders -------------------------------------------------------------------------------

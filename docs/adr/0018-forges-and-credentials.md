@@ -40,3 +40,6 @@ Uno por repositorio donde la tarea dejó trabajo: se hace *push* de la rama y se
 - Un token pegado vale para git y para la API a la vez, y se gestiona con las herramientas de git (`git credential reject`, el gestor del sistema).
 - La prueba contra un GitHub real no se puede automatizar sin credenciales: los tests usan un transporte HTTP simulado y un almacén `store` temporal. Queda como prueba manual de la fase.
 - Añadir otro servicio (Bitbucket, Gitea) es una clase más que cumpla `Forge`.
+
+## Ampliación (fase 18, [ADR 0025](0025-mcp-connections.md))
+El principio «la app no guarda ningún secreto propio» pasa a **«la app no guarda secretos en sus ficheros»**: los *tokens* de git siguen en el *helper* de git, y los secretos de las conexiones MCP (y sus *tokens* OAuth) van al almacén de credenciales del sistema, nunca a la base de datos ni a un fichero.

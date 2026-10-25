@@ -297,7 +297,9 @@ def test_the_ficha_says_what_would_run_and_what_is_missing(
         ("pypi", "acme-pg-mcp"),
     ]
     npm = detail["options"][0]
-    assert npm["command"] == "npx -y @acme/pg-mcp@2.1.0"  # «latest» resolved to the exact version
+    assert (
+        npm["command"] == "npx -y @acme/pg-mcp@2.1.0 --mode read-only"
+    )  # fixed arguments shown; «latest» resolved to the exact version
     assert npm["requires"] == ["npx"] and npm["missing"] == ["npx"]
     fields = {f["key"]: f for f in npm["fields"]}
     assert fields["PG_PASSWORD"]["secret"] and fields["PG_PASSWORD"]["required"]
@@ -443,7 +445,9 @@ def test_an_update_is_shown_and_never_applied_by_itself(client: TestClient, fake
     preview = client.get(f"{url}/update").json()
     assert preview["from"] == "2.1.0" and preview["to"] == "2.2.0"
     command = next(c for c in preview["changes"] if c["field"] == "command")
-    assert command["from"].endswith("@2.1.0") and command["to"].endswith("@2.2.0")
+    assert command["from"].startswith("npx -y @acme/pg-mcp@2.1.0") and command["to"].startswith(
+        "npx -y @acme/pg-mcp@2.2.0"
+    )
     done = client.post(f"{url}/update").json()
     assert done["args"][1] == "@acme/pg-mcp@2.2.0" and done["revision"] == created["revision"] + 1
     assert done["registry"]["version"] == "2.2.0" and done["registry"]["update_available"] is False

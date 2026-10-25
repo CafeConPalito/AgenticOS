@@ -70,14 +70,25 @@ def command_line(option: Option, version: str = "") -> str:
     """What would run, as a sentence-sized command (secrets only as their names)."""
     pinned = version or option.version
     pinned = "" if pinned == "latest" else pinned
+    fixed: list[str] = []  # the arguments the registry fixes, which the person must see too
+    for argument in option.args:
+        if argument.get("value"):
+            fixed += (
+                [argument["name"], argument["value"]]
+                if argument.get("name")
+                else [argument["value"]]
+            )
+    tail = "".join(f" {a}" for a in fixed)
     if option.kind == "npm":
         pin = f"{option.package}@{pinned}" if pinned else f"{option.package}@<última>"
-        return f"npx -y {pin}"
+        return f"npx -y {pin}{tail}"
     if option.kind == "pypi":
         pin = f"{option.package}=={pinned}" if pinned else f"{option.package}==<última>"
-        return f"uvx {pin}"
+        return f"uvx {pin}{tail}"
     if option.kind == "oci":
-        return f"docker run -i --rm {option.package}" + (f":{pinned}" if pinned else "")
+        options = "".join(f" {a}" for a in option.runtime_args)
+        image = option.package + (f":{pinned}" if pinned else "")
+        return f"docker run -i --rm{options} {image}{tail}"
     if option.kind == "command":
         return " ".join([option.command, *option.command_args])
     return option.url

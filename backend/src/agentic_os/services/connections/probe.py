@@ -268,7 +268,6 @@ async def probe(rendered: Rendered, timeout: float, auth: httpx2.Auth | None = N
                     command=rendered.command,
                     args=rendered.args,
                     env=rendered.env or None,
-                    cwd=rendered.cwd or None,
                 )
                 async with stdio_client(params, errlog=errlog) as (read, write):
                     result = await _talk(read, write)
@@ -352,10 +351,10 @@ class ProbeRunner:
                 test._task = asyncio.current_task()
                 try:
                     test.result = await probe(rendered, timeout, auth)
-                    test.state = "done"
                     if on_done is not None:  # keeps the result before anybody is told it is done
                         with contextlib.suppress(Exception):
                             on_done(test)
+                    test.state = "done"
                 except asyncio.CancelledError:
                     test.state = "cancelled"
 

@@ -117,7 +117,8 @@ def create(
         for key, value in draft.secrets.items():
             secrets.put(connection.id, key, value)
     except ConnectionError_:
-        db.rollback()
+        db.delete(connection)
+        db.flush()
         secrets.delete_all(connection.id, list(draft.secrets))
         raise
     return connection

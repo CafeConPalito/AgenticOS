@@ -188,6 +188,8 @@ def _prepare_one(
             token = oauth.access_token(db, connection)
         except oauth.NeedsLogin as problem:
             return skip(problem.message)
+        except ConnectionError_ as problem:
+            return skip(problem.message)
     try:
         if cli == Cli.CLAUDE:
             env: dict[str, str] = {}

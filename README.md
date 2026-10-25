@@ -180,6 +180,17 @@ Instrucciones probadas para tareas concretas (un `SKILL.md` y sus ficheros), en 
 - **Explorar**: las más usadas de los registros públicos (clasificación abierta de *Best Skills by Linkly AI*, skills.sh y las oficiales de Anthropic; SkillsMP y ClawHub se activan en Ajustes) y búsqueda, también pegando la dirección de un repositorio de GitHub. La ficha enseña el `SKILL.md`, los ficheros, la licencia y el análisis de seguridad de la fuente. Se instala exactamente lo revisado, en el nivel que elijas, y se avisa de las versiones nuevas con sus diferencias.
 - **Uso**: qué skills se usan más, con filtros (periodo, agente, equipo, proyecto, pipeline, CLI, cuenta, modelo, nivel, origen, vía y «nunca usadas»), orden por cualquier columna, agrupación, gráficos, las ejecuciones de cada cifra y exportación a CSV.
 
+## Conexiones MCP
+Servidores MCP externos (GitHub, bases de datos, navegador…) que los agentes usan en sus ejecuciones, configurados desde la app ([ADR 0025](docs/adr/0025-mcp-connections.md)). Página «Conexiones» (`/conexiones`).
+- **Catálogo**: se crean con un formulario, una plantilla (GitHub, Playwright, Postgres, SQLite, Filesystem, Fetch, Context7, Linear, Notion), pegando un bloque JSON `mcpServers` o importando las de tus CLIs (el original no cambia). Se prueban (lista sus herramientas, con errores en palabras), se apagan, se exportan y se borran.
+- **Secretos**: van al almacén de credenciales del sistema; en la base de datos solo hay marcadores. La API no los devuelve y se tapan (`•••`) en el terminal, el log y los visores.
+- **Herramientas**: se eligen cuáles puede llamar el agente y cuáles no piden permiso en el modo Restringido.
+- **OAuth**: «Conectar» abre el navegador; los *tokens* se guardan en el almacén del sistema y se renuevan solos. Si falla, la conexión pide volver a conectar y avisa en la Inbox.
+- **Dónde llegan**: general, proyecto o agente (gana el más concreto); un agente o una etapa del pipeline pueden quitar una. La app escribe la configuración solo para esa ejecución (Claude: `mcp.json` de la ejecución; `agy`: el plugin del espacio de trabajo, que se retira al terminar) y no toca la configuración de tus CLIs. Las conexiones SSE no funcionan en `agy` y se omiten con aviso.
+- **En la ejecución**: panel «Conexiones MCP» con lo recibido, el estado y las llamadas a herramientas externas.
+- **Explorar**: los más usados del registro oficial de MCP y de Smithery, y búsqueda por paquete o repositorio (npm, PyPI, GitHub). La ficha enseña el comando exacto y lo que falta; instalar no ejecuta nada y fija la versión. Las versiones nuevas se avisan, nunca se aplican solas.
+- **Límite conocido**: el agente puede leer las variables de entorno de su proceso, y el servidor `stdio` hereda las del CLI.
+
 ## Dictado por voz
 Dictas en lugar de escribir ([ADR 0023](docs/adr/0023-dictation.md)). La transcripción es **local**: Whisper (`whisper.cpp`) corre en tu equipo, el audio no sale de él, nunca se guarda y funciona sin conexión.
 - **Dónde**: un micrófono en los campos de texto largos (descripción de la tarea, resumen y motivo de rechazo, instrucciones y descripción del agente, memoria del proyecto, prompt de una ejecución, respuestas y rechazos de la Inbox, propuestas y fichas de conocimiento). La respuesta de la Inbox crece con el texto; `Intro` la envía y `Mayús+Intro` hace un salto de línea.

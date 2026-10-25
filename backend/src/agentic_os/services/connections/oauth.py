@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import html
 import json
 import socket
 import threading
@@ -235,6 +236,17 @@ def expires_soon(connection_id: str, margin: float = REFRESH_MARGIN) -> bool:
     return bool(expires) and float(expires) - time.time() < margin
 
 
+def _transient(error: BaseException) -> bool:
+    """A network failure, a timeout or a server error: not a reason to ask for a new login."""
+    for leaf in _leaves(error):
+        if isinstance(leaf, (httpx.TransportError, httpx2.TransportError, TimeoutError, OSError)):
+            return True
+        status = getattr(getattr(leaf, "response", None), "status_code", None)
+        if isinstance(status, int) and status >= 500:
+            return True
+    return False
+
+
 def renew(db: Session, connection: McpConnection, margin: float = REFRESH_MARGIN) -> None:
     """Renews the token of a connected account now. Raises `NeedsLogin` (after marking the
     connection and telling the Inbox) if it cannot."""
@@ -245,6 +257,11 @@ def renew(db: Session, connection: McpConnection, margin: float = REFRESH_MARGIN
             raise
         reasons = [str(e) for e in _leaves(error) if isinstance(e, NeedsLogin)]
         log.info("oauth renewal failed", connection=connection.name, error=repr(error)[:200])
+        if not reasons and _transient(error):  # offline or the service is down: the login is fine
+            raise ConnectionError_(
+                "oauth_unreachable",
+                f"No se pudo renovar la cuenta de «{connection.name}» ahora; se reintentará.",
+            ) from error
         message = (
             reasons[0]
             if reasons
@@ -356,7 +373,7 @@ def renew_expiring(factory: sessionmaker, within: float = 2 * 3600) -> int:
             try:
                 renew(db, connection, within)
                 count += 1
-            except NeedsLogin:
+            except (NeedsLogin, ConnectionError_):  # a lost login is marked; an outage is retried
                 pass
             db.commit()
     return count
@@ -502,6 +519,7 @@ class FlowManager:
         else:
             secrets.delete(connection_id, CLIENT_KEY)  # a new registration for this address
             storage = TokenStore(connection_id)
+        previous = (secrets.get(connection_id, TOKENS_KEY), secrets.get(connection_id, CLIENT_KEY))
         secrets.delete(connection_id, TOKENS_KEY)
 
         async def redirect_handler(authorization_url: str) -> None:
@@ -536,16 +554,27 @@ class FlowManager:
             )
         except asyncio.CancelledError:
             flow.state = "cancelled"
+            self._give_back(connection_id, previous)
         except BaseException as error:
             if isinstance(error, (KeyboardInterrupt, SystemExit)):
                 raise
             flow.state, flow.error = "failed", _explain(error, name)
-            secrets.delete(connection_id, TOKENS_KEY)
+            self._give_back(connection_id, previous)
             log.info("oauth login failed", connection=name, error=repr(error)[:300])
         finally:
             flow.got_url.set()
             flow.done.set()
             listener.should_exit = True
+
+    @staticmethod
+    def _give_back(connection_id: str, previous: tuple[str | None, str | None]) -> None:
+        """A reconnection that did not finish leaves the working login as it was."""
+        tokens, client = previous
+        secrets.delete(connection_id, TOKENS_KEY)
+        if tokens:
+            secrets.put(connection_id, TOKENS_KEY, tokens)
+        if client:
+            secrets.put(connection_id, CLIENT_KEY, client)
 
     def _finish(
         self,
@@ -614,7 +643,7 @@ async def _listen(port: int, code: asyncio.Future) -> uvicorn.Server:
             if query.get("error"):
                 reason = query.get("error_description") or query["error"]
                 code.set_exception(NeedsLogin(f"La autorización se canceló o falló: {reason}"))
-                return HTMLResponse(FAILED_PAGE.format(reason=reason), status_code=400)
+                return HTMLResponse(FAILED_PAGE.format(reason=html.escape(reason)), status_code=400)
             code.set_result(
                 AuthorizationCodeResult(
                     code=query.get("code", ""), state=query.get("state"), iss=query.get("iss")
