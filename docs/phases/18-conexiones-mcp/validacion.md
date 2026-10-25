@@ -15,7 +15,7 @@ Prueba real (backend/scripts/real_cli_connections.py)     claude y agy reales: O
 - **Tests nuevos (frontend)**: `connections.test`, `connections-use.test` y `connections-explore.test`.
 
 ### Estado final (2026-10-25)
-- Suite completa del backend y del frontend en verde tras resolver la revisión de código.
+- Suite completa del backend (1481 passed, 2 skipped, 1 h 6 min) y del frontend (552) en verde tras resolver la revisión de código.
 - **Almacén de credenciales**: los tests usan un almacén en memoria; el e2e con el binario empaquetado escribe en el real y no dejó ninguna entrada (`cmdkey /list`).
 
 ## Criterios de aceptación
@@ -63,6 +63,6 @@ Revisión `/code-review` (nivel alto) sobre la rama: 9 hallazgos.
 
 ## Cierre
 - [x] OK del usuario («cierra la fase», 2026-10-25)
-- [ ] Merge a `main` (`--no-ff`)
-- [ ] Tag `v1.10`
-- [ ] `docs/roadmap.md` actualizado
+- [x] Merge a `main` (`--no-ff`)
+- [x] Tag `v1.10`
+- [x] `docs/roadmap.md` actualizado
