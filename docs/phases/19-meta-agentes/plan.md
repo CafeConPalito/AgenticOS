@@ -1,7 +1,7 @@
 # Fase 19: Meta-agentes · Plan técnico
 
 - **Spec**: [spec.md](spec.md)
-- **Estado**: aprobado (2026-10-25) · en desarrollo (bloque 0: spikes)
+- **Estado**: aprobado (2026-10-25) · en desarrollo (bloque 0 hecho)
 
 ## Lo que ya se sabe (revisado al escribir el plan)
 - **Agente** (`models/agent.py`): ya tiene `status` (`active` · `draft`) y `template`. Los borradores no reciben tareas: el scheduler y `pipelines.from_template` filtran por `AgentStatus.ACTIVE`, y el editor desactiva «Asignar tarea» y «Lanzar» y muestra «Activar». No hay revisión ni registro de cambios de la configuración.
@@ -30,6 +30,45 @@ Scripts en `spikes/architect/`; evidencias en `evidencias/`. Se usa un servidor 
 | S2 | **`agy` interactivo como Arquitecto**: lo mismo que S1 con el plugin de workspace en una carpeta propia: (a) varias líneas, (b) `Stop` y lectura de la respuesta del transcript de `agy`, (c) cómo limitar sus herramientas propias (que no edite ficheros ni ejecute comandos), (d) cerrar y retomar con `--conversation`, (e) latencia y memoria | (c) sin forma de limitar sus herramientas: el Arquitecto solo con Claude en esta fase, con aviso en Ajustes |
 | S3 | **Calidad**: diez conversaciones de prueba (Redactor, Comercial, QA estricto, «mejora este agente», equipo de contenidos con pipeline de 3 etapas y una rama, equipo de desarrollo back/front con unión) con las instrucciones base del borrador, midiendo: preguntas antes de proponer, campos inventados, fichas válidas a la primera, pipelines válidos a la primera, turnos y coste por conversación | Ajustar instrucciones base, ejemplos y descripciones de herramientas; si el coste por conversación pasa de ~0,50 $ con `sonnet`, se recorta el catálogo devuelto por las herramientas |
 | S4 | **Tamaño de las respuestas de herramientas**: con 200 skills, 300 documentos y 50 conexiones, ¿cuánto ocupan `list_*` y `search_*`? ¿Basta con buscar por texto o hace falta la búsqueda semántica de las fases 14 y 17? | Búsqueda semántica con los índices existentes y listas paginadas |
+
+## Resultados de los spikes (bloque 0, 2026-10-25)
+Evidencias en [`evidencias/s1-s4-arquitecto.md`](evidencias/s1-s4-arquitecto.md); scripts en `spikes/architect/`. Ninguno cambia la spec.
+
+- **S1 · Claude**: ✅ en todo.
+  - Un mensaje de varias líneas pegado (*bracketed paste*) es un solo turno.
+  - Un `Stop` por turno, y el transcript crece bloque a bloque durante el turno.
+  - Con `--tools ""` y `--allowedTools mcp__architect__*` solo usa nuestras herramientas, sin diálogos.
+  - `--resume` conserva la conversación y conecta al MCP nuevo.
+  - Turnos de 2–11 s (Sonnet y Opus), arranque ~13–16 s, **~285 MB** por proceso; la configuración del usuario no cambia.
+- **S2 · `agy`**: ✅ con dos condiciones.
+  - Necesita el paso **`/mcp`** antes del primer mensaje y tras retomar; sin él no ve el MCP en toda la sesión.
+  - Sus herramientas propias se bloquean con un *hook* **`PreToolUse` que devuelve `deny`** para todo lo que no sea `call_mcp_tool` al servidor del Arquitecto.
+  - Varias líneas, `Stop`, transcript (`transcript_full.jsonl`, entradas `PLANNER_RESPONSE`) y `--conversation` funcionan.
+  - Turnos de 10–22 s, **~250 MB** por proceso.
+  - ⚠️ Añade cada carpeta nueva a sus carpetas de confianza.
+- **S3 · calidad (Sonnet)**: diez de diez fichas válidas y **ninguna referencia inventada**.
+  - Pregunta en las peticiones vagas (como mucho tres preguntas) y rellena desde el primer turno.
+  - Sugiere Notion en vez de inventarlo y descarta gpt-5.
+  - Reutiliza agentes y equipos existentes; los pipelines salen válidos, y un ciclo intermedio se corrigió solo con el aviso de la herramienta.
+  - Coste **0,25 $ de media** por conversación (0,11–0,58 $).
+  - Dos fallos de contrato:
+    - la cuenta por `id` frente a nombre;
+    - en modo «un agente» llamó a `set_pipeline` y metió el agente en un pipeline.
+- **S4 · tamaños**: listar 200 skills o 300 documentos cuesta ~10 000 tokens cada vez; una búsqueda de 8 resultados, ~300.
+
+### Cambios al diseño por los spikes
+1. **Claude** (§4): argv del Arquitecto = el del adapter con `--tools ""`, `--mcp-config` (solo el servidor `architect`), `--strict-mcp-config`, `--allowedTools mcp__architect__*` y las instrucciones en `--append-system-prompt-file`. Los mensajes se escriben con **pegado *bracketed*** + Enter (también los de una línea, por uniformidad). La respuesta se lee de los bloques `text` de las entradas `assistant` del transcript.
+2. **`agy`** (§4):
+   - se lanza con `--dangerously-skip-permissions` y un plugin `architect` cuyo `hooks.json` lleva un **`PreToolUse` guardián**: el *hook* de la app devuelve `deny` salvo para `call_mcp_tool` con `ServerName` `architect_architect`;
+   - antes del primer mensaje y tras retomar se hace el paso **`/mcp`** que ya tiene `RunSession`;
+   - la respuesta se lee de las entradas `PLANNER_RESPONSE` de `transcript_full.jsonl`.
+3. **Carpetas de trabajo**: en lugar de una por conversación (que `agy` añadiría una a una a su confianza), **una por proceso vivo**: `datadir/architect/slot-1` y `slot-2` (`architect.max_live` = 2), reutilizadas. El plugin y `mcp.json` se reescriben en cada arranque con el *token* nuevo.
+4. **Herramientas por modo**: en `agent` e `improve_agent` solo las de un agente (`update_sheet`, `draft_skill`, `suggest_connection`, `request_unlock` y las de lectura salvo pipelines); `update_team`, `use_existing_agent` y `set_pipeline` solo en `team`, `improve_team` e `improve_pipeline`.
+5. **Cuentas**: `list_clis` devuelve cada cuenta con `id` y `label`, y el validador acepta el `id` (y el nombre visible como alias, normalizado al `id`).
+6. **Catálogos**: `search_skills` y `search_knowledge_docs` devuelven **8 resultados** con la búsqueda híbrida existente (fases 17 y 14); `list_connections` va sin herramientas y `get_connection` da las de una. Nada lista catálogos enteros.
+7. **Avisos en cada respuesta**: las herramientas de la ficha devuelven siempre los problemas pendientes y lo rechazado con el motivo; en S3 eso bastó para que el modelo se corrigiera solo.
+8. **Modelo por defecto**: **Sonnet** (Claude) y `gemini-3.8-flash-high` (`agy`); Opus no mejora lo bastante para su coste.
+9. **Instrucciones base**: las de `spikes/architect/instructions.md` + `modes.py` pasan a `services/architect/prompts.py` como punto de partida.
 
 ## Diseño ([ADR 0026](../../adr/0026-meta-agents.md), nuevo)
 
@@ -129,7 +168,7 @@ Scripts en `spikes/architect/`; evidencias en `evidencias/`. Se usa un servidor 
 ## Tareas (en orden)
 Bloques pequeños con commits y tests; cada uno deja la app funcionando.
 
-0. [ ] **Spikes S1–S4** y cambios al diseño que salgan (⛔ OK del usuario si cambian algo de la spec).
+0. [x] **Spikes S1–S4** y cambios al diseño que salgan (⛔ OK del usuario si cambian algo de la spec).
 1. [ ] **Modelo de datos**: migración `0021_architect`, modelos y `CHECK`s; tests de migración.
 2. [ ] **Ficha y validación** (§2) con tests de cada regla, sin LLM.
 3. [ ] **Propuestas** (§3): crear, aprobar (total y parcial, conflictos, transacción) y rechazar, para `new_agent` y `agent_changes`; `AgentChange`; Inbox.

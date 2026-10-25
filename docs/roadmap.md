@@ -141,3 +141,4 @@ Flujo de cada fase: ver `CLAUDE.md` (Spec → Plan → Desarrollo → Validació
 | 2026-10-25 | Spec de la fase 19 revisada con las decisiones del usuario: skills nuevas propuestas por el Arquitecto, exportar/importar, mejora de agentes activos (propuesta de cambios) y `propose_agent`. Ampliada con equipos y pipelines completos diseñados por el Arquitecto. |
 | 2026-10-25 | Spec de la fase 19 aprobada. Fase 19 en plan; borrador del plan (spikes S1–S4) y del ADR 0026, pendientes de aprobación. |
 | 2026-10-25 | Plan de la fase 19 aprobado (un CLI interactivo por conversación del Arquitecto; ADR 0026 propuesto). Fase 19 en dev (rama `phase/19-meta-agentes`). |
+| 2026-10-25 | Fase 19, bloque 0: spikes S1–S4 (un CLI interactivo por conversación con Claude y `agy`; `agy` con `/mcp` y un *hook* `PreToolUse` que deniega sus herramientas; diez fichas válidas sin referencias inventadas a 0,25 $ de media con Sonnet; catálogos por búsqueda). Sin cambios en la spec. |
