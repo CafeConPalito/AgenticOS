@@ -1,6 +1,7 @@
 from agentic_os.models.account import CliAccount, SessionState
 from agentic_os.models.agent import Agent, AgentStatus, Cli, PermissionMode, Tool
 from agentic_os.models.app_state import (
+    ARCHITECT,
     CONNECTIONS,
     DICTATION,
     KNOWLEDGE,
@@ -9,6 +10,13 @@ from agentic_os.models.app_state import (
     SKILLS,
     USAGE_LIMITS,
     AppState,
+)
+from agentic_os.models.architect import (
+    ArchitectConversation,
+    ArchitectMessage,
+    ArchitectMode,
+    ConversationStatus,
+    MessageRole,
 )
 from agentic_os.models.connection import (
     McpAssignment,
@@ -46,6 +54,15 @@ from agentic_os.models.knowledge import (
 from agentic_os.models.memory import AuthorKind, MemoryNote
 from agentic_os.models.pipeline import DEFAULT_MAX_REJECTIONS, Pipeline, Stage, StageLink
 from agentic_os.models.project import IntegrationMode, OnApprove, Project, WorkspaceMode
+from agentic_os.models.proposal import (
+    AgentChange,
+    AgentTemplateRow,
+    ChangeSource,
+    Proposal,
+    ProposalKind,
+    ProposalOrigin,
+    ProposalStatus,
+)
 from agentic_os.models.repo import (
     CommitAttribution,
     GitOperation,
@@ -96,6 +113,7 @@ from agentic_os.models.team import Team
 
 __all__ = [
     "ACTIVE_STATUSES",
+    "ARCHITECT",
     "CONNECTIONS",
     "DEFAULT_MAX_REJECTIONS",
     "DICTATION",
@@ -109,13 +127,20 @@ __all__ = [
     "USAGE_LIMITS",
     "Activity",
     "Agent",
+    "AgentChange",
     "AgentStatus",
+    "AgentTemplateRow",
     "AppState",
+    "ArchitectConversation",
+    "ArchitectMessage",
+    "ArchitectMode",
     "AuthorKind",
     "BranchDecision",
+    "ChangeSource",
     "Cli",
     "CliAccount",
     "CommitAttribution",
+    "ConversationStatus",
     "DecisionBy",
     "DocStatus",
     "EventKind",
@@ -144,6 +169,7 @@ __all__ = [
     "McpToolMode",
     "McpTransport",
     "MemoryNote",
+    "MessageRole",
     "OAuthStatus",
     "OfferKind",
     "OnApprove",
@@ -154,6 +180,10 @@ __all__ = [
     "Priority",
     "Project",
     "ProjectRepo",
+    "Proposal",
+    "ProposalKind",
+    "ProposalOrigin",
+    "ProposalStatus",
     "PullMode",
     "Resolution",
     "Review",

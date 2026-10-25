@@ -29,28 +29,37 @@ TOKEN_PATH = re.compile(r"^/([A-Za-z0-9_-]{16,128})(/mcp.*)$")
 MAX_TEXT = 4000
 
 
+AGENT, ARCHITECT = "agent", "architect"  # who a token belongs to
+
+
 class RunTokens:
-    """Per-run bearer tokens, in memory: they die with the run (or the backend)."""
+    """Per-run bearer tokens, in memory: they die with the run (or the backend). A token is an
+    agent's or the Architect's (phase 19): each MCP server only accepts its own kind, so an
+    agent cannot edit a sheet and the Architect cannot complete a task."""
 
     def __init__(self) -> None:
-        self._by_token: dict[str, str] = {}
+        self._by_token: dict[str, tuple[str, str]] = {}
         self._lock = threading.Lock()
 
-    def issue(self, run_id: str) -> str:
+    def issue(self, run_id: str, kind: str = AGENT) -> str:
         token = secrets.token_urlsafe(32)
         with self._lock:
-            self._by_token[token] = run_id
+            self._by_token[token] = (run_id, kind)
         return token
 
-    def resolve(self, token: str | None) -> str | None:
+    def resolve(self, token: str | None, kind: str | None = None) -> str | None:
+        """The run of a token; with `kind`, only if the token is of that kind."""
         if not token:
             return None
         with self._lock:
-            return self._by_token.get(token)
+            found = self._by_token.get(token)
+        if found is None or (kind is not None and found[1] != kind):
+            return None
+        return found[0]
 
     def revoke(self, run_id: str) -> None:
         with self._lock:
-            for token in [t for t, r in self._by_token.items() if r == run_id]:
+            for token in [t for t, (r, _kind) in self._by_token.items() if r == run_id]:
                 del self._by_token[token]
 
 
@@ -112,10 +121,17 @@ class AgentBackend(Protocol):
 class TokenGate:
     """ASGI middleware in front of the MCP app: token → run id, or 401."""
 
-    def __init__(self, app: ASGIApp, tokens: RunTokens, on_request: Callable[[str], None]) -> None:
+    def __init__(
+        self,
+        app: ASGIApp,
+        tokens: RunTokens,
+        on_request: Callable[[str], None],
+        kind: str = AGENT,
+    ) -> None:
         self.app = app
         self.tokens = tokens
         self.on_request = on_request
+        self.kind = kind
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":
@@ -134,7 +150,7 @@ class TokenGate:
             auth = dict(headers).get(b"authorization", b"").decode()
             if auth.lower().startswith("bearer "):
                 token = auth[7:].strip()
-        run_id = self.tokens.resolve(token)
+        run_id = self.tokens.resolve(token, self.kind)
         if run_id is None:
             await _reject(send)
             return

@@ -52,6 +52,11 @@ ESC, ENTER, CTRL_C, DOWN = "\x1b", "\r", "\x03", "\x1b[B"
 DELIVERY_GAP = 2.0  # seconds between two messages typed into the CLI
 DELIVERY_CONFIRM = 20.0  # a typed message must start a turn within this time
 MESSAGE_LIMIT = 1800  # characters typed in one message (the rest: get_context)
+# A conversation (the Architect, phase 19): each message is pasted whole (spikes S1-S2: one
+# bracketed paste + Enter is one turn in both CLIs, line breaks included).
+PASTE_START, PASTE_END = "[200~", "[201~"
+PASTE_LIMIT = 20_000
+PASTE_SETTLE = 0.8  # seconds the TUI gets to take the paste before Enter
 PERMISSION_SHOW = 0.5  # seconds a permission dialog must be on screen to be reported
 PERMISSION_GONE = 1.5  # seconds it must be missing to count as answered
 QUOTA_GONE = 30.0  # seconds the quota notice must be gone before a new one is reported
@@ -92,6 +97,7 @@ class RunSession:
         on_quota: Callable[[str], None] | None = None,
         redactor: Redactor | None = None,
         mcp_grace: float = 0.0,
+        conversation: bool = False,
     ) -> None:
         self.run_id = run_id
         self.cli = cli
@@ -106,6 +112,9 @@ class RunSession:
         # agy: seconds the external MCP servers get to connect after `/mcp`, before the prompt
         # (agy does not say when each one is up: spike S2).
         self.mcp_grace = mcp_grace
+        # A conversation with a person (the Architect): messages are pasted whole and nothing
+        # is typed on their behalf.
+        self.conversation = conversation
         self.on_end = on_end
         self.on_system_event = on_system_event or (lambda *args, **kwargs: None)
         # A permission dialog of the CLI appeared / went away (Inbox «Aprobación», phase 06).
@@ -398,9 +407,7 @@ class RunSession:
             if pty is None or not self.alive:
                 return
             with contextlib.suppress(Exception):
-                pty.write(prompt)
-                time.sleep(0.4)  # let the TUI render the text before submitting it
-                pty.write(ENTER)
+                self._submit(pty, prompt)
             self.on_system_event("prompt_sent")
             if not self._turn_seen.wait(PROMPT_CONFIRM) and self.alive:
                 self.on_system_event("waiting_for_human", "prompt_not_started")
@@ -464,8 +471,18 @@ class RunSession:
                 if nudge:
                     self._close_completed("released")  # the task was done: no nudge
                 return
-            if nudge and self._pty is not None:
+            if nudge and self._pty is not None and not self.conversation:
                 self._type_line(CONTINUE_MESSAGE)
+
+    def _submit(self, pty: PtyProcess, text: str) -> None:
+        """Writes a message and submits it (blocking: call it off the ticker)."""
+        if self.conversation:
+            pty.write(PASTE_START + text + PASTE_END)
+            time.sleep(PASTE_SETTLE)
+        else:
+            pty.write(text)
+            time.sleep(0.4)  # let the TUI render the text before submitting it
+        pty.write(ENTER)
 
     def _type_line(self, text: str) -> None:
         pty = self._pty
@@ -473,11 +490,27 @@ class RunSession:
 
         def run() -> None:
             with contextlib.suppress(Exception):
-                pty.write(text)
-                time.sleep(0.4)  # let the TUI render the text before submitting it
-                pty.write(ENTER)
+                self._submit(pty, text)
 
         threading.Thread(target=run, daemon=True).start()
+
+    def interrupt(self) -> bool:
+        """Stops the current turn and keeps the session (Esc, like taking the control). False
+        if there is no turn to stop, or a dialog would take the Esc as «No»."""
+        if self._pty is None or not self.alive or self.controller is not None:
+            return False
+        if not self._in_turn or self._screen.permission_dialog() is not None:
+            return False
+        with contextlib.suppress(Exception):
+            self._pty.write(ESC)
+        # An interrupted turn fires no end-of-turn hook (Claude Code): close it here.
+        self._in_turn = False
+        self._set(activity=Activity.IDLE)
+        return True
+
+    @property
+    def in_turn(self) -> bool:
+        return self._in_turn
 
     def _mark_size(self) -> None:
         """Records the PTY size in the log and the scrollback (not sent to live viewers)."""
@@ -642,9 +675,12 @@ class RunSession:
 
     def deliver(self, text: str) -> None:
         """Queues a message for the agent; it is typed as soon as the CLI waits for input."""
-        line = " / ".join(part.strip() for part in text.splitlines() if part.strip())
-        if len(line) > MESSAGE_LIMIT:
-            line = line[: MESSAGE_LIMIT - 60] + "… (el resto está en get_context)"
+        if self.conversation:
+            line = text.strip()[:PASTE_LIMIT]
+        else:
+            line = " / ".join(part.strip() for part in text.splitlines() if part.strip())
+            if len(line) > MESSAGE_LIMIT:
+                line = line[: MESSAGE_LIMIT - 60] + "… (el resto está en get_context)"
         with self._lock:
             self._deliveries.append(line)
 
