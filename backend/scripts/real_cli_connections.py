@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import socket
 import subprocess
 import sys
@@ -45,8 +46,48 @@ WATCHED = [
 def snapshot() -> dict[str, str]:
     out = {}
     for path in WATCHED:
-        out[str(path)] = hashlib.sha256(path.read_bytes()).hexdigest() if path.is_file() else "-"
+        if not path.is_file():
+            out[str(path)] = "-"
+            continue
+        raw = path.read_bytes()
+        if path.name == ".claude.json":  # the CLI rewrites counters here; only its servers matter
+            data = json.loads(raw or b"{}")
+            # the CLI adds an empty entry for every folder it trusts: only servers count
+            projects = {
+                k: v["mcpServers"]
+                for k, v in data.get("projects", {}).items()
+                if v.get("mcpServers")
+            }
+            raw = json.dumps([data.get("mcpServers"), projects], sort_keys=True).encode()
+        out[str(path)] = hashlib.sha256(raw).hexdigest()
     return out
+
+
+ANSI = re.compile(r"\x1b(\[[0-9;?<>=]*[ -/]*[@-~]|\][^\x07\x1b]*(\x07|\x1b\\)|[()][A-Z0-9])")
+DIALOGS = (  # (text in the screen without spaces, keys that accept it)
+    ("yes,itrustthisfolder", ("\r",)),
+    ("yes,iaccept", ("\x1b[B", "\r")),
+)
+
+
+def answer_dialogs(app, run_id: str, answered: set[str]) -> None:
+    """A fresh folder makes the CLI ask to trust it; a person would press Enter."""
+    session = app.state.run_manager.get(run_id)
+    if session is None or not session.alive:
+        return
+    log_file = Path(app.state.settings.data_dir) / "runs" / f"{run_id}.log"
+    if not log_file.is_file():
+        return
+    text = ANSI.sub("", log_file.read_text("utf-8", "replace")[-6000:])
+    tail = text.replace(" ", "").lower()
+    for marker, keys in DIALOGS:
+        if marker in tail and marker not in answered:
+            answered.add(marker)
+            for key in keys:  # one key at a time, as a person types
+                session._pty.write(key)
+                time.sleep(0.6)
+            print(f"  answered the dialog «{marker}»")
+            return
 
 
 def free_port() -> int:
@@ -72,7 +113,11 @@ def main() -> int:
         if server.started:
             break
         time.sleep(0.2)
-    http = httpx.Client(base_url=url, timeout=60)
+    http = httpx.Client(
+        base_url=url,
+        timeout=60,
+        transport=httpx.HTTPTransport(retries=3, limits=httpx.Limits(max_keepalive_connections=0)),
+    )
     before = snapshot()
     failures: list[str] = []
     connection = http.post(
@@ -87,6 +132,14 @@ def main() -> int:
         },
     ).json()[0]
     print("connection:", connection["name"], connection["id"])
+    # a new connection asks before each tool; the person pre-approves the ones they trust
+    http.post(
+        f"/api/connections/{connection['id']}/test", params={"wait": "true"}
+    ).raise_for_status()
+    http.patch(
+        f"/api/connections/{connection['id']}",
+        json={"preapproved_tools": ["read_note", "show_env"]},
+    ).raise_for_status()
     http.put("/api/settings/connections", json={"agy_grace": 8})
     for cli in wanted:
         folder = data / f"proyecto-{cli}"
@@ -97,7 +150,11 @@ def main() -> int:
         ).json()
         agent = http.post(
             "/api/agents",
-            json={"name": f"Real {cli}", "cli": cli, "permission_mode": "autonomous"},
+            json={
+                "name": f"Real {cli}",
+                "cli": cli,
+                "permission_mode": "restricted" if cli == "claude" else "autonomous",
+            },
         ).json()
         prompt = (
             "Usa las herramientas del servidor MCP «probe»: llama a read_note con topic='a' y a "
@@ -112,6 +169,7 @@ def main() -> int:
         run_id = run.json()["id"]
         print(f"[{cli}] run {run_id} launched")
         deadline = time.monotonic() + 300
+        answered: set[str] = set()
         view: dict = {}
         while time.monotonic() < deadline:
             view = http.get(f"/api/runs/{run_id}/connections").json()
@@ -131,7 +189,8 @@ def main() -> int:
                 http.post(f"/api/runs/{run_id}/stop")
                 time.sleep(10)
                 break
-            time.sleep(5)
+            answer_dialogs(app, run_id, answered)
+            time.sleep(3)
         else:
             http.post(f"/api/runs/{run_id}/stop")
         view = http.get(f"/api/runs/{run_id}/connections").json()
@@ -152,6 +211,10 @@ def main() -> int:
             if file.is_file() and SECRET in file.read_text("utf-8", "replace"):
                 failures.append(f"{cli}: the secret is in {file.name}")
         leftover = folder / ".agents" / "plugins" / "agentic-os"
+        for _ in range(30):  # the run's cleanup happens right after its exit
+            if not leftover.exists():
+                break
+            time.sleep(0.5)
         if cli == "agy" and leftover.exists():
             failures.append("agy: the workspace plugin was not removed")
     after = snapshot()
