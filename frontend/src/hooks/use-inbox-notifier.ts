@@ -20,6 +20,7 @@ const SETTING: Record<InboxKind, keyof NotificationSettings> = {
   switch: 'limits',
   knowledge: 'review',
   skill: 'review',
+  connection: 'limits',
 }
 
 /**

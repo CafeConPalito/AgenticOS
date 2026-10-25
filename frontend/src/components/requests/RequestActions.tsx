@@ -303,6 +303,18 @@ export function RequestActions({
           />
         </>
       )}
+      {item.kind === 'connection' && item.connection_id && (
+        <Button
+          size="sm"
+          className="bg-primary-action text-white hover:bg-primary-action-hover"
+          asChild
+        >
+          <Link to={`/conexiones?conexion=${item.connection_id}`}>
+            <LogIn />
+            {t('inbox.reconnect')}
+          </Link>
+        </Button>
+      )}
       {item.kind === 'quota' && (
         <Button
           size="sm"

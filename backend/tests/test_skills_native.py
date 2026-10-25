@@ -78,7 +78,7 @@ def test_claude_gets_the_skills_as_a_plugin_and_may_load_them(tmp_path: Path):
     }
     assert "Skill" in allowed(argv)
     settings = json.loads((ctx.run_dir / "settings.json").read_text("utf-8"))
-    assert settings["hooks"]["PreToolUse"][0]["matcher"] == "Agent|Task|Skill"
+    assert settings["hooks"]["PreToolUse"][0]["matcher"] == "Agent|Task|Skill|mcp__.*"
 
 
 def test_claude_without_skills_has_no_plugin(tmp_path: Path):
@@ -98,7 +98,7 @@ def test_agy_gets_the_skills_in_its_plugin_except_the_too_big(tmp_path: Path):
     assert (plugin / "skills" / "revision" / "scripts" / "run.py").exists()
     assert not (plugin / "skills" / "enorme").exists()  # agy skips a SKILL.md over 24 KB (S2)
     hooks = json.loads((plugin / "hooks.json").read_text("utf-8"))["agentic-os"]
-    assert hooks["PreToolUse"][0]["matcher"] == "invoke_subagent|read_file"
+    assert hooks["PreToolUse"][0]["matcher"] == "invoke_subagent|call_mcp_tool|read_file"
     adapter.cleanup(ctx)
     assert not plugin.exists()
 
@@ -107,7 +107,7 @@ def test_agy_without_skills_does_not_watch_every_read(tmp_path: Path):
     ctx = _with_skills(context(tmp_path, Cli.AGY), None)
     adapter_for(Cli.AGY).prepare(ctx)
     hooks = json.loads((plugin_dir(ctx.cwd) / "hooks.json").read_text("utf-8"))["agentic-os"]
-    assert hooks["PreToolUse"][0]["matcher"] == "invoke_subagent"
+    assert hooks["PreToolUse"][0]["matcher"] == "invoke_subagent|call_mcp_tool"
     assert not (plugin_dir(ctx.cwd) / "skills").exists()
 
 

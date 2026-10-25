@@ -1,6 +1,7 @@
 export type TopSection = 'board' | 'runs' | 'settings'
 /** Second-level pages: reachable by route, Ctrl+K and the breadcrumb, not from the top bar. */
-export type SecondarySection = 'agents' | 'projects' | 'inbox' | 'usage' | 'clis' | 'knowledge'
+export type SecondarySection =
+  'agents' | 'projects' | 'inbox' | 'usage' | 'clis' | 'knowledge' | 'connections'
 export type Section = 'home' | TopSection | SecondarySection
 
 export interface NavItem {
@@ -22,6 +23,7 @@ export const SECONDARY_NAV: (NavItem & { id: SecondarySection })[] = [
   { id: 'usage', path: '/consumo' },
   { id: 'clis', path: '/clis' },
   { id: 'knowledge', path: '/conocimiento' },
+  { id: 'connections', path: '/conexiones' },
 ]
 
 export const HOME: NavItem = { id: 'home', path: '/' }

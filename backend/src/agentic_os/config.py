@@ -57,6 +57,8 @@ class Settings(BaseSettings):
     # is removed (None: the real ones; tests point them elsewhere).
     claude_config_file: Path | None = None
     agy_settings_file: Path | None = None
+    # The CLIs' MCP server lists the importer reads (phase 18; None: the real ones).
+    agy_mcp_config_file: Path | None = None
     # Debugging: appends every hook payload received (JSON lines) to this file.
     hook_log: Path | None = None
     # Asks each CLI at startup whether its accounts are logged in (phase 10). Tests turn it off:

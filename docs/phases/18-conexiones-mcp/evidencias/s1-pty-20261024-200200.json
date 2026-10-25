@@ -1,0 +1,44 @@
+[
+ {
+  "name": "fast-exit",
+  "delay": 0,
+  "trusted": true,
+  "first_turn": "no-tool",
+  "seconds_to_answer": 0.0,
+  "server_pids_while_running": [],
+  "ended_by": "exit",
+  "exited": false,
+  "leaked_after_end": [
+   3900,
+   20508
+  ],
+  "screen_tail": "ocal\\AgenticOS-spike\\sandbox\\s1-pty-fast-exit-20261024-200050\n\n\n❯ Call read_note of the server probe with topic 'a' and answer with the raw text it returns. If you do not have that\n  tool, answer exactly NO-TOOL./exit\n\n  Called probe\n\n● NOTE[a]=PROBE-READ-4417\n\n✻ Crunched for 5s · done 20:01\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────\n❯\n────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────\n  ⏵⏵ accept edits on (shift+tab to cycle)"
+ },
+ {
+  "name": "slow-exit",
+  "delay": 12,
+  "trusted": true,
+  "first_turn": "no-tool",
+  "seconds_to_answer": 0.0,
+  "server_pids_while_running": [],
+  "ended_by": "exit",
+  "exited": false,
+  "leaked_after_end": [
+   2236,
+   19256
+  ],
+  "screen_tail": "ocal\\AgenticOS-spike\\sandbox\\s1-pty-slow-exit-20261024-200120\n\n\n❯ Call read_note of the server probe with topic 'a' and answer with the raw text it returns. If you do not have that\n  tool, answer exactly NO-TOOL./exit\n\n  Called probe\n\n● NOTE[a]=PROBE-READ-4417\n\n✻ Sautéed for 15s · done 20:01\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────\n❯\n────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────\n  ⏵⏵ accept edits on (shift+tab to cycle)"
+ },
+ {
+  "name": "fast-kill",
+  "delay": 0,
+  "trusted": true,
+  "first_turn": "no-tool",
+  "seconds_to_answer": 0.0,
+  "server_pids_while_running": [],
+  "ended_by": "kill",
+  "exited": true,
+  "leaked_after_end": [],
+  "screen_tail": "erver probe with topic 'a' and answer with the raw text it returns. If you do not have that\n  tool, answer exactly NO-TOOL.\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n✢ Waddling…\n                                                                                                    ◐ medium · /effort\n────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────\n❯\n────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────\n  ⏵⏵ accept edits on (shift+tab to cycle) · esc to interrupt · ← for agents"
+ }
+]

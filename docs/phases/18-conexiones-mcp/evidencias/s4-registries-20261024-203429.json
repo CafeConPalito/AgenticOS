@@ -1,0 +1,143 @@
+{
+ "official_list": {
+  "url": "https://registry.modelcontextprotocol.io/v0.1/servers?limit=3",
+  "status": 200,
+  "seconds": 0.41,
+  "content_type": "application/json",
+  "ratelimit": {},
+  "keys": [
+   "servers",
+   "metadata"
+  ],
+  "sample": "{\"servers\": [{\"server\": {\"$schema\": \"https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json\", \"name\": \"ac.inference.sh/mcp\", \"description\": \"Run 150+ AI apps — image, video, audio, LLMs, 3D and more. Browse, execute, stream results.\", \"title\": \"inference.sh\", \"version\": \"1.0.0\", \"remotes\": [{\"type\": \"streamable-http\", \"url\": \"https://sh.inference.ac\"}, {\"type\": \"streamable-http\", \"url\": \"https://api.inference.sh/mcp\"}]}, \"_meta\": {\"io.modelcontextprotocol.registry/official\": {\"status\": \"active\", \"statusChangedAt\": \"2026-04-13T17:32:20.852269Z\", \"publishedAt\": \"2026-04-13T17:32:20.852269Z\", \"updatedAt\": \"2026-04-13T17:32:20.852269Z\", \"isLatest\": false}}}, {\"server\": {\"$schema\": \"https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json\", \"name\": \"ac.inference.sh/mcp\", \"description\": \"Run 150+ AI apps — image, video, audio, LLMs, 3D and more. Browse, execute, stream results.\", \"title\": \"inference.sh\", \"version\": \"1.0.1\", \"remotes\": [{\"type\": \"streamable-http\", \"url\": \"https://sh.inference.ac\"}, {\"type\": \"streamable-http\", \"url\": \"https://api.inference.sh/mcp\"}]}, \"_meta\": {\"io.modelcontextprotocol.registry/official\": {\"status\": \"active\", \"statusChangedAt\": \"2026-04-13T17:33:26.613537Z\", \"publishedAt\": \"2026-04-13T17:33:26.613537Z\", \"updatedAt\": \"2026-04-13T17:33:26.613537Z\", \"isLatest\": false}}}, {\"server\": {\"$schema\": \"https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json\", \"name\": \"ac.inference.sh/mcp\", \"description\": \"run any ai model. compose agents, stack knowledge, connect tools. one api, pay per run.\", \"title\": \"inference.sh\", \"version\": \"2.0.0\", \"remotes\": [{\"type\": \"streamable-http\", \"url\": \"https://sh.inference.ac\"}, {\"type\": \"streamable-http\", \"url\": \"https://api.inference.sh/mcp\"}]}, \"_meta\": {\"io"
+ },
+ "official_search": {
+  "url": "https://registry.modelcontextprotocol.io/v0.1/servers?search=github&limit=3",
+  "status": 200,
+  "seconds": 0.14,
+  "content_type": "application/json",
+  "ratelimit": {},
+  "keys": [
+   "servers",
+   "metadata"
+  ],
+  "sample": "{\"servers\": [{\"server\": {\"$schema\": \"https://static.modelcontextprotocol.io/schemas/2025-09-29/server.schema.json\", \"name\": \"ai.smithery/Hint-Services-obsidian-github-mcp\", \"description\": \"Connect AI assistants to your GitHub-hosted Obsidian vault to seamlessly access, search, and analy…\", \"repository\": {\"url\": \"https://github.com/Hint-Services/obsidian-github-mcp\", \"source\": \"github\"}, \"version\": \"0.4.0\", \"remotes\": [{\"type\": \"streamable-http\", \"url\": \"https://server.smithery.ai/@Hint-Services/obsidian-github-mcp/mcp\", \"headers\": [{\"description\": \"Bearer token for Smithery authentication\", \"isRequired\": true, \"value\": \"Bearer {smithery_api_key}\", \"isSecret\": true, \"name\": \"Authorization\"}]}]}, \"_meta\": {\"io.modelcontextprotocol.registry/official\": {\"status\": \"active\", \"statusChangedAt\": \"2025-09-14T15:20:36.371442Z\", \"publishedAt\": \"2025-09-14T15:20:36.371442Z\", \"updatedAt\": \"2025-09-14T15:20:36.371442Z\", \"isLatest\": true}}}, {\"server\": {\"$schema\": \"https://static.modelcontextprotocol.io/schemas/2025-09-16/server.schema.json\", \"name\": \"ai.smithery/saidsef-mcp-github-pr-issue-analyser\", \"description\": \"A Model Context Protocol (MCP) application for automated GitHub PR analysis and issue management.…\", \"repository\": {\"url\": \"https://github.com/saidsef/mcp-github-pr-issue-analyser\", \"source\": \"github\"}, \"version\": \"1.15.0\", \"remotes\": [{\"type\": \"streamable-http\", \"url\": \"https://server.smithery.ai/@saidsef/mcp-github-pr-issue-analyser/mcp\", \"headers\": [{\"description\": \"Bearer token for Smithery authentication\", \"value\": \"Bearer {smithery_api_key}\", \"name\": \"Authorization\"}]}]}, \"_meta\": {\"io.modelcontextprotocol.registry/official\": {\"status\": \"active\", \"statusChangedAt\": \"2025-10-05T14:58:08.898007Z\", \"publishedAt\": \"2025-10-05T14:58:08.898007Z\", \"updatedAt\": \"2025-10-05T"
+ },
+ "official_v0_search": {
+  "url": "https://registry.modelcontextprotocol.io/v0/servers?search=github&limit=3",
+  "status": 200,
+  "seconds": 0.11,
+  "content_type": "application/json",
+  "ratelimit": {},
+  "keys": [
+   "servers",
+   "metadata"
+  ],
+  "sample": "{\"servers\": [{\"server\": {\"$schema\": \"https://static.modelcontextprotocol.io/schemas/2025-09-29/server.schema.json\", \"name\": \"ai.smithery/Hint-Services-obsidian-github-mcp\", \"description\": \"Connect AI assistants to your GitHub-hosted Obsidian vault to seamlessly access, search, and analy…\", \"repository\": {\"url\": \"https://github.com/Hint-Services/obsidian-github-mcp\", \"source\": \"github\"}, \"version\": \"0.4.0\", \"remotes\": [{\"type\": \"streamable-http\", \"url\": \"https://server.smithery.ai/@Hint-Services/obsidian-github-mcp/mcp\", \"headers\": [{\"description\": \"Bearer token for Smithery authentication\", \"isRequired\": true, \"value\": \"Bearer {smithery_api_key}\", \"isSecret\": true, \"name\": \"Authorization\"}]}]}, \"_meta\": {\"io.modelcontextprotocol.registry/official\": {\"status\": \"active\", \"statusChangedAt\": \"2025-09-14T15:20:36.371442Z\", \"publishedAt\": \"2025-09-14T15:20:36.371442Z\", \"updatedAt\": \"2025-09-14T15:20:36.371442Z\", \"isLatest\": true}}}, {\"server\": {\"$schema\": \"https://static.modelcontextprotocol.io/schemas/2025-09-16/server.schema.json\", \"name\": \"ai.smithery/saidsef-mcp-github-pr-issue-analyser\", \"description\": \"A Model Context Protocol (MCP) application for automated GitHub PR analysis and issue management.…\", \"repository\": {\"url\": \"https://github.com/saidsef/mcp-github-pr-issue-analyser\", \"source\": \"github\"}, \"version\": \"1.15.0\", \"remotes\": [{\"type\": \"streamable-http\", \"url\": \"https://server.smithery.ai/@saidsef/mcp-github-pr-issue-analyser/mcp\", \"headers\": [{\"description\": \"Bearer token for Smithery authentication\", \"value\": \"Bearer {smithery_api_key}\", \"name\": \"Authorization\"}]}]}, \"_meta\": {\"io.modelcontextprotocol.registry/official\": {\"status\": \"active\", \"statusChangedAt\": \"2025-10-05T14:58:08.898007Z\", \"publishedAt\": \"2025-10-05T14:58:08.898007Z\", \"updatedAt\": \"2025-10-05T"
+ },
+ "smithery_list": {
+  "url": "https://registry.smithery.ai/servers?pageSize=3",
+  "status": 200,
+  "seconds": 0.91,
+  "content_type": "application/json",
+  "ratelimit": {},
+  "keys": [
+   "servers",
+   "pagination"
+  ],
+  "sample": "{\"servers\": [{\"id\": \"50f26566-7dfe-4842-a5b8-1a9407fb91f4\", \"qualifiedName\": \"brave\", \"namespace\": \"brave\", \"slug\": \"\", \"displayName\": \"Brave Search\", \"description\": \"Search the web with Brave's independent index — web, news, images, and videos. Bring your own subscription token from the [Brave Search API dashboard](https://api-dashboard.search.brave.com).\", \"iconUrl\": \"https://api.smithery.ai/servers/brave/icon\", \"verified\": true, \"useCount\": 87579, \"remote\": true, \"isDeployed\": true, \"unlisted\": false, \"inactive\": false, \"createdAt\": \"2025-09-05T18:07:47.018Z\", \"homepage\": \"https://brave.com/search/api/\", \"bySmithery\": true, \"owner\": \"org_01KPBXJTDN7ASH7MJ3958C05QY\", \"score\": null}, {\"id\": \"69919e2f-2b9a-4c17-9867-e46bab4c3b28\", \"qualifiedName\": \"gmail\", \"namespace\": \"gmail\", \"slug\": \"\", \"displayName\": \"Gmail\", \"description\": \"Read, search, and send Gmail messages. Manage drafts, threads, and labels; reply, forward, archive, trash, report spam, and triage your inbox.\", \"iconUrl\": \"https://api.smithery.ai/servers/gmail/icon\", \"verified\": true, \"useCount\": 57738, \"remote\": true, \"isDeployed\": true, \"unlisted\": false, \"inactive\": false, \"createdAt\": \"2025-11-26T14:34:03.393Z\", \"homepage\": \"https://smithery.ai/servers/gmail\", \"bySmithery\": true, \"owner\": \"org_01KPBXJTDN7ASH7MJ3958C05QY\", \"score\": null}, {\"id\": \"0cdbc44b-23ed-4725-85a7-8782e87029a2\", \"qualifiedName\": \"onesignal/onesignal\", \"namespace\": \"onesignal\", \"slug\": \"onesignal\", \"displayName\": \"OneSignal\", \"description\": \"OneSignal is a customer engagement platform that lets you send targeted push notifications, emails, SMS, and in-app messages, manage audiences, and track campaign performance.\\n\\nWith the OneSignal MCP, manage your messaging directly from your AI assistant. Send push notifications, emails, and SMS "
+ },
+ "smithery_search": {
+  "url": "https://registry.smithery.ai/servers?q=github&pageSize=3",
+  "status": 200,
+  "seconds": 0.72,
+  "content_type": "application/json",
+  "ratelimit": {},
+  "keys": [
+   "servers",
+   "pagination"
+  ],
+  "sample": "{\"servers\": [{\"id\": \"944cef5a-2dfd-4d11-8924-d0a23a63221b\", \"qualifiedName\": \"github\", \"namespace\": \"github\", \"slug\": \"\", \"displayName\": \"GitHub\", \"description\": \"Connect your AI agents to GitHub — manage repos, issues, PRs, workflows, and more\", \"iconUrl\": \"https://api.smithery.ai/servers/github/icon\", \"verified\": true, \"useCount\": 6059, \"remote\": true, \"isDeployed\": true, \"unlisted\": false, \"inactive\": false, \"createdAt\": \"2025-11-19T07:26:28.312Z\", \"homepage\": \"https://github.com/\", \"bySmithery\": true, \"owner\": \"org_01KPBXJTDN7ASH7MJ3958C05QY\", \"score\": 0.05204216073781291}, {\"id\": \"fd13505d-9ced-4de3-92c6-e1fbeddbf85f\", \"qualifiedName\": \"deepwiki\", \"namespace\": \"deepwiki\", \"slug\": \"\", \"displayName\": \"DeepWiki\", \"description\": \"Explore GitHub repository documentation by topic to quickly understand any project. Open pages on demand and ask questions to get concise answers. Find what you need faster across complex wikis.\", \"iconUrl\": \"https://api.smithery.ai/servers/deepwiki/icon\", \"verified\": true, \"useCount\": 2356, \"remote\": true, \"isDeployed\": true, \"unlisted\": false, \"inactive\": false, \"createdAt\": \"2025-10-09T03:58:11.668Z\", \"homepage\": \"https://smithery.ai/servers/deepwiki\", \"bySmithery\": true, \"owner\": \"org_01KPBXJTDN7ASH7MJ3958C05QY\", \"score\": 0.03630672926447574}, {\"id\": \"469ced2e-581c-4bd6-af78-e98c0e7411b0\", \"qualifiedName\": \"vercel/grep\", \"namespace\": \"vercel\", \"slug\": \"grep\", \"displayName\": \"Vercel Grep\", \"description\": \"Search millions of public GitHub repositories for real-world code patterns and API implementations. Find production-ready examples of syntax, configurations, and library integrations to improve your development workflow. Discover exactly how other developers solve specific programming challenges using powerful literal and regular expressio"
+ },
+ "glama_list": {
+  "url": "https://glama.ai/api/mcp/v1/servers?first=3",
+  "status": 401,
+  "seconds": 0.39,
+  "content_type": "application/json; charset=utf-8",
+  "ratelimit": {
+   "ratelimit-limit": "100",
+   "ratelimit-remaining": "99",
+   "ratelimit-reset": "1"
+  },
+  "keys": [
+   "error"
+  ],
+  "sample": "{\"error\": {\"code\": \"unauthorized\", \"message\": \"This endpoint requires an API key. Create one at https://glama.ai/settings/api-keys.\\n\\nUse of this data is governed by the API Data License, which requires visible attribution to Glama on every page that displays it, and a link to a record's Glama listing wherever you present that record: https://glama.ai/policies/terms-of-service\"}}"
+ },
+ "glama_search": {
+  "url": "https://glama.ai/api/mcp/v1/servers?query=github&first=3",
+  "status": 401,
+  "seconds": 0.11,
+  "content_type": "application/json; charset=utf-8",
+  "ratelimit": {
+   "ratelimit-limit": "100",
+   "ratelimit-remaining": "98",
+   "ratelimit-reset": "1"
+  },
+  "keys": [
+   "error"
+  ],
+  "sample": "{\"error\": {\"code\": \"unauthorized\", \"message\": \"This endpoint requires an API key. Create one at https://glama.ai/settings/api-keys.\\n\\nUse of this data is governed by the API Data License, which requires visible attribution to Glama on every page that displays it, and a link to a record's Glama listing wherever you present that record: https://glama.ai/policies/terms-of-service\"}}"
+ },
+ "pulsemcp_list": {
+  "url": "https://api.pulsemcp.com/v0beta/servers?count_per_page=3",
+  "status": 410,
+  "seconds": 0.64,
+  "content_type": "application/json; charset=utf-8",
+  "ratelimit": {},
+  "keys": [
+   "error"
+  ],
+  "sample": "{\"error\": {\"code\": \"API_SUNSET\", \"message\": \"The v0beta API is deprecated and being sunset. This request was randomly failed as part of the sunset process. Starting January 2026: 1% of requests fail. Starting April 2026: 10%. Starting June 2026: 50%. September 2026: Fully sunset (100%). Please migrate to our v0.1 API at /api. If you need assistance with migration to the updated V0.1 API, contact hello@pulsemcp.com.\"}}"
+ },
+ "pulsemcp_search": {
+  "url": "https://api.pulsemcp.com/v0beta/servers?query=github&count_per_page=3",
+  "status": 410,
+  "seconds": 0.2,
+  "content_type": "application/json; charset=utf-8",
+  "ratelimit": {},
+  "keys": [
+   "error"
+  ],
+  "sample": "{\"error\": {\"code\": \"API_SUNSET\", \"message\": \"The v0beta API is deprecated and being sunset. This request was randomly failed as part of the sunset process. Starting January 2026: 1% of requests fail. Starting April 2026: 10%. Starting June 2026: 50%. September 2026: Fully sunset (100%). Please migrate to our v0.1 API at /api. If you need assistance with migration to the updated V0.1 API, contact hello@pulsemcp.com.\"}}"
+ },
+ "npm_search": {
+  "url": "https://registry.npmjs.org/-/v1/search?text=%40modelcontextprotocol%2Fserver-github&size=1",
+  "status": 200,
+  "seconds": 0.34,
+  "content_type": "application/json",
+  "ratelimit": {},
+  "keys": [
+   "objects",
+   "total",
+   "time"
+  ],
+  "sample": "{\"objects\": [{\"downloads\": {\"monthly\": 1285, \"weekly\": 623}, \"dependents\": 0, \"updated\": \"2026-10-22T10:46:10.228Z\", \"searchScore\": 246.0533, \"package\": {\"name\": \"@alfe.ai/github-mcp\", \"keywords\": [\"alfe\", \"ai-agents\", \"agent\", \"llm\", \"mcp\", \"model-context-protocol\"], \"version\": \"0.3.37\", \"description\": \"GitHub MCP proxy server — bridges the official @modelcontextprotocol/server-github with Alfe OAuth credentials (Pattern A multi-account)\", \"sanitized_name\": \"@alfe-ai/github-mcp\", \"publisher\": {\"email\": \"kevin@upton.tech\", \"username\": \"kevupton\"}, \"maintainers\": [{\"email\": \"kevin@upton.tech\", \"username\": \"kevupton\"}, {\"email\": \"sam@alfe.ai\", \"username\": \"sam-alfe\"}], \"license\": \"UNLICENSED\", \"date\": \"2026-10-22T10:45:36.721Z\", \"links\": {\"homepage\": \"https://alfe.ai\", \"npm\": \"https://www.npmjs.com/package/@alfe.ai/github-mcp\"}}, \"score\": {\"final\": 246.0533, \"detail\": {\"popularity\": 1, \"quality\": 1, \"maintenance\": 1}}, \"flags\": {\"insecure\": 0}}], \"total\": 700087, \"time\": \"2026-10-24T18:34:30.268Z\"}"
+ },
+ "pypi_json": {
+  "url": "https://pypi.org/pypi/mcp-server-fetch/json",
+  "status": 200,
+  "seconds": 0.12,
+  "content_type": "application/json",
+  "ratelimit": {},
+  "keys": [
+   "info",
+   "last_serial",
+   "ownership",
+   "releases",
+   "urls",
+   "vulnerabilities"
+  ],
+  "sample": "{\"info\": {\"author\": \"Anthropic, PBC.\", \"author_email\": null, \"bugtrack_url\": null, \"classifiers\": [\"Development Status :: 4 - Beta\", \"Intended Audience :: Developers\", \"License :: OSI Approved :: MIT License\", \"Programming Language :: Python :: 3\", \"Programming Language :: Python :: 3.10\"], \"description\": \"# Fetch MCP Server\\n\\n<!-- mcp-name: io.github.modelcontextprotocol/server-fetch -->\\n\\nA Model Context Protocol server that provides web content fetching capabilities. This server enables LLMs to retrieve and process content from web pages, converting HTML to markdown for easier consumption.\\n\\nSource: https://github.com/modelcontextprotocol/servers/tree/main/src/fetch\\n\\nRequires MCP Python SDK 2.x (`mcp>=2.3,<3`).\\n\\n> [!CAUTION]\\n> This server can access local/internal IP addresses and may represent a security risk. Exercise caution when using this MCP server to ensure this does not expose any sensitive data.\\n>\\n> By default the server refuses to fetch private, loopback, link-local and other non-public addresses, including cloud metadata endpoints such as `169.254.169.254`, and checks every redirect hop the same way. The `--allow-private-ips` argument turns this guard off; see [Customization - Private addresses](#customization---private-addresses). The guard checks the addresses a hostname resolves to before each request, so it does not protect against DNS rebinding between that check and the connection, and a hostname the server cannot resolve itself (one only a proxy can resolve) is not checked.\\n\\nThe fetch tool will truncate the response, but by using the `start_index` argument, you can specify where to start the content extraction. This lets models read a webpage in chunks, until they find the information they need.\\n\\n### Available Tools\\n\\n- `fetch` - Fetc"
+ }
+}

@@ -53,7 +53,10 @@ class ClaudeAdapter(CliAdapter):
                         "type": "http",
                         "url": f"{ctx.base_url}/r/mcp",
                         "headers": {"Authorization": f"Bearer {ctx.token}"},
-                    }
+                    },
+                    # Phase 18: the external connections; their secrets are ${AOS_MCP_…}
+                    # references to the environment below, never values (spike S1).
+                    **(ctx.connections.servers if ctx.connections else {}),
                 }
             },
         )
@@ -82,6 +85,7 @@ class ClaudeAdapter(CliAdapter):
                 ctx.allowed_tools,
                 ctx.git_authorized,
                 skills=bool(ctx.native_skills),
+                connections=ctx.connections,
             ),
         ]
         if ctx.model:
@@ -94,4 +98,9 @@ class ClaudeAdapter(CliAdapter):
             argv += ["--plugin-dir", str(plugin)]
         # The account's folder wins over a CLAUDE_CONFIG_DIR of the person (system account:
         # nothing is added and their own value, if any, is kept).
-        return LaunchSpec(argv, {**clean_env(), **ctx.account_env}, session_id)
+        env = {**clean_env(), **ctx.account_env}
+        if ctx.connections:
+            env |= ctx.connections.env
+            # A slow server (the first `npx` downloads it) gets time before Claude gives up on it.
+            env["MCP_TIMEOUT"] = str(ctx.connections.startup_timeout * 1000)
+        return LaunchSpec(argv, env, session_id)

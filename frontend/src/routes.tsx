@@ -14,6 +14,7 @@ import AgentEditorPage from '@/pages/agents/AgentEditorPage'
 import AgentsPage from '@/pages/agents/AgentsPage'
 import BoardPage from '@/pages/BoardPage'
 import ClisPage from '@/pages/clis/ClisPage'
+import ConnectionsPage from '@/pages/connections/ConnectionsPage'
 import HomePage from '@/pages/home/HomePage'
 import InboxPage from '@/pages/InboxPage'
 import KnowledgePage from '@/pages/knowledge/KnowledgePage'
@@ -115,6 +116,11 @@ export const routes: RouteObject[] = [
         path: 'conocimiento',
         element: <KnowledgePage />,
         handle: crumb(() => <TextCrumb i18nKey="nav.knowledge" />),
+      },
+      {
+        path: 'conexiones',
+        element: <ConnectionsPage />,
+        handle: crumb(() => <TextCrumb i18nKey="nav.connections" />),
       },
       {
         path: 'ajustes',

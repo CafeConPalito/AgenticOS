@@ -23,6 +23,7 @@ import structlog
 from agentic_os.models.agent import Cli
 from agentic_os.models.run import Activity, RunStatus
 from agentic_os.services import pty as pty_service
+from agentic_os.services.connections.redact import Redactor
 from agentic_os.services.hooks import HookEffect
 from agentic_os.services.pty import PtyProcess
 from agentic_os.services.runs.launcher import LaunchSpec
@@ -89,6 +90,8 @@ class RunSession:
         on_permission: Callable[[PermissionDialog], None] | None = None,
         on_permission_gone: Callable[[], None] | None = None,
         on_quota: Callable[[str], None] | None = None,
+        redactor: Redactor | None = None,
+        mcp_grace: float = 0.0,
     ) -> None:
         self.run_id = run_id
         self.cli = cli
@@ -100,6 +103,9 @@ class RunSession:
         self.cols, self.rows = cols, rows
         # agy: the prompt is typed once its MCP server is connected (ADR 0004).
         self.deferred_prompt = deferred_prompt
+        # agy: seconds the external MCP servers get to connect after `/mcp`, before the prompt
+        # (agy does not say when each one is up: spike S2).
+        self.mcp_grace = mcp_grace
         self.on_end = on_end
         self.on_system_event = on_system_event or (lambda *args, **kwargs: None)
         # A permission dialog of the CLI appeared / went away (Inbox «Aprobación», phase 06).
@@ -107,6 +113,8 @@ class RunSession:
         self.on_permission_gone = on_permission_gone or (lambda: None)
         # The CLI says it ran out of quota / hit its usage limit (Inbox «Cuota agotada»).
         self.on_quota = on_quota or (lambda notice: None)
+        # Hides the secret values of the run's MCP connections from the output (phase 18, CA3).
+        self._redactor = redactor if redactor is not None and redactor.active else None
 
         self.status = RunStatus.STARTING
         self.activity = Activity.IDLE
@@ -373,7 +381,7 @@ class RunSession:
                     self._pty.write(ESC)  # close the /mcp panel
             self._mcp_panel_closed_at = now
             return
-        if self._closing_mcp_panel and now - self._mcp_panel_closed_at > 0.8:
+        if self._closing_mcp_panel and now - self._mcp_panel_closed_at > 0.8 + self.mcp_grace:
             self._send_deferred_prompt(mcp_timeout=not self.mcp_connected)
 
     def _send_deferred_prompt(self, mcp_timeout: bool) -> None:
@@ -489,16 +497,13 @@ class RunSession:
                 chunk = pty.read()
                 if not chunk:
                     break
-                with self._lock:
-                    self._log.write(chunk)
-                    self._log.flush()
-                    self._scrollback.append(chunk)
-                    self._scrollback_size += len(chunk)
-                    while self._scrollback_size > SCROLLBACK_LIMIT and len(self._scrollback) > 1:
-                        self._scrollback_size -= len(self._scrollback.pop(0))
-                    self._last_output = time.monotonic()
-                self._screen.feed(chunk)
-                self._publish({"type": "output", "data": chunk})
+                if self._redactor is not None:
+                    chunk = self._redactor.feed(chunk)
+                    if not chunk:  # all of it is held back until the next piece decides
+                        continue
+                self._emit(chunk)
+            if self._redactor is not None and (rest := self._redactor.flush()):
+                self._emit(rest)
         except Exception:
             # Disk full, an escape sequence pyte cannot parse…: end the run instead of
             # leaving it "alive" forever with nobody reading the PTY.
@@ -507,6 +512,19 @@ class RunSession:
                 pty.terminate()
         finally:
             self._finish(pty)
+
+    def _emit(self, chunk: str) -> None:
+        """Output to the log, the scrollback, the screen and the live viewers."""
+        with self._lock:
+            self._log.write(chunk)
+            self._log.flush()
+            self._scrollback.append(chunk)
+            self._scrollback_size += len(chunk)
+            while self._scrollback_size > SCROLLBACK_LIMIT and len(self._scrollback) > 1:
+                self._scrollback_size -= len(self._scrollback.pop(0))
+            self._last_output = time.monotonic()
+        self._screen.feed(chunk)
+        self._publish({"type": "output", "data": chunk})
 
     def _finish(self, pty: PtyProcess) -> None:
         deadline = time.monotonic() + 5

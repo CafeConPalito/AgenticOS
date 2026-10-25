@@ -1,0 +1,47 @@
+[
+ {
+  "name": "fast-exit",
+  "delay": 0,
+  "trusted": true,
+  "first_turn": "tool-ran",
+  "seconds_to_answer": 6.0,
+  "server_pids_while_running": [
+   12144,
+   12172
+  ],
+  "ended_by": "exit",
+  "exited": true,
+  "leaked_after_end": [],
+  "screen_tail": "' and answer with the raw text it returns. If you do not have that\n  tool, answer exactly NO-TOOL.\n\n  Called probe\n\n● NOTE[a]=PROBE-READ-4417\n\n✻ Crunched for 5s · done 20:02\n\n❯ /exit\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n· Twisting…\n  ⎿  Tip: Just want the answer? Run /focus now to hide the steps along the way\n\n────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────\n❯ uuu\nResume this session with:───────────────────────────────────────────────────────────────────────────────────────────────\nclaude --resume 53ab0098-88bb-4ae4-a967-a598848343b0nterrupt"
+ },
+ {
+  "name": "slow-exit",
+  "delay": 12,
+  "trusted": true,
+  "first_turn": "tool-ran",
+  "seconds_to_answer": 17.0,
+  "server_pids_while_running": [
+   20476,
+   20948
+  ],
+  "ended_by": "exit",
+  "exited": true,
+  "leaked_after_end": [],
+  "screen_tail": "ctly NO-TOOL.\n\n  Called probe\n\n● The raw text returned by read_note for topic a is:\n\n  {\"result\":\"NOTE[a]=PROBE-READ-4417\"}\n\n✻ Churned for 16s · done 20:02\n\n❯ /exit\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n✶ Perusing…\n  ⎿  Tip: Running multiple Claude sessions? Use /color and /rename to tell them apart at a glance.\n\n────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────\n❯ uuu\nResume this session with:───────────────────────────────────────────────────────────────────────────────────────────────\nclaude --resume 5e4c494a-2f74-45ea-9fea-26f714812716nterrupt"
+ },
+ {
+  "name": "fast-kill",
+  "delay": 0,
+  "trusted": true,
+  "first_turn": "tool-ran",
+  "seconds_to_answer": 6.0,
+  "server_pids_while_running": [
+   16716,
+   18704
+  ],
+  "ended_by": "kill",
+  "exited": true,
+  "leaked_after_end": [],
+  "screen_tail": "with the raw text it returns. If you do not have that\n  tool, answer exactly NO-TOOL.\n\n  Called probe\n\n● NOTE[a]=PROBE-READ-4417\n\n✻ Sautéed for 5s · done 20:03\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n                                                                                                    ◐ medium · /effort\n────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────\n❯\n────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────\n  ⏵⏵ accept edits on (shift+tab to cycle) · ← for agents"
+ }
+]

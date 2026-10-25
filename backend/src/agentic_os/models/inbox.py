@@ -21,6 +21,7 @@ class InboxKind(StrEnum):
     SWITCH = "switch"  # an agent's account is about to run out: switch CLI or stay (phase 10)
     KNOWLEDGE = "knowledge"  # an agent proposes a knowledge document to review (phase 15)
     SKILL = "skill"  # an agent proposes a skill, or a new version of one (phase 17)
+    CONNECTION = "connection"  # an MCP connection needs the person to log in again (phase 18)
 
 
 class InboxStatus(StrEnum):
@@ -73,6 +74,9 @@ class InboxItem(IdMixin, WorkspaceMixin, TimestampMixin, Base):
     )
     skill_version_id: Mapped[str | None] = mapped_column(
         String(36), ForeignKey("skill_versions.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    connection_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("mcp_connections.id", ondelete="SET NULL"), nullable=True, index=True
     )
     title: Mapped[str] = mapped_column(Text, nullable=False)
     detail: Mapped[str] = mapped_column(Text, nullable=False, default="")

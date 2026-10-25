@@ -1,0 +1,36 @@
+[
+ {
+  "name": "wait",
+  "delay": 12,
+  "server": "srv1792866391",
+  "mode": "wait",
+  "trusted": false,
+  "ready_screen": true,
+  "cache_signal_after_s": null,
+  "first_turn": "tool-ran",
+  "seconds_to_answer": 91.2,
+  "server_pids_during": [
+   4584,
+   20404
+  ],
+  "leaked_after_end": [],
+  "screen_tail": "o expand) ▸ Thought for 6s, 633 tokens NOTE[a]=PROBE-READ-4417 ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────── > 1u ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────── Resume with -c (or command below): agy --conversation=9d292109-c0a5-4dc7-a16d-421f3c295355"
+ },
+ {
+  "name": "early",
+  "delay": 40,
+  "server": "srv1792866605",
+  "mode": "early",
+  "trusted": false,
+  "ready_screen": true,
+  "cache_signal_after_s": null,
+  "first_turn": "tool-ran",
+  "seconds_to_answer": 71.2,
+  "server_pids_during": [
+   12000,
+   19856
+  ],
+  "leaked_after_end": [],
+  "screen_tail": "o expand) ▸ Thought for 4s, 281 tokens NOTE[a]=PROBE-READ-4417 ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────── > 1u ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────── Resume with -c (or command below): agy --conversation=dbf64b56-fa5f-44b1-9908-27716c8e33a3"
+ }
+]

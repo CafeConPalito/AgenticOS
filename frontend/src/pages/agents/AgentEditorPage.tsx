@@ -17,6 +17,7 @@ import { AgentAvatar, StatusBadge } from '@/components/agentic/primitives'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { EmptyState } from '@/components/EmptyState'
 import { KnowledgeLibrary } from '@/components/knowledge/KnowledgeLibrary'
+import { AgentConnections } from '@/components/connections/AgentConnections'
 import { SkillLibrary } from '@/components/skills/SkillLibrary'
 import { SkillModes } from '@/components/skills/SkillModes'
 import { PageContainer, RouteTabs } from '@/components/page'
@@ -48,6 +49,7 @@ const TABS = [
   'execution',
   'knowledge',
   'skills',
+  'connections',
   'history',
   'changes',
 ] as const
@@ -257,6 +259,7 @@ function AgentEditor({ agent, tab }: { agent: Agent; tab: Tab }) {
           </div>
         </>
       )}
+      {tab === 'connections' && <AgentConnections agentId={agent.id} />}
       <ConfirmDialog
         open={confirmDelete}
         onOpenChange={setConfirmDelete}

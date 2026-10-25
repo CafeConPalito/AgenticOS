@@ -29,14 +29,16 @@ HOOK_EVENTS: dict[Cli, tuple[str, ...]] = {
         "SubagentStop",
         "PreToolUse",
         "PostToolUse",
+        "PostToolUseFailure",
         "PermissionRequest",
     ),
     Cli.AGY: ("PreInvocation", "Stop", "PreToolUse", "PostToolUse"),
 }
 # Claude: tool hooks restricted to these tools (`matcher`).
-CLAUDE_TOOL_MATCHER = "Agent|Task|Skill"
-AGY_TOOL_MATCHER = "invoke_subagent"
-TOOL_EVENTS = {"PreToolUse", "PostToolUse"}
+# `mcp__.*`: the tools of the external MCP servers (phase 18), `call_mcp_tool` in agy.
+CLAUDE_TOOL_MATCHER = "Agent|Task|Skill|mcp__.*"
+AGY_TOOL_MATCHER = "invoke_subagent|call_mcp_tool"
+TOOL_EVENTS = {"PreToolUse", "PostToolUse", "PostToolUseFailure"}
 TURN_START = {"UserPromptSubmit", "PreInvocation"}
 TURN_END = {"Stop"}
 # Claude's status line runs the same script with this "event": its JSON carries the session's

@@ -509,6 +509,7 @@ export type InboxKind =
   | 'switch'
   | 'knowledge'
   | 'skill'
+  | 'connection'
 
 export type InboxResolution =
   'approved' | 'rejected' | 'answered' | 'answered_in_terminal' | 'reviewed' | 'dismissed'
@@ -527,6 +528,8 @@ export interface InboxItem {
   knowledge_doc_id?: string | null
   /** A «skill» item: the proposed version (phase 17). */
   skill_version_id?: string | null
+  /** A «connection» item: the MCP connection to log in to again (phase 18). */
+  connection_id?: string | null
   agent_id: string | null
   agent_name: string
   agent_color: string

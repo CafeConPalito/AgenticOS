@@ -11,6 +11,7 @@ SWITCH_THRESHOLD = "switch_threshold"  # percent of a subscription window that t
 KNOWLEDGE = "knowledge"  # JSON: the knowledge library's limits and switches (phase 14)
 DICTATION = "dictation"  # JSON: the dictation settings (phase 16)
 SKILLS = "skills"  # JSON: the skill library's budgets, proposals and registries (phase 17)
+CONNECTIONS = "connections"  # JSON: the MCP connections' timeouts and registries (phase 18)
 
 
 class AppState(Base):

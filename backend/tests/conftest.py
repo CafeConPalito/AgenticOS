@@ -1,3 +1,4 @@
+import sys
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -7,6 +8,19 @@ from fastapi.testclient import TestClient
 
 from agentic_os.app import create_app
 from agentic_os.config import Settings
+from agentic_os.services.connections import secrets as connection_secrets
+
+# The MCP servers of the connection tests (phase 18) import each other by name.
+sys.path.insert(0, str(Path(__file__).parent / "fixtures" / "mcp_servers"))
+
+
+@pytest.fixture(autouse=True)
+def credential_store() -> Iterator[connection_secrets.MemoryStore]:
+    """Never the person's own credential manager: the secrets of the tests live in memory."""
+    store = connection_secrets.MemoryStore()
+    previous = connection_secrets.use(store)
+    yield store
+    connection_secrets.use(previous)
 
 
 @pytest.fixture
@@ -17,6 +31,7 @@ def settings(tmp_path: Path) -> Settings:
         # Never the user's real CLI configs (trust cleanup of task worktrees).
         claude_config_file=tmp_path / "claude.json",
         agy_settings_file=tmp_path / "agy-settings.json",
+        agy_mcp_config_file=tmp_path / "agy-mcp.json",
         check_sessions_at_startup=False,  # never run the real CLIs
         knowledge_processing="off",  # the knowledge tests run the queue themselves
     )

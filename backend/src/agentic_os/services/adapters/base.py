@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from agentic_os.models import Cli, PermissionMode
+from agentic_os.services.connections.runtime import RunConnections
 from agentic_os.services.runs.launcher import LaunchSpec
 
 
@@ -39,6 +40,8 @@ class LaunchContext:
     git_authorized: bool = False
     # The run's skills, one folder each (phase 17): passed to the CLI's own skill mechanism.
     skills_dir: Path | None = None
+    # The external MCP servers the run is given (phase 18), already resolved for this CLI.
+    connections: RunConnections | None = None
 
     @property
     def native_skills(self) -> list[Path]:
@@ -93,6 +96,7 @@ def claude_permissions(
     allowed_tools: tuple[str, ...],
     git_authorized: bool = False,
     skills: bool = False,
+    connections: RunConnections | None = None,
 ) -> list[str]:
     """`--permission-mode` and `--allowedTools` for an agent (spike P6, ADR 0004).
 
@@ -101,9 +105,20 @@ def claude_permissions(
     With `git_authorized` (phase 12, spike S2) git is allowed in every other mode: both rules are
     needed, Claude uses the Bash tool or the PowerShell one.
     """
+    # The tools of the external connections the person did not allow are taken away from the
+    # model in every mode, also the autonomous one (spike S1); the pre-approved ones ask nothing.
+    deny = ["--disallowedTools", *connections.deny] if connections and connections.deny else []
     if mode == PermissionMode.AUTONOMOUS:
-        return ["--permission-mode", "bypassPermissions", "--allowedTools", AGENTIC_OS_TOOLS]
+        return [
+            "--permission-mode",
+            "bypassPermissions",
+            "--allowedTools",
+            AGENTIC_OS_TOOLS,
+            *deny,
+        ]
     tools = [AGENTIC_OS_TOOLS]
+    if connections:
+        tools += connections.allow
     if skills:  # loading a skill only reads its instructions; its scripts still ask (S1)
         tools.append("Skill")
     if git_authorized:
@@ -111,8 +126,8 @@ def claude_permissions(
     if mode == PermissionMode.RESTRICTED:
         for name in allowed_tools:
             tools += [t for t in CLAUDE_TOOLS.get(name, ()) if t not in tools]
-        return ["--permission-mode", "acceptEdits", "--allowedTools", *tools]
-    return ["--permission-mode", "manual", "--allowedTools", *tools]
+        return ["--permission-mode", "acceptEdits", "--allowedTools", *tools, *deny]
+    return ["--permission-mode", "manual", "--allowedTools", *tools, *deny]
 
 
 def agy_permissions(mode: PermissionMode) -> list[str]:
