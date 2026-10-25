@@ -95,13 +95,14 @@ def test_an_agent_uses_the_tools_of_external_servers(tmp_path: Path, cli: str):
         assert "no investigues el equipo" in context
 
         run_id = done["last_run_id"]
-        with server.db() as db:
-            from agentic_os.models import RunConnection
-
-            rows = {r.connection_name: r for r in db.query(RunConnection).filter_by(run_id=run_id)}
-        assert {n: r.status for n, r in rows.items()} == {"probe": "connected", "web": "connected"}
+        rows = {r["name"]: r for r in api.get(f"/api/runs/{run_id}/connections")["connections"]}
+        assert {n: r["status"] for n, r in rows.items()} == {
+            "probe": "connected",
+            "web": "connected",
+        }
         assert (
-            rows["probe"].revision == made["probe"]["revision"] and rows["probe"].level == "general"
+            rows["probe"]["revision"] == made["probe"]["revision"]
+            and rows["probe"]["level"] == "general"
         )
 
         # CA3: neither the log of the terminal nor the run's files hold the secret.
@@ -187,15 +188,10 @@ def test_a_connection_that_cannot_be_given_is_skipped_and_the_run_goes_on(tmp_pa
         context = (folder / "ctx.txt").read_text("utf-8")
         assert "No están disponibles en esta ejecución" in context
         assert "`sinclave` (Falta el secreto «TOKEN» de la conexión «sinclave».)" in context
-        with server.db() as db:
-            from agentic_os.models import RunConnection
-
-            rows = {
-                r.connection_name: r
-                for r in db.query(RunConnection).filter_by(run_id=done["last_run_id"])
-            }
-        assert rows["sinclave"].status == "skipped" and "TOKEN" in rows["sinclave"].detail
-        assert rows["probe"].status == "connected" and ok["id"] == rows["probe"].connection_id
+        listing = api.get(f"/api/runs/{done['last_run_id']}/connections")["connections"]
+        rows = {r["name"]: r for r in listing}
+        assert rows["sinclave"]["status"] == "skipped" and "TOKEN" in rows["sinclave"]["detail"]
+        assert rows["probe"]["status"] == "connected" and ok["id"] == rows["probe"]["connection_id"]
         assert wait_until(lambda: True)
 
 

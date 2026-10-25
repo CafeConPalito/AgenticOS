@@ -29,6 +29,9 @@ try {
         --collect-submodules websockets `
         --collect-submodules mcp.server `
         --collect-submodules mcp.shared `
+        --collect-submodules mcp.client `
+        --collect-submodules keyring `
+        --copy-metadata keyring `
         --collect-submodules agentic_os `
         --collect-submodules markitdown `
         --collect-data markitdown `
