@@ -1,15 +1,26 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { BookOpen, Copy, MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react'
+import {
+  BookOpen,
+  Copy,
+  Download,
+  LayoutTemplate,
+  MoreHorizontal,
+  Pencil,
+  Plus,
+  Trash2,
+} from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { FormProvider, useForm, useWatch } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { Link, Navigate, useNavigate, useParams } from 'react-router'
 import { toast } from 'sonner'
 import {
+  downloadAgent,
   useAgent,
   useClearFallback,
   useDeleteAgent,
   useDuplicateAgent,
+  useSaveAsTemplate,
   useUpdateAgent,
 } from '@/api/agents'
 import type { Agent } from '@/api/types'
@@ -30,6 +41,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { applyApiError, errorMessage } from '@/lib/form-errors'
 import { LaunchRunButton } from '@/pages/runs/LaunchRunDialog'
@@ -85,6 +97,8 @@ function AgentEditor({ agent, tab }: { agent: Agent; tab: Tab }) {
   const duplicate = useDuplicateAgent()
   const remove = useDeleteAgent()
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const saveTemplate = useSaveAsTemplate()
+  const [templateName, setTemplateName] = useState<string | null>(null)
   const openNewTask = useDialogs((s) => s.openNewTask)
   const leaving = useRef(false)
 
@@ -220,6 +234,18 @@ function AgentEditor({ agent, tab }: { agent: Agent; tab: Tab }) {
                 <Copy />
                 {t('common.duplicate')}
               </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setTemplateName(agent.name)}>
+                <LayoutTemplate />
+                {t('agentTemplates.save')}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() =>
+                  void downloadAgent(agent).catch((error) => toast.error(errorMessage(error)))
+                }
+              >
+                <Download />
+                {t('agentTemplates.export')}
+              </DropdownMenuItem>
               <DropdownMenuItem variant="destructive" onSelect={() => setConfirmDelete(true)}>
                 <Trash2 />
                 {t('common.delete')}
@@ -262,6 +288,28 @@ function AgentEditor({ agent, tab }: { agent: Agent; tab: Tab }) {
         </>
       )}
       {tab === 'connections' && <AgentConnections agentId={agent.id} />}
+      <ConfirmDialog
+        open={templateName !== null}
+        onOpenChange={(open) => !open && setTemplateName(null)}
+        title={t('agentTemplates.saveTitle')}
+        description={t('agentTemplates.saveHelp')}
+        confirmLabel={t('agentTemplates.save')}
+        onConfirm={() =>
+          saveTemplate.mutate(
+            { id: agent.id, name: templateName ?? undefined },
+            {
+              onSuccess: (saved) => toast.success(t('agentTemplates.saved', { name: saved.name })),
+              onError: (error) => toast.error(errorMessage(error)),
+            },
+          )
+        }
+      >
+        <Input
+          aria-label={t('agentTemplates.name')}
+          value={templateName ?? ''}
+          onChange={(e) => setTemplateName(e.target.value)}
+        />
+      </ConfirmDialog>
       <ConfirmDialog
         open={confirmDelete}
         onOpenChange={setConfirmDelete}

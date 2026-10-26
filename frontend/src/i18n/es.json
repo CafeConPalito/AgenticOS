@@ -3573,5 +3573,37 @@
     "archive": "Archivarlo en lugar de borrarlo",
     "rejected": "{{name}} descartado.",
     "archived": "{{name}} archivado."
+  },
+  "agentTemplates": {
+    "title": "Mis plantillas",
+    "description": "Las plantillas que has guardado. Las fijas (Analista, Desarrollador…) no se pueden cambiar.",
+    "empty": "Aún no has guardado ninguna. Desde la ficha de un agente: «Guardar como plantilla».",
+    "own": "Tuya",
+    "brings": "Trae {{skills}} skills, {{connections}} conexiones y {{documents}} documentos",
+    "name": "Nombre de la plantilla",
+    "save": "Guardar como plantilla",
+    "saveTitle": "Guardar como plantilla",
+    "saveHelp": "Guarda su ficha, skills, conexiones y documentos (sin la cuenta ni el equipo) para crear otros agentes iguales.",
+    "saved": "Plantilla «{{name}}» guardada",
+    "export": "Exportar",
+    "rename": "Renombrar {{name}}",
+    "duplicate": "Duplicar {{name}}",
+    "delete": "Borrar {{name}}",
+    "import": {
+      "button": "Importar",
+      "title": "Importar un agente",
+      "description": "Un fichero exportado desde Agentic OS (.agent.json).",
+      "pick": "Elige el fichero del agente",
+      "notJson": "El fichero no es un agente exportado de Agentic OS.",
+      "ownSkills": "{{count}} skills propias",
+      "cliMissing": "Su CLI no está instalado en este equipo: podrás cambiarlo en su ficha.",
+      "leftOut": "No existe aquí y se dejará fuera:",
+      "missingSkill": "La skill «{{name}}»",
+      "missingConnection": "La conexión «{{name}}»",
+      "missingDocument": "El documento «{{name}}»",
+      "asDraft": "Se importará como borrador: lo revisas y lo activas desde su ficha.",
+      "run": "Importar",
+      "done": "{{name}} importado como borrador"
+    }
   }
 }

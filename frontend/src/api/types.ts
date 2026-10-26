@@ -58,6 +58,11 @@ export interface AgentTemplate extends Omit<
   'max_concurrency' | 'status' | 'team_id' | 'account_id' | 'fallback_account_id' | 'fallback_model'
 > {
   id: string
+  /** Phase 19: one the person saved, and what it brings along. */
+  own?: boolean
+  skills?: number
+  connections?: number
+  documents?: number
 }
 
 export interface GitInfo {

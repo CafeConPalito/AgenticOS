@@ -862,6 +862,8 @@ export function createFakeBackend(
     connections?: ConnectionsSeed
     /** The Agent Architect of phase 19 (conversations, proposals, settings). */
     architect?: ArchitectSeed
+    /** The person's templates (phase 19). */
+    ownTemplates?: AgentTemplate[]
     /** The diffs (phase 11) by `run:<id>` or `task:<id>`: the file list, each file's diff and
      * the lines `/changes/lines` serves. Anything else answers «no snapshots». */
     /** What git says about each repository, by repository id. */
@@ -1896,10 +1898,53 @@ export function createFakeBackend(
     return json(200, run)
   }
 
+  const ownTemplates: AgentTemplate[] = [...(seed.ownTemplates ?? [])]
+
   function handle(method: string, path: string, body: Record<string, unknown>): Response {
     if (path === '/api/health')
       return json(200, { status: 'ok', name: 'Agentic OS', version: '0.1.0' })
-    if (path === '/api/agent-templates') return json(200, TEMPLATES)
+    if (path === '/api/agent-templates') return json(200, [...TEMPLATES, ...ownTemplates])
+    // Phase 19: the person's templates and agents as files.
+    const saveMatch = path.match(/^\/api\/agents\/([^/]+)\/save-as-template$/)
+    if (saveMatch) {
+      const agent = agents.find((a) => a.id === saveMatch[1])
+      if (!agent) return apiError(404, 'agent_not_found')
+      const saved: AgentTemplate = {
+        ...TEMPLATES[0],
+        ...agent,
+        id: `tpl-${ownTemplates.length + 1}`,
+        name: String(body.name ?? agent.name),
+        own: true,
+        skills: 0,
+        connections: 0,
+        documents: 0,
+      }
+      ownTemplates.push(saved)
+      return json(201, saved)
+    }
+    if (path === '/api/agents/import/preview') {
+      const payload = body.payload as { format?: string; agent?: Partial<Agent> }
+      if (payload?.format !== 'agentic-os.agent') return apiError(422, 'not_an_agent')
+      return json(200, {
+        agent: payload.agent,
+        missing_skills: ['seo-basico'],
+        missing_connections: [],
+        missing_knowledge: [],
+        own_skills: [],
+        cli_installed: true,
+      })
+    }
+    if (path === '/api/agents/import') {
+      const payload = body.payload as { agent: Partial<Agent> }
+      const agent = makeAgent({
+        ...payload.agent,
+        name: String(body.name ?? payload.agent.name),
+        status: 'draft',
+      })
+      agent.id = 'imported-1'
+      agents.push(agent)
+      return json(201, { agent, notes: ['La skill «seo-basico» no existe aquí.'] })
+    }
     if (path.startsWith('/api/clis')) return json(200, seed.clis ?? CLIS)
 
     if (path === '/api/agents') {

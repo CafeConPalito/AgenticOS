@@ -65,13 +65,29 @@ export function TemplatePicker({
           <div className="flex items-center gap-2.5">
             <AgentAvatar name={template.name} color={template.color} size={30} />
             <div className="min-w-0 flex-1">
-              <div className="font-medium">{template.name}</div>
+              <div className="flex items-center gap-1.5 font-medium">
+                {template.name}
+                {template.own && (
+                  <span className="rounded-full border border-sep px-1.5 text-[10.5px] font-normal text-muted-foreground">
+                    {t('agentTemplates.own')}
+                  </span>
+                )}
+              </div>
               <div className="text-xs text-muted-foreground">{template.role}</div>
             </div>
             <CliTag cli={template.cli} label={t(`cli.${template.cli}`)} size={20} />
           </div>
           {!compact && (
             <p className="text-xs text-pretty text-muted-foreground">{template.description}</p>
+          )}
+          {!compact && template.own && (
+            <p className="text-[11.5px] text-muted-foreground">
+              {t('agentTemplates.brings', {
+                skills: template.skills ?? 0,
+                connections: template.connections ?? 0,
+                documents: template.documents ?? 0,
+              })}
+            </p>
           )}
         </button>
       ))}

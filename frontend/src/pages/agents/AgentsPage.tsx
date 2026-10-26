@@ -1,4 +1,5 @@
-import { Bot, ChevronRight, Plus, Sparkles } from 'lucide-react'
+import { Bot, ChevronRight, FileUp, LayoutTemplate, Plus, Sparkles } from 'lucide-react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useSearchParams } from 'react-router'
 import { useAgents } from '@/api/agents'
@@ -27,6 +28,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { ImportAgentDialog, TemplatesDialog } from './AgentFileDialogs'
 import { TemplatePicker } from './TemplatePicker'
 
 const ALL = '__all__' // Radix Select cannot use "" as an item value
@@ -36,6 +38,8 @@ export default function AgentsPage() {
   const { t } = useTranslation()
   const { data: agents, isPending } = useAgents()
   const openNewAgent = useDialogs((s) => s.openNewAgent)
+  const [importing, setImporting] = useState(false)
+  const [templates, setTemplates] = useState(false)
 
   return (
     <PageContainer>
@@ -44,6 +48,14 @@ export default function AgentsPage() {
         subtitle={t('agents.subtitle')}
         actions={
           <>
+            <Button variant="ghost" onClick={() => setTemplates(true)}>
+              <LayoutTemplate />
+              {t('agentTemplates.title')}
+            </Button>
+            <Button variant="outline" onClick={() => setImporting(true)}>
+              <FileUp />
+              {t('agentTemplates.import.button')}
+            </Button>
             <Button variant="outline" asChild>
               <Link to="/agentes/arquitecto?nueva">
                 <Sparkles className="text-status-review" />
@@ -77,6 +89,8 @@ export default function AgentsPage() {
           <TemplatePicker compact />
         </EmptyState>
       )}
+      <ImportAgentDialog open={importing} onOpenChange={setImporting} />
+      <TemplatesDialog open={templates} onOpenChange={setTemplates} />
     </PageContainer>
   )
 }
