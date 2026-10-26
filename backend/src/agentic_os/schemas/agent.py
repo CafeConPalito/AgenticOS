@@ -40,6 +40,7 @@ class AgentFields(BaseModel):
     max_concurrency: Concurrency | None = None
     can_spawn_subagents: bool | None = None
     can_create_tasks: bool | None = None
+    can_propose_agents: bool | None = None  # phase 19: propose_agent
     status: AgentStatus | None = None
     # Phase 10. Unlike the other fields these may be null: no team, or the default account of
     # its CLI. Omit them to leave them unchanged.
@@ -64,6 +65,7 @@ class AgentFields(BaseModel):
         "fallback_model",
         "can_spawn_subagents",
         "can_create_tasks",
+        "can_propose_agents",
         "status",
         mode="before",
     )(reject_null)
@@ -99,8 +101,11 @@ class AgentRead(BaseModel):
     max_concurrency: int
     can_spawn_subagents: bool
     can_create_tasks: bool
+    can_propose_agents: bool = False
     status: AgentStatus
     template: str | None
+    # Phase 19: the proposal a draft comes from (the Architect or propose_agent).
+    proposal_id: str | None = None
     team_id: str | None = None
     account_id: str | None = None
     fallback_account_id: str | None = None

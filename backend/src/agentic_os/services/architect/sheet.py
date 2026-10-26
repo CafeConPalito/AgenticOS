@@ -469,6 +469,8 @@ def apply_patch(
     # A new CLI leaves the old one's account and model behind (unless they came along).
     if "cli" in patch and f"{ref}.cli" in result.changed:
         for dependent in ("account", "model"):
+            if dependent not in agent:
+                continue
             if dependent not in patch or f"{ref}.{dependent}" in result.refused:
                 try:
                     check_field(catalog, agent, dependent, agent.get(dependent))

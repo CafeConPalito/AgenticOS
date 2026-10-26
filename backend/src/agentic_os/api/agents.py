@@ -10,8 +10,11 @@ from agentic_os.db.session import get_session
 from agentic_os.errors import ApiError, NotFound
 from agentic_os.models import (
     Agent,
+    AgentStatus,
     Cli,
     CliAccount,
+    Proposal,
+    ProposalStatus,
     Task,
     TaskStatus,
     Team,
@@ -38,6 +41,14 @@ def _get(session: Session, agent_id: str) -> Agent:
     if agent is None or agent.workspace_id != DEFAULT_WORKSPACE:
         raise NotFound("agent")
     return agent
+
+
+def _pending_proposal(session: Session, agent: Agent) -> Proposal | None:
+    """The pending proposal that created this draft, if any (phase 19)."""
+    if agent.status != AgentStatus.DRAFT or not agent.proposal_id:
+        return None
+    proposal = session.get(Proposal, agent.proposal_id)
+    return proposal if proposal and proposal.status == ProposalStatus.PENDING else None
 
 
 def _check_links(session: Session, cli: str, team_id: str | None, account_id: str | None) -> None:
@@ -118,7 +129,7 @@ def list_templates() -> list[AgentTemplate]:
 def list_agents(session: DbSession) -> list[AgentRead]:
     query = (
         select(Agent)
-        .where(Agent.workspace_id == DEFAULT_WORKSPACE)
+        .where(Agent.workspace_id == DEFAULT_WORKSPACE, Agent.archived_at.is_(None))
         .order_by(Agent.created_at, Agent.name)
     )
     return _read_many(session, list(session.scalars(query)))
@@ -171,6 +182,10 @@ def update_agent(agent_id: str, payload: AgentUpdate, session: DbSession) -> Age
         # Radix selects emit "" for «none».
         changes["fallback_account_id"] = changes["fallback_account_id"] or None
     _check_fallback(session, agent, changes)
+    # Phase 19: a draft of a pending proposal becomes active by approving the proposal (its
+    # skills, documents and Inbox item go with it), not by switching its status.
+    if changes.get("status") == AgentStatus.ACTIVE and _pending_proposal(session, agent):
+        raise ApiError(409, "pending_proposal", "approve the agent's proposal instead", "status")
     # Phase 19: the History tab lists which fields were edited by hand.
     proposals.record_hand_edit(
         session, agent, [f for f, value in changes.items() if getattr(agent, f) != value]
@@ -226,6 +241,13 @@ def delete_agent(agent_id: str, session: DbSession, request: Request) -> None:
     agent = _get(session, agent_id)
     if _counts(session, [agent.id]).get((agent.id, TaskStatus.RUNNING)):
         raise ApiError(409, "agent_busy", "the agent is working on a task", "id")
+    # A draft deleted by hand rejects its proposal (its Inbox item and skills go too).
+    pending = _pending_proposal(session, agent)
+    if pending is not None:
+        proposals.reject(session, request.app.state.run_manager.skill_library, pending)
+        if session.get(Agent, agent_id) is None:
+            session.commit()
+            return
     queued = session.scalars(
         select(Task).where(Task.agent_id == agent.id, Task.status == TaskStatus.QUEUED)
     )
