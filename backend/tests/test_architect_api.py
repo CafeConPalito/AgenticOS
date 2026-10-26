@@ -176,3 +176,25 @@ def test_the_events_of_a_conversation_reach_only_its_viewers(api: TestClient):
         event = socket.receive_json()
     assert (event["type"], event["conversation_id"]) == ("sheet", one["id"])
     assert event["sheet"]["agents"]["main"]["name"] == "Uno"
+
+
+def test_an_agent_lists_its_pending_changes_and_its_configuration_history(api: TestClient):
+    """CA12: what was applied stays in the History tab, next to the edits by hand."""
+    agent = api.post(
+        "/api/agents", json={"name": "QA", "role": "QA", "instructions": "Prueba."}
+    ).json()
+    created = _conversation(api, mode="improve_agent", agent_id=agent["id"])
+    api.patch(
+        f"/api/architect/conversations/{created['id']}/sheet",
+        json={"patch": {"role": "QA estricto"}},
+    )
+    proposal = api.post(f"/api/architect/conversations/{created['id']}/propose").json()
+    pending = api.get(f"/api/proposals?target_agent_id={agent['id']}&status=pending").json()
+    assert [p["id"] for p in pending] == [proposal["id"]]
+    api.post(f"/api/proposals/{proposal['id']}/approve", json={})
+    assert api.get(f"/api/proposals?target_agent_id={agent['id']}&status=pending").json() == []
+    api.patch(f"/api/agents/{agent['id']}", json={"description": "A mano"})
+    history = api.get(f"/api/agents/{agent['id']}/config-history").json()
+    assert [h["source"] for h in history] == ["user", "architect"]
+    assert history[1]["fields"]["role"] == {"before": "QA", "after": "QA estricto"}
+    assert history[1]["conversation_id"] == created["id"]

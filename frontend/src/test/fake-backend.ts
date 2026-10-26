@@ -2594,7 +2594,7 @@ export function createFakeBackend(
     if (skilled) return skilled
     const connected = connectionsBackend.handle(method, url.pathname, url.searchParams, body)
     if (connected) return connected
-    const designed = architectBackend.handle(method, url.pathname, body)
+    const designed = architectBackend.handle(method, url.pathname, body, url.searchParams)
     if (designed) return designed
     return (
       handleRepos(method, url.pathname, body) ??

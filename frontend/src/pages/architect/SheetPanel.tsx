@@ -25,6 +25,11 @@ export function SheetPanel({ conversation }: { conversation: Conversation }) {
   const percent = progress[REF] ?? 0
   const improving = conversation.mode === 'improve_agent'
   const isLocked = (field: string) => locked.includes(`${REF}.${field}`)
+  // Improving an agent: what differs from the agent as it is.
+  const base = ((sheet.base?.agents as Record<string, SheetAgent> | undefined) ?? {})[REF]
+  const differs = (...fields: (keyof SheetAgent)[]) =>
+    !!base &&
+    fields.some((f) => JSON.stringify(agent[f] ?? null) !== JSON.stringify(base[f] ?? null))
 
   async function save(field: TextField, value: string) {
     try {
@@ -71,7 +76,11 @@ export function SheetPanel({ conversation }: { conversation: Conversation }) {
 
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-5 py-4">
         <div className="space-y-4 rounded-lg border border-sep bg-card p-4">
-          <Row label={t('architect.fields.identity')} empty={!agent.name && !agent.role}>
+          <Row
+            label={t('architect.fields.identity')}
+            empty={!agent.name && !agent.role}
+            changed={differs('name', 'role')}
+          >
             <div className="flex items-center gap-3">
               <AgentAvatar name={agent.name || '?'} color={agent.color || '#B39CFF'} size={36} />
               <div className="min-w-0 flex-1 space-y-1">
@@ -94,7 +103,11 @@ export function SheetPanel({ conversation }: { conversation: Conversation }) {
               </div>
             </div>
           </Row>
-          <Row label={t('architect.fields.description')} empty={!agent.description}>
+          <Row
+            label={t('architect.fields.description')}
+            empty={!agent.description}
+            changed={differs('description')}
+          >
             <Editable
               value={agent.description ?? ''}
               label={t('architect.fields.description')}
@@ -104,7 +117,11 @@ export function SheetPanel({ conversation }: { conversation: Conversation }) {
               multiline
             />
           </Row>
-          <Row label={t('architect.fields.execution')} empty={!agent.cli}>
+          <Row
+            label={t('architect.fields.execution')}
+            empty={!agent.cli}
+            changed={differs('cli', 'model', 'account', 'permission_mode', 'allowed_tools')}
+          >
             <p>
               <span className="font-medium">{agent.cli ? t(`cli.${agent.cli}`) : ''}</span>
               {agent.model && <span className="ml-2 font-mono text-[12.5px]">{agent.model}</span>}
@@ -121,6 +138,7 @@ export function SheetPanel({ conversation }: { conversation: Conversation }) {
           <Row
             label={t('architect.fields.skills')}
             empty={agent.skills === undefined && !agent.new_skills}
+            changed={differs('skills', 'new_skills')}
           >
             <Chips
               items={[
@@ -130,14 +148,22 @@ export function SheetPanel({ conversation }: { conversation: Conversation }) {
               none={t('architect.none')}
             />
           </Row>
-          <Row label={t('architect.fields.knowledge')} empty={agent.knowledge === undefined}>
+          <Row
+            label={t('architect.fields.knowledge')}
+            empty={agent.knowledge === undefined}
+            changed={differs('knowledge')}
+          >
             <Chips
               items={(agent.knowledge ?? []).map((d) => d.title)}
               none={t('architect.none')}
               mono
             />
           </Row>
-          <Row label={t('architect.fields.connections')} empty={agent.connections === undefined}>
+          <Row
+            label={t('architect.fields.connections')}
+            empty={agent.connections === undefined}
+            changed={differs('connections')}
+          >
             <Chips
               items={(agent.connections ?? []).map((c) => c.name)}
               none={t('architect.none')}
@@ -161,7 +187,11 @@ export function SheetPanel({ conversation }: { conversation: Conversation }) {
               </ul>
             )}
           </Row>
-          <Row label={t('architect.fields.instructions')} empty={!agent.instructions}>
+          <Row
+            label={t('architect.fields.instructions')}
+            empty={!agent.instructions}
+            changed={differs('instructions')}
+          >
             <Editable
               value={agent.instructions ?? ''}
               label={t('architect.fields.instructions')}
@@ -222,16 +252,24 @@ export function SheetPanel({ conversation }: { conversation: Conversation }) {
 function Row({
   label,
   empty,
+  changed = false,
   children,
 }: {
   label: string
   empty: boolean
+  changed?: boolean
   children: React.ReactNode
 }) {
+  const { t } = useTranslation()
   return (
     <section>
-      <h3 className="mb-1 text-[11.5px] font-medium tracking-wide text-muted-foreground uppercase">
+      <h3 className="mb-1 flex items-center gap-1.5 text-[11.5px] font-medium tracking-wide text-muted-foreground uppercase">
         {label}
+        {changed && (
+          <span className="rounded-full px-1.5 text-[10.5px] tracking-normal text-status-review normal-case ring-1 ring-status-review">
+            {t('architect.changes')}
+          </span>
+        )}
       </h3>
       {empty ? (
         <div

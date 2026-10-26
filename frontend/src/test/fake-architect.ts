@@ -1,4 +1,5 @@
 import type {
+  AgentChange,
   ArchitectMessage,
   ArchitectSettings,
   Conversation,
@@ -74,6 +75,8 @@ export interface ArchitectSeed {
   proposals?: Proposal[]
   /** The draft agent «Crear borrador» creates (it must exist in the fake backend's agents). */
   draftAgentId?: string
+  /** The configuration history of each agent (block 8). */
+  history?: Record<string, AgentChange[]>
 }
 
 export function createArchitectBackend(seed: ArchitectSeed = {}) {
@@ -103,7 +106,24 @@ export function createArchitectBackend(seed: ArchitectSeed = {}) {
     updated_at: c.updated_at,
   })
 
-  function handle(method: string, path: string, body: Record<string, unknown>): Response | null {
+  function handle(
+    method: string,
+    path: string,
+    body: Record<string, unknown>,
+    query: URLSearchParams = new URLSearchParams(),
+  ): Response | null {
+    if (path === '/api/proposals') {
+      const agent = query.get('target_agent_id')
+      const status = query.get('status')
+      return json(
+        200,
+        proposals.filter(
+          (p) => (!agent || p.target_agent_id === agent) && (!status || p.status === status),
+        ),
+      )
+    }
+    const history = path.match(/^\/api\/agents\/([^/]+)\/config-history$/)
+    if (history) return json(200, seed.history?.[history[1]] ?? [])
     if (path === '/api/settings/architect') {
       if (method === 'PUT') settings = { ...settings, ...(body as Partial<ArchitectSettings>) }
       return json(200, settings)

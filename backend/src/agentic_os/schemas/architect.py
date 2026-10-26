@@ -140,6 +140,17 @@ class Applied(BaseModel):
     notes: list[str]
 
 
+class AgentChangeRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    source: str  # user · architect · agent · import
+    proposal_id: str | None
+    conversation_id: str | None
+    fields: dict
+    created_at: datetime
+
+
 class ArchitectSettingsRead(BaseModel):
     cli: str
     account_id: str

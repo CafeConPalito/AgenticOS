@@ -84,7 +84,9 @@
     "loading": "Cargando…",
     "comingSoonPhase": "Disponible en próximas fases",
     "required": "Obligatorio",
-    "back": "Volver"
+    "back": "Volver",
+    "yes": "Sí",
+    "no": "No"
   },
   "markdown": {
     "edit": "Editar",
@@ -290,7 +292,18 @@
       "config": "Configuración",
       "configHint": "Equipo, CLI, cuenta, modelo, permisos y concurrencia"
     },
-    "allTeams": "Todos los equipos"
+    "allTeams": "Todos los equipos",
+    "configHistory": {
+      "title": "Cambios de configuración",
+      "created": "creado desde una propuesta",
+      "imported": "importado de un fichero",
+      "source": {
+        "user": "Editado a mano",
+        "architect": "El Arquitecto",
+        "agent": "Propuesto por un agente",
+        "import": "Importación"
+      }
+    }
   },
   "projects": {
     "title": "Proyectos",
@@ -3555,7 +3568,9 @@
       "instructionsHelp": "Cómo trabaja el Arquitecto. El bloque de cada modo se añade al final.",
       "restore": "Restaurar las predeterminadas",
       "saved": "Ajustes del Arquitecto guardados"
-    }
+    },
+    "improve": "Mejorar con el Arquitecto",
+    "changes": "cambia"
   },
   "proposals": {
     "chip": "Propuesto por el Arquitecto",
@@ -3572,7 +3587,22 @@
     "rejectHelp": "El borrador y las skills escritas para él se descartan.",
     "archive": "Archivarlo en lugar de borrarlo",
     "rejected": "{{name}} descartado.",
-    "archived": "{{name}} archivado."
+    "archived": "{{name}} archivado.",
+    "changesTitle": "Cambios propuestos por el Arquitecto",
+    "changesHelp": "{{count}} campos. El agente sigue trabajando como está hasta que los apliques.",
+    "changesRejected": "Cambios descartados",
+    "review": "Revisar",
+    "reviewTitle": "Revisar los cambios",
+    "reviewHelp": "Elige qué campos aplicar. Las ejecuciones en marcha no cambian; las siguientes usarán lo que apliques.",
+    "newSkills": "Skills nuevas escritas para el agente",
+    "conflict": "Cambiado a mano después",
+    "conflictHelp": "Ahora vale: {{value}}",
+    "conflictChoice": "Qué valor de {{field}} se queda",
+    "keepProposed": "El propuesto",
+    "keepCurrent": "El actual",
+    "settleConflicts": "Elige qué valor se queda en los campos cambiados a mano.",
+    "applySelected": "Aplicar {{count}} cambios",
+    "changesApplied": "{{count}} cambios aplicados"
   },
   "agentTemplates": {
     "title": "Mis plantillas",

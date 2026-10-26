@@ -333,3 +333,29 @@ export function applyArchitectEvent(
   if (event.type === 'message' && event.message.role === 'architect') setBlocks(() => [])
   if (event.type === 'state' && event.state !== 'thinking') setBlocks(() => [])
 }
+
+/** The pending proposals about an agent (its editor shows the changes to review). */
+export function usePendingProposals(agentId: string | undefined) {
+  return useQuery({
+    queryKey: ['proposals', 'agent', agentId ?? ''],
+    queryFn: () => api.get<Proposal[]>(`/api/proposals?target_agent_id=${agentId}&status=pending`),
+    enabled: !!agentId,
+  })
+}
+
+export interface AgentChange {
+  id: string
+  source: 'user' | 'architect' | 'agent' | 'import'
+  proposal_id: string | null
+  conversation_id: string | null
+  /** A proposal: {field: {before, after} | {diff}}; a hand edit: {fields: [...]}. */
+  fields: Record<string, unknown>
+  created_at: string
+}
+
+export function useConfigHistory(agentId: string) {
+  return useQuery({
+    queryKey: ['agents', agentId, 'config-history'],
+    queryFn: () => api.get<AgentChange[]>(`/api/agents/${agentId}/config-history`),
+  })
+}

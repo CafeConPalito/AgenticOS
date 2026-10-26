@@ -4,11 +4,14 @@ approving (whole or in part) or rejecting them."""
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from agentic_os.db.base import DEFAULT_WORKSPACE
 from agentic_os.db.session import get_session
-from agentic_os.models import Proposal, ProposalKind
+from agentic_os.models import AgentChange, Proposal, ProposalKind
 from agentic_os.schemas.architect import (
+    AgentChangeRead,
     Applied,
     Approve,
     FieldChangeRead,
@@ -49,6 +52,32 @@ def read_proposal(db: Session, proposal: Proposal) -> ProposalRead:
         created_at=proposal.created_at,
         decided_at=proposal.decided_at,
     )
+
+
+@router.get("/proposals")
+def list_proposals(
+    db: DbSession,
+    target_agent_id: str | None = None,
+    status: str | None = None,
+) -> list[ProposalRead]:
+    """The proposals about an agent (its pending changes, for its editor's banner)."""
+    query = select(Proposal).where(Proposal.workspace_id == DEFAULT_WORKSPACE)
+    if target_agent_id:
+        query = query.where(Proposal.target_agent_id == target_agent_id)
+    if status:
+        query = query.where(Proposal.status == status)
+    return [read_proposal(db, p) for p in db.scalars(query.order_by(Proposal.created_at.desc()))]
+
+
+@router.get("/agents/{agent_id}/config-history")
+def config_history(agent_id: str, db: DbSession) -> list[AgentChangeRead]:
+    """How the agent's configuration changed: proposals applied, imports and edits by hand."""
+    rows = db.scalars(
+        select(AgentChange)
+        .where(AgentChange.agent_id == agent_id)
+        .order_by(AgentChange.created_at.desc())
+    )
+    return [AgentChangeRead.model_validate(r) for r in rows]
 
 
 @router.get("/proposals/{proposal_id}")

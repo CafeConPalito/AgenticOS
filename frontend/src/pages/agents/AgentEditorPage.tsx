@@ -7,6 +7,7 @@ import {
   MoreHorizontal,
   Pencil,
   Plus,
+  Sparkles,
   Trash2,
 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -26,6 +27,7 @@ import {
 import type { Agent } from '@/api/types'
 import { AgentAvatar, StatusBadge } from '@/components/agentic/primitives'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { ChangesBanner } from '@/components/proposals/ChangesReview'
 import { DraftBanner } from '@/components/proposals/DraftBanner'
 import { EmptyState } from '@/components/EmptyState'
 import { KnowledgeLibrary } from '@/components/knowledge/KnowledgeLibrary'
@@ -172,6 +174,7 @@ function AgentEditor({ agent, tab }: { agent: Agent; tab: Tab }) {
       <form onSubmit={save} noValidate className="flex min-h-full flex-col">
         <UnsavedChangesGuard when={isDirty} allowRef={leaving} scope={`/agentes/${agent.id}`} />
         {agent.status === 'draft' && agent.proposal_id && <DraftBanner agent={agent} />}
+        {agent.status === 'active' && <ChangesBanner agent={agent} />}
         <header className="flex items-center gap-4 px-6 pt-[22px] pb-4">
           <AgentAvatar name={name || '?'} color={color} size={52} />
           <div className="min-w-0 flex-1">
@@ -223,6 +226,14 @@ function AgentEditor({ agent, tab }: { agent: Agent; tab: Tab }) {
             </Button>
           )}
           <LaunchRunButton agentId={agent.id} disabled={agent.status === 'draft'} />
+          {agent.status === 'active' && (
+            <Button type="button" variant="outline" className="rounded-full" asChild>
+              <Link to={`/agentes/arquitecto?mejorar=${agent.id}`}>
+                <Sparkles className="text-status-review" />
+                {t('architect.improve')}
+              </Link>
+            </Button>
+          )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button type="button" variant="outline" size="icon" aria-label={t('common.more')}>

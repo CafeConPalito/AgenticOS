@@ -1,7 +1,7 @@
 # Fase 19: Meta-agentes · Plan técnico
 
 - **Spec**: [spec.md](spec.md)
-- **Estado**: aprobado (2026-10-25) · en desarrollo (bloques 0–7 hechos)
+- **Estado**: aprobado (2026-10-25) · en desarrollo (bloques 0–8 hechos)
 
 ## Lo que ya se sabe (revisado al escribir el plan)
 - **Agente** (`models/agent.py`): ya tiene `status` (`active` · `draft`) y `template`. Los borradores no reciben tareas: el scheduler y `pipelines.from_template` filtran por `AgentStatus.ACTIVE`, y el editor desactiva «Asignar tarea» y «Lanzar» y muestra «Activar». No hay revisión ni registro de cambios de la configuración.
@@ -180,7 +180,7 @@ Bloques pequeños con commits y tests; cada uno deja la app funcionando.
 5. [x] **API y WebSocket** del Arquitecto y de las propuestas (§7).
 6. [x] **UI del Arquitecto de un agente**: pantalla, ficha en vivo, candados, conversaciones, banner de borrador, revisión, Inbox, Ajustes › Arquitecto, dictado. *(A–C, E)*
 7. [x] **Plantillas y exportar/importar** (§6) con su UI. *(D)*
-8. [ ] **Mejorar agentes activos**: modo `improve_agent`, revisión con diff y aplicación parcial, Historial. *(F)*
+8. [x] **Mejorar agentes activos**: modo `improve_agent`, revisión con diff y aplicación parcial, Historial. *(F)*
 9. [ ] **`propose_agent`** (§5) y su permiso. *(G)*
 10. [ ] **Equipos y pipelines**: `TeamSheet`/`PipelineSheet`, propuesta `team` y `*_changes` de equipo y pipeline, pestañas Equipo · Agentes · Pipeline, `PipelinePreview`, entradas desde equipo y editor de pipeline. *(H)*
 11. [ ] **e2e** con el CLI falso (CA1, CA15) y con el binario empaquetado (CA11); prueba manual con `claude` (y `agy` si S2 lo permite).
@@ -222,4 +222,5 @@ Bloques pequeños con commits y tests; cada uno deja la app funcionando.
 - **Bloque 5 hecho**: API y WebSocket de conversaciones y propuestas, ajustes del Arquitecto; borrar un borrador rechaza su propuesta y no se activa a mano si tiene una pendiente.
 - **Bloque 6 hecho**: pantalla «Crear con el Arquitecto» (`/agentes/arquitecto`: lista de conversaciones y conversación con chat y ficha en vivo), respuestas por bloques y estado del CLI por WebSocket, edición a mano con candado, «Ver terminal», reiniciar, detener, dictado en el composer, banner del borrador con aprobar (eligiendo sus skills) y rechazar (borrar o archivar), chip en la lista, aviso de la Inbox con «Revisar», accesos desde Agentes, Inicio y la paleta, y Ajustes › Arquitecto.
 - **Bloque 7 hecho**: formato `agentic-os.agent` v1 (sin secretos ni ids locales; skills propias embebidas, el resto por nombre), «Guardar como plantilla» y «Exportar» en el editor, «Mis plantillas» (renombrar, duplicar, borrar; las fijas no se tocan), las plantillas propias en el selector de nuevo agente (crear desde una trae sus skills, conexiones y documentos, con otra cuenta si se quiere) e «Importar» con vista previa de lo que falta, que entra como borrador.
-- **Siguiente**: bloque 8 (mejorar agentes activos).
+- **Bloque 8 hecho**: «Mejorar con el Arquitecto» en el editor de un agente activo; la ficha marca qué cambia respecto al agente; aviso «Cambios propuestos» con revisión campo a campo (instrucciones como diff, conflictos con elección del valor que se queda, skills nuevas), aplicación parcial; historial de configuración en la pestaña Historial (`GET /agents/{id}/config-history`) y propuestas pendientes de un agente (`GET /proposals?target_agent_id=&status=`).
+- **Siguiente**: bloque 9 (`propose_agent`).
