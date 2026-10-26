@@ -50,7 +50,6 @@ from agentic_os.models import (
 from agentic_os.models.agent import Tool
 from agentic_os.services import accounts as account_ops
 from agentic_os.services import proposals
-from agentic_os.services import tasks as task_ops
 from agentic_os.services.architect import config as architect_config
 from agentic_os.services.architect import prompts
 from agentic_os.services.architect import sheet as sheets
@@ -221,7 +220,7 @@ class ArchitectService:
             project = db.get(Project, project_id) if project_id else None
             if project is None:
                 raise ApiError(422, "project_required", "a project is required")
-            sheet["pipeline"] = _pipeline_sheet(db, project)
+            sheet["pipeline"] = sheets.pipeline_of(db, project)
             sheet["base"] = {"pipeline": sheet["pipeline"]}
             title = f"Mejorar el pipeline de {project.name}"
         elif mode not in (ArchitectMode.AGENT, ArchitectMode.TEAM):
@@ -269,6 +268,7 @@ class ArchitectService:
             "ready": not [i for i in issues if i.level == "error"]
             and bool(agents or conversation.sheet.get("pipeline")),
             "locked": list(conversation.locked_fields or []),
+            "pipeline_layout": sheets.pipeline_layout(conversation.sheet),
         }
 
     def _add_message(
@@ -625,7 +625,12 @@ class ArchitectService:
             return proposals.create_agent_changes(
                 db, lib, catalog, agent, base, conversation.sheet, by
             )
-        raise ApiError(422, "unsupported_proposal", "teams and pipelines arrive with block 10")
+        kind = {
+            ArchitectMode.TEAM: ProposalKind.TEAM,
+            ArchitectMode.IMPROVE_TEAM: ProposalKind.TEAM_CHANGES,
+            ArchitectMode.IMPROVE_PIPELINE: ProposalKind.PIPELINE_CHANGES,
+        }[ArchitectMode(conversation.mode)]
+        return proposals.create_team(db, lib, catalog, conversation.sheet, by, kind)
 
     # ------------------------------------------------------------------ the catalog
     def _cli_infos(self) -> list[CliInfo]:
@@ -801,7 +806,7 @@ class ArchitectService:
 
     def _tool_list_projects(self, db: Session, conversation, **_) -> tuple[Any, list]:
         projects = db.scalars(select(Project).where(Project.workspace_id == DEFAULT_WORKSPACE))
-        return [{"name": p.name, "pipeline": _pipeline_sheet(db, p)} for p in projects], []
+        return [{"name": p.name, "pipeline": sheets.pipeline_of(db, p)} for p in projects], []
 
     def _tool_get_sheet(self, db: Session, conversation, **_) -> tuple[Any, list]:
         return self.summary(db, conversation), []
@@ -962,42 +967,3 @@ def _rank(query: str, items: list, text: Callable[[Any], str]) -> list:
     scores = bm25(query, [text(item) for item in items])
     ranked = sorted(zip(scores, range(len(items)), strict=True), key=lambda x: (-x[0], x[1]))
     return [items[i] for score, i in ranked if score > 0][:SEARCH_RESULTS]
-
-
-def _pipeline_sheet(db: Session, project: Project) -> dict | None:
-    """A project's pipeline in the sheet's format (stages keep their ids)."""
-    pipeline = task_ops.pipeline_of(db, project.id)
-    if pipeline is None:
-        return None
-    stages = sorted(pipeline.stages, key=lambda s: s.position)
-    index = {s.id: i for i, s in enumerate(stages)}
-    agents = {a.id: a.name for a in db.scalars(select(Agent))}
-    return {
-        "project_id": project.id,
-        "project_name": project.name,
-        "max_rejections": pipeline.max_rejections,
-        "stages": [
-            {
-                "id": s.id,
-                "name": s.name,
-                "agent": s.agent_id,
-                "agent_name": agents.get(s.agent_id or "", ""),
-                "requires_review": s.requires_review,
-                "reject_to": index.get(s.reject_to_stage_id) if s.reject_to_stage_id else None,
-                "reject_also": [index[x] for x in s.reject_extra_ids if x in index],
-                "confirm_decision": s.confirm_decision,
-            }
-            for s in stages
-        ],
-        "links": [
-            {
-                "source": index[link.from_stage_id],
-                "target": index[link.to_stage_id],
-                "name": link.name,
-                "condition": link.condition,
-                "always": link.always,
-            }
-            for link in sorted(pipeline.links, key=lambda x: x.position)
-            if link.from_stage_id in index and link.to_stage_id in index
-        ],
-    }

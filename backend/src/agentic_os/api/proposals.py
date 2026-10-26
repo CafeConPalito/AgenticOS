@@ -48,6 +48,7 @@ def read_proposal(db: Session, proposal: Proposal) -> ProposalRead:
             SkillDraftRead(id=s.id, name=s.name, description=s.description)
             for s in proposals.new_skills(db, proposal)
         ],
+        team=proposals.team_review(db, proposal),
         applied_fields=list(proposal.applied_fields or []),
         created_at=proposal.created_at,
         decided_at=proposal.decided_at,
@@ -95,6 +96,7 @@ def approve(proposal_id: str, payload: Approve, request: Request, db: DbSession)
         fields=payload.fields,
         choices=payload.choices,
         skip_skills=payload.skip_skills,
+        skip_agents=payload.skip_agents,
     )
     db.commit()
     knowledge = getattr(request.app.state, "knowledge", None)

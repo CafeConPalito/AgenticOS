@@ -128,6 +128,16 @@ def _payload_graph(payload: PipelineWrite) -> Graph:
     return Graph(nodes, edges, rejects)
 
 
+def layout_of(payload: PipelineWrite) -> dict[int, tuple[int, int]]:
+    """Where the editor would place each stage, by index (phase 19: the Architect's preview).
+    Empty if the links point outside the stages."""
+    try:
+        places = _payload_graph(payload).layout()
+    except (IndexError, KeyError):
+        return {}
+    return {i: places[_node(i, s)] for i, s in enumerate(payload.stages)}
+
+
 def check(payload: PipelineWrite) -> list[GraphIssue]:
     """The problems of a pipeline as edited, without saving it (the editor shows them live)."""
     _check_indexes(payload)

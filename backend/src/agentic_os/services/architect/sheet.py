@@ -48,8 +48,10 @@ from agentic_os.models import (
 from agentic_os.models.agent import MAX_CONCURRENCY
 from agentic_os.schemas.pipeline import MAX_STAGES, LinkWrite, PipelineWrite, StageWrite
 from agentic_os.services import accounts as account_ops
+from agentic_os.services import tasks as task_ops
 from agentic_os.services.clis import CliInfo
 from agentic_os.services.pipelines import check as check_graph
+from agentic_os.services.pipelines import layout_of
 from agentic_os.services.skills.format import NAME as SKILL_NAME
 from agentic_os.services.skills.format import NAME_MAX as SKILL_NAME_MAX
 
@@ -736,3 +738,103 @@ def issues_payload(issues: Iterable[Issue]) -> list[dict]:
     return [
         {"field": i.field, "code": i.code, "message": i.message, "level": i.level} for i in issues
     ]
+
+
+def pipeline_of(db: Session, project: Project) -> dict | None:
+    """A project's pipeline in the sheet's format (stages keep their ids)."""
+    pipeline = task_ops.pipeline_of(db, project.id)
+    if pipeline is None:
+        return None
+    stages = sorted(pipeline.stages, key=lambda s: s.position)
+    index = {s.id: i for i, s in enumerate(stages)}
+    agents = {a.id: a.name for a in db.scalars(select(Agent))}
+    return {
+        "project_id": project.id,
+        "project_name": project.name,
+        "max_rejections": pipeline.max_rejections,
+        "stages": [
+            {
+                "id": s.id,
+                "name": s.name,
+                "agent": s.agent_id,
+                "agent_name": agents.get(s.agent_id or "", ""),
+                "requires_review": s.requires_review,
+                "reject_to": index.get(s.reject_to_stage_id) if s.reject_to_stage_id else None,
+                "reject_also": [index[x] for x in s.reject_extra_ids if x in index],
+                "confirm_decision": s.confirm_decision,
+            }
+            for s in stages
+        ],
+        "links": [
+            {
+                "source": index[link.from_stage_id],
+                "target": index[link.to_stage_id],
+                "name": link.name,
+                "condition": link.condition,
+                "always": link.always,
+            }
+            for link in sorted(pipeline.links, key=lambda x: x.position)
+            if link.from_stage_id in index and link.to_stage_id in index
+        ],
+    }
+
+
+def pipeline_layout(sheet: Mapping) -> dict[int, list[int]]:
+    """Where to draw each stage of the sheet's pipeline (the editor's own layout)."""
+    if not sheet.get("pipeline"):
+        return {}
+    try:
+        payload = pipeline_write(sheet)
+    except (ValidationError, KeyError):
+        return {}
+    return {i: list(xy) for i, xy in layout_of(payload).items()}
+
+
+def _stage_key(stage: Mapping) -> tuple:
+    return (
+        stage.get("name"),
+        stage.get("agent"),
+        bool(stage.get("requires_review")),
+        stage.get("reject_to"),
+        tuple(stage.get("reject_also") or []),
+    )
+
+
+def _links(pipeline: Mapping) -> list[tuple]:
+    links = pipeline.get("links")
+    if links is None:
+        links = [
+            {"source": i, "target": i + 1} for i in range(len(pipeline.get("stages") or []) - 1)
+        ]
+    return sorted(
+        (x["source"], x["target"], x.get("name", ""), x.get("condition", ""), bool(x.get("always")))
+        for x in links
+    )
+
+
+def same_pipeline(a: Mapping | None, b: Mapping | None) -> bool:
+    """Whether two pipelines in the sheet's format are the same (stages, by id, and links)."""
+    if not a or not b:
+        return not a and not b
+
+    def stages(pipeline: Mapping) -> list[tuple]:
+        return [(*_stage_key(s), s.get("id")) for s in pipeline["stages"]]
+
+    return stages(a) == stages(b) and _links(a) == _links(b)
+
+
+def pipeline_diff(before: Mapping | None, after: Mapping) -> dict:
+    """What a pipeline proposal changes: stages added, removed and changed (by id), and
+    whether the links (branches, conditions) change."""
+    old = {s["id"]: s for s in (before or {}).get("stages") or [] if s.get("id")}
+    new_ids = {s.get("id") for s in after["stages"] if s.get("id")}
+    return {
+        "added": [s["name"] for s in after["stages"] if not s.get("id") or s["id"] not in old],
+        "removed": [s["name"] for sid, s in old.items() if sid not in new_ids],
+        "changed": [
+            s["name"]
+            for s in after["stages"]
+            if s.get("id") in old and _stage_key(old[s["id"]]) != _stage_key(s)
+        ],
+        "links_changed": _links(before or {"stages": []}) != _links(after),
+    }

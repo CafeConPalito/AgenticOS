@@ -64,6 +64,8 @@ class SheetRead(BaseModel):
     ready: bool
     locked: list[str]
     refused: dict[str, str] = {}
+    # Where to draw each stage of the pipeline (by index), as the editor would.
+    pipeline_layout: dict[int, list[int]] = {}
 
 
 class ConversationSummary(BaseModel):
@@ -118,6 +120,8 @@ class ProposalRead(BaseModel):
     sheet: dict | None = None  # what a new agent was proposed with
     changes: list[FieldChangeRead] = []
     new_skills: list[SkillDraftRead] = []
+    # A team or a pipeline: the team, the new and reused agents and the pipeline's changes.
+    team: dict | None = None
     applied_fields: list[str] = []
     created_at: datetime
     decided_at: datetime | None
@@ -127,8 +131,9 @@ class Approve(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     fields: list[str] | None = None  # changes: those to apply (all by default)
-    choices: dict[str, Literal["proposed", "current"]] = {}  # a field in conflict
+    choices: dict[str, Literal["proposed", "current"]] = {}  # a field (or «pipeline») in conflict
     skip_skills: list[str] = []  # skills written for it that are not wanted
+    skip_agents: list[str] = []  # a team: refs of new agents left out
 
 
 class Reject(BaseModel):

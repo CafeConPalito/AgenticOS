@@ -35,6 +35,7 @@ from agentic_os.models import (
     KnowledgeScope,
     McpAssignment,
     McpConnection,
+    Project,
     Proposal,
     ProposalKind,
     ProposalOrigin,
@@ -48,10 +49,12 @@ from agentic_os.models import (
     SkillReview,
     SkillVersion,
     SourceKind,
+    Team,
     VersionAuthor,
     VersionStatus,
 )
 from agentic_os.services import inbox
+from agentic_os.services import pipelines as pipeline_ops
 from agentic_os.services.architect import sheet as sheets
 from agentic_os.services.connections import library as connection_library
 from agentic_os.services.knowledge import config as knowledge_config
@@ -305,6 +308,30 @@ def _mark_conversation(db: Session, by: ProposedBy, status: ConversationStatus, 
             setattr(conversation, key, value)
 
 
+def _make_draft(
+    db: Session, lib: SkillLibrary, proposal: Proposal, values: Mapping, by: ProposedBy
+) -> tuple[Agent, list[str]]:
+    """A new agent of a proposal as a draft: its fields, skill modes, connections and the
+    skills written for it (pending)."""
+    agent = Agent(
+        workspace_id=DEFAULT_WORKSPACE,
+        status=AgentStatus.DRAFT,
+        proposal_id=proposal.id,
+        template=values.get("template"),
+        **{
+            column: values[key]
+            for key, column in COLUMNS.items()
+            if key in values and values[key] is not None
+        },
+    )
+    agent.model = agent.model or ""
+    db.add(agent)
+    db.flush()
+    _set_skill_modes(db, agent.id, {s["skill_id"]: s["mode"] for s in values.get("skills") or []})
+    _set_connections(db, agent.id, [c["connection_id"] for c in values.get("connections") or []])
+    return agent, _new_skills(db, lib, agent, values.get("new_skills") or [], by)
+
+
 def create_new_agent(
     db: Session,
     lib: SkillLibrary,
@@ -329,23 +356,7 @@ def create_new_agent(
     )
     db.add(proposal)
     db.flush()
-    agent = Agent(
-        workspace_id=DEFAULT_WORKSPACE,
-        status=AgentStatus.DRAFT,
-        proposal_id=proposal.id,
-        template=values.get("template"),
-        **{
-            column: values[key]
-            for key, column in COLUMNS.items()
-            if key in values and values[key] is not None
-        },
-    )
-    agent.model = agent.model or ""
-    db.add(agent)
-    db.flush()
-    _set_skill_modes(db, agent.id, {s["skill_id"]: s["mode"] for s in values.get("skills") or []})
-    _set_connections(db, agent.id, [c["connection_id"] for c in values.get("connections") or []])
-    skill_ids = _new_skills(db, lib, agent, values.get("new_skills") or [], by)
+    agent, skill_ids = _make_draft(db, lib, proposal, values, by)
     proposal.target_agent_id = agent.id
     proposal.payload = {**proposal.payload, "agent_id": agent.id, "new_skill_ids": skill_ids}
     title = (
@@ -401,6 +412,196 @@ def create_agent_changes(
     _mark_conversation(db, by, ConversationStatus.PROPOSED)
     db.flush()
     return proposal
+
+
+TEAM_KINDS = (ProposalKind.TEAM, ProposalKind.TEAM_CHANGES, ProposalKind.PIPELINE_CHANGES)
+
+
+def create_team(
+    db: Session,
+    lib: SkillLibrary,
+    catalog: sheets.Catalog,
+    sheet: Mapping,
+    by: ProposedBy,
+    kind: ProposalKind,
+) -> Proposal:
+    """A team with its agents and a project's pipeline (or changes to an existing one): the new
+    agents are drafts from now on; the team and the pipeline only change when it is approved."""
+    _not_ready(sheets.sheet_issues(catalog, sheet))
+    team = dict(sheet.get("team") or {})
+    pipeline = dict(sheet.get("pipeline") or {})
+    if kind == ProposalKind.PIPELINE_CHANGES and not pipeline:
+        raise ApiError(422, "no_pipeline", "the sheet has no pipeline")
+    if not (sheet.get("agents") or sheet.get("existing_agents") or pipeline or team):
+        raise ApiError(422, "no_changes", "the sheet does not propose anything")
+    proposal = Proposal(
+        workspace_id=DEFAULT_WORKSPACE,
+        kind=kind,
+        origin=by.origin,
+        conversation_id=by.conversation_id,
+        reason=by.reason,
+        target_team_id=team.get("team_id"),
+        target_project_id=pipeline.get("project_id"),
+        payload={"sheet": sheets.copy_sheet(sheet)},
+    )
+    db.add(proposal)
+    db.flush()
+    agent_ids: dict[str, str] = {}
+    skill_ids: list[str] = []
+    for ref, values in (sheet.get("agents") or {}).items():
+        agent, written = _make_draft(db, lib, proposal, dict(values), by)
+        agent_ids[ref] = agent.id
+        skill_ids += written
+    proposal.payload = {**proposal.payload, "agent_ids": agent_ids, "new_skill_ids": skill_ids}
+    if kind == ProposalKind.PIPELINE_CHANGES:
+        title = f"Cambios propuestos en el pipeline de {pipeline.get('project_name', '')}"
+    elif kind == ProposalKind.TEAM_CHANGES:
+        title = f"Cambios propuestos en el equipo {team.get('name', '')}"
+    else:
+        title = f"Equipo propuesto por el Arquitecto: {team.get('name') or 'sin nombre'}"
+    item = inbox.create(db, InboxKind.PROPOSAL, title, by.reason, proposal_id=proposal.id)
+    item.agent_name, item.agent_color = "Arquitecto", "#B39CFF"
+    _mark_conversation(db, by, ConversationStatus.PROPOSED)
+    db.flush()
+    return proposal
+
+
+def team_review(db: Session, proposal: Proposal) -> dict | None:
+    """What a team or pipeline proposal does: the team, the agents it creates and reuses, and
+    the pipeline's changes against the project's as it is now (a conflict if it changed since)."""
+    if proposal.kind not in TEAM_KINDS:
+        return None
+    sheet = proposal.payload.get("sheet") or {}
+    ids = proposal.payload.get("agent_ids") or {}
+    new_agents = []
+    for ref, agent_id in ids.items():
+        agent = db.get(Agent, agent_id)
+        values = (sheet.get("agents") or {}).get(ref) or {}
+        new_agents.append(
+            {
+                "ref": ref,
+                "id": agent_id,
+                "name": agent.name if agent else values.get("name", ref),
+                "role": agent.role if agent else values.get("role", ""),
+                "cli": values.get("cli"),
+                "model": values.get("model", ""),
+            }
+        )
+    existing = [
+        {"id": a.id, "name": a.name, "role": a.role}
+        for agent_id in sheet.get("existing_agents") or []
+        if (a := db.get(Agent, agent_id)) is not None
+    ]
+    review: dict[str, Any] = {
+        "team": sheet.get("team") or {},
+        "new_agents": new_agents,
+        "existing_agents": existing,
+        "pipeline": None,
+    }
+    pipeline = sheet.get("pipeline")
+    if pipeline:
+        project = db.get(Project, pipeline.get("project_id"))
+        current = sheets.pipeline_of(db, project) if project else None
+        base = (sheet.get("base") or {}).get("pipeline")
+        names = {f"ref:{a['ref']}": a["name"] for a in new_agents}
+        names.update({a.id: a.name for a in db.scalars(select(Agent))})
+        review["pipeline"] = {
+            "project_id": pipeline.get("project_id"),
+            "project_name": pipeline.get("project_name", ""),
+            "stages": [
+                {"name": st["name"], "agent": names.get(st.get("agent") or "", "")}
+                for st in pipeline["stages"]
+            ],
+            **sheets.pipeline_diff(current, pipeline),
+            # Changed since the proposal (an improvement), or the project got one meanwhile.
+            "conflict": not sheets.same_pipeline(current, base)
+            if base is not None
+            else current is not None,
+        }
+    return review
+
+
+def _approve_team(
+    db: Session,
+    lib: SkillLibrary,
+    proposal: Proposal,
+    applied: Applied,
+    skip_agents: Iterable[str],
+    choices: Mapping[str, str],
+) -> None:
+    skip = set(skip_agents)
+    sheet = proposal.payload.get("sheet") or {}
+    ids: dict[str, str] = proposal.payload.get("agent_ids") or {}
+    pipeline = sheet.get("pipeline")
+    if pipeline:
+        blocked = [
+            st["name"]
+            for st in pipeline["stages"]
+            if (st.get("agent") or "").startswith("ref:") and st["agent"][4:] in skip
+        ]
+        if blocked:
+            raise ApiError(
+                409,
+                "stage_without_agent",
+                "a stage uses an agent that was left out",
+                extra={"stages": blocked},
+            )
+        review = team_review(db, proposal) or {}
+        if (review.get("pipeline") or {}).get("conflict") and choices.get("pipeline") != "proposed":
+            raise ApiError(
+                409,
+                "conflicts",
+                "the pipeline changed since the proposal",
+                extra={"fields": ["pipeline"]},
+            )
+    team_values = sheet.get("team") or {}
+    team: Team | None = None
+    if team_values.get("team_id"):
+        team = db.get(Team, team_values["team_id"])
+    elif team_values.get("name"):
+        team = Team(
+            workspace_id=DEFAULT_WORKSPACE,
+            name=team_values["name"],
+            description=team_values.get("description", ""),
+        )
+        db.add(team)
+        db.flush()
+    skipped_ids = {ids[ref] for ref in skip if ref in ids}
+    for skill in new_skills(db, proposal):
+        if skill.agent_id in skipped_ids:
+            db.delete(skill)
+    db.flush()
+    for ref, agent_id in ids.items():
+        agent = db.get(Agent, agent_id)
+        if agent is None:
+            continue
+        if ref in skip:
+            db.delete(agent)
+            continue
+        agent.status = AgentStatus.ACTIVE
+        if team is not None:
+            agent.team_id = team.id
+        values = (sheet.get("agents") or {}).get(ref) or {}
+        applied.notes += _link_docs(db, agent, [d["doc_id"] for d in values.get("knowledge") or []])
+        _log_change(db, proposal, agent, {"created": {"name": agent.name, "role": agent.role}})
+        applied.fields.append(f"agents.{ref}")
+    for agent_id in sheet.get("existing_agents") or []:
+        agent = db.get(Agent, agent_id)
+        if agent is not None and team is not None and agent.team_id != team.id:
+            agent.team_id = team.id
+    db.flush()
+    _settle_skills(db, lib, proposal, ())
+    if pipeline:
+        project = db.get(Project, pipeline["project_id"])
+        if project is None:
+            raise NotFound("project")
+        kept = {ref: agent_id for ref, agent_id in ids.items() if ref not in skip}
+        pipeline_ops.save(db, project, sheets.pipeline_write(sheet, kept))
+        applied.fields.append("pipeline")
+    if team is not None:
+        applied.fields.append("team")
+    proposal.applied_fields = applied.fields
+    proposal.status = ProposalStatus.PARTIAL if skip else ProposalStatus.APPLIED
 
 
 # ---------------------------------------------------------------------------------- review
@@ -534,14 +735,19 @@ def approve(
     fields: Iterable[str] | None = None,
     choices: Mapping[str, str] | None = None,
     skip_skills: Iterable[str] = (),
+    skip_agents: Iterable[str] = (),
 ) -> Applied:
     """Applies the proposal. For changes: `fields` (all by default) and, for each field in
-    conflict, `choices[field]` = «proposed» or «current»."""
+    conflict, `choices[field]` = «proposed» or «current». For a team: `skip_agents`, the refs of
+    new agents left out (no stage may use them), and `choices["pipeline"]` if it changed since."""
     _pending(proposal)
+    applied = Applied(proposal)
+    if proposal.kind in TEAM_KINDS:
+        _approve_team(db, lib, proposal, applied, skip_agents, dict(choices or {}))
+        return _finish_approval(db, proposal, applied)
     agent = db.get(Agent, proposal.target_agent_id) if proposal.target_agent_id else None
     if agent is None:
         raise NotFound("agent")
-    applied = Applied(proposal)
     if proposal.kind == ProposalKind.NEW_AGENT:
         agent.status = AgentStatus.ACTIVE
         agent.archived_at = None
@@ -587,7 +793,11 @@ def approve(
         everything = len(applied.fields) == len(pending) and not list(skip_skills)
         proposal.status = ProposalStatus.APPLIED if everything else ProposalStatus.PARTIAL
     else:
-        raise ApiError(422, "unsupported_proposal", f"{proposal.kind} is not supported yet")
+        raise ApiError(422, "unsupported_proposal", f"{proposal.kind} is not supported")
+    return _finish_approval(db, proposal, applied)
+
+
+def _finish_approval(db: Session, proposal: Proposal, applied: Applied) -> Applied:
     proposal.decided_at = utcnow()
     _resolve(db, proposal, Resolution.APPROVED)
     by = ProposedBy(proposal.origin, proposal.conversation_id)
@@ -604,13 +814,19 @@ def reject(
     _pending(proposal)
     for skill in new_skills(db, proposal):
         db.delete(skill)
+    drafts = []
     if proposal.kind == ProposalKind.NEW_AGENT and proposal.target_agent_id:
-        agent = db.get(Agent, proposal.target_agent_id)
+        drafts = [proposal.target_agent_id]
+    elif proposal.kind in TEAM_KINDS:
+        drafts = list((proposal.payload.get("agent_ids") or {}).values())
+    for agent_id in drafts:
+        agent = db.get(Agent, agent_id)
         if agent is not None and agent.status == AgentStatus.DRAFT:
             if archive:
                 agent.archived_at = utcnow()
             else:
-                proposal.target_agent_id = None
+                if proposal.target_agent_id == agent_id:
+                    proposal.target_agent_id = None
                 db.delete(agent)
     proposal.status = ProposalStatus.REJECTED
     proposal.decided_at = utcnow()
