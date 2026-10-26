@@ -17,6 +17,7 @@ their name next to it for the UI; the model may send either. The same rules serv
 
 from __future__ import annotations
 
+import copy
 import re
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
@@ -486,6 +487,9 @@ def copy_sheet(sheet: Mapping | None) -> dict:
         "team": dict(sheet.get("team") or {}),
         "pipeline": dict(sheet["pipeline"]) if sheet.get("pipeline") else None,
         "suggested_connections": list(sheet.get("suggested_connections") or []),
+        # What an improvement starts from (the agent, team or pipeline as it was): kept apart,
+        # never edited, the base of the proposal of changes.
+        "base": copy.deepcopy(sheet.get("base")) if sheet.get("base") else None,
     }
 
 

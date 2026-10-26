@@ -1,7 +1,7 @@
 # Fase 19: Meta-agentes · Plan técnico
 
 - **Spec**: [spec.md](spec.md)
-- **Estado**: aprobado (2026-10-25) · en desarrollo (bloques 0–3 hechos)
+- **Estado**: aprobado (2026-10-25) · en desarrollo (bloques 0–4 hechos)
 
 ## Lo que ya se sabe (revisado al escribir el plan)
 - **Agente** (`models/agent.py`): ya tiene `status` (`active` · `draft`) y `template`. Los borradores no reciben tareas: el scheduler y `pipelines.from_template` filtran por `AgentStatus.ACTIVE`, y el editor desactiva «Asignar tarea» y «Lanzar» y muestra «Activar». No hay revisión ni registro de cambios de la configuración.
@@ -176,7 +176,7 @@ Bloques pequeños con commits y tests; cada uno deja la app funcionando.
 1. [x] **Modelo de datos**: migración `0021_architect`, modelos y `CHECK`s; tests de migración.
 2. [x] **Ficha y validación** (§2) con tests de cada regla, sin LLM.
 3. [x] **Propuestas** (§3): crear, aprobar (total y parcial, conflictos, transacción) y rechazar, para `new_agent` y `agent_changes`; `AgentChange`; Inbox.
-4. [ ] **Arquitecto en marcha** (§4): configuración, herramientas MCP, ejecución `architect` en PTY con un CLI por conversación, mensajes escritos en el proceso, fin de turno por `Stop`, respuesta desde el transcript, interrumpir, dormir y retomar, reiniciar, consumo y límites; órdenes del Arquitecto en el CLI falso.
+4. [x] **Arquitecto en marcha** (§4): configuración, herramientas MCP, ejecución `architect` en PTY con un CLI por conversación, mensajes escritos en el proceso, fin de turno por `Stop`, respuesta desde el transcript, interrumpir, dormir y retomar, reiniciar, consumo y límites; órdenes del Arquitecto en el CLI falso.
 5. [ ] **API y WebSocket** del Arquitecto y de las propuestas (§7).
 6. [ ] **UI del Arquitecto de un agente**: pantalla, ficha en vivo, candados, conversaciones, banner de borrador, revisión, Inbox, Ajustes › Arquitecto, dictado. *(A–C, E)*
 7. [ ] **Plantillas y exportar/importar** (§6) con su UI. *(D)*
@@ -214,17 +214,9 @@ Bloques pequeños con commits y tests; cada uno deja la app funcionando.
   4. Formato de exportación `agentic-os.agent` v1, sin secretos ni ids locales; las plantillas del usuario usan ese mismo formato.
   5. Cada conversación (cada proceso del CLI) es una ejecución `architect` que cuenta en el consumo y en el límite diario, comprobado antes de cada mensaje.
 
-## Estado (2026-10-25, fin de la sesión)
-- **Hechos**: bloques 0 (spikes), 1 (datos, migración `0021`), 2 (ficha y validación, `services/architect/sheet.py`) y 3 (propuestas, `services/proposals.py`, historial de ediciones a mano).
-- **Bloque 4 a medias**. Hecho y con lint en verde, sin tests propios todavía:
-  - `services/architect/config.py` (Ajustes › Arquitecto en `app_state`), `prompts.py` (instrucciones base y por modo), `transcript.py` (respuestas leídas del transcript de Claude y de `agy`), `adapters.py` (CLI del Arquitecto: Claude con `--tools ""` y solo `mcp__architect__*`; `agy` con plugin `architect` y *hook* guardián);
-  - `hooks.write_guard_script` (si el backend no responde, deniega);
-  - `ClaudeAdapter` separado en `mcp_servers()` y `permission_args()` (los tests de adapters siguen en verde);
-  - `RunSession`: modo `conversation` (mensajes pegados enteros, sin empujones) e `interrupt()`;
-  - `RunTokens` / `TokenGate` con tipo de *token* (`agent` · `architect`).
-- **Falta del bloque 4**:
-  1. `services/architect/tools.py`: dos servidores MCP (`/a/agent/mcp` y `/a/team/mcp`) con las herramientas del plan §4 y el cambio 4, montados en `app.py` con su `session_manager` en el *lifespan*; `adapters.mcp_url` debe elegir la ruta según el modo.
-  2. `RunManager.launch_architect` (ejecución `architect` sin tarea ni proyecto, carpeta `datadir/architect/slot-N`, *token* `architect`, `RunSession(conversation=True)`) y en `on_hook` el desvío de las ejecuciones `architect`: decisión del guardián para `PreToolUse` de `agy` (`adapters.guard_allows`) y aviso de inicio y fin de turno al servicio del Arquitecto. `api/hooks.py` debe devolver JSON con la decisión cuando la haya.
-  3. `services/architect/service.py`: conversaciones (crear, enviar mensaje arrancando o retomando el CLI, interrumpir, reiniciar, dormir por inactividad, tope de vivos), lectura de las respuestas por bloques con `TranscriptReader`, eventos por conversación (hub como `GitEvents`), límite diario y sesión de la cuenta antes de cada mensaje, y las herramientas de la ficha sobre `sheet.py` (campos fijados, `request_unlock`).
-  4. Órdenes del Arquitecto en `tests/fake_cli.py` y los tests del bloque (`test_architect_session.py`, `test_architect_tools.py`, `test_architect_usage.py`).
-- Riesgo pendiente de comprobar: que Esc interrumpa un turno de `agy` (en el spike solo se probó con Claude).
+## Estado (2026-10-26)
+- **Hechos**: bloques 0–4. El Arquitecto funciona de punta a punta con Claude y `agy` (CLI falso en ConPTY):
+  - un CLI por conversación, mensajes pegados enteros, respuesta leída del transcript por bloques, ficha editada por las herramientas MCP (`/a/agent/mcp` y `/a/team/mcp`), dormir y retomar con la misma sesión, reiniciar con una limpia, interrumpir sin cerrar, límite diario comprobado antes de cada mensaje y consumo como ejecución `architect`;
+  - el guardián de `agy` deniega todo lo que no sea su MCP, y los *tokens* de agente y de Arquitecto no abren el servidor del otro.
+- **Hallazgo del bloque 4**: con una lectura de consola como la de `msvcrt`, ConPTY quita las marcas del pegado y entrega los saltos pegados como `\n` y el Enter como `\r`; los CLIs reales sí ven el pegado completo (spikes S1–S2). El CLI falso distingue `\n` de `\r` en modo Arquitecto.
+- **Siguiente**: bloque 5 (API y WebSocket del Arquitecto y de las propuestas).

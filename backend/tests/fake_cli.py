@@ -29,6 +29,13 @@ Agentic OS integration, like the real CLIs (phase 04):
   `ESTADO: x` → report_status, `MEMORIA: x` → write_project_memory, `TERMINA: x` →
   complete_task. Hooks really run (hook.cmd + curl) and MCP calls use the official client.
 
+Phase 19, the Architect (its MCP server is `architect`, its agy plugin `.agents/plugins/
+architect`): a message is pasted whole (bracketed paste, line breaks included) and every line of
+it may be an order. `FICHA: {json}` (or `FICHA@ref: {json}`) → update_sheet; `HERRAMIENTA:
+nombre|{json}|archivo` → any tool, its answer to the file; `RESPUESTA: texto` → the reply (in
+the transcript, like the real CLIs; by default «Entendido: <first line>»); `GUARDIA:
+herramienta|archivo` (agy) → fires PreToolUse for that tool and writes what the guard printed.
+
 Usage: python fake_cli.py [--ignore-exit] [--no-trust] [--deaf] [-i] "<prompt>" [options]
 """
 
@@ -141,6 +148,8 @@ def parse_argv(argv: list[str]) -> tuple[str, dict[str, list[str]]]:
 PROMPT, OPTIONS = parse_argv(sys.argv[1:])
 CLAUDE_MODE = "--mcp-config" in OPTIONS
 PLUGIN = Path.cwd() / ".agents" / "plugins" / "agentic-os"
+if not PLUGIN.is_dir() and (Path.cwd() / ".agents" / "plugins" / "architect").is_dir():
+    PLUGIN = Path.cwd() / ".agents" / "plugins" / "architect"  # phase 19
 AGY_MODE = not CLAUDE_MODE and not PROMPT and PLUGIN.is_dir()
 TRANSCRIPTS = Path(tempfile.gettempdir())
 RESUME = (OPTIONS.get("--resume") or OPTIONS.get("--conversation") or [None])[0]
@@ -153,6 +162,8 @@ else:
 SESSION_MISSING = bool(RESUME and CLAUDE_MODE and CONVERSATION_ID != RESUME)
 RESUME_PROMPT = "La sesión anterior se interrumpió"  # services/runs/resume.py
 RESUMED_WORK = "CONSUMO: 300; TERMINA: retomada"
+
+SEQUENCES = {"[B": "down", "[A": "up", "[200~": "paste_start", "[201~": "paste_end"}
 
 if sys.platform == "win32":
     import msvcrt
@@ -183,7 +194,9 @@ else:  # pragma: no cover - the backend's Unix PTY path
         ch = sys.stdin.read(1)
         if ch == "\x1b" and key_available():
             seq = sys.stdin.read(2)
-            return {"[B": "down", "[A": "up"}.get(seq, "other")
+            if seq == "[2" and key_available():  # bracketed paste: ESC [ 200~ / 201~
+                seq += sys.stdin.read(3)
+            return SEQUENCES.get(seq, "other")
         return ch
 
 
@@ -198,7 +211,8 @@ def load_config() -> tuple[str | None, dict[str, str], dict[str, str]]:
     Claude's status line command goes in as the "StatusLine" event."""
     if CLAUDE_MODE:
         mcp = json.loads(Path(OPTIONS["--mcp-config"][0]).read_text("utf-8"))
-        server = mcp["mcpServers"]["agentic-os"]
+        servers = mcp["mcpServers"]
+        server = servers.get("agentic-os") or servers["architect"]
         settings = json.loads(Path(OPTIONS["--settings"][0]).read_text("utf-8"))
         hooks = {e: h[0]["hooks"][0]["command"] for e, h in settings.get("hooks", {}).items()}
         if settings.get("statusLine", {}).get("command"):
@@ -206,17 +220,19 @@ def load_config() -> tuple[str | None, dict[str, str], dict[str, str]]:
         return server["url"], server.get("headers", {}), hooks
     if AGY_MODE:
         mcp = json.loads((PLUGIN / "mcp_config.json").read_text("utf-8"))
-        hooks_file = json.loads((PLUGIN / "hooks.json").read_text("utf-8"))["agentic-os"]
+        hooks_file = json.loads((PLUGIN / "hooks.json").read_text("utf-8"))[PLUGIN.name]
         # Tool events nest their hooks under a matcher (like agy's real format).
         hooks = {
             e: (h[0]["hooks"][0] if "hooks" in h[0] else h[0])["command"]
             for e, h in hooks_file.items()
         }
-        return mcp["mcpServers"]["agentic-os"]["url"], {}, hooks
+        server = mcp["mcpServers"][PLUGIN.name]
+        return server["url"], server.get("headers", {}), hooks
     return None, {}, {}
 
 
 MCP_URL, MCP_HEADERS, HOOKS = load_config()
+ARCHITECT = bool(MCP_URL and "/a/" in MCP_URL)  # phase 19: the Architect's MCP server
 
 
 def _expand(value):
@@ -244,7 +260,8 @@ def load_external() -> dict[str, dict]:
             return {}
     except (OSError, ValueError, KeyError):
         return {}
-    return {name: _expand(cfg) for name, cfg in servers.items() if name != "agentic-os"}
+    own = ("agentic-os", "architect")
+    return {name: _expand(cfg) for name, cfg in servers.items() if name not in own}
 
 
 EXTERNAL = load_external()
@@ -808,8 +825,69 @@ def trust_dialog() -> None:
             sys.exit(1)
 
 
+def reply(text: str) -> None:
+    """The model's text, in the transcript like the real CLIs (what the Architect's chat reads)."""
+    if AGY_MODE:
+        write_row({"type": "PLANNER_RESPONSE", "content": text})
+    else:
+        write_row({"type": "assistant", "message": {"content": [{"type": "text", "text": text}]}})
+
+
+def guard(tool: str) -> str:
+    """agy: fires the PreToolUse hook for `tool` and returns what the command printed."""
+    command = HOOKS.get("PreToolUse")
+    if not command:
+        return ""
+    args = {"ServerName": "architect_architect"} if tool == "call_mcp_tool" else {}
+    payload = {
+        "conversationId": CONVERSATION_ID,
+        "transcriptPath": TRANSCRIPT.as_posix(),
+        "toolCall": {"name": tool, "args": args},
+    }
+    done = subprocess.run(
+        command, shell=True, input=json.dumps(payload).encode(), capture_output=True, timeout=15
+    )
+    return done.stdout.decode("utf-8", "replace").strip()
+
+
+def architect_turn(text: str) -> None:
+    """Phase 19: every line of the message may be an order (see the module docstring)."""
+    said = []
+    for line in text.splitlines():
+        keyword, _, value = line.strip().partition(":")
+        keyword, value = keyword.strip(), value.strip()
+        if keyword.startswith("FICHA"):
+            ref = keyword.partition("@")[2] or "main"
+            result = mcp("update_sheet", {"patch": json.loads(value), "agent_ref": ref})
+            out(f"● MCP update_sheet: {result[:120]}")
+        elif keyword == "HERRAMIENTA":
+            name, args, target = [*value.split("|"), "", ""][:3]
+            result = mcp(name, json.loads(args) if args.strip() else {})
+            if target:
+                Path(target).write_text(result, "utf-8")
+            out(f"● MCP {name}: {result[:120]}")
+        elif keyword == "GUARDIA":
+            tool, _, target = value.partition("|")
+            Path(target).write_text(guard(tool), "utf-8")
+        elif keyword == "RESPUESTA":
+            said.append(value)
+        elif keyword == "CONSUMO":
+            spend(int(value))
+    for part in said or [f"Entendido: {text.strip().splitlines()[0]}"]:
+        reply(part)
+        out(f"● {part}")
+
+
 def answer(text: str) -> None:
     global deaf_until
+    if ARCHITECT:
+        hook("PreInvocation" if AGY_MODE else "UserPromptSubmit")
+        out(f"> {text}")
+        architect_turn(text)
+        out("? for shortcuts")
+        hook("Stop")
+        status_line()
+        return
     hook("PreInvocation" if AGY_MODE else "UserPromptSubmit")
     out(f"> {text}")
     if text.startswith(("Respuesta de la persona", "Resultado del subagente")) and MCP_URL:
@@ -868,9 +946,18 @@ def main() -> None:
         answer(PROMPT)
     line = ""
     exit_armed = False
+    pasting = False
     while True:
         key = read_key()
         if time.monotonic() < deaf_until:
+            continue
+        if key in ("paste_start", "paste_end"):  # phase 19: a message pasted whole
+            pasting = key == "paste_start"
+            continue
+        if pasting or (ARCHITECT and key == "\n"):
+            # Windows' ConPTY drops the paste markers for a console read like this one, but a
+            # pasted line break arrives as \n and Enter as \r (the real TUIs see the markers).
+            line += "\n" if key == "\r" else key
             continue
         if key == "\x03":
             if IGNORE_EXIT:
@@ -902,7 +989,7 @@ def main() -> None:
                 sys.exit(0)
             if AGY_MODE and text == "/mcp":
                 out("MCP servers")
-                out(f"  agentic-os  {mcp(None)}")  # agy connects lazily, here
+                out(f"  {PLUGIN.name}  {mcp(None)}")  # agy connects lazily, here
                 out("esc to close")
                 continue
             if text == "LARGO":

@@ -27,16 +27,19 @@ AGY_PLUGIN = Path(".agents") / "plugins" / SERVER
 RUN_MARKER = "agenticOsRun"
 
 
-def mcp_url(base_url: str) -> str:
-    return f"{base_url}/a/mcp"
+def mcp_url(base_url: str, toolset: str) -> str:
+    return f"{base_url}/a/{toolset}/mcp"
 
 
 class ArchitectClaudeAdapter(ClaudeAdapter):
+    def __init__(self, toolset: str) -> None:
+        self.toolset = toolset  # «agent» or «team»: which MCP server (tools.py)
+
     def mcp_servers(self, ctx: LaunchContext) -> dict:
         return {
             SERVER: {
                 "type": "http",
-                "url": mcp_url(ctx.base_url),
+                "url": mcp_url(ctx.base_url, self.toolset),
                 "headers": {"Authorization": f"Bearer {ctx.token}"},
             }
         }
@@ -49,12 +52,18 @@ class ArchitectClaudeAdapter(ClaudeAdapter):
 class ArchitectAgyAdapter(CliAdapter):
     cli = Cli.AGY
 
+    def __init__(self, toolset: str) -> None:
+        self.toolset = toolset
+
     def prepare(self, ctx: LaunchContext) -> LaunchSpec:
         prefix = resolve_executable(self.cli, ctx.overrides)
         folder = ctx.cwd / AGY_PLUGIN
         shutil.rmtree(folder, ignore_errors=True)
         write_json(folder / "plugin.json", {"name": SERVER, RUN_MARKER: ctx.run_id})
-        server = {"url": mcp_url(ctx.base_url), "headers": {"Authorization": f"Bearer {ctx.token}"}}
+        server = {
+            "url": mcp_url(ctx.base_url, self.toolset),
+            "headers": {"Authorization": f"Bearer {ctx.token}"},
+        }
         write_json(folder / "mcp_config.json", {"mcpServers": {SERVER: server}})
         guard = write_guard_script(ctx.run_dir, ctx.base_url, ctx.token)
         hooks: dict[str, list] = {}
