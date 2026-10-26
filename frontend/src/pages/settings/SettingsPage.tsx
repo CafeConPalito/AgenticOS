@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from 'react-router'
 import { PageContainer, PageHeader } from '@/components/page'
 import { cn } from '@/lib/utils'
 import { AboutSection } from './AboutSection'
+import { ArchitectSection } from './ArchitectSection'
 import { CleanupSection } from './CleanupSection'
 import { DictationSection } from './DictationSection'
 import { GeneralSection } from './GeneralSection'
@@ -24,6 +25,7 @@ export const SECTIONS = [
   'knowledge',
   'skills',
   'connections',
+  'architect',
   'dictation',
   'models',
   'cleanup',
@@ -138,6 +140,9 @@ export default function SettingsPage() {
           </div>
           <div id="connections" className="scroll-mt-4">
             <ConnectionsSection />
+          </div>
+          <div id="architect" className="scroll-mt-4">
+            <ArchitectSection />
           </div>
           <div id="dictation" className="scroll-mt-4">
             <DictationSection />

@@ -43,6 +43,7 @@ import type {
   SystemLoad,
 } from '@/api/knowledge'
 import type { ProjectBranches, ProjectSnapshots } from '@/api/maintenance'
+import { type ArchitectSeed, createArchitectBackend } from './fake-architect'
 import { type ConnectionsSeed, createConnectionsBackend } from './fake-connections'
 import { createSkillsBackend, type SkillsSeed } from './fake-skills'
 import {
@@ -859,6 +860,8 @@ export function createFakeBackend(
     skills?: SkillsSeed
     /** The MCP connections of phase 18 (catalog, login, levels, registries). */
     connections?: ConnectionsSeed
+    /** The Agent Architect of phase 19 (conversations, proposals, settings). */
+    architect?: ArchitectSeed
     /** The diffs (phase 11) by `run:<id>` or `task:<id>`: the file list, each file's diff and
      * the lines `/changes/lines` serves. Anything else answers «no snapshots». */
     /** What git says about each repository, by repository id. */
@@ -2525,6 +2528,7 @@ export function createFakeBackend(
 
   const skillsBackend = createSkillsBackend(seed.skills)
   const connectionsBackend = createConnectionsBackend(seed.connections)
+  const architectBackend = createArchitectBackend(seed.architect)
   const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = new URL(typeof input === 'string' ? input : input.toString())
     const method = (init?.method ?? 'GET').toUpperCase()
@@ -2545,6 +2549,8 @@ export function createFakeBackend(
     if (skilled) return skilled
     const connected = connectionsBackend.handle(method, url.pathname, url.searchParams, body)
     if (connected) return connected
+    const designed = architectBackend.handle(method, url.pathname, body)
+    if (designed) return designed
     return (
       handleRepos(method, url.pathname, body) ??
       handleGit(method, url.pathname, url.searchParams, body) ??
@@ -2586,6 +2592,7 @@ export function createFakeBackend(
     calls,
     skills: skillsBackend,
     connections: connectionsBackend,
+    architect: architectBackend,
     callsTo: (method: string, path: string) =>
       calls.filter((c) => c.method === method && c.path === path),
   }

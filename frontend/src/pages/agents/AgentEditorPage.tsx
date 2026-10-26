@@ -15,6 +15,7 @@ import {
 import type { Agent } from '@/api/types'
 import { AgentAvatar, StatusBadge } from '@/components/agentic/primitives'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { DraftBanner } from '@/components/proposals/DraftBanner'
 import { EmptyState } from '@/components/EmptyState'
 import { KnowledgeLibrary } from '@/components/knowledge/KnowledgeLibrary'
 import { AgentConnections } from '@/components/connections/AgentConnections'
@@ -156,6 +157,7 @@ function AgentEditor({ agent, tab }: { agent: Agent; tab: Tab }) {
     <FormProvider {...form}>
       <form onSubmit={save} noValidate className="flex min-h-full flex-col">
         <UnsavedChangesGuard when={isDirty} allowRef={leaving} scope={`/agentes/${agent.id}`} />
+        {agent.status === 'draft' && agent.proposal_id && <DraftBanner agent={agent} />}
         <header className="flex items-center gap-4 px-6 pt-[22px] pb-4">
           <AgentAvatar name={name || '?'} color={color} size={52} />
           <div className="min-w-0 flex-1">
@@ -195,7 +197,7 @@ function AgentEditor({ agent, tab }: { agent: Agent; tab: Tab }) {
             <Plus />
             {t('agents.assignTask')}
           </Button>
-          {status === 'draft' && (
+          {status === 'draft' && !agent.proposal_id && (
             <Button
               type="button"
               variant="outline"

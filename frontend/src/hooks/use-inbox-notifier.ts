@@ -21,6 +21,7 @@ const SETTING: Record<InboxKind, keyof NotificationSettings> = {
   knowledge: 'review',
   skill: 'review',
   connection: 'limits',
+  proposal: 'review',
 }
 
 /**

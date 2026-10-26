@@ -49,6 +49,7 @@ SETTING_FOR = {
     InboxKind.KNOWLEDGE: "review",  # a proposal is a review of the agents' work
     InboxKind.SKILL: "review",
     InboxKind.CONNECTION: "limits",  # like a CLI account that must log in again
+    InboxKind.PROPOSAL: "review",  # an agent (or changes) to approve, like a skill
 }
 
 

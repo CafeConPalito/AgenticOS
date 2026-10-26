@@ -6,6 +6,7 @@ import {
   LogIn,
   Play,
   RotateCcw,
+  Sparkles,
   SquareTerminal,
   X,
 } from 'lucide-react'
@@ -22,6 +23,7 @@ import {
   useReviewItem,
   useSwitchItem,
 } from '@/api/inbox'
+import { useProposal } from '@/api/architect'
 import { taskKeys } from '@/api/tasks'
 import type { InboxItem } from '@/api/types'
 import { ChangesButton } from '@/components/changes/ChangesSheet'
@@ -303,6 +305,7 @@ export function RequestActions({
           />
         </>
       )}
+      {item.kind === 'proposal' && item.proposal_id && <ReviewProposal id={item.proposal_id} />}
       {item.kind === 'connection' && item.connection_id && (
         <Button
           size="sm"
@@ -440,5 +443,24 @@ export function RequestActions({
         </Button>
       )}
     </div>
+  )
+}
+
+/** A proposal of the Architect or of an agent (phase 19): reviewed where its agent is. */
+function ReviewProposal({ id }: { id: string }) {
+  const { t } = useTranslation()
+  const { data: proposal } = useProposal(id)
+  if (!proposal?.target_agent_id) return null
+  return (
+    <Button
+      size="sm"
+      className="bg-primary-action text-white hover:bg-primary-action-hover"
+      asChild
+    >
+      <Link to={`/agentes/${proposal.target_agent_id}/resumen`}>
+        <Sparkles />
+        {t('inbox.reviewAgentProposal')}
+      </Link>
+    </Button>
   )
 }

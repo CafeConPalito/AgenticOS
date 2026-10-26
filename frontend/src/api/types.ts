@@ -42,6 +42,9 @@ export interface AgentFields {
 export interface Agent extends AgentFields {
   id: string
   template: string | null
+  /** Phase 19: the proposal a draft comes from (the Architect or propose_agent). */
+  proposal_id?: string | null
+  can_propose_agents?: boolean
   /** Running with its secondary CLI right now (the person switched). */
   using_fallback: boolean
   queued_count: number
@@ -510,6 +513,7 @@ export type InboxKind =
   | 'knowledge'
   | 'skill'
   | 'connection'
+  | 'proposal'
 
 export type InboxResolution =
   'approved' | 'rejected' | 'answered' | 'answered_in_terminal' | 'reviewed' | 'dismissed'
@@ -530,6 +534,8 @@ export interface InboxItem {
   skill_version_id?: string | null
   /** A «connection» item: the MCP connection to log in to again (phase 18). */
   connection_id?: string | null
+  /** A «proposal» item: the agent or changes to review (phase 19). */
+  proposal_id?: string | null
   agent_id: string | null
   agent_name: string
   agent_color: string

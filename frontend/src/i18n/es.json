@@ -14,7 +14,8 @@
     "home": "Inicio",
     "clis": "CLIs y cuentas",
     "knowledge": "Conocimiento y skills",
-    "connections": "Conexiones"
+    "connections": "Conexiones",
+    "architect": "Arquitecto"
   },
   "header": {
     "search": "Buscar agentes, tareas o acciones…",
@@ -1009,7 +1010,8 @@
       "switch": "Cambiar de CLI",
       "knowledge": "Conocimiento propuesto",
       "skill": "Skill propuesta",
-      "connection": "Volver a conectar"
+      "connection": "Volver a conectar",
+      "proposal": "Agente propuesto"
     },
     "approvalTitle": "¿Puedo continuar?",
     "answerPlaceholder": "Responder con texto…",
@@ -1048,7 +1050,8 @@
     "openSettings": "Abrir Ajustes",
     "reconnect": "Reconectar",
     "reviewProposal": "Revisar propuesta",
-    "reviewSkill": "Revisar skill"
+    "reviewSkill": "Revisar skill",
+    "reviewAgentProposal": "Revisar"
   },
   "settings": {
     "title": "Ajustes",
@@ -1176,6 +1179,7 @@
       "knowledge": "Conocimiento",
       "skills": "Skills",
       "connections": "Conexiones MCP",
+      "architect": "Arquitecto",
       "dictation": "Dictado",
       "models": "Modelos locales",
       "cleanup": "Limpieza",
@@ -1573,7 +1577,8 @@
       "resumeScheduler": "Reanudar el scheduler",
       "shortcuts": "Atajos de teclado",
       "addAccount": "Añadir cuenta de CLI",
-      "newTeam": "Nuevo equipo"
+      "newTeam": "Nuevo equipo",
+      "architect": "Crear agente con el Arquitecto"
     },
     "goto": {
       "home": "Inicio",
@@ -3435,5 +3440,138 @@
       "store": "Los secretos y los tokens de las cuentas se guardan en el almacén de credenciales de tu sistema.",
       "saved": "Ajustes de conexiones guardados"
     }
+  },
+  "architect": {
+    "title": "Agente Arquitecto",
+    "subtitle": "Diseña agentes conversando: le cuentas qué necesitas y te deja la ficha lista para aprobar.",
+    "name": "Agente Arquitecto",
+    "new": "Nueva conversación",
+    "untitled": "Conversación sin título",
+    "delete": "Borrar la conversación",
+    "emptyTitle": "Aún no has hablado con el Arquitecto",
+    "emptyDescription": "Empieza una conversación y descríbele el agente que necesitas.",
+    "notFound": "Esta conversación ya no existe.",
+    "modes": {
+      "agent": "Agente nuevo",
+      "improve_agent": "Mejorar un agente",
+      "team": "Equipo nuevo",
+      "improve_team": "Mejorar un equipo",
+      "improve_pipeline": "Mejorar un pipeline"
+    },
+    "status": {
+      "open": "En curso",
+      "proposed": "Propuesta creada",
+      "applied": "Aplicada",
+      "discarded": "Descartada"
+    },
+    "state": {
+      "starting": "Arrancando",
+      "thinking": "Pensando",
+      "idle": "Esperándote",
+      "asleep": "Dormido"
+    },
+    "chat": "Conversación con el Arquitecto",
+    "terminal": "Ver terminal",
+    "reset": "Reiniciar la conversación",
+    "resetAndClear": "Reiniciar y vaciar la ficha",
+    "resetDone": "El próximo mensaje empieza con un CLI limpio.",
+    "hello": "Hola, soy el Arquitecto. Cuéntame qué necesitas que haga tu nuevo agente y te propongo una ficha completa.",
+    "helloImprove": "Hola, soy el Arquitecto. Dime qué quieres mejorar de este agente y te propongo los cambios.",
+    "starting": "Arrancando el CLI…",
+    "thinking": "Pensando…",
+    "placeholder": "Describe el agente que necesitas…",
+    "closed": "Esta conversación ya terminó.",
+    "messageLabel": "Mensaje para el Arquitecto",
+    "send": "Enviar",
+    "stop": "Detener",
+    "composerHint": "Enter para enviar · Mayús+Enter para nueva línea",
+    "allowChange": "Permitir cambiar {{field}}",
+    "changed": "Cambió: {{fields}}",
+    "sheet": "Ficha del agente",
+    "sheetImprove": "Cambios propuestos",
+    "progress": "Ficha completada al {{percent}} %",
+    "newSkill": "nueva",
+    "none": "Ninguna",
+    "suggested": "Sugiere instalar {{name}}",
+    "installSuggested": "Abrir el explorador de conexiones",
+    "issues": "Lo que falta",
+    "draft": "Crear borrador",
+    "propose": "Crear propuesta de cambios",
+    "draftNote": "El borrador quedará pendiente de tu aprobación antes de poder recibir tareas.",
+    "proposeNote": "Nada cambia hasta que apruebes la propuesta; el agente sigue trabajando como está.",
+    "drafted": "Borrador creado: revísalo y apruébalo.",
+    "proposed": "Propuesta creada: revísala en la ficha del agente.",
+    "done": {
+      "proposed": "Propuesta creada.",
+      "applied": "Propuesta aplicada.",
+      "discarded": "Propuesta descartada."
+    },
+    "openAgent": "Ver el agente",
+    "edit": "Editar {{field}}",
+    "unlock": "Soltar {{field}}",
+    "lockedHint": "Lo has editado tú: el Arquitecto no lo cambiará mientras esté fijado.",
+    "fields": {
+      "identity": "Nombre y rol",
+      "name": "nombre",
+      "role": "rol",
+      "description": "descripción",
+      "color": "color",
+      "team": "equipo",
+      "cli": "CLI",
+      "account": "cuenta",
+      "model": "modelo",
+      "execution": "CLI y modelo",
+      "permission_mode": "permisos",
+      "allowed_tools": "herramientas",
+      "max_concurrency": "concurrencia",
+      "can_spawn_subagents": "subagentes",
+      "can_create_tasks": "crear tareas",
+      "can_propose_agents": "proponer agentes",
+      "instructions": "instrucciones",
+      "skills": "skills",
+      "new_skills": "skills nuevas",
+      "knowledge": "conocimiento",
+      "connections": "conexiones",
+      "template": "plantilla",
+      "suggested_connections": "conexiones sugeridas",
+      "agents": "agentes",
+      "existing_agents": "agentes del equipo",
+      "pipeline": "pipeline"
+    },
+    "settings": {
+      "title": "Arquitecto",
+      "help": "El Arquitecto usa un CLI por conversación. Aquí eliges cuál, con qué cuenta y modelo, y cómo trabaja.",
+      "cli": "CLI",
+      "cliAuto": "Automático (Claude si está instalado)",
+      "account": "Cuenta",
+      "accountDefault": "La predeterminada del CLI",
+      "model": "Modelo",
+      "modelHelp": "Vacío: Sonnet en Claude y Gemini Flash en Antigravity.",
+      "idle": "Dormir tras (minutos sin mensajes)",
+      "idleHelp": "El CLI se cierra y la conversación se retoma con el siguiente mensaje.",
+      "maxLive": "CLIs vivos a la vez",
+      "maxLiveHelp": "Cada uno ocupa unos 250-300 MB de memoria.",
+      "instructions": "Instrucciones base",
+      "instructionsHelp": "Cómo trabaja el Arquitecto. El bloque de cada modo se añade al final.",
+      "restore": "Restaurar las predeterminadas",
+      "saved": "Ajustes del Arquitecto guardados"
+    }
+  },
+  "proposals": {
+    "chip": "Propuesto por el Arquitecto",
+    "draftTitle": "Borrador propuesto por el Agente Arquitecto",
+    "draftByAgent": "Agente propuesto por otro agente",
+    "draftHelp": "Revisa rol, instrucciones y permisos. El agente no podrá recibir tareas hasta que lo apruebes.",
+    "openConversation": "Ver la conversación",
+    "approveAgent": "Aprobar agente",
+    "approveTitle": "Aprobar a {{name}}",
+    "approveSkills": "El Arquitecto escribió estas skills para él. Desmarca las que no quieras.",
+    "approved": "{{name}} ya puede recibir tareas.",
+    "reject": "Rechazar",
+    "rejectTitle": "Rechazar a {{name}}",
+    "rejectHelp": "El borrador y las skills escritas para él se descartan.",
+    "archive": "Archivarlo en lugar de borrarlo",
+    "rejected": "{{name}} descartado.",
+    "archived": "{{name}} archivado."
   }
 }

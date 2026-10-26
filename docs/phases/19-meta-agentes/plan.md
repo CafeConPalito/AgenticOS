@@ -1,7 +1,7 @@
 # Fase 19: Meta-agentes · Plan técnico
 
 - **Spec**: [spec.md](spec.md)
-- **Estado**: aprobado (2026-10-25) · en desarrollo (bloques 0–5 hechos)
+- **Estado**: aprobado (2026-10-25) · en desarrollo (bloques 0–6 hechos)
 
 ## Lo que ya se sabe (revisado al escribir el plan)
 - **Agente** (`models/agent.py`): ya tiene `status` (`active` · `draft`) y `template`. Los borradores no reciben tareas: el scheduler y `pipelines.from_template` filtran por `AgentStatus.ACTIVE`, y el editor desactiva «Asignar tarea» y «Lanzar» y muestra «Activar». No hay revisión ni registro de cambios de la configuración.
@@ -178,7 +178,7 @@ Bloques pequeños con commits y tests; cada uno deja la app funcionando.
 3. [x] **Propuestas** (§3): crear, aprobar (total y parcial, conflictos, transacción) y rechazar, para `new_agent` y `agent_changes`; `AgentChange`; Inbox.
 4. [x] **Arquitecto en marcha** (§4): configuración, herramientas MCP, ejecución `architect` en PTY con un CLI por conversación, mensajes escritos en el proceso, fin de turno por `Stop`, respuesta desde el transcript, interrumpir, dormir y retomar, reiniciar, consumo y límites; órdenes del Arquitecto en el CLI falso.
 5. [x] **API y WebSocket** del Arquitecto y de las propuestas (§7).
-6. [ ] **UI del Arquitecto de un agente**: pantalla, ficha en vivo, candados, conversaciones, banner de borrador, revisión, Inbox, Ajustes › Arquitecto, dictado. *(A–C, E)*
+6. [x] **UI del Arquitecto de un agente**: pantalla, ficha en vivo, candados, conversaciones, banner de borrador, revisión, Inbox, Ajustes › Arquitecto, dictado. *(A–C, E)*
 7. [ ] **Plantillas y exportar/importar** (§6) con su UI. *(D)*
 8. [ ] **Mejorar agentes activos**: modo `improve_agent`, revisión con diff y aplicación parcial, Historial. *(F)*
 9. [ ] **`propose_agent`** (§5) y su permiso. *(G)*
@@ -220,4 +220,5 @@ Bloques pequeños con commits y tests; cada uno deja la app funcionando.
   - el guardián de `agy` deniega todo lo que no sea su MCP, y los *tokens* de agente y de Arquitecto no abren el servidor del otro.
 - **Hallazgo del bloque 4**: con una lectura de consola como la de `msvcrt`, ConPTY quita las marcas del pegado y entrega los saltos pegados como `\n` y el Enter como `\r`; los CLIs reales sí ven el pegado completo (spikes S1–S2). El CLI falso distingue `\n` de `\r` en modo Arquitecto.
 - **Bloque 5 hecho**: API y WebSocket de conversaciones y propuestas, ajustes del Arquitecto; borrar un borrador rechaza su propuesta y no se activa a mano si tiene una pendiente.
-- **Siguiente**: bloque 6 (interfaz del Arquitecto de un agente).
+- **Bloque 6 hecho**: pantalla «Crear con el Arquitecto» (`/agentes/arquitecto`: lista de conversaciones y conversación con chat y ficha en vivo), respuestas por bloques y estado del CLI por WebSocket, edición a mano con candado, «Ver terminal», reiniciar, detener, dictado en el composer, banner del borrador con aprobar (eligiendo sus skills) y rechazar (borrar o archivar), chip en la lista, aviso de la Inbox con «Revisar», accesos desde Agentes, Inicio y la paleta, y Ajustes › Arquitecto.
+- **Siguiente**: bloque 7 (plantillas y exportar/importar).

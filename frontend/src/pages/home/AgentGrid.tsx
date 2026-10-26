@@ -1,5 +1,6 @@
-import { Bot, Pencil, Plus } from 'lucide-react'
+import { Bot, Pencil, Plus, Sparkles } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router'
 import type { HomeAgent, Team, TodayAgent } from '@/api/types'
 import { EmptyState } from '@/components/EmptyState'
 import { Button } from '@/components/ui/button'
@@ -61,6 +62,13 @@ export function AgentGrid({
             : t('home.agents.count', { count: agents.length })}
         </span>
         <div className="ml-auto flex items-center gap-1">
+          <Link
+            to="/agentes/arquitecto?nueva"
+            className="flex h-[30px] items-center gap-1.5 rounded-full px-3 text-[12.5px] text-muted-foreground hover:bg-accent hover:text-foreground"
+          >
+            <Sparkles className="size-3.5 text-status-review" />
+            {t('agents.architect')}
+          </Link>
           <button
             type="button"
             onClick={() => openTeam()}
@@ -87,13 +95,18 @@ export function AgentGrid({
           title={t('home.agents.empty.title')}
           description={t('home.agents.empty.description')}
         >
-          <Button
-            onClick={() => openNewAgent()}
-            className="bg-primary-action text-white hover:bg-primary-action-hover"
-          >
-            <Plus />
-            {t('home.agents.new')}
-          </Button>
+          <div className="flex flex-wrap justify-center gap-2">
+            <Button asChild className="bg-primary-action text-white hover:bg-primary-action-hover">
+              <Link to="/agentes/arquitecto?nueva">
+                <Sparkles />
+                {t('agents.architect')}
+              </Link>
+            </Button>
+            <Button variant="outline" onClick={() => openNewAgent()}>
+              <Plus />
+              {t('home.agents.new')}
+            </Button>
+          </div>
         </EmptyState>
       ) : teams.length === 0 ? (
         <div className={GRID}>{cards(loose)}</div>

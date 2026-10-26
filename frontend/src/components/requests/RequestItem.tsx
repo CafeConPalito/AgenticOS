@@ -13,6 +13,7 @@ import {
   Plug,
   Puzzle,
   ShieldCheck,
+  Sparkles,
   UserX,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -40,6 +41,7 @@ export const KIND_STYLE: Record<InboxKind, { color: string; icon: typeof Inbox }
   knowledge: { color: 'var(--status-review)', icon: BookPlus },
   skill: { color: 'var(--status-review)', icon: Puzzle },
   connection: { color: 'var(--status-waiting)', icon: Plug },
+  proposal: { color: 'var(--status-review)', icon: Sparkles },
 }
 
 /** A request of the agents to the person, with its actions while pending. */

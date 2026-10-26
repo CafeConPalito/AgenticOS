@@ -150,6 +150,7 @@ describe('Settings · índice y atajos', () => {
       '#knowledge',
       '#skills',
       '#connections',
+      '#architect',
       '#dictation',
       '#models',
       '#cleanup',
