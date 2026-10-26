@@ -341,6 +341,7 @@ export function ExecutionTab() {
           [
             ['can_spawn_subagents', 'spawn'],
             ['can_create_tasks', 'createTasks'],
+            ['can_propose_agents', 'proposeAgents'],
           ] as const
         ).map(([name, key]) => (
           <Controller

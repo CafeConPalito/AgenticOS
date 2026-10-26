@@ -30,6 +30,8 @@ export interface AgentFields {
   max_concurrency: number
   can_spawn_subagents: boolean
   can_create_tasks: boolean
+  /** Phase 19: may propose new agents during a task (propose_agent). */
+  can_propose_agents: boolean
   status: AgentStatus
   /** Phase 10. Null: no team / the default account of its CLI. */
   team_id: string | null
@@ -44,7 +46,8 @@ export interface Agent extends AgentFields {
   template: string | null
   /** Phase 19: the proposal a draft comes from (the Architect or propose_agent). */
   proposal_id?: string | null
-  can_propose_agents?: boolean
+  /** Who proposed a draft: «architect», or the name of the agent that did. */
+  proposed_by?: string | null
   /** Running with its secondary CLI right now (the person switched). */
   using_fallback: boolean
   queued_count: number

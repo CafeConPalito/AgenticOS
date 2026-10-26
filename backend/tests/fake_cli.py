@@ -466,7 +466,9 @@ def use_tools(text: str) -> int | None:
     moves the directives that follow into a subfolder (`EN: .` goes back), to work in several
     repositories. Phase 18: `CONEXION: servidor|herramienta|k=v,k=v|archivo` calls a tool of an
     external MCP server of the run's configuration and writes the answer, and
-    `SERVIDOR: servidor|archivo` starts one and keeps it (its pid goes to the file). Phase 06:
+    `SERVIDOR: servidor|archivo` starts one and keeps it (its pid goes to the file). Phase 19:
+    `PROPONE_AGENTE: ficha.json|archivo` → propose_agent with the sheet and reason of the JSON
+    file, the answer to the second file. Phase 06:
     `PREGUNTA: título|opción|…` → request_human (ends the turn; a later «Respuesta de la
     persona…» message completes the task);
     `PERMISO: comando` → shows the CLI's permission dialog (Claude's or agy's real texts) and
@@ -602,6 +604,15 @@ def use_tools(text: str) -> int | None:
             }
             Path(target).write_text(mcp("propose_skill", args_s), "utf-8")
             out(f"● MCP propose_skill: {name}")
+            continue
+        if keyword == "PROPONE_AGENTE" and MCP_URL is not None:
+            # phase 19: `PROPONE_AGENTE: ficha.json|archivo` (the sheet and reason from a file)
+            source, _, target = value.partition("|")
+            data = json.loads(Path(source).read_text("utf-8"))
+            answer_text = mcp("propose_agent", {"sheet": data["sheet"], "reason": data["reason"]})
+            if target:
+                Path(target).write_text(answer_text, "utf-8")
+            out(f"● MCP propose_agent: {answer_text[:120]}")
             continue
         if keyword == "SERVIDOR":  # phase 18: `SERVIDOR: servidor|archivo` starts it and keeps it
             server, target = [*value.split("|"), ""][:2]

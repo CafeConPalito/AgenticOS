@@ -116,6 +116,7 @@ class AgentBackend(Protocol):
     def request_human(self, run_id: str, title: str, detail: str, options: list[str]) -> str: ...
     def spawn_subagent(self, run_id: str, prompt: str, agent_name: str) -> str: ...
     def create_subtask(self, run_id: str, title: str, description: str, agent_name: str) -> str: ...
+    def propose_agent(self, run_id: str, sheet: dict, reason: str) -> str: ...
 
 
 class TokenGate:
@@ -433,6 +434,20 @@ def build_mcp(backend: AgentBackend) -> MCPServer:
             _clip(level),
             _clip(replaces)[:120],
             note.strip()[:500],
+        )
+
+    @server.tool()
+    async def propose_agent(sheet: dict[str, Any], reason: str, ctx: Context) -> str:
+        """Propón un agente nuevo para el equipo cuando, trabajando, veas que falta un rol (p. ej.
+        «haría falta un traductor para estos textos»). La persona lo revisa antes de que reciba
+        tareas; tú sigues con tu tarea. `reason`: por qué hace falta, en una o dos frases.
+        `sheet`: su ficha: name, role, description, cli («claude» o «agy»), model,
+        permission_mode (autonomous · restricted · ask), allowed_tools, instructions (su
+        *system prompt* en Markdown, en segunda persona), skills [{name, mode: always|never}],
+        knowledge [título de documento], connections [nombre]. Solo cosas que existan: si algo
+        no, la respuesta te dice qué. Como mucho una propuesta por ejecución."""
+        return await call(
+            backend.propose_agent, _run_id(ctx), dict(sheet or {}), reason.strip()[:1000]
         )
 
     @server.tool()

@@ -96,6 +96,7 @@ def create_conversation(
         agent_id=payload.agent_id,
         team_id=payload.team_id,
         project_id=payload.project_id,
+        proposal_id=payload.proposal_id,
     )
     db.commit()
     return _read(db, architect, conversation)

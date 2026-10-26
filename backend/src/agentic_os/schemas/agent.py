@@ -143,8 +143,10 @@ class AgentRead(BaseModel):
     can_propose_agents: bool = False
     status: AgentStatus
     template: str | None
-    # Phase 19: the proposal a draft comes from (the Architect or propose_agent).
+    # Phase 19: the proposal a draft comes from (the Architect or propose_agent), and who
+    # proposed it: «architect», or the name of the agent that called propose_agent.
     proposal_id: str | None = None
+    proposed_by: str | None = None
     team_id: str | None = None
     account_id: str | None = None
     fallback_account_id: str | None = None
@@ -176,6 +178,7 @@ class AgentTemplate(BaseModel):
     allowed_tools: list[Tool]
     can_spawn_subagents: bool
     can_create_tasks: bool
+    can_propose_agents: bool = False
 
 
 Imported.model_rebuild()

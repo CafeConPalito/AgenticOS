@@ -18,6 +18,8 @@ class ConversationCreate(BaseModel):
     agent_id: str | None = None  # improve_agent
     team_id: str | None = None  # improve_team
     project_id: str | None = None  # improve_pipeline
+    # agent: go on from a pending proposal of a new agent (one propose_agent made).
+    proposal_id: str | None = None
 
 
 class MessageWrite(BaseModel):

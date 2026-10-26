@@ -108,13 +108,32 @@ def _counts(session: Session, agent_ids: list[str]) -> dict[tuple[str, str], int
     return {(agent_id, status): count for agent_id, status, count in rows}
 
 
+def _proposers(session: Session, drafts: list[Agent]) -> dict[str, str]:
+    """Who proposed each draft: «architect» or the proposing agent's name (phase 19)."""
+    result: dict[str, str] = {}
+    for agent in drafts:
+        proposal = session.get(Proposal, agent.proposal_id)
+        if proposal is None:
+            continue
+        if proposal.origin == "architect":
+            result[agent.id] = "architect"
+        else:
+            source = (
+                session.get(Agent, proposal.source_agent_id) if proposal.source_agent_id else None
+            )
+            result[agent.id] = source.name if source else "agent"
+    return result
+
+
 def _read_many(session: Session, agents: list[Agent]) -> list[AgentRead]:
     counts = _counts(session, [a.id for a in agents])
+    proposers = _proposers(session, [a for a in agents if a.proposal_id])
     result = []
     for agent in agents:
         read = AgentRead.model_validate(agent)
         read.queued_count = counts.get((agent.id, TaskStatus.QUEUED), 0)
         read.running_count = counts.get((agent.id, TaskStatus.RUNNING), 0)
+        read.proposed_by = proposers.get(agent.id)
         read.using_fallback = bool(
             agent.using_fallback_until and agent.using_fallback_until > utcnow()
         )
@@ -346,6 +365,7 @@ def duplicate_agent(
             "running_count",
             "using_fallback",
             "proposal_id",  # a copy of a draft is not the proposal's
+            "proposed_by",
         }
     )
     copied["name"] = payload.name if payload and payload.name else f"{source.name} (2)"[:80]

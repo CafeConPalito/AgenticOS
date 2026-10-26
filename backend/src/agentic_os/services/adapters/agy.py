@@ -16,6 +16,7 @@ from pathlib import Path
 from agentic_os.models import Cli
 from agentic_os.services import agy_status
 from agentic_os.services.adapters.base import (
+    PROPOSE_AGENT,
     CliAdapter,
     LaunchContext,
     agy_permissions,
@@ -117,7 +118,9 @@ class AgyAdapter(CliAdapter):
         write_json(folder / "plugin.json", {"name": "agentic-os", RUN_MARKER: ctx.run_id})
         # agy expands no variables: the external connections carry their values in clear
         # (spike S2). The folder is ours alone, out of git, and removed when the run ends.
-        servers = {"agentic-os": {"url": ctx.mcp_url}}
+        servers: dict = {"agentic-os": {"url": ctx.mcp_url}}
+        if not ctx.can_propose_agents:  # phase 19: the tool is not there (spike S2 of phase 18)
+            servers["agentic-os"]["disabledTools"] = [PROPOSE_AGENT]
         if ctx.connections:
             servers |= ctx.connections.servers
         write_json(folder / "mcp_config.json", {"mcpServers": servers})

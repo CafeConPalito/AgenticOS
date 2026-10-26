@@ -115,6 +115,7 @@ export const TEMPLATES: AgentTemplate[] = [
     allowed_tools: ['read', 'edit', 'terminal'],
     can_spawn_subagents: true,
     can_create_tasks: true,
+    can_propose_agents: false,
   },
   {
     id: 'qa',
@@ -129,6 +130,7 @@ export const TEMPLATES: AgentTemplate[] = [
     allowed_tools: ['read'],
     can_spawn_subagents: false,
     can_create_tasks: false,
+    can_propose_agents: false,
   },
 ]
 
@@ -176,6 +178,7 @@ export function makeAgent(overrides: Partial<Agent> = {}): Agent {
     max_concurrency: 1,
     can_spawn_subagents: false,
     can_create_tasks: false,
+    can_propose_agents: false,
     status: 'active',
     template: null,
     team_id: null,

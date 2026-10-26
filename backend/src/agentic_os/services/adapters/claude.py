@@ -43,6 +43,7 @@ class ClaudeAdapter(CliAdapter):
             ctx.git_authorized,
             skills=bool(ctx.native_skills),
             connections=ctx.connections,
+            can_propose_agents=ctx.can_propose_agents,
         )
 
     def prepare(self, ctx: LaunchContext) -> LaunchSpec:

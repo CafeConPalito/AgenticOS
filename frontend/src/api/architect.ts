@@ -170,6 +170,8 @@ export interface ConversationCreate {
   agent_id?: string
   team_id?: string
   project_id?: string
+  /** Go on from a pending proposal of a new agent (propose_agent). */
+  proposal_id?: string
 }
 
 export function useCreateConversation() {

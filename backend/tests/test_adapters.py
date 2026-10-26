@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -142,8 +143,6 @@ def test_claude_runs_with_the_login_folder_of_its_account(tmp_path: Path, monkey
     assert system.env["CLAUDE_CONFIG_DIR"] == "C:/mine"
     assert "CLAUDE_CODE_CHILD_SESSION" not in system.env  # session markers are still removed
 
-    from dataclasses import replace
-
     own = replace(base, account_env={"CLAUDE_CONFIG_DIR": "C:/data/accounts/a1"})
     assert adapter_for(Cli.CLAUDE).prepare(own).env["CLAUDE_CONFIG_DIR"] == "C:/data/accounts/a1"
 
@@ -176,7 +175,10 @@ def test_agy_workspace_plugin(tmp_path: Path):
         "agenticOsRun": "run-1",
     }
     mcp = json.loads((plugin / "mcp_config.json").read_text("utf-8"))
-    assert mcp == {"mcpServers": {"agentic-os": {"url": ctx.mcp_url}}}
+    # Phase 19: without «Puede proponer agentes», propose_agent is not there.
+    assert mcp == {
+        "mcpServers": {"agentic-os": {"url": ctx.mcp_url, "disabledTools": ["propose_agent"]}}
+    }
     assert ctx.token in ctx.mcp_url
     hooks = json.loads((plugin / "hooks.json").read_text("utf-8"))["agentic-os"]
     assert set(hooks) == {"PreInvocation", "Stop", "PreToolUse", "PostToolUse"}
@@ -220,3 +222,23 @@ def test_linked_repositories_are_handed_to_the_cli_one_flag_each(tmp_path: Path,
     assert [argv[i + 1] for i, a in enumerate(argv) if a == "--add-dir"] == list(dirs)
     plain = adapter_for(cli).prepare(context(tmp_path, cli, run_id="run-2")).argv
     assert "--add-dir" not in plain
+
+
+@pytest.mark.parametrize("allowed_to_propose", [False, True])
+def test_propose_agent_is_only_there_for_agents_allowed_to(
+    tmp_path: Path, allowed_to_propose: bool
+):
+    """Phase 19 (CA13): without «Puede proponer agentes» the tool is taken away from the CLI."""
+    from dataclasses import replace
+
+    claude = adapter_for(Cli.CLAUDE).prepare(
+        replace(context(tmp_path, Cli.CLAUDE), can_propose_agents=allowed_to_propose)
+    )
+    denied = "mcp__agentic-os__propose_agent" in claude.argv
+    assert denied is not allowed_to_propose
+    adapter_for(Cli.AGY).prepare(
+        replace(context(tmp_path, Cli.AGY, run_id="run-2"), can_propose_agents=allowed_to_propose)
+    )
+    plugin = tmp_path / "proyecto" / ".agents" / "plugins" / "agentic-os"
+    server = json.loads((plugin / "mcp_config.json").read_text("utf-8"))["mcpServers"]["agentic-os"]
+    assert ("disabledTools" in server) is not allowed_to_propose

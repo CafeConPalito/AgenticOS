@@ -40,7 +40,10 @@ from agentic_os.models import (
     McpConnection,
     MessageRole,
     Project,
+    Proposal,
+    ProposalKind,
     ProposalOrigin,
+    ProposalStatus,
     SessionState,
     Team,
 )
@@ -168,10 +171,26 @@ class ArchitectService:
         agent_id: str | None = None,
         team_id: str | None = None,
         project_id: str | None = None,
+        proposal_id: str | None = None,
     ) -> ArchitectConversation:
-        """A new conversation. Improving something starts from it as it is now."""
+        """A new conversation. Improving something starts from it as it is now; a new agent
+        may go on from a pending proposal (one an agent made with propose_agent)."""
         sheet = sheets.copy_sheet({})
         title = ""
+        source: Proposal | None = None
+        if proposal_id:
+            source = db.get(Proposal, proposal_id)
+            if (
+                source is None
+                or source.kind != ProposalKind.NEW_AGENT
+                or source.status != ProposalStatus.PENDING
+            ):
+                raise ApiError(
+                    422, "proposal_not_pending", "a pending proposal of an agent is required"
+                )
+            sheet = sheets.copy_sheet(source.payload.get("sheet") or {})
+            name = ((sheet.get("agents") or {}).get(sheets.MAIN) or {}).get("name", "")
+            title = f"Refinar {name}".strip()
         if mode == ArchitectMode.IMPROVE_AGENT:
             agent = db.get(Agent, agent_id) if agent_id else None
             if agent is None or agent.status != AgentStatus.ACTIVE:
@@ -219,6 +238,9 @@ class ArchitectService:
         )
         db.add(conversation)
         db.flush()
+        if source is not None:  # its banner links here; proposing again replaces it
+            source.conversation_id = conversation.id
+            conversation.agent_id = source.target_agent_id
         return conversation
 
     def messages(self, db: Session, conversation_id: str) -> list[ArchitectMessage]:
@@ -585,6 +607,15 @@ class ArchitectService:
         by = proposals.ProposedBy(ProposalOrigin.ARCHITECT, conversation_id=conversation.id)
         lib = self.manager.skill_library
         if conversation.mode == ArchitectMode.AGENT:
+            # Refining a proposed agent: the earlier proposal (and its draft) is replaced.
+            for earlier in db.scalars(
+                select(Proposal).where(
+                    Proposal.conversation_id == conversation.id,
+                    Proposal.status == ProposalStatus.PENDING,
+                )
+            ):
+                proposals.reject(db, lib, earlier)
+            conversation.status = ConversationStatus.OPEN
             return proposals.create_new_agent(db, lib, catalog, conversation.sheet, by)
         if conversation.mode == ArchitectMode.IMPROVE_AGENT:
             agent = db.get(Agent, conversation.agent_id) if conversation.agent_id else None

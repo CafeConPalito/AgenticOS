@@ -51,6 +51,8 @@ from agentic_os.services import tasks as task_ops
 from agentic_os.services.adapters import CliAdapter, LaunchContext, adapter_for
 from agentic_os.services.agent_target import Target, target_for
 from agentic_os.services.architect import adapters as architect_adapters
+from agentic_os.services.architect import agent_proposals
+from agentic_os.services.architect import sheet as sheets
 from agentic_os.services.connections import runtime as connection_runtime
 from agentic_os.services.connections import usage as connection_usage
 from agentic_os.services.connections.redact import Redactor
@@ -394,6 +396,7 @@ class RunManager:
             git_authorized=bool(project.agents_git_authorized),
             skills_dir=skills_folder,
             connections=connections,
+            can_propose_agents=bool(agent.can_propose_agents),
         )
         try:
             spec = adapter.prepare(ctx)
@@ -1184,6 +1187,25 @@ class RunManager:
             )
         self.add_event(run_id, EventKind.MCP, "propose_skill", detail)
         return answer
+
+    def propose_agent(self, run_id: str, sheet: dict, reason: str) -> str:
+        """An agent proposes a new agent (phase 19, propose_agent): a draft with its origin and
+        reason, and an Inbox item. Never raises: the answer tells the agent what went wrong."""
+        with self._db() as db:
+            run = db.get(Run, run_id)
+            agent = db.get(Agent, run.agent_id) if run and run.agent_id else None
+            if run is None or agent is None:
+                return "Esta ejecución no es de un agente."
+            answer, detail = agent_proposals.propose(
+                db, self.skill_library, self._catalog(db), run, agent, sheet, reason
+            )
+        self.add_event(run_id, EventKind.MCP, "propose_agent", detail)
+        return answer
+
+    def _catalog(self, db: Session) -> sheets.Catalog:
+        """What exists in this installation, for a proposed sheet (the Architect's catalog)."""
+        clis = self.architect._cli_infos() if self.architect is not None else []
+        return sheets.Catalog.load(db, clis, DEFAULT_WORKSPACE)
 
     def report_status(self, run_id: str, message: str) -> None:
         with self._db() as db:

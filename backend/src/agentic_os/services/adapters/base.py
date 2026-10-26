@@ -42,6 +42,8 @@ class LaunchContext:
     skills_dir: Path | None = None
     # The external MCP servers the run is given (phase 18), already resolved for this CLI.
     connections: RunConnections | None = None
+    # Phase 19: the agent may propose agents; without it propose_agent is taken away.
+    can_propose_agents: bool = False
 
     @property
     def native_skills(self) -> list[Path]:
@@ -89,6 +91,7 @@ CLAUDE_TOOLS: dict[str, tuple[str, ...]] = {
     "web": ("WebFetch", "WebSearch"),
 }
 AGENTIC_OS_TOOLS = "mcp__agentic-os__*"
+PROPOSE_AGENT = "propose_agent"  # phase 19: only for agents allowed to
 
 
 def claude_permissions(
@@ -97,6 +100,7 @@ def claude_permissions(
     git_authorized: bool = False,
     skills: bool = False,
     connections: RunConnections | None = None,
+    can_propose_agents: bool = True,
 ) -> list[str]:
     """`--permission-mode` and `--allowedTools` for an agent (spike P6, ADR 0004).
 
@@ -107,7 +111,10 @@ def claude_permissions(
     """
     # The tools of the external connections the person did not allow are taken away from the
     # model in every mode, also the autonomous one (spike S1); the pre-approved ones ask nothing.
-    deny = ["--disallowedTools", *connections.deny] if connections and connections.deny else []
+    denied = list(connections.deny) if connections else []
+    if not can_propose_agents:
+        denied.append(f"mcp__agentic-os__{PROPOSE_AGENT}")
+    deny = ["--disallowedTools", *denied] if denied else []
     if mode == PermissionMode.AUTONOMOUS:
         return [
             "--permission-mode",

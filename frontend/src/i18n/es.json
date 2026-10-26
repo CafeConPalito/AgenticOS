@@ -247,7 +247,9 @@
       "fallback": "CLI secundario",
       "fallbackHelp": "Si la cuenta principal está a punto de agotar su cuota, te propone cambiar a esta cuenta hasta que se reinicie.",
       "fallbackNone": "Ninguno",
-      "fallbackModel": "Modelo del secundario"
+      "fallbackModel": "Modelo del secundario",
+      "proposeAgents": "Puede proponer agentes",
+      "proposeAgentsHelp": "Si ve que falta un rol en el equipo, propone un agente nuevo; tú lo revisas antes de que reciba tareas."
     },
     "usingFallback": "Usando el secundario",
     "backToMain": "Volver al principal",
@@ -3602,7 +3604,9 @@
     "keepCurrent": "El actual",
     "settleConflicts": "Elige qué valor se queda en los campos cambiados a mano.",
     "applySelected": "Aplicar {{count}} cambios",
-    "changesApplied": "{{count}} cambios aplicados"
+    "changesApplied": "{{count}} cambios aplicados",
+    "chipAgent": "Propuesto por {{name}}",
+    "refine": "Seguir con el Arquitecto"
   },
   "agentTemplates": {
     "title": "Mis plantillas",

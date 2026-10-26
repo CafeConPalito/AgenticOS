@@ -1,9 +1,14 @@
 import { Sparkles } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 import { toast } from 'sonner'
-import { useApproveProposal, useProposal, useRejectProposal } from '@/api/architect'
+import {
+  useApproveProposal,
+  useCreateConversation,
+  useProposal,
+  useRejectProposal,
+} from '@/api/architect'
 import type { Agent } from '@/api/types'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { Button } from '@/components/ui/button'
@@ -18,6 +23,8 @@ export function DraftBanner({ agent }: { agent: Agent }) {
   const { data: proposal } = useProposal(agent.proposal_id)
   const approve = useApproveProposal()
   const reject = useRejectProposal()
+  const refine = useCreateConversation()
+  const navigate = useNavigate()
   const [approving, setApproving] = useState(false)
   const [rejecting, setRejecting] = useState(false)
   const [archive, setArchive] = useState(false)
@@ -73,6 +80,25 @@ export function DraftBanner({ agent }: { agent: Agent }) {
           )}
         </p>
       </div>
+      {byAgent && !proposal.conversation_id && (
+        <Button
+          type="button"
+          variant="ghost"
+          disabled={refine.isPending}
+          onClick={() =>
+            refine.mutate(
+              { mode: 'agent', proposal_id: proposal.id },
+              {
+                onSuccess: (conversation) => navigate(`/agentes/arquitecto/${conversation.id}`),
+                onError: (error) => toast.error(errorMessage(error)),
+              },
+            )
+          }
+        >
+          <Sparkles className="text-status-review" />
+          {t('proposals.refine')}
+        </Button>
+      )}
       <Button
         type="button"
         variant="outline"

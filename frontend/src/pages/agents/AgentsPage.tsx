@@ -186,7 +186,9 @@ function AgentsTable({ agents, teams }: { agents: Agent[]; teams: Team[] }) {
                           // Phase 19, design §2: a draft that waits for the person.
                           <span className="flex h-5 items-center gap-1 rounded-full border border-dashed border-status-review px-1.5 text-[11px] whitespace-nowrap text-status-review">
                             <Sparkles className="size-3" aria-hidden />
-                            {t('proposals.chip')}
+                            {agent.proposed_by && agent.proposed_by !== 'architect'
+                              ? t('proposals.chipAgent', { name: agent.proposed_by })
+                              : t('proposals.chip')}
                           </span>
                         )}
                       </div>
