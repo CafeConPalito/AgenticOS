@@ -1,6 +1,6 @@
 # Fase 19: Meta-agentes · Validación
 
-> **Estado: en validación.** Falta lanzar las suites completas (backend y frontend), la prueba manual con `claude` real y el OK del usuario. Lo marcado ⏳ depende de eso.
+> **Estado: cerrada (`v1.11`) con el OK del usuario, que aplazó las suites completas y la prueba manual.** Falta lanzar las suites completas (backend y frontend), la prueba manual con `claude` real y el OK del usuario. Lo marcado ⏳ depende de eso.
 
 ## Tests automáticos
 ```
@@ -60,9 +60,9 @@ Además, el e2e de equipo destapó que las herramientas MCP del Arquitecto con u
 - **Pendiente anotado (fuera de alcance)**: editar a mano el nombre y la descripción del equipo en la ficha de equipo (hoy solo los rellena el Arquitecto).
 
 ## Cierre
-- [ ] Suites completas en verde
-- [ ] Prueba manual con `claude` real (CA1, CA15)
-- [ ] OK del usuario
-- [ ] Merge a `main` (`--no-ff`)
-- [ ] Tag `v1.11`
-- [ ] `docs/roadmap.md` actualizado
+- [ ] Suites completas en verde (aplazado)
+- [ ] Prueba manual con `claude` real (CA1, CA15) (aplazado)
+- [x] OK del usuario (2026-10-27)
+- [x] Merge a `main` (`--no-ff`)
+- [x] Tag `v1.11`
+- [x] `docs/roadmap.md` actualizado
