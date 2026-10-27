@@ -3,7 +3,7 @@ import { WebLinksAddon } from '@xterm/addon-web-links'
 import { Terminal } from '@xterm/xterm'
 import '@xterm/xterm/css/xterm.css'
 import { useEffect, useRef, useState } from 'react'
-import { XTERM_THEME } from '@/components/terminal/use-run-terminal'
+import { useXtermTheme } from '@/components/terminal/xterm-theme'
 import { newViewerId } from '@/lib/client-id'
 import { TerminalSocket } from '@/lib/terminal-socket'
 
@@ -17,6 +17,8 @@ export function useLoginTerminal(accountId: string, onExit: () => void) {
   const [viewerId] = useState(newViewerId)
   const [exited, setExited] = useState(false)
   const [connected, setConnected] = useState(false)
+  const termRef = useRef<Terminal | null>(null)
+  const xtermTheme = useXtermTheme(termRef)
   const onExitRef = useRef(onExit)
   useEffect(() => {
     onExitRef.current = onExit
@@ -27,7 +29,7 @@ export function useLoginTerminal(accountId: string, onExit: () => void) {
     if (!container) return
     setExited(false)
     const term = new Terminal({
-      theme: XTERM_THEME,
+      theme: xtermTheme.current,
       fontFamily: "'Ubuntu Mono', ui-monospace, monospace",
       fontSize: 13,
       lineHeight: 1.2,
@@ -39,6 +41,7 @@ export function useLoginTerminal(accountId: string, onExit: () => void) {
     term.loadAddon(fitAddon)
     term.loadAddon(new WebLinksAddon())
     term.open(container)
+    termRef.current = term
 
     const socket = new TerminalSocket(
       accountId,
@@ -84,8 +87,9 @@ export function useLoginTerminal(accountId: string, onExit: () => void) {
       input.dispose()
       socket.close()
       term.dispose()
+      termRef.current = null
     }
-  }, [accountId, viewerId])
+  }, [accountId, viewerId, xtermTheme])
 
   return { containerRef, exited, connected }
 }

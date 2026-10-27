@@ -31,6 +31,7 @@ import type {
 } from '@/api/git-more'
 import type { ProjectRepo } from '@/api/repos'
 import type { DictationSettings, DictationStatus } from '@/api/dictation'
+import { type Appearance, DEFAULT_APPEARANCE } from '@/theme/model'
 import type { HfToken, LocalModel, ModelSelection } from '@/api/local-models'
 import type {
   DocImage,
@@ -849,6 +850,8 @@ export function createFakeBackend(
     inbox?: InboxItem[]
     trees?: Record<string, TreeNode[]>
     notificationSettings?: NotificationSettings
+    /** Ajustes › Apariencia (phase 20). */
+    appearance?: Appearance
     usage?: Partial<FakeUsage>
     branches?: ProjectBranches[]
     clis?: CliInfo[]
@@ -2532,6 +2535,7 @@ export function createFakeBackend(
     return null
   }
 
+  const appearance = { current: structuredClone(seed.appearance ?? DEFAULT_APPEARANCE) }
   const dictationSettings: DictationSettings = {
     enabled: true,
     language: 'es',
@@ -2561,6 +2565,10 @@ export function createFakeBackend(
     if (path === '/api/settings/dictation') {
       if (method === 'PUT') Object.assign(dictationSettings, body)
       return json(200, dictationSettings)
+    }
+    if (path === '/api/settings/appearance') {
+      if (method === 'PUT') appearance.current = { ...(body as unknown as Appearance) }
+      return json(200, appearance.current)
     }
     if (path === '/api/dictation/transcribe' && method === 'POST') {
       await seed.dictation?.gate?.()
@@ -2629,6 +2637,7 @@ export function createFakeBackend(
     knowledgeSettings,
     dictationSettings,
     dictationStatus,
+    appearance,
     queueState,
     tasks,
     inbox,

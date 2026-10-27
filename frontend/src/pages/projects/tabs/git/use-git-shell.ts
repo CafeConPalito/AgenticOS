@@ -3,7 +3,7 @@ import { WebLinksAddon } from '@xterm/addon-web-links'
 import { Terminal } from '@xterm/xterm'
 import '@xterm/xterm/css/xterm.css'
 import { useEffect, useRef, useState } from 'react'
-import { XTERM_THEME } from '@/components/terminal/use-run-terminal'
+import { useXtermTheme } from '@/components/terminal/xterm-theme'
 import { newViewerId } from '@/lib/client-id'
 import { TerminalSocket } from '@/lib/terminal-socket'
 
@@ -14,13 +14,15 @@ export function useGitShell(shellId: string) {
   const [viewerId] = useState(newViewerId)
   const [exited, setExited] = useState(false)
   const [connected, setConnected] = useState(false)
+  const termRef = useRef<Terminal | null>(null)
+  const xtermTheme = useXtermTheme(termRef)
 
   useEffect(() => {
     const container = containerRef.current
     if (!container) return
     setExited(false)
     const term = new Terminal({
-      theme: XTERM_THEME,
+      theme: xtermTheme.current,
       fontFamily: "'Ubuntu Mono', ui-monospace, monospace",
       fontSize: 13,
       lineHeight: 1.2,
@@ -32,6 +34,7 @@ export function useGitShell(shellId: string) {
     term.loadAddon(fitAddon)
     term.loadAddon(new WebLinksAddon())
     term.open(container)
+    termRef.current = term
 
     const socket = new TerminalSocket(
       shellId,
@@ -74,8 +77,9 @@ export function useGitShell(shellId: string) {
       input.dispose()
       socket.close()
       term.dispose()
+      termRef.current = null
     }
-  }, [shellId, viewerId])
+  }, [shellId, viewerId, xtermTheme])
 
   return { containerRef, exited, connected }
 }
