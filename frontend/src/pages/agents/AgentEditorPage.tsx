@@ -5,7 +5,6 @@ import {
   Download,
   LayoutTemplate,
   MoreHorizontal,
-  Pencil,
   Plus,
   Sparkles,
   Trash2,
@@ -226,14 +225,6 @@ function AgentEditor({ agent, tab }: { agent: Agent; tab: Tab }) {
             </Button>
           )}
           <LaunchRunButton agentId={agent.id} disabled={agent.status === 'draft'} />
-          {agent.status === 'active' && (
-            <Button type="button" variant="outline" className="rounded-full" asChild>
-              <Link to={`/agentes/arquitecto?mejorar=${agent.id}`}>
-                <Sparkles className="text-status-review" />
-                {t('architect.improve')}
-              </Link>
-            </Button>
-          )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button type="button" variant="outline" size="icon" aria-label={t('common.more')}>
@@ -241,6 +232,15 @@ function AgentEditor({ agent, tab }: { agent: Agent; tab: Tab }) {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              {/* Phase 20: out of the header, which keeps the everyday actions only. */}
+              {agent.status === 'active' && (
+                <DropdownMenuItem asChild>
+                  <Link to={`/agentes/arquitecto?mejorar=${agent.id}`}>
+                    <Sparkles className="text-status-review" />
+                    {t('architect.improve')}
+                  </Link>
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem onSelect={() => void onDuplicate()}>
                 <Copy />
                 {t('common.duplicate')}
@@ -263,14 +263,8 @@ function AgentEditor({ agent, tab }: { agent: Agent; tab: Tab }) {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          {tab === 'resumen' ? (
-            <Button type="button" variant="outline" asChild>
-              <Link to={`/agentes/${agent.id}/general`}>
-                <Pencil />
-                {t('agents.edit')}
-              </Link>
-            </Button>
-          ) : (
+          {/* Resumen only reads; the tabs are the way to edit (phase 20). */}
+          {tab !== 'resumen' && (
             <Button
               type="submit"
               disabled={!isDirty || update.isPending}

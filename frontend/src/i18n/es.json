@@ -217,8 +217,8 @@
       "execution": "Ejecución",
       "knowledge": "Conocimiento",
       "skills": "Skills",
-      "history": "Historial",
-      "changes": "Cambios",
+      "history": "Historial de la ficha",
+      "changes": "Código cambiado",
       "connections": "Conexiones"
     },
     "fields": {
@@ -286,7 +286,6 @@
     "assignTask": "Asignar tarea",
     "activate": "Activar",
     "activated": "Agente «{{name}}» activado",
-    "edit": "Editar",
     "summary": {
       "requests": "Peticiones de este agente",
       "tasks": "Tareas",
