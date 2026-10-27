@@ -503,6 +503,25 @@ describe('Inicio · agents', () => {
     expect(useDialogs.getState().newAgent).toBe(true)
   })
 
+  it('one «Nuevo» holds the new agent, the Architect and the new team (phase 20)', async () => {
+    createFakeBackend({ agents: [makeAgent()] })
+    const user = userEvent.setup()
+    const { router } = renderApp('/')
+    await user.click(await screen.findByRole('button', { name: es.home.agents.newMenu }))
+    expect(screen.getAllByRole('menuitem').map((i) => i.textContent)).toEqual([
+      es.home.agents.new,
+      es.agents.architect,
+      es.teams.new,
+    ])
+    await user.click(screen.getByRole('menuitem', { name: es.home.agents.new }))
+    expect(useDialogs.getState().newAgent).toBe(true)
+    useDialogs.setState({ newAgent: false })
+    // The dialog that just closed hid the page from the accessibility tree until it unmounts.
+    await user.click(await screen.findByRole('button', { name: es.home.agents.newMenu }))
+    await user.click(await screen.findByRole('menuitem', { name: es.agents.architect }))
+    await waitFor(() => expect(router.state.location.pathname).toMatch(/^\/agentes\/arquitecto\//))
+  })
+
   it('shows skeletons while loading', () => {
     createFakeBackend()
     const { container } = renderApp('/')
@@ -551,7 +570,9 @@ describe('Inicio · equipos', () => {
     const user = userEvent.setup()
     renderApp('/')
 
-    await user.click(await screen.findByRole('button', { name: es.teams.new }))
+    // Phase 20: under the single «Nuevo» of the Agents section.
+    await user.click(await screen.findByRole('button', { name: es.home.agents.newMenu }))
+    await user.click(await screen.findByRole('menuitem', { name: es.teams.new }))
     const dialog = await screen.findByRole('dialog', { name: es.teams.newTitle })
     await user.type(within(dialog).getByLabelText(es.teams.name), 'Contenidos')
     // Ticking an agent of another team says it moves.

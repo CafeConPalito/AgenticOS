@@ -1,9 +1,15 @@
-import { Bot, Pencil, Plus, Sparkles } from 'lucide-react'
+import { Bot, ChevronDown, Pencil, Plus, Sparkles, Users } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 import type { HomeAgent, Team, TodayAgent } from '@/api/types'
 import { EmptyState } from '@/components/EmptyState'
 import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { useDialogs } from '@/stores/dialogs'
 import { AgentCard } from './AgentCard'
 
@@ -61,33 +67,37 @@ export function AgentGrid({
             ? t('home.agents.countTeams', { teams: teams.length, agents: agents.length })
             : t('home.agents.count', { count: agents.length })}
         </span>
-        <div className="ml-auto flex items-center gap-1">
-          <Link
-            to="/agentes/arquitecto?nueva"
-            className="flex h-[30px] items-center gap-1.5 rounded-full px-3 text-[12.5px] text-muted-foreground hover:bg-accent hover:text-foreground"
-          >
-            <Sparkles className="size-3.5 text-status-review" />
-            {t('agents.architect')}
-          </Link>
-          <button
-            type="button"
-            onClick={() => openTeam()}
-            className="flex h-[30px] items-center gap-1.5 rounded-full px-3 text-[12.5px] text-muted-foreground hover:bg-accent hover:text-foreground"
-          >
-            <Plus className="size-3.5" />
-            {t('teams.new')}
-          </button>
-          {agents.length > 0 && (
-            <button
-              type="button"
-              onClick={() => openNewAgent()}
-              className="flex h-[30px] items-center gap-1.5 rounded-full px-3 text-[12.5px] text-muted-foreground hover:bg-accent hover:text-foreground"
-            >
-              <Plus className="size-3.5" />
-              {t('home.agents.new')}
-            </button>
-          )}
-        </div>
+        {/* Phase 20: one «Nuevo» instead of three buttons; the empty state keeps its own. */}
+        {(agents.length > 0 || teams.length > 0) && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="ml-auto flex h-[30px] items-center gap-1.5 rounded-full px-3 text-[12.5px] text-muted-foreground hover:bg-accent hover:text-foreground"
+              >
+                <Plus className="size-3.5" />
+                {t('home.agents.newMenu')}
+                <ChevronDown className="size-3.5" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onSelect={() => openNewAgent()}>
+                <Bot />
+                {t('home.agents.new')}
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/agentes/arquitecto?nueva">
+                  <Sparkles className="text-status-review" />
+                  {t('agents.architect')}
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => openTeam()}>
+                <Users />
+                {t('teams.new')}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
       {agents.length === 0 && teams.length === 0 ? (
         <EmptyState

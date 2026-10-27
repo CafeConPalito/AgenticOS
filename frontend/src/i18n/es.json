@@ -1465,6 +1465,7 @@
       "count_one": "{{count}} agente",
       "count_other": "{{count}} agentes",
       "new": "Nuevo agente",
+      "newMenu": "Nuevo",
       "draft": "Borrador · actívalo desde su ficha",
       "free": "Disponible · sin tareas en curso",
       "states": {
