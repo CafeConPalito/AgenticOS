@@ -6,6 +6,7 @@ import { useTeams } from '@/api/teams'
 import { useProject } from '@/api/projects'
 import { useRun } from '@/api/runs'
 import { useTask } from '@/api/tasks'
+import { useTheme } from '@/theme/ThemeProvider'
 import { runTitle } from '@/pages/runs/RunPage'
 
 /** Route `handle`: how a route contributes to the header breadcrumb. */
@@ -28,6 +29,7 @@ export function TextCrumb({
     | 'nav.knowledge'
     | 'nav.connections'
     | 'nav.architect'
+    | 'nav.appearance'
 }) {
   const { t } = useTranslation()
   return <>{t(i18nKey)}</>
@@ -72,4 +74,9 @@ export function TaskCrumb({ id }: { id?: string }) {
       {data.project_name} / {data.code} · {title}
     </>
   )
+}
+
+export function ThemeCrumb({ id }: { id?: string }) {
+  const { appearance } = useTheme()
+  return <>{appearance.custom.find((theme) => theme.id === id)?.name ?? '…'}</>
 }

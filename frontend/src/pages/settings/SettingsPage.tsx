@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from 'react-router'
 import { PageContainer, PageHeader } from '@/components/page'
 import { cn } from '@/lib/utils'
 import { AboutSection } from './AboutSection'
+import { AppearanceSection } from './AppearanceSection'
 import { ArchitectSection } from './ArchitectSection'
 import { CleanupSection } from './CleanupSection'
 import { DictationSection } from './DictationSection'
@@ -18,7 +19,7 @@ import { SkillsSection } from './SkillsSection'
 
 /** The index groups (phase 20) and their sections, in order; each one is `/ajustes#<id>`. */
 export const SECTION_GROUPS = [
-  { id: 'app', sections: ['general', 'notifications', 'dictation', 'about'] },
+  { id: 'app', sections: ['general', 'appearance', 'notifications', 'dictation', 'about'] },
   { id: 'agents', sections: ['limits', 'architect', 'git'] },
   { id: 'resources', sections: ['knowledge', 'skills', 'connections', 'models'] },
   { id: 'maintenance', sections: ['cleanup'] },
@@ -30,6 +31,7 @@ type SectionId = (typeof SECTIONS)[number]
 
 const SECTION_BODY: Record<SectionId, () => React.ReactNode> = {
   general: GeneralSection,
+  appearance: AppearanceSection,
   notifications: NotificationsSection,
   dictation: DictationSection,
   about: AboutSection,

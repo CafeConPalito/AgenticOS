@@ -206,6 +206,7 @@ function PaletteContent({ onClose }: { onClose: () => void }) {
         ['connections', '/conexiones'],
         ['inbox', '/inbox'],
         ['settings', '/ajustes'],
+        ['appearance', '/ajustes/apariencia'],
       ] as const
     ).map(([id, path]) => ({
       id: `go-${id}`,

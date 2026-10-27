@@ -33,16 +33,14 @@ describe('Settings · General', () => {
     expect(await screen.findByText(es.settings.general.moving)).toBeVisible()
   })
 
-  it('switches the theme', async () => {
+  it('shows the theme on screen and leads to Apariencia (phase 20)', async () => {
     createFakeBackend()
     const user = userEvent.setup()
-    renderApp('/ajustes')
-
-    const themes = await screen.findByRole('tablist', { name: es.settings.general.theme })
-    await user.click(within(themes).getByRole('tab', { name: es.settings.general.themes.light }))
-    expect(document.documentElement).not.toHaveClass('dark')
-    await user.click(within(themes).getByRole('tab', { name: es.settings.general.themes.dark }))
-    expect(document.documentElement).toHaveClass('dark')
+    const { router } = renderApp('/ajustes')
+    const section = await screen.findByRole('region', { name: es.appearance.title })
+    expect(within(section).getByText(es.appearance.builtin.navy)).toBeVisible()
+    await user.click(within(section).getByRole('link', { name: es.appearance.section.open }))
+    expect(router.state.location.pathname).toBe('/ajustes/apariencia')
   })
 })
 
@@ -144,6 +142,7 @@ describe('Settings · índice y atajos', () => {
     expect(links.map((l) => l.textContent)).toEqual(Object.values(es.settings.sections))
     expect(links.map((l) => l.getAttribute('href'))).toEqual([
       '#general',
+      '#appearance',
       '#notifications',
       '#dictation',
       '#about',

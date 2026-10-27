@@ -167,4 +167,7 @@ const graphite: BuiltinTheme = {
 }
 
 export const BUILTIN_THEMES: BuiltinTheme[] = [navy, light, contrast, warm, graphite]
-export const BUILTIN_IDS = BUILTIN_THEMES.map((theme) => theme.id)
+export const BUILTIN_IDS = ['navy', 'light', 'contrast', 'warm', 'graphite'] as const
+export type BuiltinId = (typeof BUILTIN_IDS)[number]
+export const isBuiltin = (id: string): id is BuiltinId =>
+  (BUILTIN_IDS as readonly string[]).includes(id)
