@@ -1,0 +1,13 @@
+36 lines
+SECRETRUNTOKEN123: 2
+  2026-10-27T18:49:17.054336Z [info     ] 127.0.0.1:52527 - "GET /r/SECRETRUNTOKEN123/mcp HTTP/1.1" 401 [uvicorn.access]
+  2026-10-27T18:49:17.057814Z [info     ] 127.0.0.1:52528 - "POST /r/SECRETRUNTOKEN123/hook/stop HTTP/1.1" 401 [uvicorn.access]
+ARCHTOKEN456: 1
+  2026-10-27T18:49:17.059820Z [info     ] 127.0.0.1:52529 - "GET /a/ARCHTOKEN456/mcp HTTP/1.1" 404 [uvicorn.access]
+sk-ant-LEAKME: 1
+  2026-10-27T18:49:17.065325Z [info     ] 127.0.0.1:52530 - "GET /api/agents?api_key=sk-ant-LEAKME&password=hunter2&email=probe@example.com HTTP/1.1" 200 [uvicorn.access]
+hunter2: 1
+  2026-10-27T18:49:17.065325Z [info     ] 127.0.0.1:52530 - "GET /api/agents?api_key=sk-ant-LEAKME&password=hunter2&email=probe@example.com HTTP/1.1" 200 [uvicorn.access]
+probe@example.com: 1
+  2026-10-27T18:49:17.065325Z [info     ] 127.0.0.1:52530 - "GET /api/agents?api_key=sk-ant-LEAKME&password=hunter2&email=probe@example.com HTTP/1.1" 200 [uvicorn.access]
+home path lines: 0

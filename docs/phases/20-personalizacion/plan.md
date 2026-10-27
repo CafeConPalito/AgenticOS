@@ -26,6 +26,38 @@ Scripts en `spikes/personalization/`; evidencias en `evidencias/`.
 | S5 | **Licencias**: listar las dependencias de producción de frontend (`npm`), backend (`uv`, incluidas las que empaqueta PyInstaller) y Tauri (`cargo`), con su licencia; marcar las incompatibles con GPLv3 o sin licencia; elegir cómo generar la lista en el *build* (`license-checker-rseidelsohn`, `pip-licenses`, `cargo-about` o un script propio) | Una dependencia incompatible se sustituye o se pregunta al usuario antes de seguir |
 | S6 | **Recorte de fotos**: `react-easy-crop` (MIT) u otro: arrastrar y zoom con ratón y rueda, orientación EXIF, leer el tamaño **antes** de decodificar entera (`createImageBitmap` / cabecera) para rechazar > 2048 px, y codificar el recorte a WebP 256 × 256 con `canvas.toBlob` en WebView2. Peso típico del resultado | PNG en lugar de WebP; si la cabecera no se puede leer sin decodificar, se decodifica y se descarta al instante (sin guardarla en ningún sitio) |
 
+## Resultados de los spikes (bloque 0, 2026-10-27)
+Evidencias en [`evidencias/`](evidencias/); scripts en `spikes/personalization/`.
+
+- **S1 · búhos**: ❌ no hay un set libre coherente con variantes (solo iconos sueltos CC0, como el de Emojione, o *packs* de pago o con licencia propia). → **Set propio en SVG por capas** (`spikes/personalization/owls.py`): búho base + 12 variantes (sin nada, chistera, birrete, gafas, gafas de sol, auriculares, pajarita, bufanda, gorro, corona, libro, monóculo, mago). Vista en [`evidencias/owls/preview.png`](evidencias/owls/preview.png): se reconocen desde 24 px; a 16 px solo la silueta, que basta para las listas. Para el set final: accesorios de abajo (pajarita, bufanda, libro) subidos al pecho, sombreros altos más bajos, y borde claro en los accesorios oscuros (birrete, chistera), que se pierden sobre colores oscuros.
+- **S2 · colores fijos**: 63 en 19 ficheros, en cuatro grupos:
+  - **terminal** (≈30: `XTERM_THEME`, `TerminalDock`, `TerminalPanel`) → *tokens* nuevos `--terminal-muted`, `--terminal-accent`, `--terminal-chip`, `--terminal-dot` y los 16 ANSI `--ansi-*`, más `--terminal-cursor` y `--terminal-selection`;
+  - **marca** (`Logo.tsx`) → `--logo-from`, `--logo-to`, `--logo-dot`;
+  - **aviso ámbar con texto oscuro** (`AgentCard`, `NeedsYouPanel`, `#F5B547`/`#0A1A33`) → `--status-intervening` (ya existe) y nuevo `--status-intervening-foreground`; el texto de las iniciales del avatar → `--avatar-foreground` (calculado por contraste); `#7F8DAA` de `RequestItem` → `--muted-foreground`;
+  - **colores de datos** (paletas de agentes y proyectos en `page.tsx` y `NewProjectDialog`, color por defecto de un agente, serie de `SkillStats`, `USER_COLOR` de la memoria): no son del tema, son colores que elige el usuario o que identifican datos. Se juntan en `theme/palettes.ts` (única excepción del test de colores fijos); `SkillStats` pasa a `--chart-*`.
+  - En total, ~11 *tokens* nuevos + 16 ANSI: por debajo del umbral, el terminal entra en el bloque 3.
+- **S3 · navegación e integración en WebView2**: ⏳ **pendiente de prueba manual en la app de escritorio** (no se puede comprobar fuera de WebView2, y la compilación que hay es la v1.0, que no debe abrir los datos actuales). Se hace al empezar el bloque 2 con `tauri dev`. Comprobar:
+  1. si `Alt+←/→` y los botones laterales del ratón ya navegan solos (WebView2 trae activados los atajos del navegador y el SPA recibiría `popstate`) o hay que capturarlos;
+  2. si «Adelante» puede saber que hay algo delante con `history.state.idx`;
+  3. qué abre un enlace `mailto:` (directo, con `plugin-shell` o desde el backend con `os.startfile`) y hasta qué longitud de cuerpo;
+  4. «Guardar como» con `dialog:allow-save`.
+- **S4 · registros**: ⚠️ con un backend de prueba que escribe a fichero ([`evidencias/s4-logs.txt`](evidencias/s4-logs.txt)), **el registro de accesos de uvicorn escribe los *tokens* de ejecución (`/r/<token>/…`) y del Arquitecto (`/a/<token>/…`) y la *query* completa** (claves, contraseñas o correos que lleve una URL). Además: los fallos de OAuth registran `repr(error)` (puede llevar URLs), y las rutas de la carpeta de datos incluyen el usuario de Windows. No hay `rich` ni `better_exceptions`, así que las trazas no llevan variables locales.
+- **S5 · licencias**: ✅ todo compatible con GPLv3.
+  - Frontend: 259 paquetes, MIT/ISC/BSD/Apache-2.0/0BSD.
+  - Backend: 110, también MPL-2.0 (`certifi`, `tqdm`), LGPL-3.0 (`pyte`), PSF, `tld` (MPL-1.1 / GPL-2.0 / LGPL-2.1+, se usa como LGPL) y MIT-CMU (Pillow).
+  - Tauri: 260 *crates* para Windows, MIT/Apache-2.0/Unicode-3.0/MPL-2.0/Zlib/BSD.
+  - La única a anotar es la **Ubuntu Font Licence** (`@fontsource/ubuntu`): las fuentes van como ficheros aparte (agregado), sin problema; se cita en terceros.
+  - Generación: **script propio** (`scripts/licenses.py`) con los mismos métodos del spike (árbol de `dependencies` de `node_modules`, `importlib.metadata` del entorno sin el grupo *dev*, `cargo metadata --filter-platform`), sin dependencias nuevas.
+- **S6 · recorte**: ✅ en Edge (mismo motor que WebView2; [`evidencias/s6-crop.txt`](evidencias/s6-crop.txt)).
+  - El tamaño se lee de la **cabecera** de PNG, JPEG y WebP en < 5 ms, sin decodificar; las de 3000 × 2000 se rechazan antes de abrirlas.
+  - Recorte a 256 × 256 en WebP con `canvas.toBlob`: **12–15 KB**.
+  - `react-easy-crop` 6.2.4 (MIT, una dependencia) para arrastrar y hacer zoom. `createImageBitmap` aplica la orientación EXIF.
+
+### Cambios al diseño por los spikes
+1. **Búhos propios** (§5): `frontend/src/assets/owls/*.svg` generados por un script versionado (`scripts/owls.py`, a partir del de S1) con su licencia del proyecto; `owls.json` sin atribución externa.
+2. **Registros sin secretos en origen** (§7): un filtro de `logging` en `logging_setup.py` enmascara, **antes de escribir**, los *tokens* de `/r/<token>/` y `/a/<token>/` y los valores de la *query* de las líneas de `uvicorn.access`, y los fallos de OAuth registran el tipo de error y el *host*, no `repr(error)`. La limpieza del zip (`services/redact.py`) se queda como segunda barrera (registros antiguos, terceros).
+3. **Lista de terceros** (§6): script propio, sin `license-checker`, `pip-licenses` ni `cargo-about`.
+
 ## Diseño ([ADR 0027](../../adr/0027-personalization-support.md), nuevo)
 
 ### 1. Licencia y autoría
@@ -112,7 +144,7 @@ Scripts en `spikes/personalization/`; evidencias en `evidencias/`.
 ## Tareas (en orden)
 Bloques pequeños, cada uno con sus tests y su commit.
 
-0. [ ] **Spikes S1–S6** y resultados en este plan; cambios al diseño, si los hay, con el OK del usuario.
+0. [x] **Spikes S1–S6** (S3 queda para el inicio del bloque 2, con la app de escritorio) y resultados en este plan; cambios al diseño, si los hay, con el OK del usuario.
 1. [ ] **Licencia y autoría**: `LICENSE`, manifiestos, `tauri.conf.json`, README, logos. Revisión de licencias de S5 resuelta.
 2. [ ] **Navegación**: Adelante, `Alt+←/→`, ratón; contador de la Inbox; inventario de ruido con capturas → revisión con el usuario → cambios aprobados.
 3. [ ] **Motor de temas**: modelo, temas incluidos, aplicación por variables, seguir al sistema, persistencia en `app_state` sin parpadeo, terminal en vivo, colores fijos a *tokens* y test de colores fijos.

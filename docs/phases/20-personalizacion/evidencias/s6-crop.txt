@@ -1,0 +1,9 @@
+3000x2000 image/png: header=[3000,2000,"png"] (4.7 ms) REJECTED crop=-
+3000x2000 image/jpeg: header=[3000,2000,"jpeg"] (0.6 ms) REJECTED crop=-
+3000x2000 image/webp: header=[3000,2000,"webp"] (0.5 ms) REJECTED crop=-
+2048x1536 image/png: header=[2048,1536,"png"] (2.4 ms) accepted crop=image/webp 12328 B
+2048x1536 image/jpeg: header=[2048,1536,"jpeg"] (0.5 ms) accepted crop=image/webp 12266 B
+2048x1536 image/webp: header=[2048,1536,"webp"] (0.7 ms) accepted crop=image/webp 12268 B
+800x1200 image/png: header=[800,1200,"png"] (1.4 ms) accepted crop=image/webp 14666 B
+800x1200 image/jpeg: header=[800,1200,"jpeg"] (0.6 ms) accepted crop=image/webp 14686 B
+800x1200 image/webp: header=[800,1200,"webp"] (0.5 ms) accepted crop=image/webp 14694 B
