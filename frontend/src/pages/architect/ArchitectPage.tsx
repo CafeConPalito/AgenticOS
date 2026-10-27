@@ -47,14 +47,28 @@ function Conversations() {
   }
 
   // `?nueva` and `?mejorar=<agent>` (from Agentes, Inicio, the palette, an agent's editor).
+  // `?equipo` starts a new team, `?equipo=<id>` improves one, `?pipeline=<project>` a pipeline.
   const improve = params.get('mejorar')
-  const fresh = params.has('nueva')
+  const team = params.get('equipo')
+  const pipeline = params.get('pipeline')
+  const fresh = params.has('nueva') || params.has('equipo')
+  const requested = Boolean(improve || pipeline || fresh)
   useEffect(() => {
-    if (started.current || (!improve && !fresh)) return
+    if (started.current || !requested) return
     started.current = true
-    void start(improve ? { mode: 'improve_agent', agent_id: improve } : { mode: 'agent' })
+    void start(
+      improve
+        ? { mode: 'improve_agent', agent_id: improve }
+        : pipeline
+          ? { mode: 'improve_pipeline', project_id: pipeline }
+          : team
+            ? { mode: 'improve_team', team_id: team }
+            : params.has('equipo')
+              ? { mode: 'team' }
+              : { mode: 'agent' },
+    )
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [improve, fresh])
+  }, [requested])
 
   return (
     <PageContainer narrow>
@@ -62,17 +76,27 @@ function Conversations() {
         title={t('architect.title')}
         subtitle={t('architect.subtitle')}
         actions={
-          <Button
-            onClick={() => void start({ mode: 'agent' })}
-            disabled={create.isPending}
-            className="bg-primary-action text-white hover:bg-primary-action-hover"
-          >
-            <Plus />
-            {t('architect.new')}
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => void start({ mode: 'team' })}
+              disabled={create.isPending}
+            >
+              <Plus />
+              {t('architect.newTeam')}
+            </Button>
+            <Button
+              onClick={() => void start({ mode: 'agent' })}
+              disabled={create.isPending}
+              className="bg-primary-action text-white hover:bg-primary-action-hover"
+            >
+              <Plus />
+              {t('architect.new')}
+            </Button>
+          </div>
         }
       />
-      {isPending || improve || fresh ? (
+      {isPending || requested ? (
         <Skeleton aria-busy className="h-32 rounded-lg" />
       ) : data && data.length > 0 ? (
         <ul className="flex flex-col divide-y divide-sep rounded-lg border border-sep">

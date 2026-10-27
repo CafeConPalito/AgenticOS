@@ -50,11 +50,28 @@ export interface SheetAgent {
   template?: string | null
 }
 
+export interface SheetStage {
+  id?: string | null
+  name: string
+  /** An agent id, or `ref:<ref>` for one the sheet creates. */
+  agent: string | null
+  requires_review?: boolean
+  reject_to?: string | number | null
+  reject_also?: (string | number)[]
+}
+
+export interface SheetPipeline {
+  project_id: string
+  project_name: string
+  stages: SheetStage[]
+  links: { source: number; target: number; name?: string }[] | null
+}
+
 export interface Sheet {
   agents: Record<string, SheetAgent>
   existing_agents: string[]
   team: { team_id?: string; name?: string; description?: string }
-  pipeline: Record<string, unknown> | null
+  pipeline: SheetPipeline | null
   suggested_connections: {
     registry_ref: string
     source: string
@@ -79,6 +96,8 @@ export interface SheetState {
   ready: boolean
   locked: string[]
   refused?: Record<string, string>
+  /** Where to draw each stage of the sheet's pipeline (by index). */
+  pipeline_layout?: Record<string, [number, number]>
 }
 
 export interface ConversationSummary {
@@ -111,6 +130,22 @@ export interface FieldChange {
   diff: string
 }
 
+export interface TeamReview {
+  team: { team_id?: string; name?: string; description?: string }
+  new_agents: { ref: string; id: string; name: string; role: string; cli?: string; model: string }[]
+  existing_agents: { id: string; name: string; role: string }[]
+  pipeline: {
+    project_id: string
+    project_name: string
+    stages: { name: string; agent: string }[]
+    added: string[]
+    removed: string[]
+    changed: string[]
+    links_changed: boolean
+    conflict: boolean
+  } | null
+}
+
 export interface Proposal {
   id: string
   kind: 'new_agent' | 'agent_changes' | 'team' | 'team_changes' | 'pipeline_changes'
@@ -127,6 +162,7 @@ export interface Proposal {
   sheet: Sheet | null
   changes: FieldChange[]
   new_skills: { id: string; name: string; description: string }[]
+  team?: TeamReview | null
   applied_fields: string[]
   created_at: string
   decided_at: string | null
@@ -260,6 +296,8 @@ export interface ApproveBody {
   fields?: string[]
   choices?: Record<string, 'proposed' | 'current'>
   skip_skills?: string[]
+  /** A team: refs of the new agents left out. */
+  skip_agents?: string[]
 }
 
 export function useApproveProposal() {
@@ -327,6 +365,7 @@ export function applyArchitectEvent(
         progress: event.progress,
         ready: event.ready,
         locked: event.locked,
+        pipeline_layout: event.pipeline_layout,
       }
       return { ...current, sheet }
     }

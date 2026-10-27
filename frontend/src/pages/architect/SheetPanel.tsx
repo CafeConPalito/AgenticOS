@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { errorMessage } from '@/lib/form-errors'
 import { cn } from '@/lib/utils'
+import { TeamSheet } from './TeamSheet'
 
 const REF = 'main'
 type TextField = 'name' | 'role' | 'description' | 'instructions'
@@ -17,6 +18,16 @@ type TextField = 'name' | 'role' | 'description' | 'instructions'
 /** The sheet the Architect fills while it talks (design §11, right half): every field as it is
  * now, empty ones as a dashed skeleton, the person's own edits locked for the Architect. */
 export function SheetPanel({ conversation }: { conversation: Conversation }) {
+  if (
+    conversation.mode === 'team' ||
+    conversation.mode === 'improve_team' ||
+    conversation.mode === 'improve_pipeline'
+  )
+    return <TeamSheet conversation={conversation} />
+  return <AgentSheet conversation={conversation} />
+}
+
+function AgentSheet({ conversation }: { conversation: Conversation }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const actions = useConversationActions(conversation.id)

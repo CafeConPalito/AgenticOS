@@ -450,7 +450,22 @@ export function RequestActions({
 function ReviewProposal({ id }: { id: string }) {
   const { t } = useTranslation()
   const { data: proposal } = useProposal(id)
-  if (!proposal?.target_agent_id) return null
+  if (!proposal) return null
+  if (!proposal.target_agent_id) {
+    if (!proposal.conversation_id) return null
+    return (
+      <Button
+        size="sm"
+        className="bg-primary-action text-white hover:bg-primary-action-hover"
+        asChild
+      >
+        <Link to={`/agentes/arquitecto/${proposal.conversation_id}`}>
+          <Sparkles />
+          {t('inbox.reviewAgentProposal')}
+        </Link>
+      </Button>
+    )
+  }
   return (
     <Button
       size="sm"
