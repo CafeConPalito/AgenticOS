@@ -63,6 +63,7 @@ Evidencias en [`evidencias/`](evidencias/); scripts en `spikes/personalization/`
 ### Cambios al diseño durante el desarrollo
 6. **Contador de la Inbox** (§2, bloque 2): reutiliza `GET /inbox/summary` (`useInboxSummary`, que ya se consulta cada 3 s para las notificaciones) en lugar de añadir `inbox_pending` a `HomeCounts`; sin cambios en el backend.
 7. **«Adelante»** (§2, bloque 2): la pila de navegación se sigue con los eventos de React Router (`PUSH`, `REPLACE`, `POP`) en `use-history-stack.ts`, no con `history.state.idx`, que no existe con el router en memoria de los tests. Tras recargar a mitad del historial, «Adelante» empieza desactivado (los atajos del WebView siguen funcionando).
+8. **Menos ruido** (§2, bloque 2; revisado con el usuario sobre capturas el 2026-10-27): en la ficha del agente, «Mejorar con el Arquitecto» pasa al menú «⋯», Resumen pierde «Editar» y las pestañas «Historial» y «Cambios» pasan a «Historial de la ficha» y «Código cambiado»; Ajustes agrupa sus secciones bajo Aplicación, Agentes, Recursos y Mantenimiento; en Inicio, «Nuevo agente», «Crear con el Arquitecto» y «Nuevo equipo» pasan a un único «Nuevo». Descartado: ocultar el selector de idioma, reducir el estado del backend a un punto y más cambios en Inicio. El tema pasa a Apariencia en el bloque 4.
 
 ## Diseño ([ADR 0027](../../adr/0027-personalization-support.md), nuevo)
 
@@ -152,7 +153,7 @@ Bloques pequeños, cada uno con sus tests y su commit.
 
 0. [x] **Spikes S1–S6** y resultados en este plan; cambios al diseño, si los hay, con el OK del usuario.
 1. [x] **Licencia y autoría**: `LICENSE`, manifiestos, `tauri.conf.json`, README, logos. Revisión de licencias de S5 resuelta.
-2. [ ] **Navegación**: Adelante, `Alt+←/→`, ratón; contador de la Inbox; inventario de ruido con capturas → revisión con el usuario → cambios aprobados.
+2. [x] **Navegación**: Adelante, `Alt+←/→`, ratón; contador de la Inbox; inventario de ruido con capturas → revisión con el usuario → cambios aprobados.
 3. [ ] **Motor de temas**: modelo, temas incluidos, aplicación por variables, seguir al sistema, persistencia en `app_state` sin parpadeo, terminal en vivo, colores fijos a *tokens* y test de colores fijos.
 4. [ ] **Ajustes › Apariencia**: lista, editor con vista previa, contraste, exportar/importar.
 5. [ ] **Avatares (backend)**: migración, almacenamiento y validación, API, limpieza, uso de disco, exportación/importación, Arquitecto.
