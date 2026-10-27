@@ -59,7 +59,7 @@ Revisión `/code-review` (nivel alto) sobre la rama: 9 hallazgos.
 - **Hallazgos de la prueba real** que los tests automáticos no daban: los diálogos de confianza de la carpeta y del modo sin permisos de Claude, y que en *Restringido* una conexión nueva pregunta por cada herramienta hasta que se pre-aprueba.
 - **Lecciones**: `uvicorn.Config(log_level=…)` cambia el nivel de logging global (usar `log_config=None`); invalidar un prefijo de consultas dentro de su propia función de consulta provoca un bucle (se hace en un `useEffect`); el SDK de MCP oculta el estado HTTP en un error genérico (un *hook* de respuesta lo recoge).
 - **Pendiente para fases futuras**: prueba de OAuth con un servicio real; eventos en vivo para la prueba y el inicio de sesión (hoy la UI consulta cada segundo); comprobación previa para el estado «falló»; test inestable de la fase 14 (`test_knowledge_*`, orden de filas) ya anotado.
-- **Impacto en fases futuras**: Codex y OpenCode (fase 21) tendrán que implementar su propia inyección en `adapters/` con el mismo contrato (`RunConnections`); el ADR 0018 queda ampliado («la app no guarda secretos en sus ficheros»).
+- **Impacto en fases futuras**: Codex y OpenCode (fase 22) tendrán que implementar su propia inyección en `adapters/` con el mismo contrato (`RunConnections`); el ADR 0018 queda ampliado («la app no guarda secretos en sus ficheros»).
 
 ## Cierre
 - [x] OK del usuario («cierra la fase», 2026-10-25)

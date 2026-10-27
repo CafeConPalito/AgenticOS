@@ -88,9 +88,9 @@ Lint                                                    ruff, eslint, prettier y
   - los heredocs de bash se comen las barras invertidas (anotado en la memoria): las ediciones con `\` van por fichero;
   - `tsc --noEmit -p .` no comprueba nada en este repo; la comprobación de tipos buena es `tsc -b`, la del *build*.
 - **Impacto en fases futuras**:
-  - **Fase 21** (Codex y OpenCode): sus adapters deben pasar `skills_dir` a su mecanismo propio, si lo tienen, y registrar la carga nativa; la vía común ya funciona sin hacer nada.
-  - **Fase 22** (instaladores): nada nuevo que firmar; los registros se consultan por HTTPS.
-  - **Fase 23** (servidor): la serie diaria agrupa por el día local del backend, como el consumo.
+  - **Fase 22** (Codex y OpenCode): sus adapters deben pasar `skills_dir` a su mecanismo propio, si lo tienen, y registrar la carga nativa; la vía común ya funciona sin hacer nada.
+  - **Fase 23** (instaladores): nada nuevo que firmar; los registros se consultan por HTTPS.
+  - **Fase 24** (servidor): la serie diaria agrupa por el día local del backend, como el consumo.
   - **Fuera de la fase**: `SESSION_MARKERS` no incluye `CLAUDE_CODE_BRIDGE_SESSION_ID` (anotado en el plan).
 - **Limpieza pendiente del usuario (opcional)**: la prueba real con Claude dejó en `~/.claude.json` la confianza en dos carpetas temporales (`aos-skills-real-*`). Son inofensivas; no se tocaron porque Claude Code reescribe ese fichero mientras está abierto.
 

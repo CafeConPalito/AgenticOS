@@ -14,7 +14,7 @@ Los agentes tienen que usar skills (carpetas con `SKILL.md`):
 - instalables desde registros públicos;
 - y con estadísticas de uso.
 
-Claude Code y Antigravity tienen cada uno su mecanismo de skills. Los CLIs que vienen después (Codex y OpenCode, fase 21) tendrán el suyo o ninguno. Y la configuración del usuario no se puede tocar (ADR 0004).
+Claude Code y Antigravity tienen cada uno su mecanismo de skills. Los CLIs que vienen después (Codex y OpenCode, fase 22) tendrán el suyo o ninguno. Y la configuración del usuario no se puede tocar (ADR 0004).
 
 ## Decisión
 1. **Almacén propio y versionado**:

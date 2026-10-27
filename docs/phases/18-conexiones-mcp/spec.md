@@ -100,14 +100,14 @@ Que los agentes usen **servidores MCP externos** (GitHub, una base de datos, un 
 ### Fuera
 - **Publicar** servidores en los registros, valorarlos o comentarlos. Solo se explora e instala.
 - Registros de pago o que exijan cuenta, salvo un *token* opcional de GitHub o de la fuente para no chocar con su límite de peticiones.
-- Instalar automáticamente los requisitos de un servidor (Node, Python, Docker). La ficha y la prueba de conexión dicen qué falta; la instalación de requisitos llega con la fase 21.
+- Instalar automáticamente los requisitos de un servidor (Node, Python, Docker). La ficha y la prueba de conexión dicen qué falta; la instalación de requisitos llega con la fase 22.
 - Ejecutar los servidores en contenedores o *sandbox*.
 - Que los agentes creen, editen o propongan conexiones.
 - Usar los recursos y prompts MCP desde la app (solo se listan en la prueba).
 - Estadísticas de uso con filtros, gráficos y CSV como las de la fase 17.
-- Conexiones para Codex y OpenCode: llegan con sus adapters en la fase 21, que deberá cubrirlas.
+- Conexiones para Codex y OpenCode: llegan con sus adapters en la fase 22, que deberá cubrirlas.
 - El Arquitecto asignando conexiones a un agente nuevo (fase 19).
-- Modo servidor y credenciales compartidas entre usuarios (fase 23).
+- Modo servidor y credenciales compartidas entre usuarios (fase 24).
 
 ## Historias de usuario
 - Como usuario, quiero dar de alta el MCP de GitHub una vez, con mi *token*, y que lo usen los agentes de mis proyectos, sin editar a mano la configuración de cada CLI.

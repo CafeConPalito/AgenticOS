@@ -114,7 +114,7 @@ Que los agentes trabajen con **skills**: paquetes de instrucciones reutilizables
 - Que los agentes editen o borren skills directamente. Solo proponen.
 - Aprobar propuestas de forma automática.
 - Comandos de barra (`/comando`), *hooks* o agentes definidos dentro de un plugin; solo skills.
-- Skills para Codex y OpenCode: llegan con sus adapters en la fase 21, que deberá cubrirlas.
+- Skills para Codex y OpenCode: llegan con sus adapters en la fase 22, que deberá cubrirlas.
 - El Arquitecto asignando skills a un agente nuevo (fase 19).
 
 ## Historias de usuario

@@ -93,8 +93,8 @@ Crear agentes **hablando** en lugar de rellenar un formulario. El **Agente Arqui
 - Que el Arquitecto **mejore agentes solo**, sin conversación (p. ej. a partir de los rechazos de QA o del consumo).
 - Que el Arquitecto suba documentos de conocimiento o instale conexiones MCP por su cuenta.
 - Un mercado o registro público de plantillas de agentes.
-- Arquitecto con Codex u OpenCode (llegan en la fase 21).
-- Avisos externos de borradores pendientes (fase 20).
+- Arquitecto con Codex u OpenCode (llegan en la fase 22).
+- Avisos externos de borradores pendientes (fase 21).
 
 ## Historias de usuario
 - Como usuario, quiero describir con mis palabras el agente que necesito y que el Arquitecto me haga las preguntas justas y me deje la ficha completa, sin tener que saber qué es cada campo.

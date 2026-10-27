@@ -64,7 +64,7 @@ Poder **dictar en lugar de escribir** en los campos donde se escribe mucho (desc
 - Dictar dentro de la terminal de una ejecución (xterm.js).
 - Leer en voz alta (texto a voz).
 - Uso de GPU: solo CPU. Se puede añadir más adelante si el spike muestra que merece la pena.
-- Transcribir en el servidor o en el cliente cuando la app se despliegue en un servidor (fase 23).
+- Transcribir en el servidor o en el cliente cuando la app se despliegue en un servidor (fase 24).
 - Que un LLM reescriba, puntúe o resuma el texto dictado.
 - Instalar un modelo de voz con la app: se descarga desde Ajustes.
 

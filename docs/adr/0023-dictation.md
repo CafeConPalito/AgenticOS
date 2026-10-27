@@ -49,6 +49,6 @@ La fase 16 permite dictar en los campos de texto largos. La transcripción tiene
 ## Consecuencias
 - El sidecar no crece: no se añadió ninguna dependencia al backend (el motor y los modelos se descargan, hasta 574 MB el más grande).
 - El primer dictado sin motor ni modelo abre un diálogo que descarga el recomendado (199 MB entre motor y modelo) con progreso, y lo empieza a usar al terminar.
-- Solo Windows x64, como `llama.cpp`: en otros sistemas el catálogo marca el motor como no disponible. La fase 22 (instaladores) y la 23 (modo servidor) deberán añadir los motores de las otras plataformas y decidir dónde se transcribe.
+- Solo Windows x64, como `llama.cpp`: en otros sistemas el catálogo marca el motor como no disponible. La fase 23 (instaladores) y la 24 (modo servidor) deberán añadir los motores de las otras plataformas y decidir dónde se transcribe.
 - Sin GPU. En un equipo más lento que el medido el modelo recomendado puede tardar más que el audio; el usuario puede bajar a `base`.
 - La calidad medida usa una voz sintética limpia; las cifras absolutas serán peores con voz y micrófono reales, pero la comparación entre modelos y el efecto del vocabulario se mantienen. Queda una prueba manual con voz real.
