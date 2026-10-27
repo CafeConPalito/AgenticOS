@@ -12,6 +12,9 @@ vi.mock('@/lib/notify', () => ({
 }))
 
 const s = es.settings.knowledge
+
+/** Ajustes › Conocimiento: its own «Guardar» (others come before it since phase 20). */
+const knowledgeSection = () => document.getElementById('knowledge')!
 const m = es.localModels
 
 /** The models section once its list has loaded (it first shows a skeleton). */
@@ -39,7 +42,7 @@ describe('Settings · Conocimiento', () => {
     expect(budget).toHaveValue(8000)
     await user.clear(budget)
     await user.type(budget, '12000')
-    await user.click(screen.getAllByRole('button', { name: es.common.save })[0])
+    await user.click(within(knowledgeSection()).getByRole('button', { name: es.common.save }))
     await waitFor(() => expect(backend.callsTo('PUT', '/api/settings/knowledge')).toHaveLength(1))
     expect(backend.callsTo('PUT', '/api/settings/knowledge')[0].body).toMatchObject({
       context_budget: 12000,
@@ -55,7 +58,7 @@ describe('Settings · Conocimiento', () => {
     const concurrency = await screen.findByLabelText(s.fields.concurrency)
     await user.clear(concurrency)
     await user.type(concurrency, '9')
-    await user.click(screen.getAllByRole('button', { name: es.common.save })[0])
+    await user.click(within(knowledgeSection()).getByRole('button', { name: es.common.save }))
     expect(await screen.findByText('Entre 1 y 4')).toBeVisible()
     expect(backend.callsTo('PUT', '/api/settings/knowledge')).toHaveLength(0)
   })
@@ -75,7 +78,7 @@ describe('Settings · Conocimiento', () => {
     await user.click(screen.getByRole('combobox', { name: s.describer }))
     await user.click(await screen.findByRole('option', { name: s.describers.local }))
     expect(await screen.findByText(s.localHelp)).toBeVisible()
-    await user.click(screen.getAllByRole('button', { name: es.common.save })[0])
+    await user.click(within(knowledgeSection()).getByRole('button', { name: es.common.save }))
     await waitFor(() => expect(backend.callsTo('PUT', '/api/settings/knowledge')).toHaveLength(1))
     expect(backend.callsTo('PUT', '/api/settings/knowledge')[0].body).toMatchObject({
       describe_images: true,

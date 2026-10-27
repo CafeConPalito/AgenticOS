@@ -145,17 +145,21 @@ describe('Settings · índice y atajos', () => {
     expect(links.map((l) => l.getAttribute('href'))).toEqual([
       '#general',
       '#notifications',
+      '#dictation',
+      '#about',
       '#limits',
+      '#architect',
       '#git',
       '#knowledge',
       '#skills',
       '#connections',
-      '#architect',
-      '#dictation',
       '#models',
       '#cleanup',
-      '#about',
     ])
+    // Phase 20: grouped under titles, in this order.
+    expect(
+      within(index).getAllByText(/^(Aplicación|Agentes|Recursos|Mantenimiento)$/),
+    ).toHaveLength(4)
     for (const link of links) {
       const id = link.getAttribute('href')!.slice(1)
       expect(document.getElementById(id)).not.toBeNull()

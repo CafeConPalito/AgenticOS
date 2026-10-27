@@ -1190,19 +1190,25 @@
       "logsHint": "Los logs del backend están en la carpeta «logs» de la carpeta de datos."
     },
     "index": "Secciones de Ajustes",
+    "groups": {
+      "app": "Aplicación",
+      "agents": "Agentes",
+      "resources": "Recursos",
+      "maintenance": "Mantenimiento"
+    },
     "sections": {
       "general": "General",
       "notifications": "Notificaciones",
+      "dictation": "Dictado",
+      "about": "Acerca de",
       "limits": "Límites diarios",
+      "architect": "Arquitecto",
       "git": "Git",
       "knowledge": "Conocimiento",
       "skills": "Skills",
       "connections": "Conexiones MCP",
-      "architect": "Arquitecto",
-      "dictation": "Dictado",
       "models": "Modelos locales",
-      "cleanup": "Limpieza",
-      "about": "Acerca de"
+      "cleanup": "Limpieza"
     },
     "git": {
       "title": "Git",
