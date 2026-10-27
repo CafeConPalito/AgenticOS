@@ -45,8 +45,9 @@ def build(backend: ArchitectBackend, toolset: str) -> MCPServer:
         ),
     )
 
-    async def call(ctx: Context, name: str, **args: Any) -> str:
-        return await anyio.to_thread.run_sync(backend.call_tool, _run_id(ctx), name, args)
+    async def call(ctx: Context, tool: str, /, **args: Any) -> str:
+        # `tool` is positional-only: some tools have an argument called `name` of their own.
+        return await anyio.to_thread.run_sync(backend.call_tool, _run_id(ctx), tool, args)
 
     # ------------------------------------------------------------------------ reading
     @server.tool()

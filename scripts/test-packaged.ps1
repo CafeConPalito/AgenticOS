@@ -16,7 +16,9 @@ try {
         backend/tests/test_scheduler_e2e.py `
         backend/tests/test_hitl_e2e.py `
         backend/tests/test_usage_e2e.py `
-        backend/tests/test_resume_e2e.py
+        backend/tests/test_resume_e2e.py `
+        backend/tests/test_architect_e2e.py `
+        backend/tests/test_architect_team_e2e.py
     if ($LASTEXITCODE -ne 0) { throw "los e2e empaquetados fallaron ($LASTEXITCODE)" }
 }
 finally {
