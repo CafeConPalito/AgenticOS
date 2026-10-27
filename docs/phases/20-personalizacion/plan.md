@@ -60,6 +60,10 @@ Evidencias en [`evidencias/`](evidencias/); scripts en `spikes/personalization/`
 4. **Atrás/Adelante con teclado y ratón** (§2): la app **no** registra `Alt+←/→` ni los botones X1/X2, porque WebView2 y el navegador ya lo hacen (capturarlos navegaría dos veces). Solo se añade el botón «Adelante» y los atajos aparecen en la ayuda de atajos como informativos.
 5. **`mailto`** (§6 y §7): enlace `<a href>` normal, sin `plugin-shell` ni el backend.
 
+### Cambios al diseño durante el desarrollo
+6. **Contador de la Inbox** (§2, bloque 2): reutiliza `GET /inbox/summary` (`useInboxSummary`, que ya se consulta cada 3 s para las notificaciones) en lugar de añadir `inbox_pending` a `HomeCounts`; sin cambios en el backend.
+7. **«Adelante»** (§2, bloque 2): la pila de navegación se sigue con los eventos de React Router (`PUSH`, `REPLACE`, `POP`) en `use-history-stack.ts`, no con `history.state.idx`, que no existe con el router en memoria de los tests. Tras recargar a mitad del historial, «Adelante» empieza desactivado (los atajos del WebView siguen funcionando).
+
 ## Diseño ([ADR 0027](../../adr/0027-personalization-support.md), nuevo)
 
 ### 1. Licencia y autoría

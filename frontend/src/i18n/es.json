@@ -27,7 +27,12 @@
       "launchRun": "Lanzar agente"
     },
     "home": "Agentic OS · Inicio",
-    "back": "Volver"
+    "back": "Volver",
+    "backHint": "Volver (Alt+←)",
+    "forward": "Adelante",
+    "forwardHint": "Adelante (Alt+→)",
+    "inbox_one": "Inbox · {{count}} pendiente",
+    "inbox_other": "Inbox · {{count}} pendientes"
   },
   "theme": {
     "toLight": "Tema claro",
@@ -1569,7 +1574,9 @@
     "shortcuts": "Atajos de teclado",
     "dock": "Abrir / cerrar la terminal",
     "close": "Cerrar diálogo o panel",
-    "dictate": "Dictar (mantener pulsado)"
+    "dictate": "Dictar (mantener pulsado)",
+    "back": "Volver a la pantalla anterior",
+    "forward": "Ir a la pantalla siguiente"
   },
   "palette": {
     "title": "Paleta de comandos",

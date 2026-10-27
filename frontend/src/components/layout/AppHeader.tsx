@@ -1,8 +1,18 @@
-import { ArrowLeft, ChevronRight, Moon, Search, SquareTerminal, Sun } from 'lucide-react'
+import {
+  ArrowLeft,
+  ArrowRight,
+  ChevronRight,
+  Inbox,
+  Moon,
+  Search,
+  SquareTerminal,
+  Sun,
+} from 'lucide-react'
 import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useLocation, useMatches, useNavigate } from 'react-router'
 import { useHome } from '@/api/home'
+import { useInboxSummary } from '@/api/inbox'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -23,9 +33,12 @@ import type { CrumbHandle } from './crumbs'
 import { Logo } from './Logo'
 import { type Section } from './nav'
 import { TopNav } from './TopNav'
+import { useHistoryStack } from './use-history-stack'
 
 const ICON_BUTTON =
   'grid size-8 shrink-0 place-items-center rounded-full text-foreground hover:bg-accent'
+const NAV_BUTTON =
+  'grid size-7 shrink-0 place-items-center rounded-full bg-muted hover:bg-accent disabled:pointer-events-none disabled:opacity-40'
 
 function useCrumbs() {
   return useMatches()
@@ -52,6 +65,8 @@ export function AppHeader({
   const location = useLocation()
   const crumbs = useCrumbs()
   const counts = useHome().data?.counts
+  const inboxPending = useInboxSummary().data?.pending ?? 0
+  const { canForward } = useHistoryStack()
   const dockOpen = useDock((s) => s.open)
   const toggleDock = useDock((s) => s.toggle)
   const openPalette = useDialogs((s) => s.openPalette)
@@ -79,15 +94,29 @@ export function AppHeader({
         </span>
       </Link>
       <span aria-hidden className="mx-1 h-[22px] w-px bg-border" />
-      {!atHome && (
-        <button
-          type="button"
-          onClick={goBack}
-          aria-label={t('header.back')}
-          className="grid size-7 shrink-0 place-items-center rounded-full bg-muted hover:bg-accent"
-        >
-          <ArrowLeft className="size-[15px]" />
-        </button>
+      {(!atHome || canForward) && (
+        <div className="flex shrink-0 gap-1">
+          <button
+            type="button"
+            onClick={goBack}
+            disabled={atHome}
+            aria-label={t('header.back')}
+            title={t('header.backHint')}
+            className={NAV_BUTTON}
+          >
+            <ArrowLeft className="size-[15px]" />
+          </button>
+          <button
+            type="button"
+            onClick={() => void navigate(1)}
+            disabled={!canForward}
+            aria-label={t('header.forward')}
+            title={t('header.forwardHint')}
+            className={NAV_BUTTON}
+          >
+            <ArrowRight className="size-[15px]" />
+          </button>
+        </div>
       )}
 
       <Breadcrumb className="min-w-0 flex-1">
@@ -130,6 +159,23 @@ export function AppHeader({
 
       <TopNav active={section} counts={{ board: counts?.open_tasks, runs: counts?.active_runs }} />
 
+      <Link
+        to="/inbox"
+        aria-label={t('header.inbox', { count: inboxPending })}
+        title={t('header.inbox', { count: inboxPending })}
+        aria-current={section === 'inbox' ? 'page' : undefined}
+        className={cn(ICON_BUTTON, 'relative', section === 'inbox' && 'bg-accent')}
+      >
+        <Inbox className="size-[15px]" />
+        {inboxPending > 0 && (
+          <span
+            aria-hidden
+            className="absolute -top-0.5 -right-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-status-intervening px-1 font-mono text-[10px] font-bold text-status-intervening-foreground"
+          >
+            {inboxPending > 99 ? '99+' : inboxPending}
+          </span>
+        )}
+      </Link>
       <button
         type="button"
         onClick={openPalette}

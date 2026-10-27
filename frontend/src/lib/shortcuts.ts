@@ -2,7 +2,8 @@ import { useEffect } from 'react'
 import { useDialogs } from '@/stores/dialogs'
 import { useUiPrefs } from '@/stores/ui-prefs'
 
-export type ShortcutId = 'palette' | 'newTask' | 'shortcuts' | 'dock' | 'close' | 'dictate'
+export type ShortcutId =
+  'palette' | 'newTask' | 'shortcuts' | 'dock' | 'close' | 'dictate' | 'back' | 'forward'
 
 export interface Shortcut {
   id: ShortcutId
@@ -24,6 +25,9 @@ export const SHORTCUTS: Shortcut[] = [
   { id: 'close', group: 'general', keys: ['Esc'], label: 'close', global: false },
   // The keys are the default; the real ones are the person's choice (Ajustes › Dictado).
   { id: 'dictate', group: 'general', keys: ['Ctrl', 'Space'], label: 'dictate', global: false },
+  // Phase 20: the webview already does these (and the mouse's side buttons); listed for the help.
+  { id: 'back', group: 'general', keys: ['Alt', '←'], label: 'back', global: false },
+  { id: 'forward', group: 'general', keys: ['Alt', '→'], label: 'forward', global: false },
 ]
 
 const FIELD = 'input, textarea, select, [contenteditable=""], [contenteditable="true"]'

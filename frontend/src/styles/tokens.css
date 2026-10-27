@@ -85,6 +85,7 @@
   --status-failed: #c9302c;
   --status-cancelled: #647089;
   --status-intervening: #f5b547; /* borde "Estás interviniendo" (sobre terminal oscura) */
+  --status-intervening-foreground: #0a1a33; /* texto sobre el ámbar (contadores, avisos) */
 
   /* v7 */
   --sep: color-mix(in oklch, #d6deea 80%, transparent);
@@ -162,6 +163,7 @@
   --status-failed: #ff6b6f;
   --status-cancelled: #8492ae;
   --status-intervening: #f5b547;
+  --status-intervening-foreground: #0a1a33;
 
   /* v7 */
   --sep: color-mix(in oklch, #1e3a66 65%, transparent);
@@ -245,6 +247,7 @@
   --color-status-failed: var(--status-failed);
   --color-status-cancelled: var(--status-cancelled);
   --color-status-intervening: var(--status-intervening);
+  --color-status-intervening-foreground: var(--status-intervening-foreground);
 
   --animate-live-pulse: live-pulse 1.6s ease-out infinite;
   --animate-live-shimmer: live-shimmer 1.6s linear infinite;
