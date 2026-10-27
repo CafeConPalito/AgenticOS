@@ -2,6 +2,8 @@
   "name": "@agentic-os/frontend",
   "private": true,
   "version": "1.0.0",
+  "license": "GPL-3.0-or-later",
+  "author": "Albano Díez de Paulino (Café con Palito) <contacto@cafeconpalito.com>",
   "type": "module",
   "scripts": {
     "dev": "vite",

@@ -2,6 +2,8 @@
 name = "agentic-os"
 version = "1.0.0"
 description = "Agentic OS desktop shell"
+license = "GPL-3.0-or-later"
+authors = ["Albano Díez de Paulino <contacto@cafeconpalito.com>"]
 edition = "2021"
 rust-version = "1.80"
 

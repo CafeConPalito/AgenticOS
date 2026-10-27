@@ -6,6 +6,7 @@ App de escritorio para orquestar un equipo de agentes de IA (Claude Code, Antigr
 - Roadmap y estado de las fases: [`docs/roadmap.md`](docs/roadmap.md)
 - Diseño de la interfaz: [`docs/design/`](docs/design/)
 - Flujo de trabajo (Spec → Plan → Desarrollo → Validación): [`CLAUDE.md`](CLAUDE.md)
+- Licencia: GNU GPLv3 o posterior ([`LICENSE`](LICENSE))
 
 ## Instalar (v1.0)
 1. Ejecuta `Agentic OS_1.0.0_x64-setup.exe`. Se instala **para tu usuario**, sin permisos de administrador, en `%LOCALAPPDATA%\Agentic OS`. Si falta WebView2, el instalador lo descarga.
@@ -254,3 +255,13 @@ Dictas en lugar de escribir ([ADR 0023](docs/adr/0023-dictation.md)). La transcr
 | `/r/<token>/mcp`, `POST /r/<token>/hook/<evento>` | Para los CLIs de los agentes: servidor MCP `agentic-os` y hooks (token por ejecución) |
 
 Los errores tienen la forma `{"detail": {"code", "message", "field"}}`; la interfaz traduce por `code`.
+
+## Licencia
+
+Made By Café Con Palito with ❤️ — Albano Díez de Paulino.
+
+Copyright (C) 2026 Albano Díez de Paulino
+
+Agentic OS es software libre: puedes redistribuirlo y modificarlo bajo los términos de la **GNU General Public License**, publicada por la Free Software Foundation, en su versión 3 o (a tu elección) cualquier versión posterior. Se distribuye con la esperanza de que sea útil, pero **sin ninguna garantía**, ni siquiera la implícita de comerciabilidad o idoneidad para un fin concreto. El texto completo está en [`LICENSE`](LICENSE).
+
+Errores y sugerencias: [contacto@cafeconpalito.com](mailto:contacto@cafeconpalito.com).
