@@ -1,6 +1,6 @@
 # ADR 0027: Personalización (temas y avatares) y registros para soporte
 
-- **Estado**: propuesto
+- **Estado**: propuesto (plan aprobado el 2026-10-27; se acepta al cerrar la fase)
 - **Fecha**: 2026-10-27
 - **Contexto de decisión**: fase 20 ([spec](../phases/20-personalizacion/spec.md) · [plan](../phases/20-personalizacion/plan.md))
 

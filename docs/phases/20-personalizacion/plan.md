@@ -1,7 +1,7 @@
 # Fase 20: Personalización y Acerca de · Plan técnico
 
 - **Spec**: [spec.md](spec.md)
-- **Estado**: borrador
+- **Estado**: aprobado (2026-10-27)
 
 ## Lo que ya se sabe (revisado al escribir el plan)
 - **Cabecera** (`components/layout/AppHeader.tsx`): logo, botón **Atrás** (`navigate(-1)`, o al nivel padre si es la primera página de la sesión), **miga de pan** generada por los `handle.crumb` de las rutas (`crumbs.tsx`) con cada nivel enlazable, pestañas (`TopNav`) con contadores de `useHome().counts` (`open_tasks`, `active_runs`), paleta, dock, estado del backend y el conmutador claro/oscuro. **Falta**: Adelante, `Alt+←/→`, botones laterales del ratón y el contador de la Inbox (`HomeCounts` no lo tiene).
