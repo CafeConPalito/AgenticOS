@@ -221,7 +221,9 @@ def export_agent(agent_id: str, request: Request, session: DbSession) -> dict:
 @router.post("/agents/import/preview")
 def preview_import(payload: AgentImport, request: Request, session: DbSession) -> ImportPreview:
     installed = {c.value for c in Cli if request.app.state.run_manager.cli_installed(c)}
-    return ImportPreview(**vars(agent_io.preview(session, payload.payload, installed)))
+    return ImportPreview(
+        **vars(agent_io.preview(session, payload.payload, installed, local_files=False))
+    )
 
 
 @router.post("/agents/import", status_code=status.HTTP_201_CREATED)
@@ -230,7 +232,9 @@ def import_agent(payload: AgentImport, request: Request, session: DbSession) -> 
     overrides = payload.model_dump(exclude_unset=True, exclude={"payload"})
     cli = str((payload.payload.get("agent") or {}).get("cli") or Cli.CLAUDE)
     _check_links(session, cli, overrides.get("team_id"), overrides.get("account_id"))
-    agent, notes = agent_io.apply(session, _skills(request), payload.payload, overrides=overrides)
+    agent, notes = agent_io.apply(
+        session, _skills(request), payload.payload, overrides=overrides, local_files=False
+    )
     session.commit()
     _poke_knowledge(request)
     return Imported(agent=_read(session, agent), notes=notes)
@@ -384,6 +388,14 @@ def delete_agent(agent_id: str, session: DbSession, request: Request) -> None:
         raise ApiError(409, "agent_busy", "the agent is working on a task", "id")
     # A draft deleted by hand rejects its proposal (its Inbox item and skills go too).
     pending = _pending_proposal(session, agent)
+    if pending is not None and pending.kind in proposals.TEAM_KINDS:
+        # Its siblings and the team's pipeline depend on it: leave it out when approving.
+        raise ApiError(
+            409,
+            "draft_in_team_proposal",
+            "the draft belongs to a team proposal: reject the proposal or leave it out",
+            "id",
+        )
     if pending is not None:
         proposals.reject(session, request.app.state.run_manager.skill_library, pending)
         if session.get(Agent, agent_id) is None:

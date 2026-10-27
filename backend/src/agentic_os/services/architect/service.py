@@ -118,6 +118,7 @@ class ArchitectService:
         self.events = ArchitectEvents()
         self._lock = threading.RLock()
         self._live: dict[str, Live] = {}  # by conversation
+        self._reserved: set[int] = set()  # work folders of CLIs being started
         self._by_run: dict[str, str] = {}  # run → conversation
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
@@ -345,14 +346,15 @@ class ArchitectService:
         with self._db() as db:
             limit = architect_config.load(db).max_live
         with self._lock:
-            used = {live.slot for live in self._live.values()}
+            used = {live.slot for live in self._live.values()} | self._reserved
             idle = sorted(
                 (live for live in self._live.values() if live.state == STATE_IDLE),
                 key=lambda live: live.last_activity,
             )
-        for slot in range(1, limit + 1):
-            if slot not in used:
-                return slot
+            for slot in range(1, limit + 1):
+                if slot not in used:
+                    self._reserved.add(slot)
+                    return slot
         if not idle:
             raise ApiError(
                 409,
@@ -360,7 +362,17 @@ class ArchitectService:
                 "Todas las conversaciones vivas están trabajando: espera a que termine una.",
             )
         self._sleep(idle[0], "make_room", wait=True)
-        return idle[0].slot
+        with self._lock:
+            # Taken only if the old CLI is gone and nobody else got the folder meanwhile.
+            gone = self._live.get(idle[0].conversation_id) is not idle[0]
+            if not gone or idle[0].slot in self._reserved:
+                raise ApiError(
+                    409,
+                    "architect_busy",
+                    "Todas las conversaciones vivas están trabajando: espera a que termine una.",
+                )
+            self._reserved.add(idle[0].slot)
+            return idle[0].slot
 
     def send(self, db: Session, conversation_id: str, text: str) -> ArchitectMessage:
         """A message of the person: written into the live CLI, or the one that starts it (or
@@ -400,6 +412,22 @@ class ArchitectService:
         prompt: str,
     ) -> None:
         slot = self._free_slot()
+        try:
+            self._launch_in(db, conversation, cli, account, model, prompt, slot)
+        finally:
+            with self._lock:
+                self._reserved.discard(slot)
+
+    def _launch_in(
+        self,
+        db: Session,
+        conversation: ArchitectConversation,
+        cli: Cli,
+        account: CliAccount,
+        model: str,
+        prompt: str,
+        slot: int,
+    ) -> None:
         settings = architect_config.load(db)
         target = ""
         if conversation.mode == ArchitectMode.IMPROVE_AGENT:
@@ -559,12 +587,41 @@ class ArchitectService:
         """The CLI closed (asleep, reset, crashed or the app closing)."""
         with self._lock:
             conversation_id = self._by_run.pop(run_id, None)
-            live = self._live.pop(conversation_id, None) if conversation_id else None
+            live = self._live.get(conversation_id) if conversation_id else None
+            if live is not None and live.run_id != run_id:
+                return  # an old run ending after a newer one took its conversation
+            if live is not None:
+                del self._live[conversation_id]
         if live is None:
             return
         if live.blocks or live.fields:
             self._finish_turn(live)
+        if live.state == STATE_STARTING:
+            self._forget_lost_session(live)
         self._set_state(live, STATE_ASLEEP)
+
+    def _forget_lost_session(self, live: Live) -> None:
+        """The CLI closed before it started a turn. If it was resuming a conversation, the CLI
+        probably no longer has it: the next message starts a clean one instead of failing again
+        the same way."""
+        try:
+            with self._db() as db:
+                conversation = db.get(ArchitectConversation, live.conversation_id)
+                if conversation is None or not conversation.cli_session_id:
+                    return
+                conversation.cli_session_id = None
+                conversation.cli = None
+                note = self._add_message(
+                    db,
+                    conversation,
+                    MessageRole.SYSTEM,
+                    "El CLI se cerró al retomar la conversación (puede que ya no tenga la "
+                    "sesión). Envía el mensaje otra vez: empezará una sesión limpia.",
+                )
+                db.commit()
+                self._publish_message(note)
+        except Exception:
+            log.exception("could not clear the lost session", conversation=live.conversation_id)
 
     def mcp_connected(self, run_id: str) -> None:
         self.manager.mcp_connected(run_id)
@@ -601,21 +658,21 @@ class ArchitectService:
     def propose(self, db: Session, conversation_id: str):
         """«Crear borrador» / «Crear propuesta»: the sheet becomes a proposal."""
         conversation = self.get(db, conversation_id)
-        if conversation.status != ConversationStatus.OPEN:
+        if conversation.status not in (ConversationStatus.OPEN, ConversationStatus.PROPOSED):
             raise ApiError(409, "already_proposed", "the conversation already made its proposal")
         catalog = self.catalog(db)
         by = proposals.ProposedBy(ProposalOrigin.ARCHITECT, conversation_id=conversation.id)
         lib = self.manager.skill_library
+        # Refining after a proposal: the earlier one (and its drafts) is replaced.
+        for earlier in db.scalars(
+            select(Proposal).where(
+                Proposal.conversation_id == conversation.id,
+                Proposal.status == ProposalStatus.PENDING,
+            )
+        ):
+            proposals.reject(db, lib, earlier)
+        conversation.status = ConversationStatus.OPEN
         if conversation.mode == ArchitectMode.AGENT:
-            # Refining a proposed agent: the earlier proposal (and its draft) is replaced.
-            for earlier in db.scalars(
-                select(Proposal).where(
-                    Proposal.conversation_id == conversation.id,
-                    Proposal.status == ProposalStatus.PENDING,
-                )
-            ):
-                proposals.reject(db, lib, earlier)
-            conversation.status = ConversationStatus.OPEN
             return proposals.create_new_agent(db, lib, catalog, conversation.sheet, by)
         if conversation.mode == ArchitectMode.IMPROVE_AGENT:
             agent = db.get(Agent, conversation.agent_id) if conversation.agent_id else None
@@ -943,7 +1000,7 @@ class ArchitectService:
         project: str = "",
         stages: list | None = None,
         links: list | None = None,
-        max_rejections: int = 3,
+        max_rejections: int | None = None,
         **_,
     ) -> tuple[Any, list]:
         result = sheets.set_pipeline(

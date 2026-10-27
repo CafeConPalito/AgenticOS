@@ -166,8 +166,11 @@ def _valid(payload: Mapping) -> dict:
         agent["cli"] = Cli.CLAUDE.value
     if agent.get("permission_mode") not in {m.value for m in PermissionMode}:
         agent["permission_mode"] = PermissionMode.ASK.value
+    tools = agent.get("allowed_tools")
     agent["allowed_tools"] = [
-        t for t in agent.get("allowed_tools") or [] if t in {x.value for x in Tool}
+        t
+        for t in (tools if isinstance(tools, list) else [])
+        if isinstance(t, str) and t in {x.value for x in Tool}
     ]
     concurrency = agent.get("max_concurrency")
     agent["max_concurrency"] = (
@@ -178,12 +181,22 @@ def _valid(payload: Mapping) -> dict:
     color = str(agent.get("color") or "")
     agent["color"] = color if len(color) == 7 and color.startswith("#") else "#8FB4FF"
     skills = payload.get("skills") if isinstance(payload.get("skills"), Mapping) else {}
+
+    def items(value: Any) -> list:
+        return value if isinstance(value, list) else []
+
     return {
         "agent": agent,
-        "modes": [m for m in skills.get("modes") or [] if isinstance(m, Mapping) and m.get("name")],
-        "own": [s for s in skills.get("own") or [] if isinstance(s, Mapping) and s.get("files")],
-        "knowledge": [k for k in payload.get("knowledge") or [] if isinstance(k, Mapping)],
-        "connections": [str(c) for c in payload.get("connections") or [] if c],
+        "modes": [
+            m for m in items(skills.get("modes")) if isinstance(m, Mapping) and m.get("name")
+        ],
+        "own": [
+            s
+            for s in items(skills.get("own"))
+            if isinstance(s, Mapping) and isinstance(s.get("files"), Mapping) and s["files"]
+        ],
+        "knowledge": [k for k in items(payload.get("knowledge")) if isinstance(k, Mapping)],
+        "connections": [str(c) for c in items(payload.get("connections")) if c],
     }
 
 
@@ -206,7 +219,9 @@ def _connection(db: Session, name: str) -> McpConnection | None:
     )
 
 
-def preview(db: Session, payload: Mapping, installed: set[str] | None = None) -> Preview:
+def preview(
+    db: Session, payload: Mapping, installed: set[str] | None = None, *, local_files: bool = True
+) -> Preview:
     """What importing would create, and what is missing here (it would be left out)."""
     data = _valid(payload)
     result = Preview(agent=data["agent"])
@@ -217,7 +232,7 @@ def preview(db: Session, payload: Mapping, installed: set[str] | None = None) ->
     result.missing_knowledge = [
         str(k.get("title") or k.get("source"))
         for k in data["knowledge"]
-        if k.get("kind") != "url" and not _file_exists(str(k.get("source") or ""))
+        if k.get("kind") != "url" and not (local_files and _file_exists(str(k.get("source") or "")))
     ]
     result.own_skills = [str(s.get("name")) for s in data["own"]]
     if installed is not None:
@@ -237,10 +252,13 @@ def apply(
     status: AgentStatus = AgentStatus.DRAFT,
     overrides: Mapping[str, Any] | None = None,
     template: str | None = None,
+    local_files: bool = True,
 ) -> tuple[Agent, list[str]]:
     """Creates the agent of `payload` (a draft by default): its fields (with `overrides` on top),
     the modes of the library's skills it has, its own skills, its connections and documents.
-    Returns the agent and what was left out, in Spanish."""
+    Returns the agent and what was left out, in Spanish. A file that came from outside (an
+    imported agent file) names paths of someone else's machine: with `local_files` off its
+    documents by path are left out instead of reading whatever the path points to."""
     data = _valid(payload)
     notes: list[str] = []
     values = {**data["agent"], **{k: v for k, v in (overrides or {}).items() if v is not None}}
@@ -281,6 +299,9 @@ def apply(
         try:
             if item.get("kind") == "url":
                 knowledge_docs.add_url(db, KnowledgeScope.AGENT, None, agent.id, source)
+                continue
+            if not local_files:
+                notes.append(f"El documento «{title}» es un archivo local y no se importa.")
                 continue
             [added] = knowledge_docs.add_files(
                 db, KnowledgeScope.AGENT, None, agent.id, [source], limits

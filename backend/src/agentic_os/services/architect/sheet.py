@@ -651,10 +651,24 @@ def set_pipeline(catalog: Catalog, sheet: Mapping, pipeline: Mapping) -> PatchRe
         "project_name": project.name,
         "stages": stages,
         "links": links,
-        "max_rejections": pipeline.get("max_rejections", 3),
+        # What the person set in the editor and the model cannot see is kept as it was.
+        **_kept_settings(sheet.get("pipeline"), project.id),
     }
+    if pipeline.get("max_rejections") is not None:
+        result.sheet["pipeline"]["max_rejections"] = pipeline["max_rejections"]
     result.changed.append("pipeline")
     return result
+
+
+PIPELINE_SETTINGS = ("name", "max_rejections", "decider_cli", "decider_account_id", "decider_model")
+
+
+def _kept_settings(current: Mapping | None, project_id: str) -> dict:
+    """The settings of the project's pipeline that the sheet carries along (its name, limit of
+    rejections and who decides the forks); none for another project or a new pipeline."""
+    if not current or current.get("project_id") != project_id:
+        return {}
+    return {key: current[key] for key in PIPELINE_SETTINGS if key in current}
 
 
 def pipeline_write(sheet: Mapping, agent_ids: Mapping[str, str] | None = None) -> PipelineWrite:
@@ -670,7 +684,11 @@ def pipeline_write(sheet: Mapping, agent_ids: Mapping[str, str] | None = None) -
         return value
 
     return PipelineWrite(
+        name=data.get("name", ""),
         max_rejections=data.get("max_rejections", 3),
+        decider_cli=data.get("decider_cli"),
+        decider_account_id=data.get("decider_account_id"),
+        decider_model=data.get("decider_model"),
         stages=[
             StageWrite(
                 id=s.get("id"),
@@ -709,11 +727,22 @@ def pipeline_issues(sheet: Mapping) -> list[Issue]:
 
 
 def sheet_issues(catalog: Catalog, sheet: Mapping) -> list[Issue]:
-    issues = [
-        issue
-        for ref, agent in (sheet.get("agents") or {}).items()
-        for issue in agent_issues(catalog, agent, ref)
-    ]
+    bases = (sheet.get("base") or {}).get("agents") or {}
+    issues = []
+    for ref, agent in (sheet.get("agents") or {}).items():
+        base = bases.get(ref)
+        for issue in agent_issues(catalog, agent, ref):
+            # A stale reference the improvement does not touch (a model the CLI dropped, a
+            # document that failed) is not the Architect's to fix, nor a reason to block.
+            key = issue.field.split(".", 1)[-1]
+            if (
+                base is not None
+                and issue.code in ("invalid", "gone")
+                and key in agent
+                and agent.get(key) == base.get(key)
+            ):
+                continue
+            issues.append(issue)
     for agent_id in sheet.get("existing_agents") or []:
         if catalog.agent(agent_id) is None:
             issues.append(Issue("existing_agents", "gone", f"El agente {agent_id} ya no existe"))
@@ -751,7 +780,11 @@ def pipeline_of(db: Session, project: Project) -> dict | None:
     return {
         "project_id": project.id,
         "project_name": project.name,
+        "name": pipeline.name,
         "max_rejections": pipeline.max_rejections,
+        "decider_cli": pipeline.decider_cli,
+        "decider_account_id": pipeline.decider_account_id,
+        "decider_model": pipeline.decider_model,
         "stages": [
             {
                 "id": s.id,

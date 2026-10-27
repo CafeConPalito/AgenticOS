@@ -383,7 +383,7 @@ def create_agent_changes(
     """Changes to an active agent: `base` is the agent as the conversation found it (from
     `agent_sheet`), the sheet what it should become. Only the fields that differ are proposed."""
     values = dict((sheet.get("agents") or {}).get(ref) or {})
-    _not_ready(sheets.agent_issues(catalog, values, ref))
+    _not_ready(sheets.sheet_issues(catalog, sheet))  # leaves out stale values it does not change
     fields = [
         key
         for key in (*COLUMNS, *LISTS)
@@ -589,6 +589,17 @@ def _approve_team(
         agent = db.get(Agent, agent_id)
         if agent is not None and team is not None and agent.team_id != team.id:
             agent.team_id = team.id
+    # Improving a team: the members the design no longer has leave it.
+    kept = set(sheet.get("existing_agents") or [])
+    for agent_id in (sheet.get("base") or {}).get("existing_agents") or []:
+        agent = db.get(Agent, agent_id)
+        if (
+            agent is not None
+            and agent_id not in kept
+            and team is not None
+            and agent.team_id == team.id
+        ):
+            agent.team_id = None
     db.flush()
     _settle_skills(db, lib, proposal, ())
     if pipeline:

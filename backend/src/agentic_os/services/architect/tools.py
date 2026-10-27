@@ -184,7 +184,7 @@ def build(backend: ArchitectBackend, toolset: str) -> MCPServer:
         stages: list[dict[str, Any]],
         ctx: Context,
         links: list[dict[str, Any]] | None = None,
-        max_rejections: int = 3,
+        max_rejections: int | None = None,
     ) -> str:
         """El pipeline completo de un proyecto existente. `stages`: [{name, agent (agent_ref de
         un agente nuevo o nombre de uno existente), requires_review?, reject_to? (índice de una

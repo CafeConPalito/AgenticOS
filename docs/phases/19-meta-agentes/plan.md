@@ -1,7 +1,7 @@
 # Fase 19: Meta-agentes · Plan técnico
 
 - **Spec**: [spec.md](spec.md)
-- **Estado**: aprobado (2026-10-25) · en desarrollo (bloques 0–10 hechos)
+- **Estado**: aprobado (2026-10-25) · validación (bloques 0–12 hechos)
 
 ## Lo que ya se sabe (revisado al escribir el plan)
 - **Agente** (`models/agent.py`): ya tiene `status` (`active` · `draft`) y `template`. Los borradores no reciben tareas: el scheduler y `pipelines.from_template` filtran por `AgentStatus.ACTIVE`, y el editor desactiva «Asignar tarea» y «Lanzar» y muestra «Activar». No hay revisión ni registro de cambios de la configuración.
@@ -182,9 +182,9 @@ Bloques pequeños con commits y tests; cada uno deja la app funcionando.
 7. [x] **Plantillas y exportar/importar** (§6) con su UI. *(D)*
 8. [x] **Mejorar agentes activos**: modo `improve_agent`, revisión con diff y aplicación parcial, Historial. *(F)*
 9. [x] **`propose_agent`** (§5) y su permiso. *(G)*
-10. [ ] **Equipos y pipelines**: `TeamSheet`/`PipelineSheet`, propuesta `team` y `*_changes` de equipo y pipeline, pestañas Equipo · Agentes · Pipeline, `PipelinePreview`, entradas desde equipo y editor de pipeline. *(H)*
+10. [x] **Equipos y pipelines**: `TeamSheet`/`PipelineSheet`, propuesta `team` y `*_changes` de equipo y pipeline, pestañas Equipo · Agentes · Pipeline, `PipelinePreview`, entradas desde equipo y editor de pipeline. *(H)*
 11. [ ] **e2e** con el CLI falso (CA1, CA15) y con el binario empaquetado (CA11); prueba manual con `claude` (y `agy` si S2 lo permite).
-12. [ ] **Cierre**: `/code-review`, ADR 0026, README, validación y roadmap.
+12. [x] **Cierre**: `/code-review`, ADR 0026, README, validación y roadmap.
 
 ## Tests previstos
 | Test | Cubre |
