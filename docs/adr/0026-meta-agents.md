@@ -1,6 +1,6 @@
 # ADR 0026: Meta-agentes: el Arquitecto como un CLI por conversación y propuestas con aprobación
 
-- **Estado**: propuesto
+- **Estado**: aceptado
 - **Fecha**: 2026-10-25
 - **Contexto de decisión**: fase 19 ([spec](../phases/19-meta-agentes/spec.md) · [plan](../phases/19-meta-agentes/plan.md))
 
@@ -20,6 +20,10 @@ La persona quiere crear y mejorar agentes, equipos y pipelines conversando con u
 6. **Campos fijados**: lo que la persona edita a mano queda fijado; el Arquitecto solo puede pedir que se suelte.
 7. **Formato `agentic-os.agent` v1** (JSON sin secretos ni ids locales) para exportar, importar y guardar plantillas del usuario.
 8. **Cada conversación es una ejecución `architect`**: su consumo se lee del transcript como el de un agente, cuenta en el panel y en el límite diario, y antes de cada mensaje se comprueba que la cuenta esté disponible.
+
+## Notas de la implementación
+- Las propuestas de equipo y de pipeline (`team`, `team_changes`, `pipeline_changes`) usan el mismo mecanismo: los agentes nuevos son borradores, el equipo y el pipeline solo cambian al aprobar, en una transacción; un agente desmarcado que usa una etapa bloquea la aprobación y, si el pipeline cambió desde la propuesta, es un conflicto.
+- El e2e destapó que las herramientas MCP con un argumento `name` fallaban por un choque con el parámetro del ayudante que las reenvía; ahora el nombre de la herramienta es solo posicional.
 
 ## Alternativas descartadas
 - **Una llamada *headless* por turno** (`claude -p --resume`, `agy -p`): permite ver la respuesta letra a letra, pero cada turno arranca el CLI y recarga la sesión (varios segundos), y no estaba claro que `agy -p` admitiera sesión y MCP. Un proceso por conversación reutiliza todo lo de las ejecuciones (PTY, *hooks*, transcript, retomar) y funciona igual en los dos CLIs.
