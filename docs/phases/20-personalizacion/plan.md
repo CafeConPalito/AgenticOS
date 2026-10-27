@@ -145,7 +145,7 @@ Evidencias en [`evidencias/`](evidencias/); scripts en `spikes/personalization/`
 Bloques pequeños, cada uno con sus tests y su commit.
 
 0. [x] **Spikes S1–S6** (S3 queda para el inicio del bloque 2, con la app de escritorio) y resultados en este plan; cambios al diseño, si los hay, con el OK del usuario.
-1. [ ] **Licencia y autoría**: `LICENSE`, manifiestos, `tauri.conf.json`, README, logos. Revisión de licencias de S5 resuelta.
+1. [x] **Licencia y autoría**: `LICENSE`, manifiestos, `tauri.conf.json`, README, logos. Revisión de licencias de S5 resuelta.
 2. [ ] **Navegación**: Adelante, `Alt+←/→`, ratón; contador de la Inbox; inventario de ruido con capturas → revisión con el usuario → cambios aprobados.
 3. [ ] **Motor de temas**: modelo, temas incluidos, aplicación por variables, seguir al sistema, persistencia en `app_state` sin parpadeo, terminal en vivo, colores fijos a *tokens* y test de colores fijos.
 4. [ ] **Ajustes › Apariencia**: lista, editor con vista previa, contraste, exportar/importar.
