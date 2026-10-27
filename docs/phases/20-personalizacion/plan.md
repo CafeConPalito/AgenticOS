@@ -36,11 +36,11 @@ Evidencias en [`evidencias/`](evidencias/); scripts en `spikes/personalization/`
   - **aviso ámbar con texto oscuro** (`AgentCard`, `NeedsYouPanel`, `#F5B547`/`#0A1A33`) → `--status-intervening` (ya existe) y nuevo `--status-intervening-foreground`; el texto de las iniciales del avatar → `--avatar-foreground` (calculado por contraste); `#7F8DAA` de `RequestItem` → `--muted-foreground`;
   - **colores de datos** (paletas de agentes y proyectos en `page.tsx` y `NewProjectDialog`, color por defecto de un agente, serie de `SkillStats`, `USER_COLOR` de la memoria): no son del tema, son colores que elige el usuario o que identifican datos. Se juntan en `theme/palettes.ts` (única excepción del test de colores fijos); `SkillStats` pasa a `--chart-*`.
   - En total, ~11 *tokens* nuevos + 16 ANSI: por debajo del umbral, el terminal entra en el bloque 3.
-- **S3 · navegación e integración en WebView2**: ⏳ **pendiente de prueba manual en la app de escritorio** (no se puede comprobar fuera de WebView2, y la compilación que hay es la v1.0, que no debe abrir los datos actuales). Se hace al empezar el bloque 2 con `tauri dev`. Comprobar:
-  1. si `Alt+←/→` y los botones laterales del ratón ya navegan solos (WebView2 trae activados los atajos del navegador y el SPA recibiría `popstate`) o hay que capturarlos;
-  2. si «Adelante» puede saber que hay algo delante con `history.state.idx`;
-  3. qué abre un enlace `mailto:` (directo, con `plugin-shell` o desde el backend con `os.startfile`) y hasta qué longitud de cuerpo;
-  4. «Guardar como» con `dialog:allow-save`.
+- **S3 · navegación e integración en WebView2**: ✅ prueba manual del usuario en `tauri dev` (2026-10-27), con una página de prueba temporal (no commiteada):
+  1. `Alt+←/→` y los botones laterales del ratón **ya navegan solos** (atajos del navegador de WebView2; el SPA recibe `popstate`).
+  2. React Router guarda la posición en `history.state.idx`; «Adelante» se calcula con él.
+  3. Un `mailto:` abre el cliente de correo con las tres vías probadas (`<a href>`, `target="_blank"` y `window.open`), con asunto y cuerpo (~1,6 KB, acentos y emoji) correctos.
+  4. «Guardar como» funciona con la *capability* `dialog:allow-save`.
 - **S4 · registros**: ⚠️ con un backend de prueba que escribe a fichero ([`evidencias/s4-logs.txt`](evidencias/s4-logs.txt)), **el registro de accesos de uvicorn escribe los *tokens* de ejecución (`/r/<token>/…`) y del Arquitecto (`/a/<token>/…`) y la *query* completa** (claves, contraseñas o correos que lleve una URL). Además: los fallos de OAuth registran `repr(error)` (puede llevar URLs), y las rutas de la carpeta de datos incluyen el usuario de Windows. No hay `rich` ni `better_exceptions`, así que las trazas no llevan variables locales.
 - **S5 · licencias**: ✅ todo compatible con GPLv3.
   - Frontend: 259 paquetes, MIT/ISC/BSD/Apache-2.0/0BSD.
@@ -57,6 +57,8 @@ Evidencias en [`evidencias/`](evidencias/); scripts en `spikes/personalization/`
 1. **Búhos propios** (§5): `frontend/src/assets/owls/*.svg` generados por un script versionado (`scripts/owls.py`, a partir del de S1) con su licencia del proyecto; `owls.json` sin atribución externa.
 2. **Registros sin secretos en origen** (§7): un filtro de `logging` en `logging_setup.py` enmascara, **antes de escribir**, los *tokens* de `/r/<token>/` y `/a/<token>/` y los valores de la *query* de las líneas de `uvicorn.access`, y los fallos de OAuth registran el tipo de error y el *host*, no `repr(error)`. La limpieza del zip (`services/redact.py`) se queda como segunda barrera (registros antiguos, terceros).
 3. **Lista de terceros** (§6): script propio, sin `license-checker`, `pip-licenses` ni `cargo-about`.
+4. **Atrás/Adelante con teclado y ratón** (§2): la app **no** registra `Alt+←/→` ni los botones X1/X2, porque WebView2 y el navegador ya lo hacen (capturarlos navegaría dos veces). Solo se añade el botón «Adelante» y los atajos aparecen en la ayuda de atajos como informativos.
+5. **`mailto`** (§6 y §7): enlace `<a href>` normal, sin `plugin-shell` ni el backend.
 
 ## Diseño ([ADR 0027](../../adr/0027-personalization-support.md), nuevo)
 
@@ -144,7 +146,7 @@ Evidencias en [`evidencias/`](evidencias/); scripts en `spikes/personalization/`
 ## Tareas (en orden)
 Bloques pequeños, cada uno con sus tests y su commit.
 
-0. [x] **Spikes S1–S6** (S3 queda para el inicio del bloque 2, con la app de escritorio) y resultados en este plan; cambios al diseño, si los hay, con el OK del usuario.
+0. [x] **Spikes S1–S6** y resultados en este plan; cambios al diseño, si los hay, con el OK del usuario.
 1. [x] **Licencia y autoría**: `LICENSE`, manifiestos, `tauri.conf.json`, README, logos. Revisión de licencias de S5 resuelta.
 2. [ ] **Navegación**: Adelante, `Alt+←/→`, ratón; contador de la Inbox; inventario de ruido con capturas → revisión con el usuario → cambios aprobados.
 3. [ ] **Motor de temas**: modelo, temas incluidos, aplicación por variables, seguir al sistema, persistencia en `app_state` sin parpadeo, terminal en vivo, colores fijos a *tokens* y test de colores fijos.
