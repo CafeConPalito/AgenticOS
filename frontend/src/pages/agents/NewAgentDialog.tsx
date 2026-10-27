@@ -31,10 +31,11 @@ import { errorMessage } from '@/lib/form-errors'
 import { cn } from '@/lib/utils'
 import { AccountSelect, FallbackFields, TeamSelect } from './AgentLinks'
 import { TemplatePicker } from './TemplatePicker'
+import { DEFAULT_AGENT_COLOR } from '@/theme/palettes'
 
 const CLIS: CliId[] = ['claude', 'agy']
 const DEFAULT_MODEL = '__default__' // Radix Select cannot use "" as an item value
-const BLANK_COLOR = '#8FB4FF'
+const BLANK_COLOR = DEFAULT_AGENT_COLOR
 
 interface Draft {
   template: string | null

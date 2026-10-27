@@ -44,13 +44,13 @@ export function NeedsYouPanel({
       className="animate-rise-in overflow-hidden rounded-2xl border border-[color-mix(in_oklch,var(--status-waiting)_50%,var(--sep))] bg-[linear-gradient(180deg,color-mix(in_oklch,var(--status-waiting)_10%,var(--card))_0,var(--card)_150px)] shadow-[0_0_0_4px_color-mix(in_oklch,var(--status-waiting)_7%,transparent),0_22px_50px_-18px_color-mix(in_oklch,var(--status-waiting)_30%,transparent),var(--shadow-card)] [animation-delay:80ms]"
     >
       <div className="flex h-[60px] items-center gap-3 pr-3.5 pl-[18px]">
-        <span className="grid size-[30px] place-items-center rounded-full bg-[#F5B547] text-[#0A1A33] shadow-[0_0_22px_color-mix(in_oklch,#F5B547_50%,transparent)]">
+        <span className="grid size-[30px] place-items-center rounded-full bg-status-intervening text-status-intervening-foreground shadow-[0_0_22px_color-mix(in_oklch,var(--status-intervening)_50%,transparent)]">
           <Hand className="size-[15px]" />
         </span>
         <h2 id="needs-title" className="text-lg font-bold tracking-[-0.02em]">
           {t('home.needs.title')}
         </h2>
-        <span className="grid h-5 min-w-5 place-items-center rounded-full bg-[#F5B547] px-[7px] text-[11.5px] font-bold text-[#0A1A33]">
+        <span className="grid h-5 min-w-5 place-items-center rounded-full bg-status-intervening px-[7px] text-[11.5px] font-bold text-status-intervening-foreground">
           {total}
         </span>
         <div className="ml-auto flex items-center gap-1">

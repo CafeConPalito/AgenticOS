@@ -9,6 +9,7 @@ import { formatPercent, formatTokensUnit, formatUsd } from '@/lib/format'
 import { highestWindow, windowName } from '@/lib/quota'
 import { cn } from '@/lib/utils'
 import { useDialogs } from '@/stores/dialogs'
+import { DEFAULT_AGENT_COLOR } from '@/theme/palettes'
 
 /** From here the spend turns amber. */
 export const WARN_AT = 0.8
@@ -326,7 +327,7 @@ export function SummaryAside({
                 <AgentAvatar
                   key={w.task_code}
                   name={w.agent_name}
-                  color={agents.find((a) => a.id === w.agent_id)?.color ?? '#8FB4FF'}
+                  color={agents.find((a) => a.id === w.agent_id)?.color ?? DEFAULT_AGENT_COLOR}
                   size={16}
                 />
               ))}

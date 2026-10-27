@@ -168,7 +168,7 @@ export function RequestItem({
           <h2 className="mt-1 text-[15px] font-medium">{title}</h2>
           {item.kind === 'approval' && item.command && (
             <pre className="mt-2 overflow-x-auto rounded-md bg-terminal px-3 py-2 font-mono text-[13px] text-terminal-foreground">
-              <span aria-hidden className="text-[#7F8DAA]">
+              <span aria-hidden className="text-muted-foreground">
                 {PROMPT}
               </span>
               {item.command}

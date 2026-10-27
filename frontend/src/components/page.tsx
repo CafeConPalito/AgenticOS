@@ -4,6 +4,7 @@ import { NavLink } from 'react-router'
 import { EmptyState } from '@/components/EmptyState'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
+import { AGENT_COLORS } from '@/theme/palettes'
 
 export function PageContainer({
   children,
@@ -115,16 +116,7 @@ export function Field({
   )
 }
 
-export const PALETTE = [
-  '#F27FB2',
-  '#4FD1C5',
-  '#B5E061',
-  '#FFA06B',
-  '#8FB4FF',
-  '#C4A1FF',
-  '#FF8A8A',
-  '#F2C94C',
-]
+export const PALETTE = AGENT_COLORS
 
 export function ColorPicker({
   value,

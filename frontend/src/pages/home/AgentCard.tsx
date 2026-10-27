@@ -111,7 +111,7 @@ export function AgentCard({
         />
       )}
       {agent.pending_requests > 0 && (
-        <span className="absolute -top-[9px] right-3 flex h-[18px] items-center rounded-full bg-[#F5B547] px-2 text-[10.5px] font-bold text-[#0A1A33] shadow-[0_0_0_3px_var(--background)]">
+        <span className="absolute -top-[9px] right-3 flex h-[18px] items-center rounded-full bg-status-intervening px-2 text-[10.5px] font-bold text-status-intervening-foreground shadow-[0_0_0_3px_var(--background)]">
           {t('home.agents.requests', { count: agent.pending_requests })}
         </span>
       )}

@@ -69,6 +69,7 @@ import { TaskPathGraph } from './lanes/TaskPathGraph'
 import { hasFork } from './task-path'
 import { SessionFactsLine } from './SessionFactsLine'
 import { PriorityLabel, TaskStatusBadge } from './TaskBits'
+import { NEUTRAL_COLOR } from '@/theme/palettes'
 
 export default function TaskPage() {
   const { taskId = '' } = useParams()
@@ -148,7 +149,11 @@ function TaskDetail({ task }: { task: Task }) {
         <ProjectChip name={task.project_name} color={task.project_color} />
         {task.agent_name && (
           <span className="inline-flex items-center gap-2 text-[12.5px] text-muted-foreground">
-            <AgentAvatar name={task.agent_name} color={task.agent_color ?? '#C9D4E8'} size={18} />
+            <AgentAvatar
+              name={task.agent_name}
+              color={task.agent_color ?? NEUTRAL_COLOR}
+              size={18}
+            />
             {task.agent_name}
           </span>
         )}
@@ -292,7 +297,11 @@ function StageStepper({ task, stages }: { task: Task; stages: Stage[] }) {
           )}
         >
           {stage.agent_name && (
-            <AgentAvatar name={stage.agent_name} color={stage.agent_color ?? '#C9D4E8'} size={16} />
+            <AgentAvatar
+              name={stage.agent_name}
+              color={stage.agent_color ?? NEUTRAL_COLOR}
+              size={16}
+            />
           )}
           {stage.name}
         </li>

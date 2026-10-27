@@ -86,8 +86,8 @@ function OpenDock() {
                 className={cn(
                   'flex shrink-0 items-center gap-[7px] border-r border-terminal-border px-3 text-xs whitespace-nowrap',
                   selected
-                    ? 'bg-terminal text-white shadow-[inset_0_2px_0_#4CC9F0]'
-                    : 'text-[#9AA9C4] hover:text-white',
+                    ? 'bg-terminal text-terminal-foreground shadow-[inset_0_2px_0_var(--terminal-accent)]'
+                    : 'text-terminal-muted hover:text-terminal-foreground',
                 )}
               >
                 <span aria-hidden className={cn('size-[7px] rounded-full', dotClass(run))} />
@@ -106,7 +106,7 @@ function OpenDock() {
               disabled={disabled}
               aria-label={label}
               title={label}
-              className="grid size-7 place-items-center rounded-md text-[#9AA9C4] hover:bg-[#13284D] hover:text-white disabled:pointer-events-none disabled:opacity-40"
+              className="grid size-7 place-items-center rounded-md text-terminal-muted hover:bg-terminal-chip hover:text-terminal-foreground disabled:pointer-events-none disabled:opacity-40"
             >
               <Icon className="size-[15px]" />
             </button>
@@ -117,7 +117,9 @@ function OpenDock() {
         {active ? (
           <TerminalPanel key={active.id} run={active} variant="dock" />
         ) : (
-          <p className="m-auto px-4 text-center text-[13px] text-[#9AA9C4]">{t('dock.empty')}</p>
+          <p className="m-auto px-4 text-center text-[13px] text-terminal-muted">
+            {t('dock.empty')}
+          </p>
         )}
       </div>
     </aside>

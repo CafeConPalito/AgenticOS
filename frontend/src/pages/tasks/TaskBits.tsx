@@ -10,6 +10,7 @@ import {
   type StatusTone,
 } from '@/components/agentic/primitives'
 import { cn } from '@/lib/utils'
+import { NEUTRAL_COLOR } from '@/theme/palettes'
 
 export const TASK_TONE: Record<TaskStatus, StatusTone> = {
   backlog: 'cancelled',
@@ -49,7 +50,7 @@ export function TaskAgent({ task, size = 18 }: { task: Task; size?: number }) {
   return (
     <AgentAvatar
       name={task.agent_name}
-      color={task.agent_color ?? '#C9D4E8'}
+      color={task.agent_color ?? NEUTRAL_COLOR}
       size={size}
       label={task.agent_name}
       withTooltip

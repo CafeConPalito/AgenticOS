@@ -83,7 +83,8 @@ type Column =
   | 'avg_cost'
   | 'avg_tokens'
   | 'last_used'
-const PALETTE = ['#8FB4FF', '#43D392', '#F5B547', '#FF6B6F', '#B39CFF', '#4CC9F0']
+// The commit graph's lane colors: distinct on light and dark, and they follow the theme.
+const PALETTE = [0, 1, 2, 3, 4, 5].map((i) => `var(--graph-${i})`)
 
 function periodBounds(period: string): { from?: string; to?: string } {
   if (period === 'all') return {}

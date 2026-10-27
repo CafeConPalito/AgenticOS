@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import type { CliId } from '@/api/types'
+import { readableOn } from '@/theme/contrast'
 
 export type StatusTone =
   'queued' | 'running' | 'waiting' | 'review' | 'done' | 'failed' | 'cancelled'
@@ -75,15 +76,14 @@ export function AgentAvatar({
     <span
       role="img"
       aria-label={label ?? name}
-      className={cn(
-        'grid shrink-0 place-items-center font-bold text-[#0A1A33] select-none',
-        className,
-      )}
+      className={cn('grid shrink-0 place-items-center font-bold select-none', className)}
       style={{
         width: size,
         height: size,
         borderRadius: radius,
         background: color,
+        // Phase 20: dark ink or white, whichever reads on the agent's color.
+        color: readableOn(color),
         fontSize: Math.round(size * 0.44),
       }}
     >

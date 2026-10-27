@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { errorMessage } from '@/lib/form-errors'
 import { cn } from '@/lib/utils'
 import { TeamSheet } from './TeamSheet'
+import { DRAFT_AGENT_COLOR } from '@/theme/palettes'
 
 const REF = 'main'
 type TextField = 'name' | 'role' | 'description' | 'instructions'
@@ -93,7 +94,11 @@ function AgentSheet({ conversation }: { conversation: Conversation }) {
             changed={differs('name', 'role')}
           >
             <div className="flex items-center gap-3">
-              <AgentAvatar name={agent.name || '?'} color={agent.color || '#B39CFF'} size={36} />
+              <AgentAvatar
+                name={agent.name || '?'}
+                color={agent.color || DRAFT_AGENT_COLOR}
+                size={36}
+              />
               <div className="min-w-0 flex-1 space-y-1">
                 <Editable
                   value={agent.name ?? ''}
