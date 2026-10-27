@@ -29,28 +29,37 @@ TOKEN_PATH = re.compile(r"^/([A-Za-z0-9_-]{16,128})(/mcp.*)$")
 MAX_TEXT = 4000
 
 
+AGENT, ARCHITECT = "agent", "architect"  # who a token belongs to
+
+
 class RunTokens:
-    """Per-run bearer tokens, in memory: they die with the run (or the backend)."""
+    """Per-run bearer tokens, in memory: they die with the run (or the backend). A token is an
+    agent's or the Architect's (phase 19): each MCP server only accepts its own kind, so an
+    agent cannot edit a sheet and the Architect cannot complete a task."""
 
     def __init__(self) -> None:
-        self._by_token: dict[str, str] = {}
+        self._by_token: dict[str, tuple[str, str]] = {}
         self._lock = threading.Lock()
 
-    def issue(self, run_id: str) -> str:
+    def issue(self, run_id: str, kind: str = AGENT) -> str:
         token = secrets.token_urlsafe(32)
         with self._lock:
-            self._by_token[token] = run_id
+            self._by_token[token] = (run_id, kind)
         return token
 
-    def resolve(self, token: str | None) -> str | None:
+    def resolve(self, token: str | None, kind: str | None = None) -> str | None:
+        """The run of a token; with `kind`, only if the token is of that kind."""
         if not token:
             return None
         with self._lock:
-            return self._by_token.get(token)
+            found = self._by_token.get(token)
+        if found is None or (kind is not None and found[1] != kind):
+            return None
+        return found[0]
 
     def revoke(self, run_id: str) -> None:
         with self._lock:
-            for token in [t for t, r in self._by_token.items() if r == run_id]:
+            for token in [t for t, (r, _kind) in self._by_token.items() if r == run_id]:
                 del self._by_token[token]
 
 
@@ -107,15 +116,23 @@ class AgentBackend(Protocol):
     def request_human(self, run_id: str, title: str, detail: str, options: list[str]) -> str: ...
     def spawn_subagent(self, run_id: str, prompt: str, agent_name: str) -> str: ...
     def create_subtask(self, run_id: str, title: str, description: str, agent_name: str) -> str: ...
+    def propose_agent(self, run_id: str, sheet: dict, reason: str) -> str: ...
 
 
 class TokenGate:
     """ASGI middleware in front of the MCP app: token → run id, or 401."""
 
-    def __init__(self, app: ASGIApp, tokens: RunTokens, on_request: Callable[[str], None]) -> None:
+    def __init__(
+        self,
+        app: ASGIApp,
+        tokens: RunTokens,
+        on_request: Callable[[str], None],
+        kind: str = AGENT,
+    ) -> None:
         self.app = app
         self.tokens = tokens
         self.on_request = on_request
+        self.kind = kind
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":
@@ -134,7 +151,7 @@ class TokenGate:
             auth = dict(headers).get(b"authorization", b"").decode()
             if auth.lower().startswith("bearer "):
                 token = auth[7:].strip()
-        run_id = self.tokens.resolve(token)
+        run_id = self.tokens.resolve(token, self.kind)
         if run_id is None:
             await _reject(send)
             return
@@ -417,6 +434,20 @@ def build_mcp(backend: AgentBackend) -> MCPServer:
             _clip(level),
             _clip(replaces)[:120],
             note.strip()[:500],
+        )
+
+    @server.tool()
+    async def propose_agent(sheet: dict[str, Any], reason: str, ctx: Context) -> str:
+        """Propón un agente nuevo para el equipo cuando, trabajando, veas que falta un rol (p. ej.
+        «haría falta un traductor para estos textos»). La persona lo revisa antes de que reciba
+        tareas; tú sigues con tu tarea. `reason`: por qué hace falta, en una o dos frases.
+        `sheet`: su ficha: name, role, description, cli («claude» o «agy»), model,
+        permission_mode (autonomous · restricted · ask), allowed_tools, instructions (su
+        *system prompt* en Markdown, en segunda persona), skills [{name, mode: always|never}],
+        knowledge [título de documento], connections [nombre]. Solo cosas que existan: si algo
+        no, la respuesta te dice qué. Como mucho una propuesta por ejecución."""
+        return await call(
+            backend.propose_agent, _run_id(ctx), dict(sheet or {}), reason.strip()[:1000]
         )
 
     @server.tool()

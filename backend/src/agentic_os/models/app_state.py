@@ -12,6 +12,7 @@ KNOWLEDGE = "knowledge"  # JSON: the knowledge library's limits and switches (ph
 DICTATION = "dictation"  # JSON: the dictation settings (phase 16)
 SKILLS = "skills"  # JSON: the skill library's budgets, proposals and registries (phase 17)
 CONNECTIONS = "connections"  # JSON: the MCP connections' timeouts and registries (phase 18)
+ARCHITECT = "architect"  # JSON: the Architect's CLI, account, model and instructions (phase 19)
 
 
 class AppState(Base):

@@ -8,6 +8,7 @@ import {
   Pause,
   Play,
   Plus,
+  Sparkles,
   SunMoon,
   Terminal,
   UserPlus,
@@ -119,6 +120,13 @@ function PaletteContent({ onClose }: { onClose: () => void }) {
         label: t('palette.actions.newAgent'),
         icon: Bot,
         run: () => dialogs.openNewAgent(),
+      },
+      {
+        id: 'architect',
+        group: 'actions',
+        label: t('palette.actions.architect'),
+        icon: Sparkles,
+        run: go('/agentes/arquitecto?nueva'),
       },
       {
         id: 'new-team',

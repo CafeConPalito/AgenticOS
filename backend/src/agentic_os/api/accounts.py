@@ -45,7 +45,9 @@ def read_many(
     used = usage_limits.used_by_account(db, today())
     index = account_ops.AccountIndex(db)
     users: dict[str, list[AccountAgent]] = {a.id: [] for a in accounts}
-    for agent in db.scalars(select(Agent).order_by(Agent.created_at, Agent.name)):
+    for agent in db.scalars(
+        select(Agent).where(Agent.archived_at.is_(None)).order_by(Agent.created_at, Agent.name)
+    ):
         owner = index.of(agent)
         if owner is not None and owner.id in users:
             users[owner.id].append(AccountAgent(id=agent.id, name=agent.name, color=agent.color))

@@ -69,7 +69,9 @@ describe('Settings · Conocimiento', () => {
     expect(toggle).not.toBeChecked()
     expect(screen.queryByLabelText(s.describer)).not.toBeInTheDocument()
     await user.click(toggle)
-    expect(await screen.findByLabelText(s.model)).toBeVisible()
+    // Scoped: other sections (the Architect's) have a «Modelo» too.
+    const knowledge = toggle.closest('section')!
+    expect(await within(knowledge).findByLabelText(s.model)).toBeVisible()
     await user.click(screen.getByRole('combobox', { name: s.describer }))
     await user.click(await screen.findByRole('option', { name: s.describers.local }))
     expect(await screen.findByText(s.localHelp)).toBeVisible()

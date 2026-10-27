@@ -24,6 +24,7 @@ class InboxItemRead(BaseModel):
     knowledge_doc_id: str | None = None  # a «knowledge» item: the proposal to review
     skill_version_id: str | None = None  # a «skill» item: the proposed version (phase 17)
     connection_id: str | None = None  # a «connection» item: the one to connect again (phase 18)
+    proposal_id: str | None = None  # a «proposal» item: what to review (phase 19)
     agent_id: str | None
     agent_name: str
     agent_color: str

@@ -191,6 +191,16 @@ Servidores MCP externos (GitHub, bases de datos, navegador…) que los agentes u
 - **Explorar**: los más usados del registro oficial de MCP y de Smithery, y búsqueda por paquete o repositorio (npm, PyPI, GitHub). La ficha enseña el comando exacto y lo que falta; instalar no ejecuta nada y fija la versión. Las versiones nuevas se avisan, nunca se aplican solas.
 - **Límite conocido**: el agente puede leer las variables de entorno de su proceso, y el servidor `stdio` hereda las del CLI.
 
+## Agente Arquitecto
+Crea y mejora agentes, equipos y pipelines conversando ([ADR 0026](docs/adr/0026-meta-agents.md)). Pantalla «Crear con el Arquitecto» (Agentes › Arquitecto, Inicio y la paleta): chat a la izquierda y la **ficha en vivo** a la derecha.
+- **Un CLI por conversación** (Claude o `agy`, a elegir en Ajustes › Arquitecto): se duerme por inactividad y se retoma con su historial; «Reiniciar» lo deja limpio. Solo usa lo que existe (CLIs, cuentas, modelos, skills, documentos y conexiones) y nunca escribe fuera de su ficha.
+- **Nada cambia sin tu aprobación**: un agente nuevo nace como **borrador** (sin tareas hasta aprobarlo, con sus skills propuestas); mejorar un agente activo crea una **propuesta de cambios** que revisas campo a campo (las instrucciones como diff) y aplicas entera o en parte, con conflicto si lo editaste a mano. Lo aplicado queda en el Historial del agente.
+- **Campos fijados**: lo que editas a mano en la ficha queda con candado y el Arquitecto no lo toca salvo que lo sueltes.
+- **Equipos y pipelines**: la ficha tiene pestañas Equipo · Agentes · Pipeline (con vista previa del grafo); «Aprobar todo» crea los agentes, el equipo y el pipeline de un proyecto en una sola operación. «Mejorar con el Arquitecto» está también en el equipo y en el editor de pipeline.
+- **`propose_agent`**: un agente con el permiso «Puede proponer agentes» propone otro (una por ejecución); llega como borrador con su origen y motivo y aviso en la Inbox.
+- **Plantillas y compartir**: «Guardar como plantilla», «Exportar» e «Importar» (formato `agentic-os.agent`, sin secretos). Las plantillas del usuario salen en el selector de nuevo agente.
+- **Consumo**: cada conversación es una ejecución `architect` que cuenta en el panel de consumo y en el límite diario.
+
 ## Dictado por voz
 Dictas en lugar de escribir ([ADR 0023](docs/adr/0023-dictation.md)). La transcripción es **local**: Whisper (`whisper.cpp`) corre en tu equipo, el audio no sale de él, nunca se guarda y funciona sin conexión.
 - **Dónde**: un micrófono en los campos de texto largos (descripción de la tarea, resumen y motivo de rechazo, instrucciones y descripción del agente, memoria del proyecto, prompt de una ejecución, respuestas y rechazos de la Inbox, propuestas y fichas de conocimiento). La respuesta de la Inbox crece con el texto; `Intro` la envía y `Mayús+Intro` hace un salto de línea.

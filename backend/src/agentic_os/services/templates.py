@@ -38,6 +38,7 @@ TEMPLATES: list[AgentTemplate] = [
         allowed_tools=[Tool.READ, Tool.EDIT, Tool.WEB, Tool.MCP_AGENTIC_OS],
         can_spawn_subagents=False,
         can_create_tasks=True,
+        can_propose_agents=True,  # phase 19
     ),
     AgentTemplate(
         id="developer",
@@ -65,6 +66,7 @@ TEMPLATES: list[AgentTemplate] = [
         ],
         can_spawn_subagents=True,
         can_create_tasks=True,
+        can_propose_agents=True,  # phase 19
     ),
     AgentTemplate(
         id="qa",

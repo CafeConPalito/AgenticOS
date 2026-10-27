@@ -1,0 +1,82 @@
+{
+ "small": {
+  "counts": {
+   "skills": 12,
+   "docs": 6,
+   "connections": 5,
+   "agents": 3
+  },
+  "list_all_skills": {
+   "chars": 1475,
+   "tokens": 421
+  },
+  "list_all_docs": {
+   "chars": 782,
+   "tokens": 223
+  },
+  "list_all_connections": {
+   "chars": 754,
+   "tokens": 215
+  },
+  "list_connections_without_tools": {
+   "chars": 392,
+   "tokens": 112
+  },
+  "search_top8_skills": {
+   "chars": 1021,
+   "tokens": 292
+  },
+  "search_top8_docs": {
+   "chars": 782,
+   "tokens": 223
+  },
+  "list_clis": {
+   "chars": 383,
+   "tokens": 109
+  },
+  "list_projects": {
+   "chars": 325,
+   "tokens": 93
+  }
+ },
+ "large": {
+  "counts": {
+   "skills": 200,
+   "docs": 300,
+   "connections": 50,
+   "agents": 3
+  },
+  "list_all_skills": {
+   "chars": 34453,
+   "tokens": 9844
+  },
+  "list_all_docs": {
+   "chars": 38892,
+   "tokens": 11112
+  },
+  "list_all_connections": {
+   "chars": 8619,
+   "tokens": 2463
+  },
+  "list_connections_without_tools": {
+   "chars": 3397,
+   "tokens": 971
+  },
+  "search_top8_skills": {
+   "chars": 1021,
+   "tokens": 292
+  },
+  "search_top8_docs": {
+   "chars": 1038,
+   "tokens": 297
+  },
+  "list_clis": {
+   "chars": 383,
+   "tokens": 109
+  },
+  "list_projects": {
+   "chars": 325,
+   "tokens": 93
+  }
+ }
+}

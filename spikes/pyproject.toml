@@ -43,3 +43,6 @@ known-first-party = ["common", "pty_run", "recorder", "spike_mcp", "usage_probe"
 "dictation/*.py" = ["E501", "E402", "E731", "E741", "B905", "SIM115", "SIM108"]
 # Phase 18 probes: same idea.
 "mcp/*.py" = ["E501", "SIM117", "SIM105", "E402", "E731", "E741", "B905", "SIM115", "SIM108"]
+# Phase 19 probes: same idea.
+"architect/*.py" = ["E501", "SIM105", "E402", "SIM115"]
+"architect/servers/*.py" = ["E501", "E402"]

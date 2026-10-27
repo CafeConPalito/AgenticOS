@@ -1,11 +1,13 @@
 """Hooks of the agent CLIs (`hook.cmd` → curl). Answers 204 always for known tokens: the
-CLI never waits on us, and a hook must not fail."""
+CLI never waits on us, and a hook must not fail. The one exception is the Architect's agy
+guard (phase 19), which gets its decision as JSON."""
 
 import asyncio
 import json
 from typing import Annotated
 
 from fastapi import APIRouter, Path, Request, Response, status
+from fastapi.responses import JSONResponse
 
 from agentic_os.errors import ApiError
 
@@ -37,4 +39,8 @@ async def receive_hook(token: str, event: EventName, request: Request) -> Respon
         line = json.dumps(record, ensure_ascii=False)
         await asyncio.to_thread(_append, log_file, line)
     await asyncio.to_thread(manager.on_hook, run_id, event, payload)
+    # The Architect's agy prints what its PreToolUse guard is told (phase 19).
+    decision = manager.hook_decision(run_id, event, payload)
+    if decision is not None:
+        return JSONResponse(decision)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

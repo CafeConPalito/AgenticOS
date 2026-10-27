@@ -66,6 +66,18 @@ class Agent(IdMixin, WorkspaceMixin, TimestampMixin, Base):
     can_create_tasks: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     status: Mapped[str] = mapped_column(String(16), nullable=False, default=AgentStatus.ACTIVE)
     template: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    # Phase 19: may propose new agents during a task (propose_agent).
+    can_propose_agents: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # A draft that a proposal created (the Architect or propose_agent).
+    proposal_id: Mapped[str | None] = mapped_column(
+        # agents ↔ proposals reference each other: this one is added after both tables exist.
+        String(36),
+        ForeignKey("proposals.id", ondelete="SET NULL", use_alter=True),
+        nullable=True,
+        index=True,
+    )
+    # A rejected draft the person chose to keep: out of every list.
+    archived_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
     # Phase 10. No team: shown under «Sin equipo». No account: the default one of its CLI.
     team_id: Mapped[str | None] = mapped_column(
         String(36), ForeignKey("teams.id", ondelete="SET NULL"), nullable=True, index=True

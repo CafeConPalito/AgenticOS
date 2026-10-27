@@ -1,6 +1,7 @@
-import { AlertTriangle, LayoutGrid, Plus } from 'lucide-react'
+import { AlertTriangle, LayoutGrid, Plus, Sparkles } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router'
 import { toast } from 'sonner'
 import { useAgents } from '@/api/agents'
 import { useDeletePipeline, useSavePipeline } from '@/api/pipelines'
@@ -102,6 +103,14 @@ export function PipelineEditor({
             <LayoutGrid />
             {t('pipeline.arrange')}
           </Button>
+          {pipeline && (
+            <Button variant="outline" asChild>
+              <Link to={`/agentes/arquitecto?pipeline=${project.id}`}>
+                <Sparkles className="text-status-review" />
+                {t('architect.improve')}
+              </Link>
+            </Button>
+          )}
           <Button variant="outline" className="border-dashed" onClick={addStage}>
             <Plus />
             {t('pipeline.addStage')}

@@ -12,6 +12,7 @@ import {
 } from '@/components/layout/crumbs'
 import AgentEditorPage from '@/pages/agents/AgentEditorPage'
 import AgentsPage from '@/pages/agents/AgentsPage'
+import ArchitectPage from '@/pages/architect/ArchitectPage'
 import BoardPage from '@/pages/BoardPage'
 import ClisPage from '@/pages/clis/ClisPage'
 import ConnectionsPage from '@/pages/connections/ConnectionsPage'
@@ -51,6 +52,15 @@ export const routes: RouteObject[] = [
           { index: true, element: <AgentsPage /> },
           // Old links and shortcuts: the list, with the dialog open.
           { path: 'nuevo', element: <OpenDialog dialog="newAgent" to="/agentes" /> },
+          // Phase 19: the Agent Architect (before `:agentId`, which would take «arquitecto»).
+          {
+            path: 'arquitecto',
+            handle: crumb(() => <TextCrumb i18nKey="nav.architect" />),
+            children: [
+              { index: true, element: <ArchitectPage /> },
+              { path: ':conversationId', element: <ArchitectPage /> },
+            ],
+          },
           { path: ':agentId', element: <Navigate to="resumen" replace /> },
           {
             path: ':agentId/:tab',

@@ -1,6 +1,7 @@
-import { Bot, ChevronRight, Plus, Sparkles } from 'lucide-react'
+import { Bot, ChevronRight, FileUp, LayoutTemplate, Plus, Sparkles } from 'lucide-react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate, useSearchParams } from 'react-router'
+import { Link, useNavigate, useSearchParams } from 'react-router'
 import { useAgents } from '@/api/agents'
 import { useTeams } from '@/api/teams'
 import { useMonthBreakdown } from '@/api/usage'
@@ -27,6 +28,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { ImportAgentDialog, TemplatesDialog } from './AgentFileDialogs'
 import { TemplatePicker } from './TemplatePicker'
 
 const ALL = '__all__' // Radix Select cannot use "" as an item value
@@ -36,6 +38,8 @@ export default function AgentsPage() {
   const { t } = useTranslation()
   const { data: agents, isPending } = useAgents()
   const openNewAgent = useDialogs((s) => s.openNewAgent)
+  const [importing, setImporting] = useState(false)
+  const [templates, setTemplates] = useState(false)
 
   return (
     <PageContainer>
@@ -44,9 +48,19 @@ export default function AgentsPage() {
         subtitle={t('agents.subtitle')}
         actions={
           <>
-            <Button variant="outline" disabled title={t('common.comingSoonPhase')}>
-              <Sparkles className="text-status-review" />
-              {t('agents.architect')}
+            <Button variant="ghost" onClick={() => setTemplates(true)}>
+              <LayoutTemplate />
+              {t('agentTemplates.title')}
+            </Button>
+            <Button variant="outline" onClick={() => setImporting(true)}>
+              <FileUp />
+              {t('agentTemplates.import.button')}
+            </Button>
+            <Button variant="outline" asChild>
+              <Link to="/agentes/arquitecto?nueva">
+                <Sparkles className="text-status-review" />
+                {t('agents.architect')}
+              </Link>
             </Button>
             <Button
               onClick={() => openNewAgent()}
@@ -75,6 +89,8 @@ export default function AgentsPage() {
           <TemplatePicker compact />
         </EmptyState>
       )}
+      <ImportAgentDialog open={importing} onOpenChange={setImporting} />
+      <TemplatesDialog open={templates} onOpenChange={setTemplates} />
     </PageContainer>
   )
 }
@@ -164,7 +180,18 @@ function AgentsTable({ agents, teams }: { agents: Agent[]; teams: Team[] }) {
                   <div className="flex items-center gap-3">
                     <AgentAvatar name={agent.name} color={agent.color} size={32} />
                     <div className="min-w-0">
-                      <div className="font-medium">{agent.name}</div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{agent.name}</span>
+                        {agent.status === 'draft' && agent.proposal_id && (
+                          // Phase 19, design §2: a draft that waits for the person.
+                          <span className="flex h-5 items-center gap-1 rounded-full border border-dashed border-status-review px-1.5 text-[11px] whitespace-nowrap text-status-review">
+                            <Sparkles className="size-3" aria-hidden />
+                            {agent.proposed_by && agent.proposed_by !== 'architect'
+                              ? t('proposals.chipAgent', { name: agent.proposed_by })
+                              : t('proposals.chip')}
+                          </span>
+                        )}
+                      </div>
                       <div className="text-xs text-muted-foreground">{agent.role}</div>
                     </div>
                   </div>

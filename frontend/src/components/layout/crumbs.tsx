@@ -27,6 +27,7 @@ export function TextCrumb({
     | 'nav.clis'
     | 'nav.knowledge'
     | 'nav.connections'
+    | 'nav.architect'
 }) {
   const { t } = useTranslation()
   return <>{t(i18nKey)}</>

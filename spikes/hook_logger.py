@@ -13,7 +13,8 @@ import time
 
 def main() -> None:
     cli, event, log_path = sys.argv[1], sys.argv[2], sys.argv[3]
-    raw = sys.stdin.read() if not sys.stdin.isatty() else ""
+    # The CLIs send UTF-8; the console code page would garble accents.
+    raw = sys.stdin.buffer.read().decode("utf-8", "replace") if not sys.stdin.isatty() else ""
     try:
         payload = json.loads(raw) if raw.strip() else None
     except json.JSONDecodeError:

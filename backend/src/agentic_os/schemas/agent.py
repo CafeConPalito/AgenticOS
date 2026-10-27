@@ -40,6 +40,7 @@ class AgentFields(BaseModel):
     max_concurrency: Concurrency | None = None
     can_spawn_subagents: bool | None = None
     can_create_tasks: bool | None = None
+    can_propose_agents: bool | None = None  # phase 19: propose_agent
     status: AgentStatus | None = None
     # Phase 10. Unlike the other fields these may be null: no team, or the default account of
     # its CLI. Omit them to leave them unchanged.
@@ -64,6 +65,7 @@ class AgentFields(BaseModel):
         "fallback_model",
         "can_spawn_subagents",
         "can_create_tasks",
+        "can_propose_agents",
         "status",
         mode="before",
     )(reject_null)
@@ -75,6 +77,45 @@ class AgentCreate(AgentFields):
 
 class AgentUpdate(AgentFields):
     pass
+
+
+class TemplateFromAgent(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: Name | None = None
+
+
+class TemplateUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: Name | None = None
+    description: str | None = None
+    color: Color | None = None
+
+
+class AgentImport(BaseModel):
+    """An exported agent (`agentic-os.agent` v1) and what to change on the way in."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    payload: dict
+    name: Name | None = None
+    account_id: str | None = None
+    team_id: str | None = None
+
+
+class ImportPreview(BaseModel):
+    agent: dict
+    missing_skills: list[str]
+    missing_connections: list[str]
+    missing_knowledge: list[str]
+    own_skills: list[str]
+    cli_installed: bool
+
+
+class Imported(BaseModel):
+    agent: "AgentRead"
+    notes: list[str]
 
 
 class AgentDuplicate(BaseModel):
@@ -99,8 +140,13 @@ class AgentRead(BaseModel):
     max_concurrency: int
     can_spawn_subagents: bool
     can_create_tasks: bool
+    can_propose_agents: bool = False
     status: AgentStatus
     template: str | None
+    # Phase 19: the proposal a draft comes from (the Architect or propose_agent), and who
+    # proposed it: «architect», or the name of the agent that called propose_agent.
+    proposal_id: str | None = None
+    proposed_by: str | None = None
     team_id: str | None = None
     account_id: str | None = None
     fallback_account_id: str | None = None
@@ -116,6 +162,11 @@ class AgentRead(BaseModel):
 
 class AgentTemplate(BaseModel):
     id: str
+    # Phase 19: one the person saved (it can be edited and deleted), with what it brings along.
+    own: bool = False
+    skills: int = 0
+    connections: int = 0
+    documents: int = 0
     name: str
     role: str
     description: str
@@ -127,3 +178,7 @@ class AgentTemplate(BaseModel):
     allowed_tools: list[Tool]
     can_spawn_subagents: bool
     can_create_tasks: bool
+    can_propose_agents: bool = False
+
+
+Imported.model_rebuild()

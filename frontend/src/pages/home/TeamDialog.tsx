@@ -1,6 +1,7 @@
-import { Trash2 } from 'lucide-react'
+import { Sparkles, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router'
 import { toast } from 'sonner'
 import { useAgents } from '@/api/agents'
 import { useCreateTeam, useDeleteTeam, useTeams, useUpdateTeam } from '@/api/teams'
@@ -163,6 +164,14 @@ function TeamForm({ team, onClose }: { team: Team | null; onClose: () => void })
             >
               <Trash2 />
               {t('teams.delete')}
+            </Button>
+          )}
+          {team && (
+            <Button type="button" variant="outline" asChild>
+              <Link to={`/agentes/arquitecto?equipo=${team.id}`} onClick={onClose}>
+                <Sparkles className="text-status-review" />
+                {t('architect.improve')}
+              </Link>
             </Button>
           )}
           <Button type="button" variant="outline" onClick={onClose}>

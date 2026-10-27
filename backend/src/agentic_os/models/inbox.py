@@ -22,6 +22,7 @@ class InboxKind(StrEnum):
     KNOWLEDGE = "knowledge"  # an agent proposes a knowledge document to review (phase 15)
     SKILL = "skill"  # an agent proposes a skill, or a new version of one (phase 17)
     CONNECTION = "connection"  # an MCP connection needs the person to log in again (phase 18)
+    PROPOSAL = "proposal"  # the Architect or an agent proposes agents or changes (phase 19)
 
 
 class InboxStatus(StrEnum):
@@ -77,6 +78,9 @@ class InboxItem(IdMixin, WorkspaceMixin, TimestampMixin, Base):
     )
     connection_id: Mapped[str | None] = mapped_column(
         String(36), ForeignKey("mcp_connections.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    proposal_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("proposals.id", ondelete="SET NULL"), nullable=True, index=True
     )
     title: Mapped[str] = mapped_column(Text, nullable=False)
     detail: Mapped[str] = mapped_column(Text, nullable=False, default="")

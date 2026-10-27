@@ -24,6 +24,28 @@ from agentic_os.services.skills.runtime import PLUGIN_NAME
 class ClaudeAdapter(CliAdapter):
     cli = Cli.CLAUDE
 
+    def mcp_servers(self, ctx: LaunchContext) -> dict:
+        """The run's MCP servers: ours and (phase 18) the external connections, whose secrets
+        are ${AOS_MCP_…} references to the environment, never values (spike S1)."""
+        return {
+            "agentic-os": {
+                "type": "http",
+                "url": f"{ctx.base_url}/r/mcp",
+                "headers": {"Authorization": f"Bearer {ctx.token}"},
+            },
+            **(ctx.connections.servers if ctx.connections else {}),
+        }
+
+    def permission_args(self, ctx: LaunchContext) -> list[str]:
+        return claude_permissions(
+            ctx.permission_mode,
+            ctx.allowed_tools,
+            ctx.git_authorized,
+            skills=bool(ctx.native_skills),
+            connections=ctx.connections,
+            can_propose_agents=ctx.can_propose_agents,
+        )
+
     def prepare(self, ctx: LaunchContext) -> LaunchSpec:
         prefix = resolve_executable(self.cli, ctx.overrides)
         run_dir = ctx.run_dir
@@ -45,21 +67,7 @@ class ClaudeAdapter(CliAdapter):
         settings = write_json(
             run_dir / "settings.json", {"hooks": hooks, "statusLine": status_line}
         )
-        mcp = write_json(
-            run_dir / "mcp.json",
-            {
-                "mcpServers": {
-                    "agentic-os": {
-                        "type": "http",
-                        "url": f"{ctx.base_url}/r/mcp",
-                        "headers": {"Authorization": f"Bearer {ctx.token}"},
-                    },
-                    # Phase 18: the external connections; their secrets are ${AOS_MCP_…}
-                    # references to the environment below, never values (spike S1).
-                    **(ctx.connections.servers if ctx.connections else {}),
-                }
-            },
-        )
+        mcp = write_json(run_dir / "mcp.json", {"mcpServers": self.mcp_servers(ctx)})
         # A resumed session keeps its id and transcript; the configuration below is the new
         # run's (evidence R1: hooks and MCP are not stored in the session).
         session_id = ctx.resume_session or str(uuid.uuid4())
@@ -80,13 +88,7 @@ class ClaudeAdapter(CliAdapter):
             "--strict-mcp-config",
             "--append-system-prompt-file",
             str(instructions),
-            *claude_permissions(
-                ctx.permission_mode,
-                ctx.allowed_tools,
-                ctx.git_authorized,
-                skills=bool(ctx.native_skills),
-                connections=ctx.connections,
-            ),
+            *self.permission_args(ctx),
         ]
         if ctx.model:
             argv += ["--model", ctx.model]

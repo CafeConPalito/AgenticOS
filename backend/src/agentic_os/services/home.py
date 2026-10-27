@@ -51,7 +51,9 @@ def _state(agent: Agent, running: bool, waiting: bool) -> AgentState:
 def build(db: Session) -> HomeRead:
     agents = list(
         db.scalars(
-            select(Agent).where(Agent.workspace_id == DEFAULT_WORKSPACE).order_by(Agent.created_at)
+            select(Agent)
+            .where(Agent.workspace_id == DEFAULT_WORKSPACE, Agent.archived_at.is_(None))
+            .order_by(Agent.created_at)
         )
     )
     agent_ids = [a.id for a in agents]

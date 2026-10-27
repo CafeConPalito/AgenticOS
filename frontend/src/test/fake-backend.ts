@@ -43,6 +43,7 @@ import type {
   SystemLoad,
 } from '@/api/knowledge'
 import type { ProjectBranches, ProjectSnapshots } from '@/api/maintenance'
+import { type ArchitectSeed, createArchitectBackend } from './fake-architect'
 import { type ConnectionsSeed, createConnectionsBackend } from './fake-connections'
 import { createSkillsBackend, type SkillsSeed } from './fake-skills'
 import {
@@ -114,6 +115,7 @@ export const TEMPLATES: AgentTemplate[] = [
     allowed_tools: ['read', 'edit', 'terminal'],
     can_spawn_subagents: true,
     can_create_tasks: true,
+    can_propose_agents: false,
   },
   {
     id: 'qa',
@@ -128,6 +130,7 @@ export const TEMPLATES: AgentTemplate[] = [
     allowed_tools: ['read'],
     can_spawn_subagents: false,
     can_create_tasks: false,
+    can_propose_agents: false,
   },
 ]
 
@@ -175,6 +178,7 @@ export function makeAgent(overrides: Partial<Agent> = {}): Agent {
     max_concurrency: 1,
     can_spawn_subagents: false,
     can_create_tasks: false,
+    can_propose_agents: false,
     status: 'active',
     template: null,
     team_id: null,
@@ -859,6 +863,10 @@ export function createFakeBackend(
     skills?: SkillsSeed
     /** The MCP connections of phase 18 (catalog, login, levels, registries). */
     connections?: ConnectionsSeed
+    /** The Agent Architect of phase 19 (conversations, proposals, settings). */
+    architect?: ArchitectSeed
+    /** The person's templates (phase 19). */
+    ownTemplates?: AgentTemplate[]
     /** The diffs (phase 11) by `run:<id>` or `task:<id>`: the file list, each file's diff and
      * the lines `/changes/lines` serves. Anything else answers «no snapshots». */
     /** What git says about each repository, by repository id. */
@@ -1893,10 +1901,53 @@ export function createFakeBackend(
     return json(200, run)
   }
 
+  const ownTemplates: AgentTemplate[] = [...(seed.ownTemplates ?? [])]
+
   function handle(method: string, path: string, body: Record<string, unknown>): Response {
     if (path === '/api/health')
       return json(200, { status: 'ok', name: 'Agentic OS', version: '0.1.0' })
-    if (path === '/api/agent-templates') return json(200, TEMPLATES)
+    if (path === '/api/agent-templates') return json(200, [...TEMPLATES, ...ownTemplates])
+    // Phase 19: the person's templates and agents as files.
+    const saveMatch = path.match(/^\/api\/agents\/([^/]+)\/save-as-template$/)
+    if (saveMatch) {
+      const agent = agents.find((a) => a.id === saveMatch[1])
+      if (!agent) return apiError(404, 'agent_not_found')
+      const saved: AgentTemplate = {
+        ...TEMPLATES[0],
+        ...agent,
+        id: `tpl-${ownTemplates.length + 1}`,
+        name: String(body.name ?? agent.name),
+        own: true,
+        skills: 0,
+        connections: 0,
+        documents: 0,
+      }
+      ownTemplates.push(saved)
+      return json(201, saved)
+    }
+    if (path === '/api/agents/import/preview') {
+      const payload = body.payload as { format?: string; agent?: Partial<Agent> }
+      if (payload?.format !== 'agentic-os.agent') return apiError(422, 'not_an_agent')
+      return json(200, {
+        agent: payload.agent,
+        missing_skills: ['seo-basico'],
+        missing_connections: [],
+        missing_knowledge: [],
+        own_skills: [],
+        cli_installed: true,
+      })
+    }
+    if (path === '/api/agents/import') {
+      const payload = body.payload as { agent: Partial<Agent> }
+      const agent = makeAgent({
+        ...payload.agent,
+        name: String(body.name ?? payload.agent.name),
+        status: 'draft',
+      })
+      agent.id = 'imported-1'
+      agents.push(agent)
+      return json(201, { agent, notes: ['La skill «seo-basico» no existe aquí.'] })
+    }
     if (path.startsWith('/api/clis')) return json(200, seed.clis ?? CLIS)
 
     if (path === '/api/agents') {
@@ -2525,6 +2576,7 @@ export function createFakeBackend(
 
   const skillsBackend = createSkillsBackend(seed.skills)
   const connectionsBackend = createConnectionsBackend(seed.connections)
+  const architectBackend = createArchitectBackend(seed.architect)
   const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = new URL(typeof input === 'string' ? input : input.toString())
     const method = (init?.method ?? 'GET').toUpperCase()
@@ -2545,6 +2597,8 @@ export function createFakeBackend(
     if (skilled) return skilled
     const connected = connectionsBackend.handle(method, url.pathname, url.searchParams, body)
     if (connected) return connected
+    const designed = architectBackend.handle(method, url.pathname, body, url.searchParams)
+    if (designed) return designed
     return (
       handleRepos(method, url.pathname, body) ??
       handleGit(method, url.pathname, url.searchParams, body) ??
@@ -2586,6 +2640,7 @@ export function createFakeBackend(
     calls,
     skills: skillsBackend,
     connections: connectionsBackend,
+    architect: architectBackend,
     callsTo: (method: string, path: string) =>
       calls.filter((c) => c.method === method && c.path === path),
   }

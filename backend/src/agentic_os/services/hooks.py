@@ -78,6 +78,33 @@ def write_hook_script(run_dir: Path, base_url: str, token: str) -> str:
     return short_path(script)
 
 
+GUARD_DENY = '{"decision":"deny","reason":"Agentic OS: herramienta no permitida"}'
+
+
+def write_guard_script(run_dir: Path, base_url: str, token: str) -> str:
+    """agy's PreToolUse for the Architect (phase 19, spike S2): asks the backend whether the
+    tool may run and prints its decision. agy has no flag to take its own tools away, so if the
+    backend does not answer the tool is denied: it never fails open."""
+    run_dir.mkdir(parents=True, exist_ok=True)
+    url = f"{base_url}/r/{token}/hook/PreToolUse"
+    if sys.platform == "win32":
+        script = run_dir / "guard.cmd"
+        script.write_text(
+            '@curl.exe -s -f -m 5 -X POST -H "Content-Type: application/json" '
+            f"--data-binary @- {url} || echo {GUARD_DENY}\r\n@exit /b 0\r\n",
+            "ascii",
+        )
+    else:
+        script = run_dir / "guard.sh"
+        script.write_text(
+            "#!/bin/sh\ncurl -s -f -m 5 -X POST -H 'Content-Type: application/json' "
+            f"--data-binary @- \"{url}\" || echo '{GUARD_DENY}'\nexit 0\n",
+            "ascii",
+        )
+        script.chmod(0o755)
+    return short_path(script)
+
+
 @dataclass(frozen=True)
 class HookEffect:
     activity: Activity | None = None

@@ -1,7 +1,7 @@
 import asyncio
 import threading
 from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+from contextlib import AsyncExitStack, asynccontextmanager
 from pathlib import Path
 
 import structlog
@@ -21,6 +21,8 @@ from agentic_os.models import CliAccount
 from agentic_os.services import accounts as account_ops
 from agentic_os.services import housekeeping
 from agentic_os.services.accounts_login import AccountLogins
+from agentic_os.services.architect import tools as architect_tools
+from agentic_os.services.architect.service import ArchitectService
 from agentic_os.services.clis import CliCatalog
 from agentic_os.services.connections.oauth import FlowManager, Renewer
 from agentic_os.services.connections.probe import ProbeRunner
@@ -52,10 +54,14 @@ log = structlog.get_logger()
 
 
 class AgentGateway:
-    """`/r/<token>/…`: the agent-facing MCP server, created with the RunManager in the lifespan."""
+    """`/r/<token>/…`: the agent-facing MCP server, created with the RunManager in the lifespan.
+    `/a/<set>/…` (phase 19): the Architect's, with `state` «architect_gate»."""
+
+    def __init__(self, state: str = "mcp_gate") -> None:
+        self.state = state
 
     async def __call__(self, scope, receive, send) -> None:
-        gate = getattr(scope["app"].state, "mcp_gate", None)
+        gate = getattr(scope["app"].state, self.state, None)
         if gate is None:  # lifespan not started (or already shut down)
             await send({"type": "http.response.start", "status": 503, "headers": []})
             await send({"type": "http.response.body", "body": b""})
@@ -178,6 +184,17 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         oauth_renewer = Renewer(app.state.sessionmaker)
         oauth_renewer.start()
         manager.skills = skills  # the runs' skills and use_skill
+        # Phase 19: the Agent Architect's conversations, one interactive CLI each.
+        architect = ArchitectService(
+            app.state.sessionmaker,
+            manager,
+            Path(settings.data_dir),
+            app.state.cli_catalog,
+            registries=mcp_registries,
+        )
+        manager.architect = architect
+        app.state.architect = architect
+        architect.start()
         skill_registries = RegistryService(
             Path(settings.data_dir),
             skills,
@@ -232,12 +249,18 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         ).start()
         app.state.scheduler = scheduler
         app.state.mcp_gate, session_manager = mount_app(manager, manager.tokens)
+        app.state.architect_gate, architect_managers = architect_tools.mount(
+            architect, manager.tokens
+        )
         scheduler.start()
         try:
-            async with session_manager.run():
+            async with AsyncExitStack() as mcp_servers:
+                for server in (session_manager, *architect_managers):
+                    await mcp_servers.enter_async_context(server.run())
                 yield
         finally:
-            app.state.mcp_gate = None
+            app.state.mcp_gate = app.state.architect_gate = None
+            architect.stop()
             logins.shutdown()
             git_jobs.shutdown()
             git_shells.shutdown()
@@ -272,6 +295,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(api_router)
     app.include_router(hooks_router)  # /r/<token>/hook/… before the /r mount (MCP)
     app.mount("/r", AgentGateway())
+    app.mount("/a", AgentGateway("architect_gate"))
     return app
 
 
