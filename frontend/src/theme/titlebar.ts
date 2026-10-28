@@ -19,8 +19,9 @@ export function syncTitlebar(theme: ResolvedTheme) {
   if (key === last) return
   last = key
   invoke('set_titlebar', args).catch(() => {
-    // An old shell without the command, or a system without title bar colors.
-    last = ''
+    // An old shell without the command, or a system without title bar colors: forget only
+    // this attempt (a newer theme may have been sent since).
+    if (last === key) last = ''
   })
 }
 

@@ -26,23 +26,33 @@ pub fn support(is_windows: bool, build: u32) -> Support {
     }
 }
 
-/// `#rrggbb` as the `0x00BBGGRR` a Windows COLORREF holds.
+/// `#rrggbb` (or `#rrggbbaa`, the alpha ignored: the theme schema allows both) as the
+/// `0x00BBGGRR` a Windows COLORREF holds.
 pub fn colorref(hex: &str) -> Option<u32> {
     let digits = hex.strip_prefix('#')?;
-    if digits.len() != 6 || !digits.is_ascii() {
+    if !matches!(digits.len(), 6 | 8) || !digits.is_ascii() {
         return None;
     }
-    let value = u32::from_str_radix(digits, 16).ok()?;
+    let value = u32::from_str_radix(&digits[..6], 16).ok()?;
     let (r, g, b) = ((value >> 16) & 0xff, (value >> 8) & 0xff, value & 0xff);
     Some((b << 16) | (g << 8) | r)
 }
 
+/// The DWM attribute for the dark or light bar: 20 from Windows 10 2004 (build 19041), 19 on
+/// the builds before it that had it (1903), none below.
+pub fn dark_mode_attribute(build: u32) -> Option<u32> {
+    match build {
+        19041.. => Some(20),
+        18362..=19040 => Some(19),
+        _ => None,
+    }
+}
+
 #[cfg(windows)]
 mod native {
-    use super::{colorref, support, Support};
+    use super::{colorref, dark_mode_attribute, support, Support};
     use std::ffi::c_void;
 
-    const DWMWA_USE_IMMERSIVE_DARK_MODE: u32 = 20;
     const DWMWA_CAPTION_COLOR: u32 = 35;
     const DWMWA_TEXT_COLOR: u32 = 36;
 
@@ -101,9 +111,11 @@ mod native {
     }
 
     pub fn apply(hwnd: isize, background: &str, foreground: &str, dark: bool) {
-        let support = support(true, build_number());
-        set(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, u32::from(dark));
-        if support == Support::Colors {
+        let build = build_number();
+        if let Some(attribute) = dark_mode_attribute(build) {
+            set(hwnd, attribute, u32::from(dark));
+        }
+        if support(true, build) == Support::Colors {
             if let Some(color) = colorref(background) {
                 set(hwnd, DWMWA_CAPTION_COLOR, color);
             }
@@ -141,13 +153,22 @@ mod tests {
         assert_eq!(colorref("#0f2347"), Some(0x0047_230f));
         assert_eq!(colorref("#ffffff"), Some(0x00ff_ffff));
         assert_eq!(colorref("#000000"), Some(0));
+        assert_eq!(colorref("#0f2347ff"), Some(0x0047_230f));
     }
 
     #[test]
     fn colorref_rejects_what_is_not_a_hex_color() {
-        for bad in ["0f2347", "#fff", "#12345g", "#12345678", "", "#ééé"] {
+        for bad in ["0f2347", "#fff", "#12345g", "#1234567", "", "#ééé"] {
             assert_eq!(colorref(bad), None, "{bad}");
         }
+    }
+
+    #[test]
+    fn the_dark_bar_attribute_depends_on_the_build() {
+        assert_eq!(dark_mode_attribute(22621), Some(20));
+        assert_eq!(dark_mode_attribute(19041), Some(20));
+        assert_eq!(dark_mode_attribute(18363), Some(19));
+        assert_eq!(dark_mode_attribute(17763), None);
     }
 
     #[test]

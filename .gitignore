@@ -42,3 +42,8 @@ spikes/dictation/out/
 
 # Progress of the full backend test suite
 backend/.test-progress.log
+
+# local build and test logs
+backend/.build-desktop.log
+backend/.packaged.log
+frontend/.vitest.log
