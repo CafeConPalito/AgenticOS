@@ -233,8 +233,10 @@ Rama `phase/20-personalizacion` (24 commits sobre `main`, árbol limpio). **Hech
 6. **`validacion.md`** con la plantilla de `docs/phases/_template/`: CA1–CA15 con evidencias (tests y capturas de `evidencias/`), retro y lo que queda para fases futuras (ver abajo).
 7. **OK del usuario** → merge `--no-ff` a `main`, etiqueta **`v1.12`**, roadmap: fase 20 «cerrada (`v1.12`)» con enlace a la validación.
 
+### Decidido por el usuario
+- **Contraste de botones** (2026-10-28): **se deja 3:1** para las etiquetas de botón sobre su color de acción (criterio WCAG de componentes) y 4,5:1 para el texto. No se oscurece el rojo destructivo del Oscuro navy (3,9:1). Llevarlo a la validación (CA8) y a las notas del ADR 0027.
+
 ### Preguntas abiertas al usuario (no contestadas)
-- **Contraste de botones**: el criterio actual es 4,5:1 para el texto y 3:1 para etiquetas de botón (el rojo destructivo del Oscuro navy da 3,9:1). Se le ofreció oscurecer ese rojo para exigir 4,5:1 en todo.
 - **«Guardar cambios» en la ficha del agente**: se dejó visible y desactivado sin cambios (no oculto). Se le ofreció ocultarlo.
 - **Versión**: los manifiestos siguen en 1.0.0 y la app muestra «v1.0.0»; el usuario dijo que «el problema está en git, ya se arreglará». No tocar en esta fase.
 
