@@ -202,6 +202,14 @@ Crea y mejora agentes, equipos y pipelines conversando ([ADR 0026](docs/adr/0026
 - **Plantillas y compartir**: «Guardar como plantilla», «Exportar» e «Importar» (formato `agentic-os.agent`, sin secretos). Las plantillas del usuario salen en el selector de nuevo agente.
 - **Consumo**: cada conversación es una ejecución `architect` que cuenta en el panel de consumo y en el límite diario.
 
+## Apariencia, avatares, Acerca de y registros
+Personalización y soporte ([ADR 0027](docs/adr/0027-personalization-support.md)).
+- **Temas**: Ajustes › **Apariencia**. Cinco temas incluidos (Oscuro navy, Claro, Alto contraste, Cálido y Grafito) o **Seguir al sistema**. «Personalizar» crea un tema propio que parte de otro y se edita con vista previa en toda la app: colores, estados, terminal (fondo, texto y 16 ANSI), tipografía, escala de texto, densidad y radio, con aviso de contraste (WCAG AA, sin bloquear). Los temas propios se exportan e importan como JSON (`agentic-os.theme`) y se guardan en el backend, no en el navegador.
+- **Avatares**: en la pestaña General de la ficha del agente, un búho de la galería (13 ilustraciones propias en SVG), una **foto** (hasta 2048 px por lado, encuadrada en la app) o las iniciales. Solo se guarda el recorte (WebP 256 × 256, sin metadatos); la foto original no sale del navegador. La imagen viaja con la exportación del agente.
+- **Acerca de** (`/acerca-de`): versión, autoría, licencia GPLv3 con su texto completo, licencias de terceros, «Informar de un error» (`mailto`) y **«Preparar registros para enviar»**.
+- **Registros para soporte**: genera un `.zip` en local con los registros del backend y de la app de escritorio, los errores recientes de la interfaz y un `info.txt` del sistema, sin salidas de ejecuciones ni contenido tuyo. Los secretos se ocultan al escribir cada línea y de nuevo al empaquetar; lo revisas y lo adjuntas tú al correo. No se envía nada solo ni hay telemetría.
+- **Regenerar recursos**: `uv run --project backend python scripts/licenses.py` rehace la lista de licencias de terceros (un test falla si se queda atrás de los *lockfiles*) y `uv run --project backend python scripts/owls.py` rehace los SVG de los búhos.
+
 ## Dictado por voz
 Dictas en lugar de escribir ([ADR 0023](docs/adr/0023-dictation.md)). La transcripción es **local**: Whisper (`whisper.cpp`) corre en tu equipo, el audio no sale de él, nunca se guarda y funciona sin conexión.
 - **Dónde**: un micrófono en los campos de texto largos (descripción de la tarea, resumen y motivo de rechazo, instrucciones y descripción del agente, memoria del proyecto, prompt de una ejecución, respuestas y rechazos de la Inbox, propuestas y fichas de conocimiento). La respuesta de la Inbox crece con el texto; `Intro` la envía y `Mayús+Intro` hace un salto de línea.

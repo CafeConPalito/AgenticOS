@@ -25,3 +25,9 @@ Con la v1.0 la barra lateral tenía ocho destinos al mismo nivel, el Dashboard e
 ## Consecuencias
 - El contador de Tablero cuenta las tareas abiertas (todas salvo hechas y canceladas, backlog incluido).
 - La columna de CLIs muestra el % del límite diario del usuario, no la cuota de la cuenta, que los CLIs no exponen.
+
+## Ampliación (fase 20, [ADR 0027](0027-personalization-support.md))
+- **Atrás y Adelante** en la cabecera. «Adelante» sigue la pila de navegación con los eventos de React Router (`use-history-stack.ts`); tras recargar a mitad del historial empieza desactivado. `Alt+←/→` y los botones del ratón los resuelve ya el WebView, así que la app no los registra (navegaría dos veces) y solo aparecen como informativos en la ayuda de atajos.
+- **Contador de la Inbox** junto a Tablero y Ejecuciones, con `GET /inbox/summary` (el mismo que alimenta las notificaciones), sin tocar `/home`.
+- **Ajustes agrupado** en Aplicación, Agentes, Recursos y Mantenimiento; Apariencia y Acerca de salen de ahí y la paleta de comandos las incluye. En Inicio, un único «Nuevo» agrupa agente, Arquitecto y equipo.
+- Las pestañas siguen siendo las de esta decisión: no se añaden menús ni cajón lateral.

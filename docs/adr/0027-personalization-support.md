@@ -1,6 +1,6 @@
 # ADR 0027: Personalización (temas y avatares) y registros para soporte
 
-- **Estado**: propuesto (plan aprobado el 2026-10-27; se acepta al cerrar la fase)
+- **Estado**: aceptado (plan aprobado el 2026-10-27; aceptado al cerrar la fase 20)
 - **Fecha**: 2026-10-27
 - **Contexto de decisión**: fase 20 ([spec](../phases/20-personalizacion/spec.md) · [plan](../phases/20-personalizacion/plan.md))
 
@@ -17,3 +17,9 @@ La persona quiere cambiar el aspecto de toda la interfaz (no solo claro u oscuro
 - Cambiar un *token* o añadir uno nuevo obliga a darle valor en los temas incluidos; los propios lo heredan por `extends`.
 - Los avatares se muestran por `agentId` desde la lista de agentes en caché, así que las entidades que solo llevan el nombre y el color del agente no necesitan cambiar su API.
 - La limpieza de secretos es de mejor esfuerzo: por eso la persona ve qué se incluye y puede abrir el zip antes de enviarlo.
+
+## Notas de implementación
+- **Temas**: `GET/PUT /api/settings/appearance`; cinco temas incluidos con el contraste comprobado por test; los bloques de color fijos se pasaron a *tokens* y `no-hardcoded-colors.test.ts` lo vigila. Borrar un tema en uso vuelve al Oscuro navy o al Claro. **Contraste**: 4,5:1 para el texto y 3:1 para las etiquetas de botón sobre su color de acción (criterio WCAG de componentes); no se oscurece el rojo destructivo del Oscuro navy (3,9:1).
+- **Avatares**: migración `0022_agent_avatar`; el recorte llega como cuerpo binario de `PUT /agents/{id}/avatar` y se sirve en `GET /avatars/<hash>.webp` con caché inmutable. Los 13 búhos son SVG propios generados por `scripts/owls.py`. `AgentAvatar` busca la imagen por `agentId`.
+- **Acerca de**: `scripts/licenses.py` (Python puro) genera la lista de terceros y un test la vigila y comprueba la compatibilidad con la GPL; el texto de `LICENSE` y la lista se cargan bajo demanda.
+- **Registros**: el filtro de `services/redact.py` actúa en cada manejador del registro; el zip añade los secretos guardados, correos y usuario. Los errores de la interfaz llegan con el *logger* `frontend`. La app de escritorio escribe `desktop.log` y su comando `bundle_logs` genera el zip aunque el backend esté caído (permiso `dialog:allow-save`).
