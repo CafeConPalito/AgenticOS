@@ -39,4 +39,4 @@ Una app de escritorio (que más adelante se podrá desplegar en un servidor) par
 ```
 
 ## Fuera de alcance (por ahora)
-- Multi-usuario y autenticación (fase 24, modo servidor).
+- Multi-usuario y autenticación (fase 26, modo servidor).

@@ -8,8 +8,8 @@ App de escritorio para orquestar un equipo de agentes de IA (Claude Code, Antigr
 - Flujo de trabajo (Spec → Plan → Desarrollo → Validación): [`CLAUDE.md`](CLAUDE.md)
 - Licencia: GNU GPLv3 o posterior ([`LICENSE`](LICENSE))
 
-## Instalar (v1.0)
-1. Ejecuta `Agentic OS_1.0.0_x64-setup.exe`. Se instala **para tu usuario**, sin permisos de administrador, en `%LOCALAPPDATA%\Agentic OS`. Si falta WebView2, el instalador lo descarga.
+## Instalar
+1. Ejecuta `Agentic OS_0.9.0_x64-setup.exe`. Se instala **para tu usuario**, sin permisos de administrador, en `%LOCALAPPDATA%\Agentic OS`. Si falta WebView2, el instalador lo descarga.
 2. **SmartScreen**: el instalador no está firmado, así que Windows puede mostrar «Windows protegió su PC». Pulsa «Más información» → «Ejecutar de todas formas». Si el antivirus bloquea `agentic-os-backend.exe`, añádelo como excepción: es el backend de la app, empaquetado con PyInstaller.
 3. Instala y abre los CLIs que quieras usar: Claude Code (`irm https://claude.ai/install.ps1 | iex` en PowerShell, luego `claude` y `/login`) y Antigravity CLI (`agy`). En **Ajustes › CLIs detectados** verás si los encuentra y si tienen sesión iniciada.
 

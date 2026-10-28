@@ -13,7 +13,7 @@ Cada fase sigue el ciclo **Spec → Plan → Desarrollo → Validación**, con t
 Reglas:
 - No empezar una fase sin haber cerrado la anterior. No programar fuera del alcance de la spec aprobada; si surge algo, se anota para una fase futura.
 - Mantener al día el estado de la fase en `docs/roadmap.md` (pendiente · spec · plan · dev · validación · cerrada).
-- Tags de versión: hasta el MVP (fase 08) cada fase cerrada es `v0.N` y el MVP es `v1.0`; a partir de ahí cada fase cerrada sube la versión menor (`v1.1`, `v1.2`…). Nunca se etiqueta por debajo de la última versión existente.
+- Tags de versión (SemVer `vX.Y.Z`, la versión de cada fase está en `docs/roadmap.md`): las fases 00–20 son pre-1.0 y la 20 es `v0.9.0`; la publicación en GitHub es `v0.9.1`, los instaladores firmados `v0.9.2` y la `v1.0.0` sale de las correcciones tras probar esa release. Desde ahí, cada fase sube el parche (`v1.0.1`, `v1.0.2`…); la menor (`v1.1.0`…) solo sube cuando el usuario lo decide por un conjunto grande de funcionalidad nueva. La versión de la app (`package.json`, `tauri.conf.json`, `Cargo.toml`, `pyproject.toml`, `__init__.py`) se sube a la de la fase al cerrarla. Nunca se etiqueta por debajo de la última versión existente.
 - Las plantillas de los documentos de fase están en `docs/phases/_template/`.
 
 ## Convenciones
