@@ -198,3 +198,53 @@ Bloques pequeños, cada uno con sus tests y su commit.
 ## Decisiones (ADR)
 - **ADR 0027** (nuevo, propuesto): temas como datos (JSON de *tokens* en `app_state`, aplicados como variables CSS, `extends` para los propios); avatares solo como recorte reescrito en el backend, nunca la original; registros para soporte generados en local, limpiados y enviados por el usuario a mano (sin servidor ni telemetría).
 - ADR 0013 (navegación) no cambia: las pestañas se quedan como están; Adelante y la Inbox en la cabecera se anotan en él como ampliación.
+
+## Estado (2026-10-28) — para retomar
+
+Rama `phase/20-personalizacion` (24 commits sobre `main`, árbol limpio). **Hechos los bloques 0–8**: todo el desarrollo. **Falta el bloque 9 (cierre)**. Las decisiones tomadas durante el desarrollo están en «Cambios al diseño durante el desarrollo» (notas 6–14) y conviene leerlas antes de seguir.
+
+### Hecho, bloque a bloque (commits principales)
+- **0 · Spikes** (`5a72df5`, `1afe0c5`): resultados arriba. S3 se probó a mano en `tauri dev` con el usuario.
+- **1 · Licencia** (`1c28d25`, `bbc7497`): `LICENSE` (GPLv3, idéntico al de GitHub), `GPL-3.0-or-later` en los manifiestos, copyright y licencia en el instalador NSIS, README, logos en `frontend/src/assets/brand/`.
+- **2 · Navegación** (`8dc59bf`, `c7fa3df`, `fe9e5e6`, `99b800b`): «Adelante» (`use-history-stack.ts`), contador de la Inbox, ficha del agente más limpia, Ajustes agrupado, un único «Nuevo» en Inicio.
+- **3 · Temas** (`ed7adb2`, `02d51e2`, `cb88f8b`): `GET/PUT /api/settings/appearance`, `theme/` (modelo, 5 temas incluidos, resolución, contraste, aplicación, `ThemeProvider`), *tokens* derivados en `tokens.css`, terminal en vivo, colores fijos a *tokens* con `no-hardcoded-colors.test.ts`.
+- **4 · Apariencia** (`93e37e5`): `/ajustes/apariencia` y `/ajustes/apariencia/<id>` (editor con vista previa en toda la app).
+- **5 · Avatares, backend** (`44194df`): migración `0022_agent_avatar`, `services/avatars.py`, `PUT /agents/{id}/avatar`, `GET /avatars/<hash>.webp`, exportación con la foto dentro, limpieza al arrancar, `list_owls` del Arquitecto, 13 búhos de `scripts/owls.py`.
+- **6 · Avatares, interfaz** (`8d732cf`): `AgentAvatar` (búho, foto, iniciales; por `agentId`), `AvatarDialog` (recorte con `react-easy-crop`), `AvatarField` en la pestaña General, `agent_id` en las ramas de una tarea.
+- **7 · Acerca de** (`0e98f28`): `/acerca-de`, `scripts/licenses.py` → `frontend/src/generated/third-party-licenses.json` (641 paquetes; `test_third_party_licenses.py` falla si se queda atrás de los *lockfiles*: regenerar con `uv run --project backend python scripts/licenses.py`).
+- **8 · Registros** (`adcc0e1`, `eb75873`): `services/redact.py` (filtro del registro y limpieza del zip), `services/support.py` + `api/support.py`, `lib/client-log.ts`, `components/support/LogsDialog.tsx`, `desktop/src-tauri/src/desklog.rs` (`desktop.log` y `bundle_logs`).
+
+### Comprobado
+- Frontend: **705 tests** en verde (`npx vitest run` en `frontend/`, ~5 min), ESLint, `tsc`, Prettier y `npm run build`.
+- Backend: los tests nuevos y los de las zonas tocadas (agentes, exportación, Arquitecto, propuestas, ramas, limpieza, registro, OAuth, migraciones 0021/0022, apariencia, avatares, soporte, licencias). **La suite completa no se ha pasado en esta fase.**
+- App de escritorio: `cargo test` (10), `cargo fmt --check`, `cargo check --release`.
+- Visual, con capturas de Edge sin ventana sobre `npm run dev` (en `evidencias/`): temas, Apariencia y editor, búhos en Inicio y galería, Acerca de (esta sin guardar: muestra la ruta del usuario).
+
+### Falta: bloque 9 (cierre)
+1. **Suite completa del backend** (~1 h): `cd backend && uv run pytest -q -p no:warnings > .test-progress.log 2>&1` en segundo plano, decir la ruta al usuario y leer el `[ NN%]` cuando pregunte. Y `npm run test` completo (incluye `cargo test` y los spikes).
+2. **`/code-review`** del diff de la rama contra `main` y resolver lo que salga.
+3. **e2e con el binario empaquetado**: `npm run test:packaged`. Comprobar que el *sidecar* empaquetado arranca con el filtro de registro y que `scripts/build-backend.ps1` incluye lo nuevo (nada de datos nuevos en el *sidecar*: los búhos y el `LICENSE` van en el frontend).
+4. **Pruebas manuales con el usuario en la app de escritorio** (`npm run dev:desktop`, o la app instalada si se construye con `npm run build:desktop`):
+   - escala de texto del editor de temas (zoom del WebView, permiso `core:webview:allow-set-webview-zoom`);
+   - «Preparar registros para enviar» → «Guardar como» (permiso `dialog:allow-save`), el explorador con el fichero seleccionado, el correo con el texto para adjuntarlo;
+   - `desktop.log` en `%APPDATA%\AgenticOS\logs` (o la carpeta de datos movida) y el zip sin backend desde el aviso de backend caído (solo en *release*: en `tauri dev` el backend no lo lanza la app);
+   - recortar una foto real (encuadre y zoom) y verla en las pantallas.
+5. **Documentación**: ADR 0027 a «aceptado» con notas de implementación (resumen de las notas 9–14); ampliar el ADR 0013 (Adelante, contador de la Inbox, Ajustes agrupado); README: secciones de Apariencia, avatares, Acerca de y registros, y los comandos `scripts/licenses.py` y `scripts/owls.py`.
+6. **`validacion.md`** con la plantilla de `docs/phases/_template/`: CA1–CA15 con evidencias (tests y capturas de `evidencias/`), retro y lo que queda para fases futuras (ver abajo).
+7. **OK del usuario** → merge `--no-ff` a `main`, etiqueta **`v1.12`**, roadmap: fase 20 «cerrada (`v1.12`)» con enlace a la validación.
+
+### Preguntas abiertas al usuario (no contestadas)
+- **Contraste de botones**: el criterio actual es 4,5:1 para el texto y 3:1 para etiquetas de botón (el rojo destructivo del Oscuro navy da 3,9:1). Se le ofreció oscurecer ese rojo para exigir 4,5:1 en todo.
+- **«Guardar cambios» en la ficha del agente**: se dejó visible y desactivado sin cambios (no oculto). Se le ofreció ocultarlo.
+- **Versión**: los manifiestos siguen en 1.0.0 y la app muestra «v1.0.0»; el usuario dijo que «el problema está en git, ya se arreglará». No tocar en esta fase.
+
+### Para fases futuras (anotar en la validación)
+- Elegir imagen al crear un agente (el diálogo de nuevo agente tampoco ofrece el color) y cambiar el búho a mano desde la ficha del Arquitecto.
+- Personalización de equipos y proyectos (color e icono propios).
+- Subir el zip de registros a un servidor (hoy se adjunta a mano).
+
+### Avisos para quien siga
+- **No editar documentos con `sed … a\` ni con Python dentro de heredocs**: aquí se pierden las barras invertidas y, si el ancla no existe, `sed` inserta en cada línea (pasó con este plan; ver la memoria `heredoc-backslashes`). Usar Edit, o un script escrito con Write que compruebe que su ancla existe una sola vez.
+- **Tests del frontend**: `lib/client-log.ts` carga `lib/api` bajo demanda a propósito (la configuración de los tests lo importa antes de que los tests simulen Tauri), y `test/setup.ts` lo reinicia tras cada test. `LogsDialog` se monta solo al abrirse.
+- **Datos de desarrollo del usuario**: para las capturas se cambió la apariencia y la imagen de dos agentes y se dejaron como estaban, pero esos cambios quedaron en el «Historial de la ficha» de «Desarrollador» y «QA».
+- Para capturas sin ventana: `npm run dev` y Edge en modo *headless* con DevTools (scripts de ejemplo en `spikes/personalization/`). Parar después solo los procesos que escuchan en 8765 y 5173.
