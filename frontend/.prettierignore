@@ -1,3 +1,5 @@
 dist
 node_modules
 package-lock.json
+# Phase 20: written by scripts/licenses.py
+src/generated/

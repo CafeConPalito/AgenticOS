@@ -30,6 +30,7 @@ export function TextCrumb({
     | 'nav.connections'
     | 'nav.architect'
     | 'nav.appearance'
+    | 'nav.about'
 }) {
   const { t } = useTranslation()
   return <>{t(i18nKey)}</>

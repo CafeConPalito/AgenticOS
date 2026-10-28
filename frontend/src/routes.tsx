@@ -25,6 +25,7 @@ import ProjectsPage from '@/pages/projects/ProjectsPage'
 import RunPage from '@/pages/runs/RunPage'
 import RunsPage from '@/pages/runs/RunsPage'
 import SettingsPage from '@/pages/settings/SettingsPage'
+import AboutPage from '@/pages/about/AboutPage'
 import AppearancePage from '@/pages/settings/appearance/AppearancePage'
 import ThemeEditorPage from '@/pages/settings/appearance/ThemeEditorPage'
 import TaskPage from '@/pages/tasks/TaskPage'
@@ -154,6 +155,11 @@ export const routes: RouteObject[] = [
             ],
           },
         ],
+      },
+      {
+        path: 'acerca-de',
+        element: <AboutPage />,
+        handle: crumb(() => <TextCrumb i18nKey="nav.about" />),
       },
       { path: '*', element: <Navigate to="/" replace /> },
     ],

@@ -12,7 +12,14 @@ from pathlib import Path
 
 OUT = Path(__file__).resolve().parent.parent / "frontend" / "src" / "assets" / "owls"
 
-BODY, BELLY, EYE, PUPIL, BEAK, LINE = "#8A5A3B", "#E9D3B4", "#FFFFFF", "#1B1B1F", "#F2A93B", "#3A2416"
+BODY, BELLY, EYE, PUPIL, BEAK, LINE = (
+    "#8A5A3B",
+    "#E9D3B4",
+    "#FFFFFF",
+    "#1B1B1F",
+    "#F2A93B",
+    "#3A2416",
+)
 # Dark accessories get a light rim so they still read on a dark agent color (spike S1).
 RIM = 'stroke="#F4E3D0" stroke-opacity="0.85"'
 

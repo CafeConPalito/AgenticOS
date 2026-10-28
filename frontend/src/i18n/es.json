@@ -16,7 +16,8 @@
     "knowledge": "Conocimiento y skills",
     "connections": "Conexiones",
     "architect": "Arquitecto",
-    "appearance": "Apariencia"
+    "appearance": "Apariencia",
+    "about": "Acerca de"
   },
   "header": {
     "search": "Buscar agentes, tareas o acciones…",
@@ -1180,10 +1181,8 @@
     },
     "about": {
       "title": "Acerca de",
-      "version": "Versión",
-      "dataDir": "Carpeta de datos",
-      "backend": "Backend",
-      "logsHint": "Los logs del backend están en la carpeta «logs» de la carpeta de datos."
+      "summary": "Versión {{version}}. Autoría, licencia, cómo informar de un error y las licencias de terceros.",
+      "open": "Abrir Acerca de"
     },
     "index": "Secciones de Ajustes",
     "groups": {
@@ -1617,7 +1616,8 @@
       "clis": "CLIs y cuentas",
       "knowledge": "Conocimiento",
       "connections": "Conexiones MCP",
-      "appearance": "Ir a Apariencia"
+      "appearance": "Ir a Apariencia",
+      "about": "Ir a Acerca de"
     },
     "schedulerPaused": "Scheduler en pausa",
     "schedulerResumed": "Scheduler en marcha"
@@ -3920,6 +3920,58 @@
       "another": "Elegir otra",
       "use": "Usar esta foto",
       "saving": "Guardando…"
+    }
+  },
+  "about": {
+    "tagline": "Un equipo de agentes de IA que trabajan para ti.",
+    "version": "Versión {{version}}",
+    "backendVersion": "backend {{version}}",
+    "authors": "Autoría",
+    "madeBy": "Made By Café Con Palito with ❤️",
+    "author": "Albano Díez de Paulino",
+    "copyright": "Copyright (C) 2026 Albano Díez de Paulino",
+    "help": {
+      "title": "Informar de un error",
+      "text": "Si algo no funciona como esperabas, escríbenos: el correo se abre con la versión y una plantilla para contarlo.",
+      "report": "Informar de un error",
+      "address": "Se abre tu programa de correo con un mensaje a {{email}}."
+    },
+    "bug": {
+      "subject": "Error",
+      "doing": "Qué estaba haciendo:",
+      "expected": "Qué esperaba que pasara:",
+      "happened": "Qué pasó:",
+      "logs": "Si puedes, adjunta los registros (Acerca de › Preparar registros para enviar)."
+    },
+    "license": {
+      "title": "Licencia: GNU General Public License v3.0 o posterior",
+      "summary": "Agentic OS es software libre: puedes usarlo, estudiarlo, compartirlo y modificarlo bajo los términos de la GNU GPL, versión 3 o (a tu elección) cualquier versión posterior. Se distribuye sin ninguna garantía, ni siquiera la implícita de comerciabilidad o idoneidad para un fin concreto.",
+      "full": "Ver el texto completo de la licencia",
+      "loading": "Cargando…"
+    },
+    "system": {
+      "title": "Sistema",
+      "dataDir": "Carpeta de datos",
+      "backend": "Backend",
+      "logsHint": "Los registros del backend están en la carpeta «logs» de la carpeta de datos."
+    },
+    "thirdParty": {
+      "title": "Licencias de terceros",
+      "text": "Agentic OS se apoya en estos paquetes de código abierto, cada uno con su licencia.",
+      "search": "Buscar por nombre o licencia",
+      "ecosystem": "Origen",
+      "ecosystems": {
+        "all": "Todos",
+        "npm": "Interfaz (npm)",
+        "python": "Backend (Python)",
+        "rust": "App de escritorio (Rust)"
+      },
+      "count_one": "{{count}} paquete",
+      "count_other": "{{count}} paquetes",
+      "name": "Paquete",
+      "version": "Versión",
+      "license": "Licencia",
+      "own": "Los búhos de los avatares y los temas incluidos son obra del proyecto, con su misma licencia."
     }
   }
 }

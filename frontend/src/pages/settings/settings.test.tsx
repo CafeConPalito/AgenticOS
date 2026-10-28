@@ -123,13 +123,14 @@ describe('Settings · Limpieza', () => {
 })
 
 describe('Settings · Acerca de', () => {
-  it('shows the version and where the data is', async () => {
+  it('shows the version and leads to the full page (phase 20)', async () => {
     createFakeBackend()
-    renderApp('/ajustes')
+    const user = userEvent.setup()
+    const { router } = renderApp('/ajustes')
     const about = await screen.findByRole('region', { name: es.settings.about.title })
-    await waitFor(() => expect(about).toHaveTextContent('0.1.0'))
-    expect(about).toHaveTextContent('AgenticOS')
-    expect(about).toHaveTextContent(es.settings.about.logsHint)
+    expect(about).toHaveTextContent(__APP_VERSION__)
+    await user.click(within(about).getByRole('link', { name: es.settings.about.open }))
+    expect(router.state.location.pathname).toBe('/acerca-de')
   })
 })
 
