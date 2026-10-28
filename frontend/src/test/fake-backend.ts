@@ -2578,6 +2578,28 @@ export function createFakeBackend(
       if (method === 'PUT') Object.assign(dictationSettings, body)
       return json(200, dictationSettings)
     }
+    // Phase 20: «Preparar registros para enviar».
+    const DEFAULT_BUNDLE = 'D:/Descargas/agentic-os-registros-20261028-1200.zip'
+    if (path === '/api/support/logs')
+      return json(200, {
+        files: [
+          { name: 'logs/backend.log', size: 2048 },
+          { name: 'logs/desktop.log', size: 512 },
+        ],
+        total: 2560,
+        default_path: DEFAULT_BUNDLE,
+      })
+    if (path === '/api/support/logs/bundle' && method === 'POST') {
+      const target = typeof body.path === 'string' ? body.path : DEFAULT_BUNDLE
+      return json(201, {
+        path: target,
+        size: 1234,
+        files: ['logs/backend.log', 'logs/desktop.log', 'info.txt'],
+        redactions: { run_token: 3, secret: 1 },
+      })
+    }
+    if (path === '/api/support/logs/reveal' && method === 'POST') return json(204, null)
+    if (path === '/api/support/client-log' && method === 'POST') return json(204, null)
     if (path === '/api/settings/appearance') {
       if (method === 'PUT') appearance.current = { ...(body as unknown as Appearance) }
       return json(200, appearance.current)

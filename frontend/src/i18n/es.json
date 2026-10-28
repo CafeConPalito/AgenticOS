@@ -3973,5 +3973,26 @@
       "license": "Licencia",
       "own": "Los búhos de los avatares y los temas incluidos son obra del proyecto, con su misma licencia."
     }
+  },
+  "support": {
+    "logs": {
+      "open": "Preparar registros para enviar",
+      "title": "Preparar registros para enviar",
+      "text": "Un archivo .zip con los registros del backend y de la app de escritorio, los errores recientes de la interfaz y un resumen del sistema, para adjuntarlo al informe de un error.",
+      "offlineText": "El backend no responde: la app de escritorio prepara un .zip con su registro y el del backend, para adjuntarlo al informe de un error.",
+      "infoFile": "versiones y sistema",
+      "loading": "Mirando qué hay…",
+      "noLogs": "No hay registros guardados (en desarrollo el backend escribe en la consola). Se incluirá solo el resumen del sistema.",
+      "privacy": "Antes de guardarlo se ocultan los tokens, las claves, las contraseñas, los secretos de las conexiones, los correos y tu nombre de usuario en las rutas. No incluye las salidas de terminal de las ejecuciones, el contenido de las tareas, el conocimiento ni las conversaciones. Puedes abrir el .zip y revisarlo antes de enviarlo.",
+      "saveAs": "Guardar como…",
+      "saveDownloads": "Guardar en Descargas",
+      "working": "Preparando…",
+      "saved": "Guardado: {{name}}",
+      "hidden_one": "Se ha ocultado {{count}} dato sensible.",
+      "hidden_other": "Se han ocultado {{count}} datos sensibles.",
+      "reveal": "Mostrar en la carpeta",
+      "mail": "Abrir el correo",
+      "attach": "Adjunto los registros:"
+    }
   }
 }

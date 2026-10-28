@@ -4,6 +4,7 @@ import { afterEach, vi } from 'vitest'
 import '@/i18n'
 import { useDialogs } from '@/stores/dialogs'
 import { useUiPrefs } from '@/stores/ui-prefs'
+import { resetClientLog } from '@/lib/client-log'
 
 const DIALOGS_INITIAL = useDialogs.getState()
 const PREFS_INITIAL = useUiPrefs.getState()
@@ -55,5 +56,7 @@ afterEach(() => {
   // Module-level stores outlive each test's render: back to their start.
   useDialogs.setState(DIALOGS_INITIAL, true)
   useUiPrefs.setState(PREFS_INITIAL, true)
+  // Phase 20: the interface errors a test left pending are not sent during the next one.
+  resetClientLog()
   document.documentElement.className = ''
 })

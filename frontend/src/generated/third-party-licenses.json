@@ -2,7 +2,7 @@
  "lockfiles": {
   "package-lock.json": "023d5a9dafb3d8e340708bf3d8bd508f4a6711603d7f8ba3e8799782119143b0",
   "backend/uv.lock": "59966cd8f8a2ecdb42e5a30d28d8781273acd1dd1ea676f32a0494ea8e5805b4",
-  "desktop/src-tauri/Cargo.lock": "2726ea246dcbe01d04b213b9baba2d0c7c75f896cf5dbea2e82edc9fe894160e"
+  "desktop/src-tauri/Cargo.lock": "895760f85e2dfbceb3f8b0d76a57168bfb2d173276d508b053b3c4c509bfc19e"
  },
  "packages": [
   {
@@ -2702,6 +2702,13 @@
   },
   {
    "ecosystem": "rust",
+   "name": "bumpalo",
+   "version": "3.20.3",
+   "license": "MIT OR Apache-2.0",
+   "url": "https://github.com/fitzgen/bumpalo"
+  },
+  {
+   "ecosystem": "rust",
    "name": "byteorder",
    "version": "1.5.0",
    "license": "Unlicense OR MIT",
@@ -4459,6 +4466,13 @@
   },
   {
    "ecosystem": "rust",
+   "name": "zip",
+   "version": "2.6.1",
+   "license": "MIT",
+   "url": "https://github.com/zip-rs/zip2.git"
+  },
+  {
+   "ecosystem": "rust",
    "name": "zlib-rs",
    "version": "0.6.8",
    "license": "Zlib",
@@ -4470,6 +4484,13 @@
    "version": "1.0.23",
    "license": "MIT",
    "url": "https://github.com/dtolnay/zmij"
+  },
+  {
+   "ecosystem": "rust",
+   "name": "zopfli",
+   "version": "0.8.4",
+   "license": "Apache-2.0",
+   "url": "https://github.com/zopfli-rs/zopfli"
   }
  ]
 }

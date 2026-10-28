@@ -1,7 +1,9 @@
-import { FileText, Loader2, RotateCcw, WifiOff } from 'lucide-react'
+import { isTauri } from '@tauri-apps/api/core'
+import { FileArchive, FileText, Loader2, RotateCcw, WifiOff } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
+import { LogsDialog } from '@/components/support/LogsDialog'
 import { Button } from '@/components/ui/button'
 import type { BackendState } from '@/hooks/useHealth'
 import { openBackendLogs, restartBackend } from '@/lib/api'
@@ -23,6 +25,7 @@ export function OfflineBanner({
 }) {
   const { t } = useTranslation()
   const [busy, setBusy] = useState(false)
+  const [logsOpen, setLogsOpen] = useState(false)
   const reconnecting = state === 'reconnecting'
 
   async function restart() {
@@ -91,6 +94,19 @@ export function OfflineBanner({
             <FileText />
             {t('backend.openLogs')}
           </Button>
+          {/* Phase 20: the logs to send, zipped by the desktop shell itself. */}
+          {isTauri() && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-[26px]"
+              onClick={() => setLogsOpen(true)}
+            >
+              <FileArchive />
+              {t('support.logs.open')}
+            </Button>
+          )}
+          {logsOpen && <LogsDialog open onOpenChange={setLogsOpen} offline />}
         </span>
       ) : (
         !reconnecting && (

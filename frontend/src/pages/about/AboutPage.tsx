@@ -1,5 +1,5 @@
 import { isTauri } from '@tauri-apps/api/core'
-import { Bug, ExternalLink, FileText, Mail, Scale } from 'lucide-react'
+import { Bug, ExternalLink, FileArchive, FileText, Mail, Scale } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -9,6 +9,7 @@ import { Logo } from '@/components/layout/Logo'
 import { PageContainer } from '@/components/page'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { LogsDialog } from '@/components/support/LogsDialog'
 import { useHealth } from '@/hooks/useHealth'
 import { openBackendLogs } from '@/lib/api'
 import { bugReportHref, CONTACT_EMAIL } from '@/lib/bug-report'
@@ -34,6 +35,7 @@ export default function AboutPage() {
   const dataDir = useDataDir().data
   const a = 'about'
   const version = __APP_VERSION__
+  const [logsOpen, setLogsOpen] = useState(false)
   const backendVersion = health?.version
 
   const mailto = bugReportHref({
@@ -91,6 +93,10 @@ export default function AboutPage() {
                 {t(`${a}.help.report`)}
               </a>
             </Button>
+            <Button variant="outline" onClick={() => setLogsOpen(true)}>
+              <FileArchive />
+              {t('support.logs.open')}
+            </Button>
           </div>
           <p className="text-xs text-muted-foreground">
             {t(`${a}.help.address`, { email: CONTACT_EMAIL })}
@@ -127,6 +133,7 @@ export default function AboutPage() {
       </section>
 
       <ThirdParties />
+      {logsOpen && <LogsDialog open onOpenChange={setLogsOpen} />}
     </PageContainer>
   )
 }

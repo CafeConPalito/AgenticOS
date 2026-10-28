@@ -9,11 +9,14 @@ export function bugReportHref({
   version,
   backendVersion,
   system = typeof navigator === 'undefined' ? '' : navigator.userAgent,
+  attachment,
   texts,
 }: {
   version: string
   backendVersion?: string
   system?: string
+  /** The logs zip the person is asked to attach (a `mailto` cannot attach it by itself). */
+  attachment?: { name: string; note: string }
   texts: { subject: string; doing: string; expected: string; happened: string; logs: string }
 }): string {
   const lines = [
@@ -29,7 +32,7 @@ export function bugReportHref({
     texts.happened,
     '',
     '',
-    texts.logs,
+    attachment ? `${attachment.note} ${attachment.name}` : texts.logs,
   ]
   const subject = encodeURIComponent(`${texts.subject} · Agentic OS ${version}`)
   const body = encodeURIComponent(lines.join('\n'))
