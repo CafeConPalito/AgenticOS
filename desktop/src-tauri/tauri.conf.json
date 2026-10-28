@@ -57,6 +57,9 @@
       }
     },
     "shortDescription": "Orquestador de agentes de IA",
-    "publisher": "Agentic OS"
+    "publisher": "Café con Palito",
+    "copyright": "Copyright (C) 2026 Albano Díez de Paulino",
+    "license": "GPL-3.0-or-later",
+    "licenseFile": "../../LICENSE"
   }
 }

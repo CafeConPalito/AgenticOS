@@ -48,6 +48,7 @@ from agentic_os.models import (
 from agentic_os.models.agent import MAX_CONCURRENCY
 from agentic_os.schemas.pipeline import MAX_STAGES, LinkWrite, PipelineWrite, StageWrite
 from agentic_os.services import accounts as account_ops
+from agentic_os.services import avatars
 from agentic_os.services import tasks as task_ops
 from agentic_os.services.clis import CliInfo
 from agentic_os.services.pipelines import check as check_graph
@@ -64,6 +65,7 @@ AGENT_FIELDS = (
     "role",
     "description",
     "color",
+    "avatar",
     "team",
     "cli",
     "account",
@@ -386,6 +388,14 @@ def check_field(catalog: Catalog, sheet: Mapping, key: str, value: object) -> An
     cli = sheet.get("cli")
     if key in TEXT_FIELDS:
         return _text(value, TEXT_FIELDS[key], required=key in ("name", "role"))
+    if key == "avatar":
+        # Phase 20: only an owl of the gallery (list_owls), or null for the initials.
+        if value is None:
+            return None
+        owl = value[4:] if isinstance(value, str) and value.startswith("owl:") else value
+        if owl not in avatars.OWL_IDS:
+            raise Refused("debe ser un búho de la galería (list_owls), p. ej. «owl:glasses»")
+        return f"owl:{owl}"
     if key == "color":
         if not isinstance(value, str) or not COLOR.match(value):
             raise Refused("debe ser un color #RRGGBB")

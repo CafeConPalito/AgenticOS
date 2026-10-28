@@ -304,7 +304,9 @@ describe('Settings for proposals and the graph', () => {
     const threshold = screen.getByLabelText(es.settings.knowledge.fields.graph_threshold)
     await user.clear(threshold)
     await user.type(threshold, '0.3')
-    await user.click(screen.getAllByRole('button', { name: es.common.save })[0])
+    await user.click(
+      within(document.getElementById('knowledge')!).getByRole('button', { name: es.common.save }),
+    )
     await waitFor(() => expect(backend.callsTo('PUT', '/api/settings/knowledge')).toHaveLength(1))
     expect(backend.callsTo('PUT', '/api/settings/knowledge')[0].body).toMatchObject({
       proposals_enabled: true,
@@ -331,7 +333,9 @@ describe('Settings for proposals and the graph', () => {
     const threshold = await screen.findByLabelText(es.settings.knowledge.fields.graph_threshold)
     await user.clear(threshold)
     await user.type(threshold, '5')
-    await user.click(screen.getAllByRole('button', { name: es.common.save })[0])
+    await user.click(
+      within(document.getElementById('knowledge')!).getByRole('button', { name: es.common.save }),
+    )
     expect(await screen.findByText('Entre 0.05 y 0.9')).toBeVisible()
     expect(backend.callsTo('PUT', '/api/settings/knowledge')).toHaveLength(0)
   })

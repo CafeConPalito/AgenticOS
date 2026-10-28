@@ -6,9 +6,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Agentic OS</title>
     <script>
+      // Phase 20: paint the last theme before React mounts (theme/apply.ts writes it).
       try {
-        if (localStorage.getItem('agentic-os.theme') === 'light')
-          document.documentElement.classList.remove('dark')
+        var root = document.documentElement
+        var applied = JSON.parse(localStorage.getItem('agentic-os.theme.applied') || 'null')
+        if (applied && applied.vars) {
+          for (var name in applied.vars) root.style.setProperty(name, applied.vars[name])
+          if (applied.base === 'light') root.classList.remove('dark')
+        } else if (localStorage.getItem('agentic-os.theme') === 'light')
+          root.classList.remove('dark')
       } catch {}
     </script>
   </head>

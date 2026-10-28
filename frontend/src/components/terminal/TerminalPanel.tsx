@@ -66,22 +66,22 @@ export function TerminalPanel({
       )}
     >
       {variant === 'page' && (
-        <header className="flex items-center gap-2.5 border-b border-terminal-border bg-terminal-header py-2 pr-2.5 pl-3 text-[#E6EDF7]">
+        <header className="flex items-center gap-2.5 border-b border-terminal-border bg-terminal-header py-2 pr-2.5 pl-3 text-terminal-foreground">
           <span aria-hidden className="flex gap-[5px]">
             {[0, 1, 2].map((i) => (
-              <span key={i} className="size-[9px] rounded-full bg-[#1E3A66]" />
+              <span key={i} className="size-[9px] rounded-full bg-terminal-dot" />
             ))}
           </span>
           <span className="min-w-0 truncate font-mono text-[12.5px]">
             {run.agent_name} · {run.cli_session_id?.slice(0, 8) ?? run.id.slice(0, 8)}
           </span>
           {mine ? (
-            <span className="inline-flex h-[22px] shrink-0 items-center gap-1.5 rounded-full bg-status-intervening px-[9px] text-[11.5px] font-bold whitespace-nowrap text-[#0A1A33]">
+            <span className="inline-flex h-[22px] shrink-0 items-center gap-1.5 rounded-full bg-status-intervening px-[9px] text-[11.5px] font-bold whitespace-nowrap text-status-intervening-foreground">
               <Keyboard className="size-3" />
               {t('terminal.intervening')}
             </span>
           ) : (
-            <span className="inline-flex h-[22px] shrink-0 items-center gap-1.5 rounded-full bg-[#13284D] px-[9px] text-[11.5px] whitespace-nowrap text-[#C9D5EA]">
+            <span className="inline-flex h-[22px] shrink-0 items-center gap-1.5 rounded-full bg-terminal-chip px-[9px] text-[11.5px] whitespace-nowrap text-terminal-foreground">
               <Eye className="size-3" />
               {finished
                 ? t('terminal.finished')
@@ -98,7 +98,7 @@ export function TerminalPanel({
                   variant="outline"
                   onClick={() => void act('release')}
                   disabled={control.isPending}
-                  className="h-7 border-status-intervening bg-transparent text-status-intervening hover:bg-[#F5B547]/10 hover:text-status-intervening"
+                  className="h-7 border-status-intervening bg-transparent text-status-intervening hover:bg-status-intervening/10 hover:text-status-intervening"
                 >
                   <Undo2 />
                   {t('terminal.release')}
@@ -118,7 +118,7 @@ export function TerminalPanel({
         </header>
       )}
       {run.log_purged && (
-        <p className="border-b border-terminal-border px-3.5 py-2 font-mono text-[12px] text-[#7F8DAA]">
+        <p className="border-b border-terminal-border px-3.5 py-2 font-mono text-[12px] text-terminal-muted">
           {t('runs.logPurged')}
         </p>
       )}
@@ -128,13 +128,13 @@ export function TerminalPanel({
         className={cn('min-h-0 flex-1 px-2 py-1.5', variant === 'dock' && 'overflow-auto')}
       />
       {variant === 'dock' ? (
-        <div className="px-3.5 pb-2 font-mono text-[12px] text-[#7F8DAA]">
+        <div className="px-3.5 pb-2 font-mono text-[12px] text-terminal-muted">
           {finished ? t('terminal.finished') : t('terminal.dockReadOnly')}
         </div>
       ) : (
         !finished &&
         !mine && (
-          <div className="flex items-center gap-2 px-3.5 pb-2 font-mono text-[12px] text-[#7F8DAA]">
+          <div className="flex items-center gap-2 px-3.5 pb-2 font-mono text-[12px] text-terminal-muted">
             {activity === 'busy'
               ? t('terminal.working', { name: run.agent_name })
               : t('terminal.waiting')}

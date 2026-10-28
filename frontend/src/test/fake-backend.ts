@@ -31,6 +31,7 @@ import type {
 } from '@/api/git-more'
 import type { ProjectRepo } from '@/api/repos'
 import type { DictationSettings, DictationStatus } from '@/api/dictation'
+import { type Appearance, DEFAULT_APPEARANCE } from '@/theme/model'
 import type { HfToken, LocalModel, ModelSelection } from '@/api/local-models'
 import type {
   DocImage,
@@ -108,6 +109,7 @@ export const TEMPLATES: AgentTemplate[] = [
     role: 'Desarrollador',
     description: 'Implementa las tareas.',
     color: '#4FD1C5',
+    avatar: null,
     cli: 'claude',
     model: 'sonnet',
     instructions: '# Dev',
@@ -123,6 +125,7 @@ export const TEMPLATES: AgentTemplate[] = [
     role: 'QA',
     description: 'Verifica.',
     color: '#B5E061',
+    avatar: null,
     cli: 'agy',
     model: '',
     instructions: '# QA',
@@ -170,6 +173,7 @@ export function makeAgent(overrides: Partial<Agent> = {}): Agent {
     role: 'Desarrollador',
     description: '',
     color: '#4FD1C5',
+    avatar: null,
     cli: 'claude',
     model: 'sonnet',
     instructions: '',
@@ -849,6 +853,8 @@ export function createFakeBackend(
     inbox?: InboxItem[]
     trees?: Record<string, TreeNode[]>
     notificationSettings?: NotificationSettings
+    /** Ajustes › Apariencia (phase 20). */
+    appearance?: Appearance
     usage?: Partial<FakeUsage>
     branches?: ProjectBranches[]
     clis?: CliInfo[]
@@ -1966,6 +1972,15 @@ export function createFakeBackend(
       agent.using_fallback = false
       return json(200, agent)
     }
+    // Phase 20: the cropped photo arrives as the raw body; the fake keeps it to be inspected.
+    const avatarMatch = path.match(/^\/api\/agents\/([^/]+)\/avatar$/)
+    if (avatarMatch && method === 'PUT') {
+      const agent = agents.find((a) => a.id === avatarMatch[1])
+      if (!agent) return apiError(404, 'agent_not_found')
+      avatarUploads.push({ agentId: agent.id, body: rawBody })
+      agent.avatar = `photo:${String(avatarUploads.length).padStart(12, '0')}`
+      return json(200, agent)
+    }
     const agentMatch = path.match(/^\/api\/agents\/([^/]+)(\/duplicate)?$/)
     if (agentMatch) {
       const index = agents.findIndex((a) => a.id === agentMatch[1])
@@ -2532,6 +2547,7 @@ export function createFakeBackend(
     return null
   }
 
+  const appearance = { current: structuredClone(seed.appearance ?? DEFAULT_APPEARANCE) }
   const dictationSettings: DictationSettings = {
     enabled: true,
     language: 'es',
@@ -2562,6 +2578,32 @@ export function createFakeBackend(
       if (method === 'PUT') Object.assign(dictationSettings, body)
       return json(200, dictationSettings)
     }
+    // Phase 20: «Preparar registros para enviar».
+    const DEFAULT_BUNDLE = 'D:/Descargas/agentic-os-registros-20261028-1200.zip'
+    if (path === '/api/support/logs')
+      return json(200, {
+        files: [
+          { name: 'logs/backend.log', size: 2048 },
+          { name: 'logs/desktop.log', size: 512 },
+        ],
+        total: 2560,
+        default_path: DEFAULT_BUNDLE,
+      })
+    if (path === '/api/support/logs/bundle' && method === 'POST') {
+      const target = typeof body.path === 'string' ? body.path : DEFAULT_BUNDLE
+      return json(201, {
+        path: target,
+        size: 1234,
+        files: ['logs/backend.log', 'logs/desktop.log', 'info.txt'],
+        redactions: { run_token: 3, secret: 1 },
+      })
+    }
+    if (path === '/api/support/logs/reveal' && method === 'POST') return json(204, null)
+    if (path === '/api/support/client-log' && method === 'POST') return json(204, null)
+    if (path === '/api/settings/appearance') {
+      if (method === 'PUT') appearance.current = { ...(body as unknown as Appearance) }
+      return json(200, appearance.current)
+    }
     if (path === '/api/dictation/transcribe' && method === 'POST') {
       await seed.dictation?.gate?.()
       const answers = seed.dictation?.answers ?? ['texto dictado']
@@ -2577,6 +2619,9 @@ export function createFakeBackend(
   const skillsBackend = createSkillsBackend(seed.skills)
   const connectionsBackend = createConnectionsBackend(seed.connections)
   const architectBackend = createArchitectBackend(seed.architect)
+  // The last request's body when it is binary (an avatar crop).
+  let rawBody: Blob | null = null
+  const avatarUploads: { agentId: string; body: Blob | null }[] = []
   const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = new URL(typeof input === 'string' ? input : input.toString())
     const method = (init?.method ?? 'GET').toUpperCase()
@@ -2584,6 +2629,7 @@ export function createFakeBackend(
       typeof init?.body === 'string'
         ? (JSON.parse(init.body) as Record<string, unknown>)
         : ({} as Record<string, unknown>)
+    rawBody = init?.body instanceof Blob ? init.body : null
     const path = url.pathname + url.search
     calls.push({
       method,
@@ -2629,6 +2675,8 @@ export function createFakeBackend(
     knowledgeSettings,
     dictationSettings,
     dictationStatus,
+    appearance,
+    avatarUploads,
     queueState,
     tasks,
     inbox,

@@ -154,7 +154,14 @@ export function PipelineEditor({
                       <span className="font-mono text-[11px] text-muted-foreground">
                         {index + 1}
                       </span>
-                      {agent && <AgentAvatar name={agent.name} color={agent.color} size={18} />}
+                      {agent && (
+                        <AgentAvatar
+                          name={agent.name}
+                          color={agent.color}
+                          agentId={agent.id}
+                          size={18}
+                        />
+                      )}
                       <span className="min-w-0 flex-1 truncate">{stage.name}</span>
                       {bad && (
                         <AlertTriangle

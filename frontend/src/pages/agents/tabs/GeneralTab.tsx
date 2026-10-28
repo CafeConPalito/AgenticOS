@@ -1,11 +1,11 @@
-import { Controller, useFormContext, useWatch } from 'react-hook-form'
+import { Controller, useFormContext } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
-import { AgentAvatar } from '@/components/agentic/primitives'
-import { ColorPicker, Field } from '@/components/page'
+import { Field } from '@/components/page'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import type { AgentFormValues } from '../agent-form'
 import { TeamSelect } from '../AgentLinks'
+import { AvatarField } from './AvatarField'
 
 export function GeneralTab() {
   const { t } = useTranslation()
@@ -14,7 +14,6 @@ export function GeneralTab() {
     control,
     formState: { errors },
   } = useFormContext<AgentFormValues>()
-  const [name, color] = useWatch<AgentFormValues, ['name', 'color']>({ name: ['name', 'color'] })
 
   return (
     <div className="grid max-w-[1052px] grid-cols-2 gap-x-5 gap-y-5 px-6 pt-5 pb-8">
@@ -38,20 +37,7 @@ export function GeneralTab() {
         help={t('agents.fields.colorHelp')}
         className="col-span-2"
       >
-        <div className="flex items-center gap-4">
-          <AgentAvatar name={name || '?'} color={color} size={56} />
-          <Controller
-            control={control}
-            name="color"
-            render={({ field }) => (
-              <ColorPicker
-                value={field.value}
-                onChange={field.onChange}
-                colorLabel={(c) => t('agents.fields.color', { color: c })}
-              />
-            )}
-          />
-        </div>
+        <AvatarField />
       </Field>
       <Field
         label={t('agents.fields.description')}

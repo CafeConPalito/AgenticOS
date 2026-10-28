@@ -2,10 +2,13 @@ import path from 'node:path'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vitest/config'
+import pkg from './package.json' with { type: 'json' }
 
 // Tauri expects a fixed dev port and must not clear its own console output.
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  // Phase 20: «Acerca de» shows the version of the interface.
+  define: { __APP_VERSION__: JSON.stringify(pkg.version) },
   resolve: {
     alias: { '@': path.resolve(import.meta.dirname, 'src') },
   },

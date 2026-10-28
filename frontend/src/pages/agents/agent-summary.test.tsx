@@ -99,13 +99,15 @@ describe('Agent page · Resumen', () => {
     expect(screen.getByRole('button', { name: es.agents.assignTask })).toBeEnabled()
   })
 
-  it('«Editar» goes to the editing tabs, where «Guardar» is back', async () => {
+  it('Resumen only reads: no «Editar» nor «Guardar»; the General tab brings «Guardar» (phase 20)', async () => {
     const agent = makeAgent()
     createFakeBackend({ agents: [agent] })
     const user = userEvent.setup()
     const { router } = renderApp(`/agentes/${agent.id}/resumen`)
+    await screen.findByRole('button', { name: es.agents.assignTask })
     expect(screen.queryByRole('button', { name: es.common.save })).toBeNull()
-    await user.click(await screen.findByRole('link', { name: es.agents.edit }))
+    expect(screen.queryByRole('link', { name: 'Editar' })).toBeNull()
+    await user.click(screen.getByRole('link', { name: es.agents.tabs.general }))
     expect(router.state.location.pathname).toBe(`/agentes/${agent.id}/general`)
     expect(await screen.findByRole('button', { name: es.common.save })).toBeVisible()
   })

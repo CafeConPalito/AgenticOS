@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from 'react-router'
 import { PageContainer, PageHeader } from '@/components/page'
 import { cn } from '@/lib/utils'
 import { AboutSection } from './AboutSection'
+import { AppearanceSection } from './AppearanceSection'
 import { ArchitectSection } from './ArchitectSection'
 import { CleanupSection } from './CleanupSection'
 import { DictationSection } from './DictationSection'
@@ -16,22 +17,33 @@ import { NotificationsSection } from './NotificationsSection'
 import { ConnectionsSection } from './ConnectionsSection'
 import { SkillsSection } from './SkillsSection'
 
-/** The sections, in order; each one is reachable as `/ajustes#<id>`. */
-export const SECTIONS = [
-  'general',
-  'notifications',
-  'limits',
-  'git',
-  'knowledge',
-  'skills',
-  'connections',
-  'architect',
-  'dictation',
-  'models',
-  'cleanup',
-  'about',
+/** The index groups (phase 20) and their sections, in order; each one is `/ajustes#<id>`. */
+export const SECTION_GROUPS = [
+  { id: 'app', sections: ['general', 'appearance', 'notifications', 'dictation', 'about'] },
+  { id: 'agents', sections: ['limits', 'architect', 'git'] },
+  { id: 'resources', sections: ['knowledge', 'skills', 'connections', 'models'] },
+  { id: 'maintenance', sections: ['cleanup'] },
 ] as const
+
+/** The sections, in the order of the groups. */
+export const SECTIONS = SECTION_GROUPS.flatMap((group) => group.sections)
 type SectionId = (typeof SECTIONS)[number]
+
+const SECTION_BODY: Record<SectionId, () => React.ReactNode> = {
+  general: GeneralSection,
+  appearance: AppearanceSection,
+  notifications: NotificationsSection,
+  dictation: DictationSection,
+  about: AboutSection,
+  limits: LimitsSection,
+  architect: ArchitectSection,
+  git: GitSection,
+  knowledge: KnowledgeSection,
+  skills: SkillsSection,
+  connections: ConnectionsSection,
+  models: LocalModelsSection,
+  cleanup: CleanupSection,
+}
 
 /** The id of the section that shows at the top of the scroll area. */
 function useVisibleSection(): [SectionId, (id: SectionId) => void] {
@@ -101,61 +113,40 @@ export default function SettingsPage() {
           aria-label={t('settings.index')}
           className="sticky top-4 flex flex-col gap-0.5 max-lg:static max-lg:flex-row max-lg:flex-wrap"
         >
-          {SECTIONS.map((id) => (
-            <a
-              key={id}
-              href={`#${id}`}
-              aria-current={visible === id ? 'true' : undefined}
-              onClick={(e) => {
-                e.preventDefault()
-                go(id)
-              }}
-              className={cn(
-                'rounded-full px-3 py-1.5 text-[13px] text-muted-foreground hover:bg-accent hover:text-foreground',
-                visible === id && 'bg-accent font-medium text-foreground',
-              )}
-            >
-              {t(`settings.sections.${id}`)}
-            </a>
+          {SECTION_GROUPS.map((group) => (
+            <div key={group.id} className="flex flex-col gap-0.5 max-lg:contents">
+              <p className="mt-3 mb-1 px-3 font-mono text-[10.5px] tracking-[0.12em] text-muted-foreground uppercase first:mt-0 max-lg:hidden">
+                {t(`settings.groups.${group.id}`)}
+              </p>
+              {group.sections.map((id) => (
+                <a
+                  key={id}
+                  href={`#${id}`}
+                  aria-current={visible === id ? 'true' : undefined}
+                  onClick={(e) => {
+                    e.preventDefault()
+                    go(id)
+                  }}
+                  className={cn(
+                    'rounded-full px-3 py-1.5 text-[13px] text-muted-foreground hover:bg-accent hover:text-foreground',
+                    visible === id && 'bg-accent font-medium text-foreground',
+                  )}
+                >
+                  {t(`settings.sections.${id}`)}
+                </a>
+              ))}
+            </div>
           ))}
         </nav>
         <div className="mx-auto flex w-full max-w-[1000px] flex-col gap-5">
-          <div id="general" className="scroll-mt-4">
-            <GeneralSection />
-          </div>
-          <div id="notifications" className="scroll-mt-4">
-            <NotificationsSection />
-          </div>
-          <div id="limits" className="scroll-mt-4">
-            <LimitsSection />
-          </div>
-          <div id="git" className="scroll-mt-4">
-            <GitSection />
-          </div>
-          <div id="knowledge" className="scroll-mt-4">
-            <KnowledgeSection />
-          </div>
-          <div id="skills" className="scroll-mt-4">
-            <SkillsSection />
-          </div>
-          <div id="connections" className="scroll-mt-4">
-            <ConnectionsSection />
-          </div>
-          <div id="architect" className="scroll-mt-4">
-            <ArchitectSection />
-          </div>
-          <div id="dictation" className="scroll-mt-4">
-            <DictationSection />
-          </div>
-          <div id="models" className="scroll-mt-4">
-            <LocalModelsSection />
-          </div>
-          <div id="cleanup" className="scroll-mt-4">
-            <CleanupSection />
-          </div>
-          <div id="about" className="scroll-mt-4">
-            <AboutSection />
-          </div>
+          {SECTIONS.map((id) => {
+            const Body = SECTION_BODY[id]
+            return (
+              <div key={id} id={id} className="scroll-mt-4">
+                <Body />
+              </div>
+            )
+          })}
         </div>
       </div>
     </PageContainer>

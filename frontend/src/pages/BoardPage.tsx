@@ -165,7 +165,7 @@ export default function BoardPage() {
                 agentId && agentId !== a.id && 'opacity-45',
               )}
             >
-              <AgentAvatar name={a.name} color={a.color} size={22} label={a.name} />
+              <AgentAvatar name={a.name} color={a.color} agentId={a.id} size={22} label={a.name} />
             </button>
           ))}
           <SchedulerSwitch />
@@ -416,7 +416,7 @@ function AgentQueueRow({
     >
       <div className="flex flex-col gap-1.5 border-r pr-3">
         <div className="flex items-center gap-2.5">
-          <AgentAvatar name={agent.name} color={agent.color} size={30} />
+          <AgentAvatar name={agent.name} color={agent.color} agentId={agent.id} size={30} />
           <div className="min-w-0">
             <div className="truncate text-[13.5px] font-medium">{agent.name}</div>
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">

@@ -9,10 +9,17 @@
 
 :root {
   --radius: 0.625rem; /* v7: 10px → rounded-md. sm 8 / lg 14 / xl 18 / 2xl 20 */
+  /* Fase 20: fuente del tema (Ajustes › Apariencia). */
+  --app-font: 'Ubuntu', ui-sans-serif, system-ui, sans-serif;
+  /* Marca: degradado y punto del logo. */
+  --logo-from: #3b69e8;
+  --logo-to: #1b3f8f;
+  --logo-dot: #4cc9f0;
 
   --background: #f4f6fa;
   --foreground: #0a1a33;
   --card: #ffffff;
+  --card-top: #ffffff; /* arriba del degradado de las tarjetas */
   --card-foreground: #0a1a33;
   --popover: #ffffff;
   --popover-foreground: #0a1a33;
@@ -68,6 +75,29 @@
   --terminal-header: #081429;
   --terminal-border: #16294a;
   --terminal-foreground: #d7e1f0;
+  --terminal-muted: #9aa9c4;
+  --terminal-accent: #4cc9f0;
+  --terminal-chip: #13284d;
+  --terminal-dot: #1e3a66;
+  --terminal-cursor: #4cc9f0;
+  --terminal-selection: #2e5bd6;
+  /* Colores ANSI del terminal (fase 20; los «bright» de color son los de xterm.js). */
+  --ansi-black: #0a1a33;
+  --ansi-red: #ff6b6f;
+  --ansi-green: #43d392;
+  --ansi-yellow: #f5b547;
+  --ansi-blue: #8fb4ff;
+  --ansi-magenta: #b39cff;
+  --ansi-cyan: #4cc9f0;
+  --ansi-white: #d7e1f0;
+  --ansi-bright-black: #7f8daa;
+  --ansi-bright-red: #ef2929;
+  --ansi-bright-green: #8ae234;
+  --ansi-bright-yellow: #fce94f;
+  --ansi-bright-blue: #729fcf;
+  --ansi-bright-magenta: #ad7fa8;
+  --ansi-bright-cyan: #34e2e2;
+  --ansi-bright-white: #ffffff;
 
   /* Gráficas */
   --chart-1: #0a78a3;
@@ -85,18 +115,32 @@
   --status-failed: #c9302c;
   --status-cancelled: #647089;
   --status-intervening: #f5b547; /* borde "Estás interviniendo" (sobre terminal oscura) */
+  --status-intervening-foreground: #0a1a33; /* texto sobre el ámbar (contadores, avisos) */
 
-  /* v7 */
-  --sep: color-mix(in oklch, #d6deea 80%, transparent);
-  --glass: color-mix(in oklch, #f4f6fa 72%, transparent);
-  --glass-pop: color-mix(in oklch, #ffffff 84%, transparent);
-  --card-grad: linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%);
-  --shadow-card: 0 1px 2px rgba(10, 26, 51, 0.05), 0 6px 20px rgba(10, 26, 51, 0.06);
-  --shadow-pop: 0 0 0 0.5px rgba(10, 26, 51, 0.08), 0 24px 64px rgba(10, 26, 51, 0.18);
+  /* v7 (fase 20: calculados a partir de los tokens básicos, para que los temas los arrastren) */
+  --sep: color-mix(in oklch, var(--border) 80%, transparent);
+  --glass: color-mix(in oklch, var(--background) 72%, transparent);
+  --glass-pop: color-mix(in oklch, var(--popover) 84%, transparent);
+  --card-grad: linear-gradient(180deg, var(--card-top) 0%, var(--card) 100%);
+  --shadow-card:
+    0 1px 2px color-mix(in oklch, var(--foreground) 5%, transparent),
+    0 6px 20px color-mix(in oklch, var(--foreground) 6%, transparent);
+  --shadow-pop:
+    0 0 0 0.5px color-mix(in oklch, var(--foreground) 8%, transparent),
+    0 24px 64px color-mix(in oklch, var(--foreground) 18%, transparent);
   --atmos:
-    radial-gradient(900px 520px at 8% -12%, rgba(46, 91, 214, 0.14), transparent 62%),
-    radial-gradient(720px 440px at 96% -4%, rgba(76, 201, 240, 0.1), transparent 60%),
-    radial-gradient(rgba(10, 26, 51, 0.05) 1px, transparent 1.2px) 0 0 / 22px 22px;
+    radial-gradient(
+      900px 520px at 8% -12%,
+      color-mix(in oklch, var(--ring) 14%, transparent),
+      transparent 62%
+    ),
+    radial-gradient(
+      720px 440px at 96% -4%,
+      color-mix(in oklch, var(--logo-dot) 10%, transparent),
+      transparent 60%
+    ),
+    radial-gradient(color-mix(in oklch, var(--foreground) 5%, transparent) 1px, transparent 1.2px) 0
+      0 / 22px 22px;
 }
 
 .dark {
@@ -111,6 +155,7 @@
   --background: #0a1a33;
   --foreground: #ffffff;
   --card: #0f2242;
+  --card-top: #13294b;
   --card-foreground: #ffffff;
   --popover: #13284d;
   --popover-foreground: #ffffff;
@@ -162,25 +207,41 @@
   --status-failed: #ff6b6f;
   --status-cancelled: #8492ae;
   --status-intervening: #f5b547;
+  --status-intervening-foreground: #0a1a33;
 
-  /* v7 */
-  --sep: color-mix(in oklch, #1e3a66 65%, transparent);
-  --glass: color-mix(in oklch, #0a1a33 70%, transparent);
-  --glass-pop: color-mix(in oklch, #13284d 82%, transparent);
-  --card-grad: linear-gradient(180deg, #13294b 0%, #0f2242 70%);
+  /* v7 (fase 20: calculados a partir de los tokens básicos) */
+  --sep: color-mix(in oklch, var(--border) 65%, transparent);
+  --glass: color-mix(in oklch, var(--background) 70%, transparent);
+  --glass-pop: color-mix(in oklch, var(--popover) 82%, transparent);
+  --card-grad: linear-gradient(180deg, var(--card-top) 0%, var(--card) 70%);
   --shadow-card:
-    inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 1px 2px rgba(0, 0, 0, 0.25),
-    0 8px 24px rgba(0, 0, 0, 0.18);
-  --shadow-pop: 0 0 0 0.5px rgba(255, 255, 255, 0.08), 0 24px 64px rgba(0, 0, 0, 0.5);
+    inset 0 1px 0 color-mix(in oklch, var(--foreground) 4%, transparent),
+    0 1px 2px rgba(0, 0, 0, 0.25), 0 8px 24px rgba(0, 0, 0, 0.18);
+  --shadow-pop:
+    0 0 0 0.5px color-mix(in oklch, var(--foreground) 8%, transparent),
+    0 24px 64px rgba(0, 0, 0, 0.5);
   --atmos:
-    radial-gradient(900px 520px at 8% -12%, rgba(46, 91, 214, 0.42), transparent 62%),
-    radial-gradient(720px 440px at 96% -4%, rgba(76, 201, 240, 0.13), transparent 60%),
-    radial-gradient(900px 600px at 70% 115%, rgba(179, 156, 255, 0.09), transparent 60%),
-    radial-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1.2px) 0 0 / 22px 22px;
+    radial-gradient(
+      900px 520px at 8% -12%,
+      color-mix(in oklch, var(--primary-action) 42%, transparent),
+      transparent 62%
+    ),
+    radial-gradient(
+      720px 440px at 96% -4%,
+      color-mix(in oklch, var(--logo-dot) 13%, transparent),
+      transparent 60%
+    ),
+    radial-gradient(
+      900px 600px at 70% 115%,
+      color-mix(in oklch, var(--status-review) 9%, transparent),
+      transparent 60%
+    ),
+    radial-gradient(color-mix(in oklch, var(--foreground) 4%, transparent) 1px, transparent 1.2px) 0
+      0 / 22px 22px;
 }
 
 @theme inline {
-  --font-sans: 'Ubuntu', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--app-font);
   --font-mono: 'Ubuntu Mono', ui-monospace, monospace;
 
   --radius-sm: calc(var(--radius) - 2px); /* 8px  */
@@ -230,6 +291,10 @@
   --color-terminal-header: var(--terminal-header);
   --color-terminal-border: var(--terminal-border);
   --color-terminal-foreground: var(--terminal-foreground);
+  --color-terminal-muted: var(--terminal-muted);
+  --color-terminal-accent: var(--terminal-accent);
+  --color-terminal-chip: var(--terminal-chip);
+  --color-terminal-dot: var(--terminal-dot);
 
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
@@ -245,6 +310,11 @@
   --color-status-failed: var(--status-failed);
   --color-status-cancelled: var(--status-cancelled);
   --color-status-intervening: var(--status-intervening);
+  --color-status-intervening-foreground: var(--status-intervening-foreground);
+
+  --color-logo-from: var(--logo-from);
+  --color-logo-to: var(--logo-to);
+  --color-logo-dot: var(--logo-dot);
 
   --animate-live-pulse: live-pulse 1.6s ease-out infinite;
   --animate-live-shimmer: live-shimmer 1.6s linear infinite;

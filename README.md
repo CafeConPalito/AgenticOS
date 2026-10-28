@@ -6,6 +6,7 @@ App de escritorio para orquestar un equipo de agentes de IA (Claude Code, Antigr
 - Roadmap y estado de las fases: [`docs/roadmap.md`](docs/roadmap.md)
 - Diseño de la interfaz: [`docs/design/`](docs/design/)
 - Flujo de trabajo (Spec → Plan → Desarrollo → Validación): [`CLAUDE.md`](CLAUDE.md)
+- Licencia: GNU GPLv3 o posterior ([`LICENSE`](LICENSE))
 
 ## Instalar (v1.0)
 1. Ejecuta `Agentic OS_1.0.0_x64-setup.exe`. Se instala **para tu usuario**, sin permisos de administrador, en `%LOCALAPPDATA%\Agentic OS`. Si falta WebView2, el instalador lo descarga.
@@ -201,6 +202,14 @@ Crea y mejora agentes, equipos y pipelines conversando ([ADR 0026](docs/adr/0026
 - **Plantillas y compartir**: «Guardar como plantilla», «Exportar» e «Importar» (formato `agentic-os.agent`, sin secretos). Las plantillas del usuario salen en el selector de nuevo agente.
 - **Consumo**: cada conversación es una ejecución `architect` que cuenta en el panel de consumo y en el límite diario.
 
+## Apariencia, avatares, Acerca de y registros
+Personalización y soporte ([ADR 0027](docs/adr/0027-personalization-support.md)).
+- **Temas**: Ajustes › **Apariencia**. Cinco temas incluidos (Oscuro navy, Claro, Alto contraste, Cálido y Grafito) o **Seguir al sistema**. «Personalizar» crea un tema propio que parte de otro y se edita con vista previa en toda la app: colores, estados, terminal (fondo, texto y 16 ANSI), tipografía, escala de texto, densidad y radio, con aviso de contraste (WCAG AA, sin bloquear). Los temas propios se exportan e importan como JSON (`agentic-os.theme`) y se guardan en el backend, no en el navegador.
+- **Avatares**: en la pestaña General de la ficha del agente, un búho de la galería (13 ilustraciones propias en SVG), una **foto** (hasta 2048 px por lado, encuadrada en la app) o las iniciales. Solo se guarda el recorte (WebP 256 × 256, sin metadatos); la foto original no sale del navegador. La imagen viaja con la exportación del agente.
+- **Acerca de** (`/acerca-de`): versión, autoría, licencia GPLv3 con su texto completo, licencias de terceros, «Informar de un error» (`mailto`) y **«Preparar registros para enviar»**.
+- **Registros para soporte**: genera un `.zip` en local con los registros del backend y de la app de escritorio, los errores recientes de la interfaz y un `info.txt` del sistema, sin salidas de ejecuciones ni contenido tuyo. Los secretos se ocultan al escribir cada línea y de nuevo al empaquetar; lo revisas y lo adjuntas tú al correo. No se envía nada solo ni hay telemetría.
+- **Regenerar recursos**: `uv run --project backend python scripts/licenses.py` rehace la lista de licencias de terceros (un test falla si se queda atrás de los *lockfiles*) y `uv run --project backend python scripts/owls.py` rehace los SVG de los búhos.
+
 ## Dictado por voz
 Dictas en lugar de escribir ([ADR 0023](docs/adr/0023-dictation.md)). La transcripción es **local**: Whisper (`whisper.cpp`) corre en tu equipo, el audio no sale de él, nunca se guarda y funciona sin conexión.
 - **Dónde**: un micrófono en los campos de texto largos (descripción de la tarea, resumen y motivo de rechazo, instrucciones y descripción del agente, memoria del proyecto, prompt de una ejecución, respuestas y rechazos de la Inbox, propuestas y fichas de conocimiento). La respuesta de la Inbox crece con el texto; `Intro` la envía y `Mayús+Intro` hace un salto de línea.
@@ -254,3 +263,13 @@ Dictas en lugar de escribir ([ADR 0023](docs/adr/0023-dictation.md)). La transcr
 | `/r/<token>/mcp`, `POST /r/<token>/hook/<evento>` | Para los CLIs de los agentes: servidor MCP `agentic-os` y hooks (token por ejecución) |
 
 Los errores tienen la forma `{"detail": {"code", "message", "field"}}`; la interfaz traduce por `code`.
+
+## Licencia
+
+Made By Café Con Palito with ❤️ — Albano Díez de Paulino.
+
+Copyright (C) 2026 Albano Díez de Paulino
+
+Agentic OS es software libre: puedes redistribuirlo y modificarlo bajo los términos de la **GNU General Public License**, publicada por la Free Software Foundation, en su versión 3 o (a tu elección) cualquier versión posterior. Se distribuye con la esperanza de que sea útil, pero **sin ninguna garantía**, ni siquiera la implícita de comerciabilidad o idoneidad para un fin concreto. El texto completo está en [`LICENSE`](LICENSE).
+
+Errores y sugerencias: [contacto@cafeconpalito.com](mailto:contacto@cafeconpalito.com).

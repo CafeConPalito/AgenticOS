@@ -70,7 +70,12 @@ export function RequestItem({
         onMouseLeave={() => onHover?.(null)}
         className="grid grid-cols-[30px_minmax(0,1fr)] gap-3.5 border-t border-sep px-[18px] py-4"
       >
-        <AgentAvatar name={item.agent_name || '?'} color={item.agent_color} size={30} />
+        <AgentAvatar
+          name={item.agent_name || '?'}
+          color={item.agent_color}
+          agentId={item.agent_id}
+          size={30}
+        />
         <div className="flex min-w-0 flex-col gap-1.5">
           <div className="flex items-baseline gap-3">
             <h3 className="min-w-0 flex-1 text-sm font-medium text-pretty">{title}</h3>
@@ -130,7 +135,12 @@ export function RequestItem({
     >
       <div className="flex gap-3 px-4 py-3.5">
         <div className="relative h-fit">
-          <AgentAvatar name={item.agent_name || '?'} color={item.agent_color} size={34} />
+          <AgentAvatar
+            name={item.agent_name || '?'}
+            color={item.agent_color}
+            agentId={item.agent_id}
+            size={34}
+          />
           <span
             className="absolute -right-1 -bottom-1 grid size-4 place-items-center rounded-full border bg-card"
             style={{ color: style.color }}
@@ -168,7 +178,7 @@ export function RequestItem({
           <h2 className="mt-1 text-[15px] font-medium">{title}</h2>
           {item.kind === 'approval' && item.command && (
             <pre className="mt-2 overflow-x-auto rounded-md bg-terminal px-3 py-2 font-mono text-[13px] text-terminal-foreground">
-              <span aria-hidden className="text-[#7F8DAA]">
+              <span aria-hidden className="text-muted-foreground">
                 {PROMPT}
               </span>
               {item.command}

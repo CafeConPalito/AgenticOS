@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/select'
 import { errorMessage } from '@/lib/form-errors'
 import { TaskStatusBadge } from '../TaskBits'
+import { NEUTRAL_COLOR } from '@/theme/palettes'
 
 const ACTIVE = (lane: Lane) => !['done', 'cancelled'].includes(lane.status)
 
@@ -45,7 +46,12 @@ export function LanesPanel({ task, pipeline }: { task: Task; pipeline: Pipeline 
         {task.lanes.map((lane) => (
           <li key={lane.id} className="flex items-center gap-2 rounded-lg border px-2.5 py-1.5">
             {lane.agent_name && (
-              <AgentAvatar name={lane.agent_name} color={lane.agent_color ?? '#C9D4E8'} size={18} />
+              <AgentAvatar
+                name={lane.agent_name}
+                agentId={lane.agent_id}
+                color={lane.agent_color ?? NEUTRAL_COLOR}
+                size={18}
+              />
             )}
             <div className="min-w-0 flex-1">
               <Link to={`/tablero/tareas/${lane.id}`} className="block truncate hover:underline">

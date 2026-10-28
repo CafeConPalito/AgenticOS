@@ -5,7 +5,6 @@ import {
   Download,
   LayoutTemplate,
   MoreHorizontal,
-  Pencil,
   Plus,
   Sparkles,
   Trash2,
@@ -111,9 +110,9 @@ function AgentEditor({ agent, tab }: { agent: Agent; tab: Tab }) {
     mode: 'onChange',
   })
   const { isDirty, dirtyFields } = form.formState
-  const [name, role, color, cli, model, status] = useWatch({
+  const [name, role, color, avatar, cli, model, status] = useWatch({
     control: form.control,
-    name: ['name', 'role', 'color', 'cli', 'model', 'status'],
+    name: ['name', 'role', 'color', 'avatar', 'cli', 'model', 'status'],
   })
 
   // Keep the form in sync when the agent is refetched and the user has no pending edits.
@@ -176,7 +175,7 @@ function AgentEditor({ agent, tab }: { agent: Agent; tab: Tab }) {
         {agent.status === 'draft' && agent.proposal_id && <DraftBanner agent={agent} />}
         {agent.status === 'active' && <ChangesBanner agent={agent} />}
         <header className="flex items-center gap-4 px-6 pt-[22px] pb-4">
-          <AgentAvatar name={name || '?'} color={color} size={52} />
+          <AgentAvatar name={name || '?'} color={color} avatar={avatar} size={52} />
           <div className="min-w-0 flex-1">
             <h1 className="truncate text-[26px] leading-[1.2] font-bold tracking-[-0.028em]">
               {name}
@@ -226,14 +225,6 @@ function AgentEditor({ agent, tab }: { agent: Agent; tab: Tab }) {
             </Button>
           )}
           <LaunchRunButton agentId={agent.id} disabled={agent.status === 'draft'} />
-          {agent.status === 'active' && (
-            <Button type="button" variant="outline" className="rounded-full" asChild>
-              <Link to={`/agentes/arquitecto?mejorar=${agent.id}`}>
-                <Sparkles className="text-status-review" />
-                {t('architect.improve')}
-              </Link>
-            </Button>
-          )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button type="button" variant="outline" size="icon" aria-label={t('common.more')}>
@@ -241,6 +232,15 @@ function AgentEditor({ agent, tab }: { agent: Agent; tab: Tab }) {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              {/* Phase 20: out of the header, which keeps the everyday actions only. */}
+              {agent.status === 'active' && (
+                <DropdownMenuItem asChild>
+                  <Link to={`/agentes/arquitecto?mejorar=${agent.id}`}>
+                    <Sparkles className="text-status-review" />
+                    {t('architect.improve')}
+                  </Link>
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem onSelect={() => void onDuplicate()}>
                 <Copy />
                 {t('common.duplicate')}
@@ -263,14 +263,8 @@ function AgentEditor({ agent, tab }: { agent: Agent; tab: Tab }) {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          {tab === 'resumen' ? (
-            <Button type="button" variant="outline" asChild>
-              <Link to={`/agentes/${agent.id}/general`}>
-                <Pencil />
-                {t('agents.edit')}
-              </Link>
-            </Button>
-          ) : (
+          {/* Resumen only reads; the tabs are the way to edit (phase 20). */}
+          {tab !== 'resumen' && (
             <Button
               type="submit"
               disabled={!isDirty || update.isPending}

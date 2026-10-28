@@ -5,6 +5,8 @@ from pathlib import Path
 
 import structlog
 
+from agentic_os.services.redact import RedactingFilter
+
 _SHARED_PROCESSORS: list[structlog.typing.Processor] = [
     structlog.contextvars.merge_contextvars,
     structlog.stdlib.add_log_level,
@@ -44,6 +46,8 @@ def configure_logging(
         handler.close()
     for handler in handlers:
         handler.setFormatter(formatter)
+        # Phase 20: secrets (run tokens in URLs, credentials, keys) never reach a log line.
+        handler.addFilter(RedactingFilter())
         root.addHandler(handler)
     root.setLevel(level.upper())
 

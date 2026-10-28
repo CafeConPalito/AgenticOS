@@ -15,7 +15,9 @@
     "clis": "CLIs y cuentas",
     "knowledge": "Conocimiento y skills",
     "connections": "Conexiones",
-    "architect": "Arquitecto"
+    "architect": "Arquitecto",
+    "appearance": "Apariencia",
+    "about": "Acerca de"
   },
   "header": {
     "search": "Buscar agentes, tareas o acciones…",
@@ -27,7 +29,12 @@
       "launchRun": "Lanzar agente"
     },
     "home": "Agentic OS · Inicio",
-    "back": "Volver"
+    "back": "Volver",
+    "backHint": "Volver (Alt+←)",
+    "forward": "Adelante",
+    "forwardHint": "Adelante (Alt+→)",
+    "inbox_one": "Inbox · {{count}} pendiente",
+    "inbox_other": "Inbox · {{count}} pendientes"
   },
   "theme": {
     "toLight": "Tema claro",
@@ -212,15 +219,15 @@
       "execution": "Ejecución",
       "knowledge": "Conocimiento",
       "skills": "Skills",
-      "history": "Historial",
-      "changes": "Cambios",
+      "history": "Historial de la ficha",
+      "changes": "Código cambiado",
       "connections": "Conexiones"
     },
     "fields": {
       "name": "Nombre",
       "role": "Rol",
       "avatar": "Avatar y color",
-      "colorHelp": "El color identifica al agente en el tablero, las colas y las pestañas de terminal.",
+      "colorHelp": "La imagen y el color identifican al agente en el tablero, las colas, las ejecuciones y las pestañas de terminal.",
       "color": "Color {{color}}",
       "description": "Descripción",
       "descriptionPlaceholder": "Qué hace este agente y en qué es bueno.",
@@ -281,7 +288,6 @@
     "assignTask": "Asignar tarea",
     "activate": "Activar",
     "activated": "Agente «{{name}}» activado",
-    "edit": "Editar",
     "summary": {
       "requests": "Peticiones de este agente",
       "tasks": "Tareas",
@@ -1135,11 +1141,6 @@
       "languages": {
         "es": "Español"
       },
-      "theme": "Tema",
-      "themes": {
-        "dark": "Oscuro",
-        "light": "Claro"
-      },
       "singleKey": "Atajos de una tecla",
       "singleKeyHelp": "N para una tarea nueva y ? para la ayuda, sin pulsar Ctrl. Se ignoran al escribir, en la terminal y con un diálogo abierto. Ctrl+K siempre funciona.",
       "dataDirKnowledge": "biblioteca {{knowledge}} · modelos {{models}}"
@@ -1180,25 +1181,30 @@
     },
     "about": {
       "title": "Acerca de",
-      "version": "Versión",
-      "dataDir": "Carpeta de datos",
-      "backend": "Backend",
-      "logsHint": "Los logs del backend están en la carpeta «logs» de la carpeta de datos."
+      "summary": "Versión {{version}}. Autoría, licencia, cómo informar de un error y las licencias de terceros.",
+      "open": "Abrir Acerca de"
     },
     "index": "Secciones de Ajustes",
+    "groups": {
+      "app": "Aplicación",
+      "agents": "Agentes",
+      "resources": "Recursos",
+      "maintenance": "Mantenimiento"
+    },
     "sections": {
       "general": "General",
+      "appearance": "Apariencia",
       "notifications": "Notificaciones",
+      "dictation": "Dictado",
+      "about": "Acerca de",
       "limits": "Límites diarios",
+      "architect": "Arquitecto",
       "git": "Git",
       "knowledge": "Conocimiento",
       "skills": "Skills",
       "connections": "Conexiones MCP",
-      "architect": "Arquitecto",
-      "dictation": "Dictado",
       "models": "Modelos locales",
-      "cleanup": "Limpieza",
-      "about": "Acerca de"
+      "cleanup": "Limpieza"
     },
     "git": {
       "title": "Git",
@@ -1455,6 +1461,7 @@
       "count_one": "{{count}} agente",
       "count_other": "{{count}} agentes",
       "new": "Nuevo agente",
+      "newMenu": "Nuevo",
       "draft": "Borrador · actívalo desde su ficha",
       "free": "Disponible · sin tareas en curso",
       "states": {
@@ -1569,7 +1576,9 @@
     "shortcuts": "Atajos de teclado",
     "dock": "Abrir / cerrar la terminal",
     "close": "Cerrar diálogo o panel",
-    "dictate": "Dictar (mantener pulsado)"
+    "dictate": "Dictar (mantener pulsado)",
+    "back": "Volver a la pantalla anterior",
+    "forward": "Ir a la pantalla siguiente"
   },
   "palette": {
     "title": "Paleta de comandos",
@@ -1606,7 +1615,9 @@
       "settings": "Ajustes",
       "clis": "CLIs y cuentas",
       "knowledge": "Conocimiento",
-      "connections": "Conexiones MCP"
+      "connections": "Conexiones MCP",
+      "appearance": "Ir a Apariencia",
+      "about": "Ir a Acerca de"
     },
     "schedulerPaused": "Scheduler en pausa",
     "schedulerResumed": "Scheduler en marcha"
@@ -3517,7 +3528,11 @@
     "newTeam": "Nuevo equipo",
     "teamSheet": "Ficha del equipo",
     "teamSheetImprove": "Cambios propuestos",
-    "tabs": { "team": "Equipo", "agents": "Agentes", "pipeline": "Pipeline" },
+    "tabs": {
+      "team": "Equipo",
+      "agents": "Agentes",
+      "pipeline": "Pipeline"
+    },
     "newAgent": "Nuevo",
     "existingAgent": "Existente",
     "pipelineOf": "Pipeline del proyecto {{project}}",
@@ -3666,6 +3681,318 @@
       "asDraft": "Se importará como borrador: lo revisas y lo activas desde su ficha.",
       "run": "Importar",
       "done": "{{name}} importado como borrador"
+    }
+  },
+  "appearance": {
+    "title": "Apariencia",
+    "subtitle": "El tema de toda la app: colores, tipografía, tamaño del texto y densidad.",
+    "builtin": {
+      "navy": "Oscuro navy",
+      "light": "Claro",
+      "contrast": "Alto contraste",
+      "warm": "Cálido",
+      "graphite": "Grafito"
+    },
+    "section": {
+      "fixed": "Tema fijo",
+      "system": "Sigue al sistema (claro u oscuro según Windows)",
+      "open": "Abrir Apariencia"
+    },
+    "mode": {
+      "title": "Cuándo cambia",
+      "fixed": "Tema fijo",
+      "system": "Seguir al sistema",
+      "fixedHelp": "Siempre «{{name}}». El botón de la luna o el sol de la cabecera alterna entre el tema claro y el oscuro.",
+      "systemHelp": "Cambia solo cuando Windows pasa de claro a oscuro o al revés.",
+      "light_theme": "Con Windows en claro",
+      "dark_theme": "Con Windows en oscuro"
+    },
+    "themes": "Temas",
+    "use": "Usar",
+    "inUse": "En uso",
+    "more": "Más acciones de «{{name}}»",
+    "edit": "Editar",
+    "customize": "Personalizar (crear una copia)",
+    "copyName": "{{name}} (copia)",
+    "export": "Exportar",
+    "delete": {
+      "title": "¿Borrar «{{name}}»?",
+      "description": "Si estaba en uso, la app vuelve al tema Oscuro navy o Claro. Los temas que partían de él pasan a partir del suyo."
+    },
+    "import": {
+      "action": "Importar tema",
+      "label": "Fichero de tema (.theme.json)",
+      "done": "Tema «{{name}}» importado",
+      "renamed": "Tema «{{name}}» importado con el identificador «{{id}}» (ya había uno igual)",
+      "json": "El fichero no es un JSON válido.",
+      "field": "El fichero no es un tema válido: revisa «{{field}}».",
+      "extends": "El tema parte de «{{field}}», que no existe en esta instalación. Importa antes ese tema."
+    },
+    "editor": {
+      "subtitle": "Los cambios se ven en toda la app mientras editas; guarda para conservarlos.",
+      "untitled": "Tema sin nombre",
+      "missing": "Ese tema ya no existe",
+      "back": "Volver a Apariencia",
+      "discard": "Descartar",
+      "saveAndUse": "Guardar y usar",
+      "name": "Nombre",
+      "extends": "Parte de",
+      "base": "Base",
+      "bases": {
+        "dark": "Oscura",
+        "light": "Clara"
+      },
+      "font": "Tipografía",
+      "fonts": {
+        "ubuntu": "Ubuntu (la de siempre)",
+        "inter": "Inter",
+        "atkinson": "Atkinson Hyperlegible (más legible)",
+        "system": "La del sistema"
+      },
+      "density": "Densidad",
+      "densities": {
+        "compact": "Compacta",
+        "normal": "Normal",
+        "comfortable": "Amplia"
+      },
+      "scale": "Tamaño del texto: {{value}} %",
+      "scaleHint": "En la app de escritorio amplía toda la ventana; en el navegador, usa su zoom.",
+      "radius": "Esquinas: {{value}} px",
+      "inherited": "heredado · {{value}}",
+      "reset": "Volver al valor heredado de «{{name}}»",
+      "groups": {
+        "surfaces": "Superficies",
+        "text": "Texto",
+        "action": "Acción y acento",
+        "status": "Estados",
+        "sidebar": "Barra lateral",
+        "terminal": "Terminal",
+        "charts": "Gráficas",
+        "brand": "Marca"
+      },
+      "contrast": {
+        "title": "Algunos textos se leen mal",
+        "issue": "{{text}} sobre {{background}}: {{ratio}}:1 (mínimo {{minimum}}:1)",
+        "flag": "Contraste bajo"
+      }
+    },
+    "preview": {
+      "title": "Vista previa",
+      "agent": "Desarrollador",
+      "running": "Trabajando",
+      "description": "Implementa la tarea T-12: formulario de contacto con validación.",
+      "queued": "En cola",
+      "waiting": "Te espera",
+      "review": "En revisión",
+      "done": "Hecho",
+      "failed": "Fallido",
+      "primary": "Asignar tarea",
+      "secondary": "Lanzar",
+      "destructive": "Borrar",
+      "input": "Texto de un campo",
+      "added": "línea añadida",
+      "removed": "línea borrada",
+      "terminal": "Reanudando la sesión…",
+      "command": "claude --resume",
+      "task": "T-12"
+    },
+    "tokens": {
+      "background": "Fondo",
+      "card": "Tarjeta",
+      "card-top": "Tarjeta (arriba del degradado)",
+      "popover": "Menús y ventanas",
+      "subtle": "Superficie hundida",
+      "muted": "Superficie atenuada",
+      "border": "Bordes",
+      "input": "Bordes de los campos",
+      "foreground": "Texto",
+      "card-foreground": "Texto de las tarjetas",
+      "popover-foreground": "Texto de menús y ventanas",
+      "muted-foreground": "Texto atenuado",
+      "primary": "Marca",
+      "primary-foreground": "Texto sobre la acción",
+      "primary-action": "Acción principal",
+      "primary-action-hover": "Acción principal (al pasar)",
+      "secondary": "Secundario",
+      "secondary-foreground": "Texto sobre secundario",
+      "accent": "Resaltado",
+      "accent-foreground": "Texto resaltado",
+      "ring": "Foco",
+      "destructive": "Destructivo",
+      "destructive-foreground": "Texto sobre destructivo",
+      "status-queued": "En cola",
+      "status-running": "En curso",
+      "status-waiting": "Esperando",
+      "status-review": "En revisión",
+      "status-done": "Hecho",
+      "status-failed": "Fallido",
+      "status-cancelled": "Cancelado",
+      "status-intervening": "Aviso (ámbar)",
+      "status-intervening-foreground": "Texto sobre el aviso",
+      "sidebar": "Barra lateral",
+      "sidebar-foreground": "Texto de la barra lateral",
+      "sidebar-muted": "Texto atenuado de la barra lateral",
+      "sidebar-primary": "Acción de la barra lateral",
+      "sidebar-accent": "Elemento activo de la barra lateral",
+      "sidebar-border": "Bordes de la barra lateral",
+      "terminal": "Fondo del terminal",
+      "terminal-header": "Cabecera del terminal",
+      "terminal-border": "Bordes del terminal",
+      "terminal-foreground": "Texto del terminal",
+      "terminal-muted": "Texto atenuado del terminal",
+      "terminal-accent": "Acento del terminal",
+      "terminal-chip": "Etiquetas del terminal",
+      "terminal-dot": "Puntos del terminal",
+      "terminal-cursor": "Cursor",
+      "terminal-selection": "Selección",
+      "ansi-black": "ANSI negro",
+      "ansi-red": "ANSI rojo",
+      "ansi-green": "ANSI verde",
+      "ansi-yellow": "ANSI amarillo",
+      "ansi-blue": "ANSI azul",
+      "ansi-magenta": "ANSI magenta",
+      "ansi-cyan": "ANSI cian",
+      "ansi-white": "ANSI blanco",
+      "ansi-bright-black": "ANSI negro brillante",
+      "ansi-bright-red": "ANSI rojo brillante",
+      "ansi-bright-green": "ANSI verde brillante",
+      "ansi-bright-yellow": "ANSI amarillo brillante",
+      "ansi-bright-blue": "ANSI azul brillante",
+      "ansi-bright-magenta": "ANSI magenta brillante",
+      "ansi-bright-cyan": "ANSI cian brillante",
+      "ansi-bright-white": "ANSI blanco brillante",
+      "chart-1": "Gráfica 1",
+      "chart-2": "Gráfica 2",
+      "chart-3": "Gráfica 3",
+      "chart-4": "Gráfica 4",
+      "chart-5": "Gráfica 5",
+      "graph-0": "Serie 1",
+      "graph-1": "Serie 2",
+      "graph-2": "Serie 3",
+      "graph-3": "Serie 4",
+      "graph-4": "Serie 5",
+      "graph-5": "Serie 6",
+      "graph-6": "Serie 7",
+      "graph-7": "Serie 8",
+      "logo-from": "Logo (inicio del degradado)",
+      "logo-to": "Logo (fin del degradado)",
+      "logo-dot": "Punto del logo"
+    }
+  },
+  "avatars": {
+    "title": "Imagen de {{name}}",
+    "description": "Un búho de la galería, una foto tuya o sus iniciales sobre su color.",
+    "change": "Cambiar imagen",
+    "remove": "Quitar imagen",
+    "saved": "Imagen guardada",
+    "hex": "Color en hexadecimal",
+    "faintColor": "Este color apenas se distingue del fondo de las tarjetas con el tema actual.",
+    "tabs": {
+      "owls": "Búhos",
+      "photo": "Foto",
+      "initials": "Iniciales"
+    },
+    "initialsHelp": "La inicial de su nombre sobre su color, como hasta ahora.",
+    "useInitials": "Usar iniciales",
+    "owls": {
+      "plain": "Búho",
+      "beanie": "Con gorro",
+      "book": "Lector",
+      "bow-tie": "Con pajarita",
+      "crown": "Rey",
+      "glasses": "Con gafas",
+      "grad-cap": "Graduado",
+      "headphones": "Con auriculares",
+      "monocle": "Con monóculo",
+      "scarf": "Con bufanda",
+      "sunglasses": "Con gafas de sol",
+      "top-hat": "Con chistera",
+      "wizard": "Mago"
+    },
+    "photo": {
+      "file": "Foto (PNG, JPG o WebP)",
+      "pick": "Elegir una foto",
+      "limits": "PNG, JPG o WebP de {{max}} px como mucho por lado. Solo se guarda el recorte.",
+      "format": "Ese archivo no es una imagen PNG, JPG o WebP.",
+      "size": "La foto mide más de {{max}} px en algún lado. Reduce su tamaño antes de subirla.",
+      "zoom": "Zoom",
+      "frameHelp": "Arrastra la foto para encuadrarla. Solo se guarda este recorte, nunca la foto original.",
+      "another": "Elegir otra",
+      "use": "Usar esta foto",
+      "saving": "Guardando…"
+    }
+  },
+  "about": {
+    "tagline": "Un equipo de agentes de IA que trabajan para ti.",
+    "version": "Versión {{version}}",
+    "backendVersion": "backend {{version}}",
+    "authors": "Autoría",
+    "madeBy": "Made By Café Con Palito with ❤️",
+    "author": "Albano Díez de Paulino",
+    "copyright": "Copyright (C) 2026 Albano Díez de Paulino",
+    "help": {
+      "title": "Informar de un error",
+      "text": "Si algo no funciona como esperabas, escríbenos: el correo se abre con la versión y una plantilla para contarlo.",
+      "report": "Informar de un error",
+      "address": "Se abre tu programa de correo con un mensaje a {{email}}."
+    },
+    "bug": {
+      "subject": "Error",
+      "doing": "Qué estaba haciendo:",
+      "expected": "Qué esperaba que pasara:",
+      "happened": "Qué pasó:",
+      "logs": "Si puedes, adjunta los registros (Acerca de › Preparar registros para enviar)."
+    },
+    "license": {
+      "title": "Licencia: GNU General Public License v3.0 o posterior",
+      "summary": "Agentic OS es software libre: puedes usarlo, estudiarlo, compartirlo y modificarlo bajo los términos de la GNU GPL, versión 3 o (a tu elección) cualquier versión posterior. Se distribuye sin ninguna garantía, ni siquiera la implícita de comerciabilidad o idoneidad para un fin concreto.",
+      "full": "Ver el texto completo de la licencia",
+      "loading": "Cargando…"
+    },
+    "system": {
+      "title": "Sistema",
+      "dataDir": "Carpeta de datos",
+      "backend": "Backend",
+      "logsHint": "Los registros del backend están en la carpeta «logs» de la carpeta de datos."
+    },
+    "thirdParty": {
+      "title": "Licencias de terceros",
+      "text": "Agentic OS se apoya en estos paquetes de código abierto, cada uno con su licencia.",
+      "search": "Buscar por nombre o licencia",
+      "ecosystem": "Origen",
+      "ecosystems": {
+        "all": "Todos",
+        "npm": "Interfaz (npm)",
+        "python": "Backend (Python)",
+        "rust": "App de escritorio (Rust)"
+      },
+      "count_one": "{{count}} paquete",
+      "count_other": "{{count}} paquetes",
+      "name": "Paquete",
+      "version": "Versión",
+      "license": "Licencia",
+      "own": "Los búhos de los avatares y los temas incluidos son obra del proyecto, con su misma licencia."
+    }
+  },
+  "support": {
+    "logs": {
+      "open": "Preparar registros para enviar",
+      "title": "Preparar registros para enviar",
+      "text": "Un archivo .zip con los registros del backend y de la app de escritorio, los errores recientes de la interfaz y un resumen del sistema, para adjuntarlo al informe de un error.",
+      "offlineText": "El backend no responde: la app de escritorio prepara un .zip con su registro y el del backend, para adjuntarlo al informe de un error.",
+      "infoFile": "versiones y sistema",
+      "loading": "Mirando qué hay…",
+      "noLogs": "No hay registros guardados (en desarrollo el backend escribe en la consola). Se incluirá solo el resumen del sistema.",
+      "privacy": "Antes de guardarlo se ocultan los tokens, las claves, las contraseñas, los secretos de las conexiones, los correos y tu nombre de usuario en las rutas. No incluye las salidas de terminal de las ejecuciones, el contenido de las tareas, el conocimiento ni las conversaciones. Puedes abrir el .zip y revisarlo antes de enviarlo.",
+      "saveAs": "Guardar como…",
+      "saveDownloads": "Guardar en Descargas",
+      "working": "Preparando…",
+      "saved": "Guardado: {{name}}",
+      "hidden_one": "Se ha ocultado {{count}} dato sensible.",
+      "hidden_other": "Se han ocultado {{count}} datos sensibles.",
+      "reveal": "Mostrar en la carpeta",
+      "mail": "Abrir el correo",
+      "attach": "Adjunto los registros:"
     }
   }
 }

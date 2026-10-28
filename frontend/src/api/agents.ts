@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { api, getApiBaseUrl } from '@/lib/api'
+import { api, apiFetch, getApiBaseUrl } from '@/lib/api'
 import type { Agent, AgentFields, AgentTemplate } from './types'
 
 export const agentKeys = {
@@ -8,8 +8,12 @@ export const agentKeys = {
   templates: ['agent-templates'] as const,
 }
 
-export function useAgents() {
-  return useQuery({ queryKey: agentKeys.all, queryFn: () => api.get<Agent[]>('/api/agents') })
+export function useAgents({ enabled = true }: { enabled?: boolean } = {}) {
+  return useQuery({
+    queryKey: agentKeys.all,
+    queryFn: () => api.get<Agent[]>('/api/agents'),
+    enabled,
+  })
 }
 
 export function useAgent(id: string | undefined) {
@@ -49,6 +53,23 @@ export function useUpdateAgent(id: string) {
   const invalidate = useInvalidateAgents()
   return useMutation({
     mutationFn: (body: Partial<AgentFields>) => api.patch<Agent>(`/api/agents/${id}`, body),
+    onSuccess: (agent) => invalidate(agent),
+  })
+}
+
+/**
+ * Phase 20: the cropped photo of an agent, sent as it is (the original never leaves the
+ * browser); the backend stores it again and answers the agent with its new `avatar`.
+ */
+export function useUploadAvatar(id: string) {
+  const invalidate = useInvalidateAgents()
+  return useMutation({
+    mutationFn: (crop: Blob) =>
+      apiFetch<Agent>(`/api/agents/${id}/avatar`, {
+        method: 'PUT',
+        headers: { 'Content-Type': crop.type || 'image/webp' },
+        body: crop,
+      }),
     onSuccess: (agent) => invalidate(agent),
   })
 }

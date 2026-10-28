@@ -1,7 +1,14 @@
 import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import es from '@/i18n/es.json'
-import { createFakeBackend, makeAgent, makeProject, makeRun, makeTask } from '@/test/fake-backend'
+import {
+  createFakeBackend,
+  makeAgent,
+  makeInboxItem,
+  makeProject,
+  makeRun,
+  makeTask,
+} from '@/test/fake-backend'
 import { renderApp } from '@/test/render'
 
 function seedBusy() {
@@ -70,6 +77,57 @@ describe('AppHeader', () => {
     const { router } = renderApp(`/agentes/${agent.id}/general`)
     await user.click(await screen.findByRole('button', { name: es.header.back }))
     expect(router.state.location.pathname).toBe('/agentes')
+  })
+
+  it('goes forward again after going back, and only then (phase 20)', async () => {
+    seedBusy()
+    const user = userEvent.setup()
+    const { router } = renderApp('/')
+    await screen.findByRole('navigation', { name: es.nav.main })
+    await user.click(screen.getByRole('link', { name: new RegExp(es.nav.runs) }))
+    expect(screen.getByRole('button', { name: es.header.forward })).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: es.header.back }))
+    expect(router.state.location.pathname).toBe('/')
+    // At home with somewhere to go forward: both buttons stay, «Volver» disabled.
+    expect(screen.getByRole('button', { name: es.header.back })).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: es.header.forward }))
+    expect(router.state.location.pathname).toBe('/ejecuciones')
+    expect(screen.getByRole('button', { name: es.header.forward })).toBeDisabled()
+  })
+
+  it('a new page after going back drops what was ahead', async () => {
+    seedBusy()
+    const user = userEvent.setup()
+    const { router } = renderApp('/')
+    await screen.findByRole('navigation', { name: es.nav.main })
+    await user.click(screen.getByRole('link', { name: new RegExp(es.nav.runs) }))
+    await user.click(screen.getByRole('button', { name: es.header.back }))
+    await user.click(screen.getByRole('link', { name: new RegExp(es.nav.board) }))
+    expect(router.state.location.pathname).toBe('/tablero')
+    expect(screen.getByRole('button', { name: es.header.forward })).toBeDisabled()
+  })
+
+  it('shows the pending Inbox items and opens the Inbox (phase 20)', async () => {
+    createFakeBackend({
+      inbox: [makeInboxItem(), makeInboxItem(), makeInboxItem({ status: 'resolved' })],
+    })
+    const user = userEvent.setup()
+    const { router } = renderApp('/')
+    const link = await screen.findByRole('link', { name: 'Inbox · 2 pendientes' })
+    expect(link).toHaveTextContent('2')
+    await user.click(link)
+    expect(router.state.location.pathname).toBe('/inbox')
+    expect(screen.getByRole('link', { name: 'Inbox · 2 pendientes' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
+  })
+
+  it('shows no number when the Inbox is empty', async () => {
+    createFakeBackend({})
+    renderApp('/')
+    const link = await screen.findByRole('link', { name: 'Inbox · 0 pendientes' })
+    expect(link).not.toHaveTextContent(/\d/)
   })
 
   it('the logo goes home', async () => {

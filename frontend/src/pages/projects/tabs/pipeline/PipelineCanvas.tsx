@@ -49,7 +49,12 @@ function StageNode({ data, selected }: NodeProps<StageNodeType>) {
       <Handle type="target" position={Position.Left} />
       <div className="flex items-center gap-2">
         {data.agent ? (
-          <AgentAvatar name={data.agent.name} color={data.agent.color} size={22} />
+          <AgentAvatar
+            name={data.agent.name}
+            color={data.agent.color}
+            agentId={data.agent.id}
+            size={22}
+          />
         ) : (
           <span aria-hidden className="size-[22px] rounded-full border border-dashed" />
         )}

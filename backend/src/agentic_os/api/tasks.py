@@ -155,6 +155,7 @@ def read_tasks(db: Session, tasks: list[Task]) -> list[TaskRead]:
                 status=lane.status,
                 stage_id=lane.stage_id,
                 stage_name=stage_names.get(lane.stage_id or ""),
+                agent_id=lane_agent.id if lane_agent else None,
                 agent_name=lane_agent.name if lane_agent else None,
                 agent_color=lane_agent.color if lane_agent else None,
                 waiting_reason=lane.waiting_reason,

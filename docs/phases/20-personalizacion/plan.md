@@ -26,6 +26,58 @@ Scripts en `spikes/personalization/`; evidencias en `evidencias/`.
 | S5 | **Licencias**: listar las dependencias de producción de frontend (`npm`), backend (`uv`, incluidas las que empaqueta PyInstaller) y Tauri (`cargo`), con su licencia; marcar las incompatibles con GPLv3 o sin licencia; elegir cómo generar la lista en el *build* (`license-checker-rseidelsohn`, `pip-licenses`, `cargo-about` o un script propio) | Una dependencia incompatible se sustituye o se pregunta al usuario antes de seguir |
 | S6 | **Recorte de fotos**: `react-easy-crop` (MIT) u otro: arrastrar y zoom con ratón y rueda, orientación EXIF, leer el tamaño **antes** de decodificar entera (`createImageBitmap` / cabecera) para rechazar > 2048 px, y codificar el recorte a WebP 256 × 256 con `canvas.toBlob` en WebView2. Peso típico del resultado | PNG en lugar de WebP; si la cabecera no se puede leer sin decodificar, se decodifica y se descarta al instante (sin guardarla en ningún sitio) |
 
+## Resultados de los spikes (bloque 0, 2026-10-27)
+Evidencias en [`evidencias/`](evidencias/); scripts en `spikes/personalization/`.
+
+- **S1 · búhos**: ❌ no hay un set libre coherente con variantes (solo iconos sueltos CC0, como el de Emojione, o *packs* de pago o con licencia propia). → **Set propio en SVG por capas** (`spikes/personalization/owls.py`): búho base + 12 variantes (sin nada, chistera, birrete, gafas, gafas de sol, auriculares, pajarita, bufanda, gorro, corona, libro, monóculo, mago). Vista en [`evidencias/owls/preview.png`](evidencias/owls/preview.png): se reconocen desde 24 px; a 16 px solo la silueta, que basta para las listas. Para el set final: accesorios de abajo (pajarita, bufanda, libro) subidos al pecho, sombreros altos más bajos, y borde claro en los accesorios oscuros (birrete, chistera), que se pierden sobre colores oscuros.
+- **S2 · colores fijos**: 63 en 19 ficheros, en cuatro grupos:
+  - **terminal** (≈30: `XTERM_THEME`, `TerminalDock`, `TerminalPanel`) → *tokens* nuevos `--terminal-muted`, `--terminal-accent`, `--terminal-chip`, `--terminal-dot` y los 16 ANSI `--ansi-*`, más `--terminal-cursor` y `--terminal-selection`;
+  - **marca** (`Logo.tsx`) → `--logo-from`, `--logo-to`, `--logo-dot`;
+  - **aviso ámbar con texto oscuro** (`AgentCard`, `NeedsYouPanel`, `#F5B547`/`#0A1A33`) → `--status-intervening` (ya existe) y nuevo `--status-intervening-foreground`; el texto de las iniciales del avatar → `--avatar-foreground` (calculado por contraste); `#7F8DAA` de `RequestItem` → `--muted-foreground`;
+  - **colores de datos** (paletas de agentes y proyectos en `page.tsx` y `NewProjectDialog`, color por defecto de un agente, serie de `SkillStats`, `USER_COLOR` de la memoria): no son del tema, son colores que elige el usuario o que identifican datos. Se juntan en `theme/palettes.ts` (única excepción del test de colores fijos); `SkillStats` pasa a `--chart-*`.
+  - En total, ~11 *tokens* nuevos + 16 ANSI: por debajo del umbral, el terminal entra en el bloque 3.
+- **S3 · navegación e integración en WebView2**: ✅ prueba manual del usuario en `tauri dev` (2026-10-27), con una página de prueba temporal (no commiteada):
+  1. `Alt+←/→` y los botones laterales del ratón **ya navegan solos** (atajos del navegador de WebView2; el SPA recibe `popstate`).
+  2. React Router guarda la posición en `history.state.idx`; «Adelante» se calcula con él.
+  3. Un `mailto:` abre el cliente de correo con las tres vías probadas (`<a href>`, `target="_blank"` y `window.open`), con asunto y cuerpo (~1,6 KB, acentos y emoji) correctos.
+  4. «Guardar como» funciona con la *capability* `dialog:allow-save`.
+- **S4 · registros**: ⚠️ con un backend de prueba que escribe a fichero ([`evidencias/s4-logs.txt`](evidencias/s4-logs.txt)), **el registro de accesos de uvicorn escribe los *tokens* de ejecución (`/r/<token>/…`) y del Arquitecto (`/a/<token>/…`) y la *query* completa** (claves, contraseñas o correos que lleve una URL). Además: los fallos de OAuth registran `repr(error)` (puede llevar URLs), y las rutas de la carpeta de datos incluyen el usuario de Windows. No hay `rich` ni `better_exceptions`, así que las trazas no llevan variables locales.
+- **S5 · licencias**: ✅ todo compatible con GPLv3.
+  - Frontend: 259 paquetes, MIT/ISC/BSD/Apache-2.0/0BSD.
+  - Backend: 110, también MPL-2.0 (`certifi`, `tqdm`), LGPL-3.0 (`pyte`), PSF, `tld` (MPL-1.1 / GPL-2.0 / LGPL-2.1+, se usa como LGPL) y MIT-CMU (Pillow).
+  - Tauri: 260 *crates* para Windows, MIT/Apache-2.0/Unicode-3.0/MPL-2.0/Zlib/BSD.
+  - La única a anotar es la **Ubuntu Font Licence** (`@fontsource/ubuntu`): las fuentes van como ficheros aparte (agregado), sin problema; se cita en terceros.
+  - Generación: **script propio** (`scripts/licenses.py`) con los mismos métodos del spike (árbol de `dependencies` de `node_modules`, `importlib.metadata` del entorno sin el grupo *dev*, `cargo metadata --filter-platform`), sin dependencias nuevas.
+- **S6 · recorte**: ✅ en Edge (mismo motor que WebView2; [`evidencias/s6-crop.txt`](evidencias/s6-crop.txt)).
+  - El tamaño se lee de la **cabecera** de PNG, JPEG y WebP en < 5 ms, sin decodificar; las de 3000 × 2000 se rechazan antes de abrirlas.
+  - Recorte a 256 × 256 en WebP con `canvas.toBlob`: **12–15 KB**.
+  - `react-easy-crop` 6.2.4 (MIT, una dependencia) para arrastrar y hacer zoom. `createImageBitmap` aplica la orientación EXIF.
+
+### Cambios al diseño por los spikes
+1. **Búhos propios** (§5): `frontend/src/assets/owls/*.svg` generados por un script versionado (`scripts/owls.py`, a partir del de S1) con su licencia del proyecto; `owls.json` sin atribución externa.
+2. **Registros sin secretos en origen** (§7): un filtro de `logging` en `logging_setup.py` enmascara, **antes de escribir**, los *tokens* de `/r/<token>/` y `/a/<token>/` y los valores de la *query* de las líneas de `uvicorn.access`, y los fallos de OAuth registran el tipo de error y el *host*, no `repr(error)`. La limpieza del zip (`services/redact.py`) se queda como segunda barrera (registros antiguos, terceros).
+3. **Lista de terceros** (§6): script propio, sin `license-checker`, `pip-licenses` ni `cargo-about`.
+4. **Atrás/Adelante con teclado y ratón** (§2): la app **no** registra `Alt+←/→` ni los botones X1/X2, porque WebView2 y el navegador ya lo hacen (capturarlos navegaría dos veces). Solo se añade el botón «Adelante» y los atajos aparecen en la ayuda de atajos como informativos.
+5. **`mailto`** (§6 y §7): enlace `<a href>` normal, sin `plugin-shell` ni el backend.
+
+### Cambios al diseño durante el desarrollo
+6. **Contador de la Inbox** (§2, bloque 2): reutiliza `GET /inbox/summary` (`useInboxSummary`, que ya se consulta cada 3 s para las notificaciones) en lugar de añadir `inbox_pending` a `HomeCounts`; sin cambios en el backend.
+7. **«Adelante»** (§2, bloque 2): la pila de navegación se sigue con los eventos de React Router (`PUSH`, `REPLACE`, `POP`) en `use-history-stack.ts`, no con `history.state.idx`, que no existe con el router en memoria de los tests. Tras recargar a mitad del historial, «Adelante» empieza desactivado (los atajos del WebView siguen funcionando).
+8. **Menos ruido** (§2, bloque 2; revisado con el usuario sobre capturas el 2026-10-27): en la ficha del agente, «Mejorar con el Arquitecto» pasa al menú «⋯», Resumen pierde «Editar» y las pestañas «Historial» y «Cambios» pasan a «Historial de la ficha» y «Código cambiado»; Ajustes agrupa sus secciones bajo Aplicación, Agentes, Recursos y Mantenimiento; en Inicio, «Nuevo agente», «Crear con el Arquitecto» y «Nuevo equipo» pasan a un único «Nuevo». Descartado: ocultar el selector de idioma, reducir el estado del backend a un punto y más cambios en Inicio. El tema pasa a Apariencia en el bloque 4.
+9. **Temas** (§3, bloque 3):
+   - Los conjuntos base Claro y Oscuro navy viven en `theme/model.ts` y un test los mantiene iguales a `tokens.css`; los demás temas (incluidos y propios) solo guardan lo que cambian.
+   - Los *tokens* compuestos (`--sep`, `--glass`, `--card-grad` con el nuevo `--card-top`, sombras y `--atmos`) se calculan con `color-mix` a partir de los básicos, para que un tema los arrastre.
+   - La fuente pasa por `--app-font` (`@theme inline` congelaba el valor); la densidad, por `--spacing` de Tailwind v4; el radio, por `--radius`.
+   - La **escala de texto es el zoom del WebView** (`setZoom`, permiso `core:webview:allow-set-webview-zoom`): dos tercios de los tamaños de texto están en píxeles fijos y el `zoom` de CSS rompería los `100vh`. En el navegador de desarrollo no se aplica (usa el zoom del navegador).
+   - **Contraste**: 4,5:1 para el texto; 3:1 (criterio WCAG de componentes) solo para las etiquetas de los botones sobre su color de acción, porque el rojo de «destructivo» del Oscuro navy actual da 3,9:1 y no se cambia el diseño existente sin pedirlo. Los cinco temas incluidos pasan.
+   - El fondo del terminal es `--terminal` en los dos modos (antes, el de xterm era siempre `#050e1e`): en el tema Claro pasa a `#0a1a33`, el mismo que su panel.
+   - Fuentes nuevas: Inter y Atkinson Hyperlegible (OFL-1.1), solo el juego latino.
+10. **Apariencia** (§4, bloque 4): en Ajustes, una sección «Apariencia» del grupo Aplicación (tema en pantalla y enlace) sustituye al selector de General; la página es `/ajustes/apariencia` y el editor de cada tema propio, `/ajustes/apariencia/<id>` con su miga de pan (Atrás/Adelante funcionan). Los temas incluidos no se editan ni se exportan: «Personalizar» crea una copia que parte de ellos. Borrar un tema en uso vuelve al Oscuro navy o al Claro, y los temas que partían de él pasan a partir del suyo.
+11. **Avatares, backend** (§5, bloque 5): el recorte llega como cuerpo binario de `PUT /agents/{id}/avatar` (PNG, WebP o JPEG; sin `multipart`) y la imagen se sirve en `GET /avatars/<hash>.webp` con caché inmutable. La lista de búhos está en `services/avatars.py` (`OWL_IDS`) y un test la compara con los SVG de `frontend/src/assets/owls/`, generados por `scripts/owls.py` (sin `owls.json` compartido). Las fotos cuentan en el uso de disco dentro de «otros», sin campo propio. `propose_agent` (agentes) no pone imagen; solo el Arquitecto, y solo búhos (`list_owls`).
+12. **Avatares, interfaz** (§5, bloque 6): la imagen se elige en la pestaña General de la ficha del agente y se aplica al momento (una foto hay que subirla de todos modos), sin pasar por «Guardar cambios»; el color sí. El diálogo de nuevo agente no la ofrece, igual que hoy no ofrece el color (lo trae la plantilla): se elige después en la ficha. La ficha del Arquitecto muestra el búho que propone, pero no se cambia a mano desde ella. `AgentAvatar` busca la imagen por `agentId` en la lista de agentes cuando solo tiene el nombre y el color; por eso las ramas de una tarea (`LaneRead`) ganan `agent_id`. Vite incrusta los SVG de los búhos como `data:` URL.
+13. **Acerca de** (§6, bloque 7): `scripts/licenses.py` es Python puro (recorre `node_modules`, `uv export --no-dev` + `importlib.metadata` y `cargo metadata`) y guarda un *hash* de cada *lockfile*; el test que lo vigila está en el backend (`test_third_party_licenses.py`), que también comprueba que todas las licencias sean compatibles con la GPL. El JSON generado queda fuera de Prettier. El texto completo de `LICENSE` y la lista de terceros se cargan bajo demanda (`import()`), fuera del paquete principal. La versión de la interfaz sale de `frontend/package.json` (`__APP_VERSION__`); la del backend solo se muestra si es distinta. En Ajustes, la sección «Acerca de» queda como resumen con enlace a la página.
+14. **Registros** (§7, bloque 8): el filtro (`services/redact.py`, en cada manejador del registro) oculta los *tokens* de `/r/` y `/a/`, las cabeceras de autenticación, los valores de claves sensibles en URLs y `clave=valor`, y los formatos de clave conocidos; los fallos de OAuth siguen registrando el error, que pasa por el filtro (no hacía falta cambiar esas líneas). El zip añade los secretos guardados de las conexiones, los correos y el usuario en las rutas, y no cuenta dos veces lo ya oculto. Los errores de la interfaz llegan con el *logger* estándar `frontend` (máximo 50 por envío); el frontend los junta en un anillo de 200 y envía cada 5 s, y también registra las consultas fallidas que no son errores 4xx. La app de escritorio escribe `desktop.log` (arranque, puerto, salida, reinicios y las últimas 40 líneas de `stderr` si el backend muere) y su comando `bundle_logs` usa los *crates* `zip` 2.x y `regex`, con los mismos patrones. El diálogo se monta solo al abrirse (montado y cerrado dentro del aviso de backend caído alteraba su estado). Permiso nuevo: `dialog:allow-save`.
+
 ## Diseño ([ADR 0027](../../adr/0027-personalization-support.md), nuevo)
 
 ### 1. Licencia y autoría
@@ -112,15 +164,15 @@ Scripts en `spikes/personalization/`; evidencias en `evidencias/`.
 ## Tareas (en orden)
 Bloques pequeños, cada uno con sus tests y su commit.
 
-0. [ ] **Spikes S1–S6** y resultados en este plan; cambios al diseño, si los hay, con el OK del usuario.
-1. [ ] **Licencia y autoría**: `LICENSE`, manifiestos, `tauri.conf.json`, README, logos. Revisión de licencias de S5 resuelta.
-2. [ ] **Navegación**: Adelante, `Alt+←/→`, ratón; contador de la Inbox; inventario de ruido con capturas → revisión con el usuario → cambios aprobados.
-3. [ ] **Motor de temas**: modelo, temas incluidos, aplicación por variables, seguir al sistema, persistencia en `app_state` sin parpadeo, terminal en vivo, colores fijos a *tokens* y test de colores fijos.
-4. [ ] **Ajustes › Apariencia**: lista, editor con vista previa, contraste, exportar/importar.
-5. [ ] **Avatares (backend)**: migración, almacenamiento y validación, API, limpieza, uso de disco, exportación/importación, Arquitecto.
-6. [ ] **Avatares (interfaz)**: búhos, `AvatarPicker` con recorte, color con aviso, `AgentAvatar` en los 53 sitios.
-7. [ ] **Acerca de**: página, autoría con logo según tema, licencia y terceros, `mailto`, paleta y enlace desde Ajustes.
-8. [ ] **Registros**: errores del frontend, `desktop.log`, *bundle* con limpieza, diálogo y Guardar como, abrir correo, ruta sin backend.
+0. [x] **Spikes S1–S6** y resultados en este plan; cambios al diseño, si los hay, con el OK del usuario.
+1. [x] **Licencia y autoría**: `LICENSE`, manifiestos, `tauri.conf.json`, README, logos. Revisión de licencias de S5 resuelta.
+2. [x] **Navegación**: Adelante, `Alt+←/→`, ratón; contador de la Inbox; inventario de ruido con capturas → revisión con el usuario → cambios aprobados.
+3. [x] **Motor de temas**: modelo, temas incluidos, aplicación por variables, seguir al sistema, persistencia en `app_state` sin parpadeo, terminal en vivo, colores fijos a *tokens* y test de colores fijos.
+4. [x] **Ajustes › Apariencia**: lista, editor con vista previa, contraste, exportar/importar.
+5. [x] **Avatares (backend)**: migración, almacenamiento y validación, API, limpieza, uso de disco, exportación/importación, Arquitecto.
+6. [x] **Avatares (interfaz)**: búhos, `AvatarPicker` con recorte, color con aviso, `AgentAvatar` en los 53 sitios.
+7. [x] **Acerca de**: página, autoría con logo según tema, licencia y terceros, `mailto`, paleta y enlace desde Ajustes.
+8. [x] **Registros**: errores del frontend, `desktop.log`, *bundle* con limpieza, diálogo y Guardar como, abrir correo, ruta sin backend.
 9. [ ] **Cierre**: ADR 0027 aceptado, README, e2e con el binario empaquetado, `/code-review`, suites completas y `validacion.md`.
 
 ## Tests previstos
@@ -146,3 +198,55 @@ Bloques pequeños, cada uno con sus tests y su commit.
 ## Decisiones (ADR)
 - **ADR 0027** (nuevo, propuesto): temas como datos (JSON de *tokens* en `app_state`, aplicados como variables CSS, `extends` para los propios); avatares solo como recorte reescrito en el backend, nunca la original; registros para soporte generados en local, limpiados y enviados por el usuario a mano (sin servidor ni telemetría).
 - ADR 0013 (navegación) no cambia: las pestañas se quedan como están; Adelante y la Inbox en la cabecera se anotan en él como ampliación.
+
+## Estado (2026-10-28) — para retomar
+
+Rama `phase/20-personalizacion` (24 commits sobre `main`, árbol limpio). **Hechos los bloques 0–8**: todo el desarrollo. **Falta el bloque 9 (cierre)**. Las decisiones tomadas durante el desarrollo están en «Cambios al diseño durante el desarrollo» (notas 6–14) y conviene leerlas antes de seguir.
+
+### Hecho, bloque a bloque (commits principales)
+- **0 · Spikes** (`5a72df5`, `1afe0c5`): resultados arriba. S3 se probó a mano en `tauri dev` con el usuario.
+- **1 · Licencia** (`1c28d25`, `bbc7497`): `LICENSE` (GPLv3, idéntico al de GitHub), `GPL-3.0-or-later` en los manifiestos, copyright y licencia en el instalador NSIS, README, logos en `frontend/src/assets/brand/`.
+- **2 · Navegación** (`8dc59bf`, `c7fa3df`, `fe9e5e6`, `99b800b`): «Adelante» (`use-history-stack.ts`), contador de la Inbox, ficha del agente más limpia, Ajustes agrupado, un único «Nuevo» en Inicio.
+- **3 · Temas** (`ed7adb2`, `02d51e2`, `cb88f8b`): `GET/PUT /api/settings/appearance`, `theme/` (modelo, 5 temas incluidos, resolución, contraste, aplicación, `ThemeProvider`), *tokens* derivados en `tokens.css`, terminal en vivo, colores fijos a *tokens* con `no-hardcoded-colors.test.ts`.
+- **4 · Apariencia** (`93e37e5`): `/ajustes/apariencia` y `/ajustes/apariencia/<id>` (editor con vista previa en toda la app).
+- **5 · Avatares, backend** (`44194df`): migración `0022_agent_avatar`, `services/avatars.py`, `PUT /agents/{id}/avatar`, `GET /avatars/<hash>.webp`, exportación con la foto dentro, limpieza al arrancar, `list_owls` del Arquitecto, 13 búhos de `scripts/owls.py`.
+- **6 · Avatares, interfaz** (`8d732cf`): `AgentAvatar` (búho, foto, iniciales; por `agentId`), `AvatarDialog` (recorte con `react-easy-crop`), `AvatarField` en la pestaña General, `agent_id` en las ramas de una tarea.
+- **7 · Acerca de** (`0e98f28`): `/acerca-de`, `scripts/licenses.py` → `frontend/src/generated/third-party-licenses.json` (641 paquetes; `test_third_party_licenses.py` falla si se queda atrás de los *lockfiles*: regenerar con `uv run --project backend python scripts/licenses.py`).
+- **8 · Registros** (`adcc0e1`, `eb75873`): `services/redact.py` (filtro del registro y limpieza del zip), `services/support.py` + `api/support.py`, `lib/client-log.ts`, `components/support/LogsDialog.tsx`, `desktop/src-tauri/src/desklog.rs` (`desktop.log` y `bundle_logs`).
+
+### Comprobado
+- Frontend: **705 tests** en verde (`npx vitest run` en `frontend/`, ~5 min), ESLint, `tsc`, Prettier y `npm run build`.
+- Backend: los tests nuevos y los de las zonas tocadas (agentes, exportación, Arquitecto, propuestas, ramas, limpieza, registro, OAuth, migraciones 0021/0022, apariencia, avatares, soporte, licencias). **La suite completa no se ha pasado en esta fase.**
+- App de escritorio: `cargo test` (10), `cargo fmt --check`, `cargo check --release`.
+- Visual, con capturas de Edge sin ventana sobre `npm run dev` (en `evidencias/`): temas, Apariencia y editor, búhos en Inicio y galería, Acerca de (esta sin guardar: muestra la ruta del usuario).
+
+### Falta: bloque 9 (cierre)
+1. **Suite completa del backend** (~1 h): `cd backend && uv run pytest -q -p no:warnings > .test-progress.log 2>&1` en segundo plano, decir la ruta al usuario y leer el `[ NN%]` cuando pregunte. Y `npm run test` completo (incluye `cargo test` y los spikes).
+2. **`/code-review`** del diff de la rama contra `main` y resolver lo que salga.
+3. **e2e con el binario empaquetado**: `npm run test:packaged`. Comprobar que el *sidecar* empaquetado arranca con el filtro de registro y que `scripts/build-backend.ps1` incluye lo nuevo (nada de datos nuevos en el *sidecar*: los búhos y el `LICENSE` van en el frontend).
+4. **Pruebas manuales con el usuario en la app de escritorio** (`npm run dev:desktop`, o la app instalada si se construye con `npm run build:desktop`):
+   - escala de texto del editor de temas (zoom del WebView, permiso `core:webview:allow-set-webview-zoom`);
+   - «Preparar registros para enviar» → «Guardar como» (permiso `dialog:allow-save`), el explorador con el fichero seleccionado, el correo con el texto para adjuntarlo;
+   - `desktop.log` en `%APPDATA%\AgenticOS\logs` (o la carpeta de datos movida) y el zip sin backend desde el aviso de backend caído (solo en *release*: en `tauri dev` el backend no lo lanza la app);
+   - recortar una foto real (encuadre y zoom) y verla en las pantallas.
+5. **Documentación**: ADR 0027 a «aceptado» con notas de implementación (resumen de las notas 9–14); ampliar el ADR 0013 (Adelante, contador de la Inbox, Ajustes agrupado); README: secciones de Apariencia, avatares, Acerca de y registros, y los comandos `scripts/licenses.py` y `scripts/owls.py`.
+6. **`validacion.md`** con la plantilla de `docs/phases/_template/`: CA1–CA15 con evidencias (tests y capturas de `evidencias/`), retro y lo que queda para fases futuras (ver abajo).
+7. **OK del usuario** → merge `--no-ff` a `main`, etiqueta **`v1.12`**, roadmap: fase 20 «cerrada (`v1.12`)» con enlace a la validación.
+
+### Decidido por el usuario
+- **Contraste de botones** (2026-10-28): **se deja 3:1** para las etiquetas de botón sobre su color de acción (criterio WCAG de componentes) y 4,5:1 para el texto. No se oscurece el rojo destructivo del Oscuro navy (3,9:1). Llevarlo a la validación (CA8) y a las notas del ADR 0027.
+
+### Preguntas abiertas al usuario (no contestadas)
+- **«Guardar cambios» en la ficha del agente**: se dejó visible y desactivado sin cambios (no oculto). Se le ofreció ocultarlo.
+- **Versión**: los manifiestos siguen en 1.0.0 y la app muestra «v1.0.0»; el usuario dijo que «el problema está en git, ya se arreglará». No tocar en esta fase.
+
+### Para fases futuras (anotar en la validación)
+- Elegir imagen al crear un agente (el diálogo de nuevo agente tampoco ofrece el color) y cambiar el búho a mano desde la ficha del Arquitecto.
+- Personalización de equipos y proyectos (color e icono propios).
+- Subir el zip de registros a un servidor (hoy se adjunta a mano).
+
+### Avisos para quien siga
+- **No editar documentos con `sed … a\` ni con Python dentro de heredocs**: aquí se pierden las barras invertidas y, si el ancla no existe, `sed` inserta en cada línea (pasó con este plan; ver la memoria `heredoc-backslashes`). Usar Edit, o un script escrito con Write que compruebe que su ancla existe una sola vez.
+- **Tests del frontend**: `lib/client-log.ts` carga `lib/api` bajo demanda a propósito (la configuración de los tests lo importa antes de que los tests simulen Tauri), y `test/setup.ts` lo reinicia tras cada test. `LogsDialog` se monta solo al abrirse.
+- **Datos de desarrollo del usuario**: para las capturas se cambió la apariencia y la imagen de dos agentes y se dejaron como estaban, pero esos cambios quedaron en el «Historial de la ficha» de «Desarrollador» y «QA».
+- Para capturas sin ventana: `npm run dev` y Edge en modo *headless* con DevTools (scripts de ejemplo en `spikes/personalization/`). Parar después solo los procesos que escuchan en 8765 y 5173.

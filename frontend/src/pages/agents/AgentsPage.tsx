@@ -178,7 +178,12 @@ function AgentsTable({ agents, teams }: { agents: Agent[]; teams: Team[] }) {
               >
                 <TableCell className="px-4 py-3">
                   <div className="flex items-center gap-3">
-                    <AgentAvatar name={agent.name} color={agent.color} size={32} />
+                    <AgentAvatar
+                      name={agent.name}
+                      color={agent.color}
+                      avatar={agent.avatar}
+                      size={32}
+                    />
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="font-medium">{agent.name}</span>

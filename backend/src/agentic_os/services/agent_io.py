@@ -3,7 +3,8 @@
 The format `agentic-os.agent` version 1 is plain JSON, without secrets or local ids:
 
     {"format": "agentic-os.agent", "version": 1,
-     "agent": {name, role, description, color, cli, model, instructions, permission_mode,
+     "agent": {name, role, description, color, avatar, cli, model, instructions,
+               permission_mode,
                allowed_tools, max_concurrency, can_spawn_subagents, can_create_tasks,
                can_propose_agents},
      "skills": {"modes": [{"name", "mode"}],          # skills of the library, by name
@@ -11,7 +12,9 @@ The format `agentic-os.agent` version 1 is plain JSON, without secrets or local 
      "knowledge": [{"title", "kind": "file" | "url", "source"}],
      "connections": ["github", …]}                   # by name: their secrets stay here
 
-The account and the team are this installation's: they are not exported. Importing never
+`avatar` (phase 20, optional): `owl:<id>`, or the photo inlined as a `data:` URL in an
+exported file (a template keeps `photo:<hash>`). The account and the team are this
+installation's: they are not exported. Importing never
 fails because something is missing: what does not exist here is listed, and left out.
 The person's templates are this same format (`AgentTemplateRow.payload`).
 """
@@ -47,6 +50,7 @@ from agentic_os.models import (
     SourceKind,
 )
 from agentic_os.models.agent import MAX_CONCURRENCY, PermissionMode, Tool
+from agentic_os.services import avatars
 from agentic_os.services.connections import library as connection_library
 from agentic_os.services.knowledge import config as knowledge_config
 from agentic_os.services.knowledge import docs as knowledge_docs
@@ -59,6 +63,7 @@ FIELDS = (
     "role",
     "description",
     "color",
+    "avatar",
     "cli",
     "model",
     "instructions",
@@ -180,6 +185,8 @@ def _valid(payload: Mapping) -> dict:
         agent[key] = bool(agent.get(key, False))
     color = str(agent.get("color") or "")
     agent["color"] = color if len(color) == 7 and color.startswith("#") else "#8FB4FF"
+    if not isinstance(agent.get("avatar"), str):
+        agent.pop("avatar", None)
     skills = payload.get("skills") if isinstance(payload.get("skills"), Mapping) else {}
 
     def items(value: Any) -> list:
@@ -253,14 +260,19 @@ def apply(
     overrides: Mapping[str, Any] | None = None,
     template: str | None = None,
     local_files: bool = True,
+    data_dir: Path | None = None,
 ) -> tuple[Agent, list[str]]:
     """Creates the agent of `payload` (a draft by default): its fields (with `overrides` on top),
     the modes of the library's skills it has, its own skills, its connections and documents.
     Returns the agent and what was left out, in Spanish. A file that came from outside (an
     imported agent file) names paths of someone else's machine: with `local_files` off its
-    documents by path are left out instead of reading whatever the path points to."""
+    documents by path are left out instead of reading whatever the path points to. The
+    avatar is stored again under `data_dir` (without it, the agent shows its initials)."""
     data = _valid(payload)
     notes: list[str] = []
+    data["agent"]["avatar"] = (
+        avatars.from_import(data_dir, data["agent"].get("avatar")) if data_dir else None
+    )
     values = {**data["agent"], **{k: v for k, v in (overrides or {}).items() if v is not None}}
     agent = Agent(workspace_id=DEFAULT_WORKSPACE, status=status, template=template, **values)
     db.add(agent)
@@ -340,6 +352,7 @@ def save_template(
         name=_template_name(db, (name or agent.name).strip() or agent.name),
         description=agent.description,
         color=agent.color,
+        avatar=agent.avatar,
         payload=payload,
     )
     db.add(row)
@@ -360,6 +373,7 @@ def duplicate_template(db: Session, row: AgentTemplateRow) -> AgentTemplateRow:
         name=_template_name(db, row.name),
         description=row.description,
         color=row.color,
+        avatar=row.avatar,
         payload=dict(row.payload),
     )
     db.add(copy)

@@ -111,13 +111,13 @@ export function AgentCard({
         />
       )}
       {agent.pending_requests > 0 && (
-        <span className="absolute -top-[9px] right-3 flex h-[18px] items-center rounded-full bg-[#F5B547] px-2 text-[10.5px] font-bold text-[#0A1A33] shadow-[0_0_0_3px_var(--background)]">
+        <span className="absolute -top-[9px] right-3 flex h-[18px] items-center rounded-full bg-status-intervening px-2 text-[10.5px] font-bold text-status-intervening-foreground shadow-[0_0_0_3px_var(--background)]">
           {t('home.agents.requests', { count: agent.pending_requests })}
         </span>
       )}
 
       <div className="flex min-w-0 items-center gap-2.5">
-        <AgentAvatar name={agent.name} color={agent.color} size={30} />
+        <AgentAvatar name={agent.name} color={agent.color} agentId={agent.id} size={30} />
         <span className="min-w-0 flex-1 truncate text-sm font-medium">{agent.name}</span>
         <span
           className={cn(

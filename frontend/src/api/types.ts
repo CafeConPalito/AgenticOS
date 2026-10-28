@@ -22,6 +22,8 @@ export interface AgentFields {
   role: string
   description: string
   color: string
+  /** Phase 20: null (initials), `owl:<id>` (the gallery) or `photo:<hash>`. */
+  avatar: string | null
   cli: CliId
   model: string
   instructions: string
@@ -275,6 +277,7 @@ export interface Lane {
   status: TaskStatus
   stage_id: string | null
   stage_name: string | null
+  agent_id?: string | null
   agent_name: string | null
   agent_color: string | null
   waiting_reason: WaitingReason | null

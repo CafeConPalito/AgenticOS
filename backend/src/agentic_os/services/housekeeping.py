@@ -20,7 +20,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from agentic_os.models import ACTIVE_STATUSES, Project, Run, Task, TaskStatus
-from agentic_os.services import maintenance
+from agentic_os.services import avatars, maintenance
 from agentic_os.services.adapters.agy import RUN_MARKER, plugin_dir, remove_plugin
 
 log = structlog.get_logger(__name__)
@@ -87,12 +87,19 @@ def run_at_startup(
         ("worktrees", lambda: closed_task_worktrees(sessions, release)),
         ("trust", flush_trust),
         ("logs", lambda: _purge_logs(sessions, runs_dir)),
+        ("avatars", lambda: _unused_avatars(sessions, runs_dir.parent)),
     ]
     for name, step in steps:
         try:
             step()
         except Exception:  # one failing step must not stop the others
             log.exception("startup cleanup step failed", step=name)
+
+
+def _unused_avatars(sessions: sessionmaker[Session], data_dir: Path) -> int:
+    """Photos of agents and templates that no longer use them (phase 20)."""
+    with sessions() as db:
+        return avatars.remove_unused(db, data_dir)
 
 
 def _purge_logs(sessions: sessionmaker[Session], runs_dir: Path) -> tuple[int, int]:

@@ -8,25 +8,7 @@ import { applyRunEvent, runKeys } from '@/api/runs'
 import type { Run, RunStatus } from '@/api/types'
 import { newViewerId } from '@/lib/client-id'
 import { TerminalSocket, type TerminalState } from '@/lib/terminal-socket'
-
-/** xterm theme aligned with the design tokens (the terminal is always dark). */
-export const XTERM_THEME = {
-  background: '#050E1E',
-  foreground: '#D7E1F0',
-  cursor: '#4CC9F0',
-  cursorAccent: '#050E1E',
-  selectionBackground: '#2E5BD6',
-  black: '#0A1A33',
-  brightBlack: '#7F8DAA',
-  red: '#FF6B6F',
-  green: '#43D392',
-  yellow: '#F5B547',
-  blue: '#8FB4FF',
-  magenta: '#B39CFF',
-  cyan: '#4CC9F0',
-  white: '#D7E1F0',
-  brightWhite: '#FFFFFF',
-}
+import { useXtermTheme } from './xterm-theme'
 
 export interface RunTerminal {
   containerRef: React.RefObject<HTMLDivElement | null>
@@ -58,6 +40,7 @@ export function useRunTerminal(
   const [exit, setExit] = useState<RunTerminal['exit']>(null)
   const [connected, setConnected] = useState(false)
   const termRef = useRef<Terminal | null>(null)
+  const xtermTheme = useXtermTheme(termRef)
   const socketRef = useRef<TerminalSocket | null>(null)
   const interactive = state?.controller === viewerId
   const interactiveRef = useRef(interactive)
@@ -68,7 +51,7 @@ export function useRunTerminal(
     const container = containerRef.current
     if (!container) return
     const term = new Terminal({
-      theme: XTERM_THEME,
+      theme: xtermTheme.current,
       fontFamily: "'Ubuntu Mono', ui-monospace, monospace",
       fontSize: 13,
       lineHeight: 1.2,
@@ -154,7 +137,7 @@ export function useRunTerminal(
       termRef.current = null
       socketRef.current = null
     }
-  }, [runId, viewerId, queryClient, fit])
+  }, [runId, viewerId, queryClient, fit, xtermTheme])
 
   useEffect(() => {
     interactiveRef.current = interactive

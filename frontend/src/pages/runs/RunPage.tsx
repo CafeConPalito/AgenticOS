@@ -95,7 +95,12 @@ function RunDetail({ run }: { run: Run }) {
           </Link>
         )}
         <span className="inline-flex items-center gap-2 text-[12.5px] text-muted-foreground">
-          <AgentAvatar name={run.agent_name} color={run.agent_color} size={18} />
+          <AgentAvatar
+            name={run.agent_name}
+            color={run.agent_color}
+            agentId={run.agent_id}
+            size={18}
+          />
           {run.agent_name}
         </span>
         <div className="ml-auto flex shrink-0 items-center gap-2">

@@ -56,7 +56,9 @@ describe('Improving an active agent with the Architect (phase 19, block 8)', () 
     })
     const user = userEvent.setup()
     const { router } = renderApp('/agentes/a1/resumen')
-    await user.click(await screen.findByRole('link', { name: es.architect.improve }))
+    // Phase 20: in the «⋯» menu, not in the header.
+    await user.click(await screen.findByRole('button', { name: es.common.more }))
+    await user.click(await screen.findByRole('menuitem', { name: es.architect.improve }))
     await waitFor(() =>
       expect(router.state.location.pathname).toMatch(/^\/agentes\/arquitecto\/conv-new-/),
     )

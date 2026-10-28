@@ -66,6 +66,8 @@ class Agent(IdMixin, WorkspaceMixin, TimestampMixin, Base):
     can_create_tasks: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     status: Mapped[str] = mapped_column(String(16), nullable=False, default=AgentStatus.ACTIVE)
     template: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    # Phase 20: null (initials), `owl:<id>` (the gallery) or `photo:<hash>` (a cropped photo).
+    avatar: Mapped[str | None] = mapped_column(String(80), nullable=True)
     # Phase 19: may propose new agents during a task (propose_agent).
     can_propose_agents: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     # A draft that a proposal created (the Architect or propose_agent).

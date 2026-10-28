@@ -69,6 +69,7 @@ COLUMNS = {
     "role": "role",
     "description": "description",
     "color": "color",
+    "avatar": "avatar",
     "team": "team_id",
     "cli": "cli",
     "account": "account_id",

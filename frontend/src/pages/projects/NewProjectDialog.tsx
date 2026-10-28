@@ -21,9 +21,10 @@ import { Input } from '@/components/ui/input'
 import { ApiError, api } from '@/lib/api'
 import { errorMessage } from '@/lib/form-errors'
 import { cn } from '@/lib/utils'
+import { PROJECT_COLORS } from '@/theme/palettes'
 
 /** The six swatches the project can be marked with. */
-const COLORS = ['#7C9CFF', '#4FD1C5', '#B5E061', '#FFA06B', '#F27FB2', '#C4A1FF']
+const COLORS = PROJECT_COLORS
 type PipelineChoice = 'none' | 'web'
 type Source = 'folder' | 'clone'
 

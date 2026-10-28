@@ -100,6 +100,12 @@ def build(backend: ArchitectBackend, toolset: str) -> MCPServer:
         return await call(ctx, "search_connection_registry", query=query)
 
     @server.tool()
+    async def list_owls(ctx: Context) -> str:
+        """Los búhos de la galería para la imagen del agente (campo `avatar`, «owl:<id>»).
+        Elige uno que encaje con su rol; si no encaja ninguno, déjalo en null (iniciales)."""
+        return await call(ctx, "list_owls")
+
+    @server.tool()
     async def list_templates(ctx: Context) -> str:
         """Plantillas de agente: las fijas y las del usuario."""
         return await call(ctx, "list_templates")
@@ -120,7 +126,8 @@ def build(backend: ArchitectBackend, toolset: str) -> MCPServer:
     async def update_sheet(patch: dict[str, Any], ctx: Context, agent_ref: str = "main") -> str:
         """Cambia campos de la ficha de un agente. `agent_ref`: «main» si diseñas uno solo; en
         un equipo, una clave corta por agente («redactor»). Campos: name, role, description,
-        color (#RRGGBB), team, cli, account, model, permission_mode (autonomous · restricted ·
+        color (#RRGGBB), avatar (owl:<id> de list_owls), team, cli, account, model,
+        permission_mode (autonomous · restricted ·
         ask), allowed_tools, max_concurrency (1-5), can_spawn_subagents, can_create_tasks,
         can_propose_agents, instructions, skills [{name, mode: always|never}], knowledge
         [título o id de documento], connections [nombre], template. Lo que no existe y los

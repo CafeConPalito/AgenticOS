@@ -12,8 +12,9 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { errorMessage } from '@/lib/form-errors'
 import { formatDateTime } from '@/lib/time'
+import { NEUTRAL_COLOR } from '@/theme/palettes'
 
-const USER_COLOR = '#C9D4E8'
+const USER_COLOR = NEUTRAL_COLOR
 
 function NoteEditor({
   initial,

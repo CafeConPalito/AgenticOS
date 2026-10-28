@@ -9,6 +9,7 @@ import {
   RunCrumb,
   TaskCrumb,
   TextCrumb,
+  ThemeCrumb,
 } from '@/components/layout/crumbs'
 import AgentEditorPage from '@/pages/agents/AgentEditorPage'
 import AgentsPage from '@/pages/agents/AgentsPage'
@@ -24,6 +25,9 @@ import ProjectsPage from '@/pages/projects/ProjectsPage'
 import RunPage from '@/pages/runs/RunPage'
 import RunsPage from '@/pages/runs/RunsPage'
 import SettingsPage from '@/pages/settings/SettingsPage'
+import AboutPage from '@/pages/about/AboutPage'
+import AppearancePage from '@/pages/settings/appearance/AppearancePage'
+import ThemeEditorPage from '@/pages/settings/appearance/ThemeEditorPage'
 import TaskPage from '@/pages/tasks/TaskPage'
 import UsagePage from '@/pages/UsagePage'
 
@@ -134,8 +138,28 @@ export const routes: RouteObject[] = [
       },
       {
         path: 'ajustes',
-        element: <SettingsPage />,
         handle: crumb(() => <TextCrumb i18nKey="nav.settings" />),
+        children: [
+          { index: true, element: <SettingsPage /> },
+          {
+            // Phase 20: Apariencia and the editor of each theme of the person's own.
+            path: 'apariencia',
+            handle: crumb(() => <TextCrumb i18nKey="nav.appearance" />),
+            children: [
+              { index: true, element: <AppearancePage /> },
+              {
+                path: ':themeId',
+                element: <ThemeEditorPage />,
+                handle: crumb((params) => <ThemeCrumb id={params.themeId} />),
+              },
+            ],
+          },
+        ],
+      },
+      {
+        path: 'acerca-de',
+        element: <AboutPage />,
+        handle: crumb(() => <TextCrumb i18nKey="nav.about" />),
       },
       { path: '*', element: <Navigate to="/" replace /> },
     ],

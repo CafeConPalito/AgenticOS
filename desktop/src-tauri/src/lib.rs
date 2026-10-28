@@ -9,6 +9,7 @@
 //! down by itself as soon as we exit. Killing it would terminate the PyInstaller bootloader
 //! before it can delete its `_MEI*` extraction folder in %TEMP%.
 
+mod desklog;
 mod sidecar;
 
 use std::sync::Mutex;
@@ -93,6 +94,31 @@ fn open_logs() -> Result<(), String> {
         .map_err(|e| e.to_string())
 }
 
+/// «Preparar registros» while the backend is down (phase 20): the backend's and this shell's
+/// logs, redacted, zipped at `path` (from the «Guardar como» dialog), shown in the file manager.
+#[tauri::command]
+fn bundle_logs(path: String) -> Result<Vec<String>, String> {
+    let target = std::path::PathBuf::from(&path);
+    if !target
+        .extension()
+        .and_then(|e| e.to_str())
+        .is_some_and(|e| e.eq_ignore_ascii_case("zip"))
+    {
+        return Err("the file must end in .zip".into());
+    }
+    let home = std::env::var_os("USERPROFILE")
+        .or_else(|| std::env::var_os("HOME"))
+        .map(std::path::PathBuf::from);
+    let folder = sidecar::logs_dir(sidecar::home_dir());
+    let names = desklog::bundle(&folder, &target, home.as_deref())?;
+    desklog::write(&format!("logs bundle written ({} files)", names.len()));
+    #[cfg(windows)]
+    let _ = std::process::Command::new("explorer")
+        .arg(format!("/select,{}", target.display()))
+        .spawn();
+    Ok(names)
+}
+
 #[cfg(debug_assertions)]
 fn start_backend(app: &tauri::AppHandle) -> Result<(), String> {
     let url = std::env::var("AGENTIC_OS_BACKEND_URL")
@@ -122,7 +148,11 @@ fn start_backend(app: &tauri::AppHandle) -> Result<(), String> {
         .map_err(|e| e.to_string())?
         .args(["--port", "0", "--parent-pid", parent_pid.as_str()])
         .spawn()
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| {
+            desklog::write(&format!("backend failed to spawn: {e}"));
+            e.to_string()
+        })?;
+    desklog::write("backend started");
     {
         let backend = app.state::<Backend>();
         let mut supervisor = backend.supervisor.lock().unwrap();
@@ -137,16 +167,26 @@ fn start_backend(app: &tauri::AppHandle) -> Result<(), String> {
             match event {
                 CommandEvent::Stdout(line) => {
                     if let Some(port) = parse_ready(&String::from_utf8_lossy(&line)) {
+                        desklog::write(&format!("backend ready on port {port}"));
                         *backend.url.lock().unwrap() = Some(format!("http://127.0.0.1:{port}"));
                         backend.supervisor.lock().unwrap().ready_at = Some(Instant::now());
                     }
                 }
-                // Backend logs go to its own log file (data_dir/logs/backend.log).
+                // Backend logs go to its own log file (data_dir/logs/backend.log); its stderr
+                // is kept in memory and written here only if it dies (phase 20).
+                CommandEvent::Stderr(line) => desklog::stderr_line(&String::from_utf8_lossy(&line)),
                 CommandEvent::Terminated(status) => {
+                    desklog::write(&format!("backend exited (code {:?})", status.code));
+                    if status.code != Some(0) {
+                        desklog::dump_stderr();
+                    }
                     on_exit(&handle, status.code);
                     return;
                 }
-                CommandEvent::Error(error) => backend.fail(error),
+                CommandEvent::Error(error) => {
+                    desklog::write(&format!("backend error: {error}"));
+                    backend.fail(error)
+                }
                 _ => {}
             }
         }
@@ -172,8 +212,12 @@ fn on_exit(app: &tauri::AppHandle, code: Option<i32>) {
         action
     };
     match action {
-        sidecar::Action::GiveUp => backend.fail(format!("backend exited (code {code:?})")),
+        sidecar::Action::GiveUp => {
+            desklog::write("backend gave up after too many failures");
+            backend.fail(format!("backend exited (code {code:?})"))
+        }
         sidecar::Action::Restart(delay) => {
+            desklog::write(&format!("backend restarting in {delay:?}"));
             backend.restarting();
             let handle = app.clone();
             tauri::async_runtime::spawn_blocking(move || {
@@ -209,9 +253,12 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             backend_url,
             restart_backend,
-            open_logs
+            open_logs,
+            bundle_logs
         ])
         .setup(|app| {
+            desklog::rotate();
+            desklog::write(&format!("Agentic OS {} started", env!("CARGO_PKG_VERSION")));
             // A missing or blocked sidecar must not crash the window: report it to the UI.
             if let Err(error) = start_backend(app.handle()) {
                 app.state::<Backend>()

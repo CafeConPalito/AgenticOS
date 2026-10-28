@@ -1,6 +1,7 @@
 from agentic_os.models.account import CliAccount, SessionState
 from agentic_os.models.agent import Agent, AgentStatus, Cli, PermissionMode, Tool
 from agentic_os.models.app_state import (
+    APPEARANCE,
     ARCHITECT,
     CONNECTIONS,
     DICTATION,
@@ -113,6 +114,7 @@ from agentic_os.models.team import Team
 
 __all__ = [
     "ACTIVE_STATUSES",
+    "APPEARANCE",
     "ARCHITECT",
     "CONNECTIONS",
     "DEFAULT_MAX_REJECTIONS",

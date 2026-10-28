@@ -1,0 +1,173 @@
+import type { Base, Density, Font, TokenName } from './model'
+
+export interface BuiltinTheme {
+  id: string
+  base: Base
+  /** Only what differs from the base token set of tokens.css. */
+  colors: Partial<Record<TokenName, string>>
+  font?: Font
+  density?: Density
+  radius?: number
+}
+
+const navy: BuiltinTheme = { id: 'navy', base: 'dark', colors: {} }
+const light: BuiltinTheme = { id: 'light', base: 'light', colors: {} }
+
+/** Black and white with bright accents: every pair well above AA. */
+const contrast: BuiltinTheme = {
+  id: 'contrast',
+  base: 'dark',
+  colors: {
+    background: '#000000',
+    foreground: '#ffffff',
+    card: '#0b0b0b',
+    'card-top': '#141414',
+    'card-foreground': '#ffffff',
+    popover: '#141414',
+    'popover-foreground': '#ffffff',
+    primary: '#141414',
+    'primary-action': '#0046c7',
+    'primary-action-hover': '#003fb5',
+    destructive: '#c4161c',
+    secondary: '#1c1c1c',
+    muted: '#1a1a1a',
+    'muted-foreground': '#e2e2e2',
+    accent: '#2a2a2a',
+    border: '#9a9a9a',
+    input: '#b4b4b4',
+    ring: '#ffd400',
+    subtle: '#050505',
+    sidebar: '#000000',
+    'sidebar-border': '#9a9a9a',
+    terminal: '#000000',
+    'terminal-header': '#0b0b0b',
+    'terminal-border': '#9a9a9a',
+    'terminal-foreground': '#ffffff',
+    'terminal-muted': '#d0d0d0',
+    'terminal-accent': '#ffd400',
+    'terminal-chip': '#1c1c1c',
+    'terminal-dot': '#5a5a5a',
+    'terminal-cursor': '#ffd400',
+    'terminal-selection': '#0046c7',
+    'ansi-black': '#000000',
+    'ansi-white': '#ffffff',
+    'status-queued': '#d6deeb',
+    'status-running': '#5ce1ff',
+    'status-waiting': '#ffd400',
+    'status-review': '#d3bbff',
+    'status-done': '#5cf59d',
+    'status-failed': '#ff8a8a',
+    'status-cancelled': '#bdbdbd',
+    'status-intervening': '#ffd400',
+    'status-intervening-foreground': '#000000',
+    'logo-from': '#0a56e0',
+    'logo-to': '#0046c7',
+    'logo-dot': '#ffd400',
+  },
+}
+
+/** Cream paper, coffee text and terracotta actions. */
+const warm: BuiltinTheme = {
+  id: 'warm',
+  base: 'light',
+  colors: {
+    background: '#f6efe5',
+    foreground: '#2b1d14',
+    card: '#fffaf3',
+    'card-top': '#fffdf9',
+    'card-foreground': '#2b1d14',
+    popover: '#fffaf3',
+    'popover-foreground': '#2b1d14',
+    primary: '#5a2a14',
+    'primary-action': '#9c3f17',
+    'primary-action-hover': '#ad4a1d',
+    secondary: '#f1e6d7',
+    'secondary-foreground': '#2b1d14',
+    muted: '#f2e8db',
+    'muted-foreground': '#6a5242',
+    accent: '#ecdcc8',
+    'accent-foreground': '#2b1d14',
+    border: '#e2d1bc',
+    input: '#d6c1a9',
+    ring: '#c25a2a',
+    subtle: '#fbf6ef',
+    sidebar: '#3b2116',
+    'sidebar-accent': '#5a3424',
+    'sidebar-border': '#4a2b1d',
+    terminal: '#2a1b13',
+    'terminal-header': '#22160f',
+    'terminal-border': '#43301f',
+    'terminal-foreground': '#f3e6d6',
+    'terminal-muted': '#c9b29b',
+    'terminal-accent': '#f0a35e',
+    'terminal-chip': '#43301f',
+    'terminal-dot': '#5e4430',
+    'terminal-cursor': '#f0a35e',
+    'terminal-selection': '#9c3f17',
+    'ansi-black': '#2a1b13',
+    'status-queued': '#6c5747',
+    'status-running': '#1d6a86',
+    'status-waiting': '#865400',
+    'status-review': '#6f42ad',
+    'status-done': '#2c7438',
+    'status-failed': '#b3261e',
+    'status-cancelled': '#76665a',
+    'logo-from': '#c25a2a',
+    'logo-to': '#7a3014',
+    'logo-dot': '#f0a35e',
+  },
+}
+
+/** Neutral greys with a blue accent. */
+const graphite: BuiltinTheme = {
+  id: 'graphite',
+  base: 'dark',
+  colors: {
+    background: '#17181b',
+    foreground: '#f2f2f3',
+    card: '#1f2024',
+    'card-top': '#26272c',
+    'card-foreground': '#f2f2f3',
+    popover: '#26272c',
+    'popover-foreground': '#f2f2f3',
+    primary: '#2a2b30',
+    'primary-action': '#4361d8',
+    'primary-action-hover': '#3a56c9',
+    destructive: '#c9302c',
+    secondary: '#2a2b30',
+    'secondary-foreground': '#f2f2f3',
+    muted: '#24252a',
+    'muted-foreground': '#a9abb3',
+    accent: '#2e3036',
+    'accent-foreground': '#f2f2f3',
+    border: '#34363d',
+    input: '#3d4048',
+    ring: '#8ea2ff',
+    subtle: '#1b1c1f',
+    sidebar: '#121315',
+    'sidebar-accent': '#2a2b30',
+    'sidebar-border': '#26282d',
+    terminal: '#0f1012',
+    'terminal-header': '#141518',
+    'terminal-border': '#26282d',
+    'terminal-foreground': '#e4e4e7',
+    'terminal-muted': '#a1a1aa',
+    'terminal-accent': '#8ea2ff',
+    'terminal-chip': '#26272c',
+    'terminal-dot': '#3d4048',
+    'terminal-cursor': '#8ea2ff',
+    'terminal-selection': '#4361d8',
+    'ansi-black': '#0f1012',
+    'ansi-white': '#e4e4e7',
+    'status-queued': '#a1a7b8',
+    'logo-from': '#5070e6',
+    'logo-to': '#2f45a8',
+    'logo-dot': '#8ea2ff',
+  },
+}
+
+export const BUILTIN_THEMES: BuiltinTheme[] = [navy, light, contrast, warm, graphite]
+export const BUILTIN_IDS = ['navy', 'light', 'contrast', 'warm', 'graphite'] as const
+export type BuiltinId = (typeof BUILTIN_IDS)[number]
+export const isBuiltin = (id: string): id is BuiltinId =>
+  (BUILTIN_IDS as readonly string[]).includes(id)

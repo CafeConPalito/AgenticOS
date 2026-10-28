@@ -1,19 +1,24 @@
-"""Settings that are not about agents or projects (phase 08): the data folder."""
+"""Settings not about agents or projects: data folder (phase 08), appearance (phase 20)."""
 
 from __future__ import annotations
 
 import time
 from pathlib import Path
+from typing import Annotated
 
-from fastapi import APIRouter, BackgroundTasks, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Request, status
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
 
 from agentic_os.config import home_dir, read_pointer
+from agentic_os.db.session import get_session
 from agentic_os.errors import ApiError
-from agentic_os.services import datadir
+from agentic_os.schemas.appearance import Appearance
+from agentic_os.services import appearance, datadir
 from agentic_os.services.proc import open_in_file_manager
 
 router = APIRouter(tags=["settings"])
+DbSession = Annotated[Session, Depends(get_session)]
 
 SIZE_TTL = 60.0
 _sizes: dict[str, tuple[float, datadir.Usage]] = {}
@@ -103,3 +108,17 @@ def move_data_dir(
     else:
         scheduler.start()  # development: the move waits for a manual restart
     return MoveAccepted(to=str(target), restarting=restart is not None)
+
+
+@router.get("/settings/appearance")
+def get_appearance(db: DbSession) -> Appearance:
+    """The chosen theme and the custom themes (phase 20)."""
+    return appearance.load(db)
+
+
+@router.put("/settings/appearance")
+def put_appearance(payload: Appearance, db: DbSession) -> Appearance:
+    """Replaces the whole document; the theme references are checked by the schema."""
+    saved = appearance.save(db, payload)
+    db.commit()
+    return saved

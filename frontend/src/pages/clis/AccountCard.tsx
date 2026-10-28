@@ -215,7 +215,7 @@ export function AccountCard({
                   to={`/agentes/${agent.id}`}
                   className="inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-foreground hover:bg-accent"
                 >
-                  <AgentAvatar name={agent.name} color={agent.color} size={14} />
+                  <AgentAvatar name={agent.name} color={agent.color} agentId={agent.id} size={14} />
                   {agent.name}
                 </Link>
               </li>

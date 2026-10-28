@@ -27,16 +27,13 @@ import { Switch } from '@/components/ui/switch'
 import { resources } from '@/i18n'
 import { errorMessage } from '@/lib/form-errors'
 import { formatBytes } from '@/lib/format'
-import { Segmented } from '@/pages/usage/parts'
 import { useUiPrefs } from '@/stores/ui-prefs'
-import { type Theme, useTheme } from '@/theme/ThemeProvider'
 
 const LANGUAGES = Object.keys(resources) as (keyof typeof resources)[]
 
-/** «General» (design `12-ajustes`): data folder, language and theme. */
+/** «General» (design `12-ajustes`): data folder, language and shortcuts (the theme is in Apariencia). */
 export function GeneralSection() {
   const { t, i18n } = useTranslation()
-  const { theme, setTheme } = useTheme()
   const singleKey = useUiPrefs((s) => s.singleKeyShortcuts)
   const setSingleKey = useUiPrefs((s) => s.setSingleKeyShortcuts)
   return (
@@ -65,20 +62,6 @@ export function GeneralSection() {
         {LANGUAGES.length < 2 && (
           <p className="text-xs text-muted-foreground">{t('settings.general.languageHelp')}</p>
         )}
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <span className="text-sm font-medium">{t('settings.general.theme')}</span>
-        <div className="self-start">
-          <Segmented<Theme>
-            label={t('settings.general.theme')}
-            value={theme}
-            onChange={setTheme}
-            options={(['dark', 'light'] as const).map((value) => ({
-              value,
-              label: t(`settings.general.themes.${value}`),
-            }))}
-          />
-        </div>
       </div>
       <div className="flex items-start justify-between gap-4">
         <div className="flex flex-col gap-0.5">

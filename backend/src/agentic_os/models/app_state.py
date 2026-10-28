@@ -13,6 +13,7 @@ DICTATION = "dictation"  # JSON: the dictation settings (phase 16)
 SKILLS = "skills"  # JSON: the skill library's budgets, proposals and registries (phase 17)
 CONNECTIONS = "connections"  # JSON: the MCP connections' timeouts and registries (phase 18)
 ARCHITECT = "architect"  # JSON: the Architect's CLI, account, model and instructions (phase 19)
+APPEARANCE = "appearance"  # JSON: the chosen theme and the custom themes (phase 20)
 
 
 class AppState(Base):
