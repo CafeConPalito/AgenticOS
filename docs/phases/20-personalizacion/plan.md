@@ -250,3 +250,17 @@ Rama `phase/20-personalizacion` (24 commits sobre `main`, árbol limpio). **Hech
 - **Tests del frontend**: `lib/client-log.ts` carga `lib/api` bajo demanda a propósito (la configuración de los tests lo importa antes de que los tests simulen Tauri), y `test/setup.ts` lo reinicia tras cada test. `LogsDialog` se monta solo al abrirse.
 - **Datos de desarrollo del usuario**: para las capturas se cambió la apariencia y la imagen de dos agentes y se dejaron como estaban, pero esos cambios quedaron en el «Historial de la ficha» de «Desarrollador» y «QA».
 - Para capturas sin ventana: `npm run dev` y Edge en modo *headless* con DevTools (scripts de ejemplo en `spikes/personalization/`). Parar después solo los procesos que escuchan en 8765 y 5173.
+
+## Enmienda 1 · Bloque 10: instalador y barra de la ventana (2026-10-28)
+Se hace antes de cerrar el bloque 9; al acabar se repiten la validación (CA16–CA18), el `/code-review` de lo nuevo y el merge `--no-ff`, y la etiqueta `v1.12` se mueve al nuevo merge (no se ha empujado).
+
+10. [ ] **Instalador** (CA16)
+    - `scripts/installer_art.py` (versionado, como `owls.py`): genera `desktop/src-tauri/windows/header.bmp` (150×57) y `sidebar.bmp` (164×314) con el navy de `tokens.css` y `ccp-logo-negative.png`.
+    - `tauri.conf.json` › `nsis`: `headerImage`, `sidebarImage`; colores y textos (bienvenida, final y cabecera de la licencia con la autoría) en `windows/hooks.nsh` o una plantilla propia si los *hooks* no bastan; si no alcanzan, se prueba una plantilla NSIS mínima basada en la de Tauri.
+    - Test: imágenes con las medidas, referencias en la configuración, colores del script iguales a los *tokens*. Construir con `npm run build:desktop` y capturar las páginas.
+11. [ ] **Barra de la ventana** (CA17, CA18)
+    - Rust: comando `set_titlebar(color, text, dark)` en un módulo nuevo `titlebar.rs`: en Windows 11 (compilación ≥ 22000) fija `DWMWA_CAPTION_COLOR`, `DWMWA_TEXT_COLOR` y `DWMWA_USE_IMMERSIVE_DARK_MODE` con el crate `windows`; en Windows 10 solo el modo oscuro o claro; en otros sistemas no hace nada. Permiso en `capabilities/default.json`.
+    - macOS: `titleBarStyle: "Overlay"` y `hiddenTitle` en una configuración propia de esa plataforma (`tauri.macos.conf.json`, que Tauri fusiona solo en macOS).
+    - Frontend: el `ThemeProvider` llama al comando al aplicar un tema (solo en Tauri) con el fondo de la cabecera y su texto; la cabecera reserva el hueco de los botones en macOS (clase por plataforma) y marca la zona de arrastre.
+    - Tests: lógica de color y de plataforma (Rust), llamada del `ThemeProvider` y hueco/arrastre de la cabecera (vitest), configuración de macOS. Prueba manual en Windows 11 con el usuario.
+12. [ ] **Cierre de la enmienda**: README e ISO de `validacion.md` (CA16–CA18), `/code-review` de lo nuevo, suites, merge `--no-ff`, mover `v1.12`.

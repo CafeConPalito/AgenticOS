@@ -24,6 +24,7 @@ import {
 import { Kbd } from '@/components/palette/Kbd'
 import { useDock } from '@/components/terminal/dock-store'
 import type { BackendState } from '@/hooks/useHealth'
+import { isMacDesktop } from '@/lib/platform'
 import { SHORTCUTS } from '@/lib/shortcuts'
 import { cn } from '@/lib/utils'
 import { useDialogs } from '@/stores/dialogs'
@@ -72,6 +73,7 @@ export function AppHeader({
   const openPalette = useDialogs((s) => s.openPalette)
   const { theme, toggleTheme } = useTheme()
 
+  const mac = isMacDesktop()
   const atHome = location.pathname === '/'
   // `key` is «default» for the first page of the session: nothing to go back to.
   const hasHistory = location.key !== 'default'
@@ -82,7 +84,15 @@ export function AppHeader({
   }
 
   return (
-    <header className="absolute inset-x-0 top-0 z-20 flex h-14 items-center gap-3 border-b border-sep px-[22px] glass">
+    <header
+      // On macOS the header is the title bar: room for the system's buttons on the left, and
+      // it drags the window.
+      data-tauri-drag-region={mac || undefined}
+      className={cn(
+        'absolute inset-x-0 top-0 z-20 flex h-14 items-center gap-3 border-b border-sep px-[22px] glass',
+        mac && 'pl-[84px]',
+      )}
+    >
       <Link
         to="/"
         aria-label={t('header.home')}

@@ -1,5 +1,6 @@
 import { isTauri } from '@tauri-apps/api/core'
 import type { Density, Font, ResolvedTheme } from './model'
+import { syncTitlebar } from './titlebar'
 
 /** The CSS variables of the last theme applied, for `index.html` to paint before React. */
 export const APPLIED_KEY = 'agentic-os.theme.applied'
@@ -44,6 +45,7 @@ export function applyTheme(theme: ResolvedTheme, root: HTMLElement = document.do
   } catch {
     // Storage unavailable: the next start paints the default theme first.
   }
+  syncTitlebar(theme)
   if (theme.scale !== appliedZoom && isTauri()) {
     appliedZoom = theme.scale
     void import('@tauri-apps/api/webview')

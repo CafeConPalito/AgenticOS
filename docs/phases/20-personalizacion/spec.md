@@ -1,6 +1,6 @@
 # Fase 20: Personalización y Acerca de · Spec
 
-- **Estado**: aprobada (2026-10-27)
+- **Estado**: aprobada (2026-10-27); enmienda 1 aprobada (2026-10-28)
 - **Rama**: `phase/20-personalizacion`
 
 ## Objetivo
@@ -120,3 +120,30 @@ Decisiones del usuario (2026-10-27): licencia GNU GPLv3 con el texto que da GitH
 2. **Set de búhos** (decidido): se busca un set libre de búhos coherente y con suficientes variantes; si no lo hay, se dibuja uno propio en SVG por capas (búho base + accesorios). Lo resuelve el bloque de spikes del plan.
 3. **Colores fijos repartidos** por los componentes: si son muchos, el apartado C crece. El plan arranca con un inventario y, si hace falta, se recorta (p. ej. dejando el terminal para el final).
 4. **Limpieza de secretos**: nunca es perfecta; por eso el usuario ve y puede revisar el zip antes de enviarlo.
+
+## Enmienda 1 (2026-10-28, aprobada por el usuario): instalador y barra de la ventana
+Pedida tras cerrar el desarrollo (la fase se reabre en su rama y se vuelve a validar y fusionar).
+
+### Dentro
+**F. Instalador con la imagen de la app** (NSIS, `tauri.conf.json` y `windows/`)
+- Imagen de cabecera (150×57) y lateral (164×314) en el navy del tema principal con el logo de Café con Palito en negativo, y los colores del asistente (fondo, texto, cabecera) tomados de los *tokens* de `tokens.css`.
+- Se mantiene la página de **aceptación de la licencia GPLv3** (ya existe por `licenseFile`), con el texto de cabecera en español.
+- **Autoría** como en Acerca de («Made By Café Con Palito with ❤️» y «Albano Díez de Paulino») en las páginas de bienvenida y final.
+- Límite conocido: NSIS no admite temas arbitrarios; los botones y casillas conservan el aspecto de Windows.
+
+**G. Barra de la ventana con el color del tema, con los rasgos de cada sistema**
+- **Windows 11**: barra nativa (botones arriba a la derecha, menú de ajuste de ventanas) con el color y el texto del tema activo, aplicados desde Rust (DWM) y actualizados en vivo al cambiar de tema o seguir al sistema. **Windows 10**: barra clara u oscura del sistema según la base del tema, sin el color exacto.
+- **macOS** (preparado, sin poder probarse en esta fase): `titleBarStyle: Overlay` con el título oculto; los botones siguen a la izquierda, nativos, y la cabecera de la app deja su hueco y sirve para arrastrar la ventana.
+- **Linux**: barra del sistema, sin cambios.
+- Sin botones dibujados por la app.
+
+### Fuera
+- Probar el estilo de macOS (se anota para cuando haya un Mac) e instaladores de otros sistemas.
+- Instalador que cambie con el tema elegido por la persona: usa siempre el principal.
+
+### Criterios de aceptación añadidos
+| # | Criterio | Cómo se verifica |
+|---|---|---|
+| CA16 | El instalador usa las imágenes y colores navy, muestra la aceptación de la licencia y la autoría | test de la configuración y de las imágenes (existen, medidas) + capturas del instalador construido |
+| CA17 | En Windows 11 la barra toma el color del tema y cambia en vivo; en Windows 10 es clara u oscura según la base; los botones siguen nativos | tests del comando de Rust y de la lógica de color + prueba manual |
+| CA18 | La configuración de macOS (Overlay, título oculto, hueco para los botones y zona de arrastre) está en su sitio y no afecta a Windows | test de configuración y de la cabecera por plataforma; sin prueba en un Mac |

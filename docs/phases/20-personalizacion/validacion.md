@@ -6,7 +6,7 @@ Backend  (uv run pytest, suite completa, backend/.test-progress.log): 3 fallos, 
   - test_connections_adapters.py::test_without_connections_the_claude_flags_do_not_change   (falla igual en main)
   - test_connections_adapters.py::test_agy_gets_the_servers_in_its_plugin_with_the_values_in_clear (falla igual en main)
   - test_knowledge_docs.py::test_the_three_levels   (intermitente: falla bajo carga, pasa solo 3/3 y en main 3/3)
-Frontend (vitest): 705 tests en verde; ESLint, tsc, Prettier y build sin errores
+Frontend (vitest): suite completa en verde tras la enmienda (705 + los nuevos); ESLint, tsc, Prettier y build sin errores
 Desktop  : cargo test (10), cargo fmt --check, cargo check --release
 e2e empaquetado (npm run test:packaged): 19 passed, 3 skipped
 Tras el code-review: test_support.py, avatares/plantillas, vitest src/lib, cargo test y ruff en verde
@@ -31,6 +31,9 @@ Los dos fallos de `test_connections_adapters.py` (`--disallowedTools` / `disable
 | CA13 | Fichero guardado, explorador y correo | ✅ | e2e empaquetado en verde; prueba manual en la app de escritorio hecha por el usuario |
 | CA14 | `LICENSE` y licencia en manifiestos e instalador | ✅ | revisión (bloque 1) |
 | CA15 | Suites en verde, lint y tipos | ⚠️ | lint, tipos, frontend y e2e en verde; backend con los 3 fallos de arriba, ajenos a la fase |
+| CA16 | Instalador en navy con licencia aceptada y autoría | ✅ | `backend/tests/test_installer_look.py`; capturas del instalador construido en `evidencias/installer/` (bienvenida y licencia con casilla) |
+| CA17 | Barra con el color del tema en Windows 11, clara/oscura en Windows 10, botones nativos | ✅ | `titlebar.rs` (13 tests de Rust: color, plataforma), `theme/titlebar.test.ts`; probado a mano por el usuario en Windows 11 (2026-10-28) |
+| CA18 | Configuración de macOS (Overlay, título oculto, hueco y arrastre) | ✅ sin probar en un Mac | `tauri.macos.conf.json` + test de configuración, `AppHeader.titlebar.test.tsx` |
 
 ## Code review
 | Hallazgo | Severidad | Resolución |
@@ -43,6 +46,13 @@ Los dos fallos de `test_connections_adapters.py` (`--disallowedTools` / `disable
 | JPEG con EXIF grande rechazado | media | corregido (1 MB de cabecera) |
 | `.ZIP` rechazado en Tauri | baja | corregido |
 | `desktop.log` con la ruta del usuario en el `stderr` | baja | corregido |
+| Enmienda 1: `backend/.build-desktop.log` commiteado por error | baja | corregido (fuera del repo y en `.gitignore`) |
+| Enmienda 1: `colorref` rechazaba `#rrggbbaa`, que el esquema de temas admite | media | corregido + test |
+| Enmienda 1: carrera en el caché de `syncTitlebar` | baja | corregido |
+| Enmienda 1: atributo de barra oscura en Windows 10 sin comprobar la compilación | baja | corregido (20 desde 19041, 19 desde 18362) + test |
+| Enmienda 1: permiso de maximizar con doble clic en macOS | baja | añadido a la capability |
+| Enmienda 1: `MUI_*` en `hooks.nsh` solo se comprobaban por texto | media | justificado: se compiló el instalador real y se capturaron las páginas (`evidencias/installer/`); las páginas internas conservan el aspecto de Windows (límite de NSIS, ya en la spec) |
+| Enmienda 1: 84 px fijos y detección de macOS por *user agent* | baja | justificado: sin Mac para probarlo; se anota para cuando haya uno |
 | Secretos como argumento `%s` o por clave en structlog no se detectan | media | justificado: límite de «mejor esfuerzo» del ADR 0027; la persona revisa el zip |
 | `POST /support/logs/bundle` escribe en cualquier `.zip` | baja | justificado: API solo en loopback y «Guardar como» ya confirma el sobrescrito |
 
