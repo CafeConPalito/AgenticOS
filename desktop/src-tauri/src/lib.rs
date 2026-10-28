@@ -11,6 +11,7 @@
 
 mod desklog;
 mod sidecar;
+mod titlebar;
 
 use std::sync::Mutex;
 use std::time::Instant;
@@ -254,7 +255,8 @@ pub fn run() {
             backend_url,
             restart_backend,
             open_logs,
-            bundle_logs
+            bundle_logs,
+            titlebar::set_titlebar
         ])
         .setup(|app| {
             desklog::rotate();

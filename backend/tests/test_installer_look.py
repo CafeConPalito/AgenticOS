@@ -52,3 +52,17 @@ def test_the_license_is_accepted_and_the_authorship_is_shown():
 
 def test_the_hooks_file_is_utf8_with_bom_for_nsis_unicode():
     assert (WINDOWS / "hooks.nsh").read_bytes().startswith(b"\xef\xbb\xbf")
+
+
+def test_macos_gets_an_overlay_title_bar_and_nothing_else_changes():
+    """CA18: Tauri replaces the `windows` array of the base config with the macOS one, so the
+    macOS window must be the base window plus the overlay look."""
+    base = CONF["app"]["windows"][0]
+    macos = json.loads(
+        (ROOT / "desktop" / "src-tauri" / "tauri.macos.conf.json").read_text("utf-8")
+    )
+    window = macos["app"]["windows"][0]
+    assert window.pop("titleBarStyle") == "Overlay"
+    assert window.pop("hiddenTitle") is True
+    assert window == base
+    assert len(macos["app"]["windows"]) == len(CONF["app"]["windows"]) == 1
