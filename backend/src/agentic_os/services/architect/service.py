@@ -49,7 +49,7 @@ from agentic_os.models import (
 )
 from agentic_os.models.agent import Tool
 from agentic_os.services import accounts as account_ops
-from agentic_os.services import proposals
+from agentic_os.services import avatars, proposals
 from agentic_os.services.architect import config as architect_config
 from agentic_os.services.architect import prompts
 from agentic_os.services.architect import sheet as sheets
@@ -69,6 +69,23 @@ FINISH_GRACE = 0.8  # after Stop: the last block may still be on its way to the 
 SEARCH_RESULTS = 8  # spike S4: a search, never a whole catalog
 TEAM_MODES = (ArchitectMode.TEAM, ArchitectMode.IMPROVE_TEAM, ArchitectMode.IMPROVE_PIPELINE)
 STATE_STARTING, STATE_THINKING, STATE_IDLE, STATE_ASLEEP = "starting", "thinking", "idle", "asleep"
+
+
+OWL_LOOKS = {
+    "beanie": "con gorro de lana",
+    "book": "con un libro",
+    "bow-tie": "con pajarita",
+    "crown": "con corona",
+    "glasses": "con gafas",
+    "grad-cap": "con birrete de graduado",
+    "headphones": "con auriculares",
+    "monocle": "con monóculo",
+    "plain": "sin nada",
+    "scarf": "con bufanda",
+    "sunglasses": "con gafas de sol",
+    "top-hat": "con chistera",
+    "wizard": "con sombrero de mago",
+}
 
 
 class ArchitectEvents(GitEvents):
@@ -839,6 +856,9 @@ class ArchitectService:
             for c in listing.cards[:SEARCH_RESULTS]
         ]
         return {"results": cards, "errors": listing.errors}, []
+
+    def _tool_list_owls(self, db: Session, conversation, **_) -> tuple[Any, list]:
+        return [{"avatar": f"owl:{owl}", "looks": OWL_LOOKS[owl]} for owl in avatars.OWL_IDS], []
 
     def _tool_list_templates(self, db: Session, conversation, **_) -> tuple[Any, list]:
         fixed = [

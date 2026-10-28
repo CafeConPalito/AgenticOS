@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request, status
+from fastapi.responses import FileResponse
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -33,13 +34,17 @@ from agentic_os.schemas.agent import (
     TemplateFromAgent,
     TemplateUpdate,
 )
-from agentic_os.services import accounts, agent_io, proposals
+from agentic_os.services import accounts, agent_io, avatars, proposals
 from agentic_os.services.knowledge import docs as knowledge_docs
 from agentic_os.services.tasks import wait_for_human
 from agentic_os.services.templates import BY_ID, TEMPLATES
 
 router = APIRouter(tags=["agents"])
 DbSession = Annotated[Session, Depends(get_session)]
+
+
+def _data_dir(request: Request) -> Path:
+    return Path(request.app.state.settings.data_dir)
 
 
 def _get(session: Session, agent_id: str) -> Agent:
@@ -155,6 +160,7 @@ def _own_template(row: AgentTemplateRow) -> AgentTemplate:
         role=str(agent.get("role") or ""),
         description=row.description,
         color=row.color,
+        avatar=row.avatar,
         cli=agent.get("cli") or Cli.CLAUDE,
         model=str(agent.get("model") or ""),
         instructions=str(agent.get("instructions") or ""),
@@ -214,8 +220,11 @@ def save_as_template(
 
 @router.get("/agents/{agent_id}/export")
 def export_agent(agent_id: str, request: Request, session: DbSession) -> dict:
-    """The agent as a file (`agentic-os.agent` v1), without secrets or local ids."""
-    return agent_io.export(session, _skills(request), _get(session, agent_id))
+    """The agent as a file (`agentic-os.agent` v1), without secrets or local ids; its photo,
+    if it has one, goes inside the file (phase 20)."""
+    payload = agent_io.export(session, _skills(request), _get(session, agent_id))
+    payload["agent"]["avatar"] = avatars.to_export(_data_dir(request), payload["agent"]["avatar"])
+    return payload
 
 
 @router.post("/agents/import/preview")
@@ -233,7 +242,12 @@ def import_agent(payload: AgentImport, request: Request, session: DbSession) -> 
     cli = str((payload.payload.get("agent") or {}).get("cli") or Cli.CLAUDE)
     _check_links(session, cli, overrides.get("team_id"), overrides.get("account_id"))
     agent, notes = agent_io.apply(
-        session, _skills(request), payload.payload, overrides=overrides, local_files=False
+        session,
+        _skills(request),
+        payload.payload,
+        overrides=overrides,
+        local_files=False,
+        data_dir=_data_dir(request),
     )
     session.commit()
     _poke_knowledge(request)
@@ -279,6 +293,7 @@ def create_agent(payload: AgentCreate, request: Request, session: DbSession) -> 
             status=overrides.pop("status", AgentStatus.ACTIVE),
             overrides=overrides,
             template=row.id,
+            data_dir=_data_dir(request),
         )
         session.commit()
         _poke_knowledge(request)
@@ -290,6 +305,7 @@ def create_agent(payload: AgentCreate, request: Request, session: DbSession) -> 
     values.update(payload.model_dump(exclude_unset=True, exclude={"template"}))
     if not values.get("name"):
         raise ApiError(422, "name_required", "name is required", "name")
+    values["avatar"] = avatars.check(_data_dir(request), values.get("avatar"))
     cli = str(values.get("cli") or Cli.CLAUDE)
     _check_links(session, cli, values.get("team_id"), values.get("account_id"))
     values["fallback_account_id"] = values.get("fallback_account_id") or None
@@ -306,9 +322,13 @@ def get_agent(agent_id: str, session: DbSession) -> AgentRead:
 
 
 @router.patch("/agents/{agent_id}")
-def update_agent(agent_id: str, payload: AgentUpdate, session: DbSession) -> AgentRead:
+def update_agent(
+    agent_id: str, payload: AgentUpdate, request: Request, session: DbSession
+) -> AgentRead:
     agent = _get(session, agent_id)
     changes = payload.model_dump(exclude_unset=True)
+    if "avatar" in changes:
+        changes["avatar"] = avatars.check(_data_dir(request), changes["avatar"])
     if "name" in changes and not changes["name"]:
         raise ApiError(422, "name_required", "name is required", "name")
     # Changing the CLI leaves the old CLI's account behind (unless a new one was sent).
@@ -342,6 +362,34 @@ def update_agent(agent_id: str, payload: AgentUpdate, session: DbSession) -> Age
         agent.switch_decided_until = None
     session.commit()
     return _read(session, agent)
+
+
+@router.put("/agents/{agent_id}/avatar")
+async def upload_avatar(agent_id: str, request: Request, session: DbSession) -> AgentRead:
+    """The cropped photo of an agent (phase 20): the body is the image (PNG, WebP or JPEG),
+    square and small. It is stored again as WebP without metadata; the original never comes
+    here."""
+    agent = _get(session, agent_id)
+    data = await request.body()
+    agent.avatar = avatars.save_crop(_data_dir(request), data)
+    proposals.record_hand_edit(session, agent, ["avatar"])
+    session.commit()
+    return _read(session, agent)
+
+
+@router.get("/avatars/{digest}.webp")
+def get_avatar(digest: str, request: Request) -> FileResponse:
+    if not avatars.DIGEST.match(digest):
+        raise NotFound("avatar")
+    path = avatars.photo_path(_data_dir(request), digest)
+    if not path.is_file():
+        raise NotFound("avatar")
+    # Named by its content: it never changes.
+    return FileResponse(
+        path,
+        media_type="image/webp",
+        headers={"Cache-Control": "public, max-age=31536000, immutable"},
+    )
 
 
 @router.post("/agents/{agent_id}/fallback/clear")

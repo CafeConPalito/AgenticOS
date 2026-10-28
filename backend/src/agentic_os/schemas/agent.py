@@ -8,6 +8,8 @@ from agentic_os.models.agent import MAX_CONCURRENCY, AgentStatus, Cli, Permissio
 Name = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=80)]
 Short = Annotated[str, StringConstraints(strip_whitespace=True, max_length=80)]
 Color = Annotated[str, StringConstraints(pattern=r"^#[0-9A-Fa-f]{6}$")]
+# Phase 20: an owl of the gallery or a stored photo (checked against both by the API).
+Avatar = Annotated[str, StringConstraints(pattern=r"^(owl:[a-z0-9-]{1,40}|photo:[0-9a-f]{12})$")]
 Concurrency = Annotated[int, Field(ge=1, le=MAX_CONCURRENCY)]
 
 
@@ -49,6 +51,8 @@ class AgentFields(BaseModel):
     # The secondary CLI: an account (it fixes the CLI) and a model. Null/empty: none.
     fallback_account_id: str | None = None
     fallback_model: Short | None = None
+    # Phase 20: null for the initials.
+    avatar: Avatar | None = None
 
     _dedupe_tools = field_validator("allowed_tools")(_unique_tools)
     _no_nulls = field_validator(
@@ -132,6 +136,7 @@ class AgentRead(BaseModel):
     role: str
     description: str
     color: str
+    avatar: str | None = None
     cli: Cli
     model: str
     instructions: str
@@ -171,6 +176,7 @@ class AgentTemplate(BaseModel):
     role: str
     description: str
     color: str
+    avatar: str | None = None
     cli: Cli
     model: str
     instructions: str
