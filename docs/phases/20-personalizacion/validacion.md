@@ -28,7 +28,7 @@ Los dos fallos de `test_connections_adapters.py` (`--disallowedTools` / `disable
 | CA10 | Acerca de completa, GPLv3 sin conexión, terceros | ✅ | tests de componente; `evidencias/` (captura sin guardar: mostraba la ruta del usuario); `test_third_party_licenses.py` |
 | CA11 | `mailto` a `contacto@cafeconpalito.com` | ✅ | test del `href` |
 | CA12 | Zip con lo listado, sin salidas ni contenido, secretos sembrados limpios | ✅ | `test_support.py`; tras el review, claves con prefijo y cookies múltiples cubiertas |
-| CA13 | Fichero guardado, explorador y correo | ⏳ | e2e empaquetado en verde; **prueba manual en la app de escritorio pendiente** |
+| CA13 | Fichero guardado, explorador y correo | ✅ | e2e empaquetado en verde; prueba manual en la app de escritorio hecha por el usuario |
 | CA14 | `LICENSE` y licencia en manifiestos e instalador | ✅ | revisión (bloque 1) |
 | CA15 | Suites en verde, lint y tipos | ⚠️ | lint, tipos, frontend y e2e en verde; backend con los 3 fallos de arriba, ajenos a la fase |
 
@@ -56,8 +56,8 @@ Los dos fallos de `test_connections_adapters.py` (`--disallowedTools` / `disable
   - la versión de los manifiestos sigue en 1.0.0 (el usuario la arreglará desde git).
 
 ## Cierre
-- [ ] Pruebas manuales en la app de escritorio (escala de texto, Guardar como y correo, `desktop.log`, recorte de una foto real)
-- [ ] OK del usuario
-- [ ] Merge a `main` (`--no-ff`)
-- [ ] Tag `v1.12`
-- [ ] `docs/roadmap.md` actualizado
+- [x] Pruebas manuales en la app de escritorio (escala de texto, Guardar como y correo, `desktop.log`, recorte de una foto real)
+- [x] OK del usuario
+- [x] Merge a `main` (`--no-ff`)
+- [x] Tag `v1.12`
+- [x] `docs/roadmap.md` actualizado
