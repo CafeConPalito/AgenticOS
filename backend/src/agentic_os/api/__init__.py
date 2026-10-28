@@ -27,6 +27,7 @@ from agentic_os.api import (
     runs,
     settings,
     skills,
+    support,
     tasks,
     teams,
     usage,
@@ -64,3 +65,4 @@ api_router.include_router(home.router)
 api_router.include_router(usage.router)
 api_router.include_router(settings.router)
 api_router.include_router(maintenance.router)
+api_router.include_router(support.router)
