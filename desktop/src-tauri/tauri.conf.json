@@ -53,7 +53,9 @@
           "Spanish"
         ],
         "displayLanguageSelector": false,
-        "installerHooks": "windows/hooks.nsh"
+        "installerHooks": "windows/hooks.nsh",
+        "headerImage": "windows/header.bmp",
+        "sidebarImage": "windows/sidebar.bmp"
       }
     },
     "shortDescription": "Orquestador de agentes de IA",
