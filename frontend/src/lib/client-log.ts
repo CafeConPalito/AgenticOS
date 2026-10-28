@@ -55,7 +55,7 @@ function describe(value: unknown): string {
   if (value instanceof Error) return `${value.name}: ${value.message}`
   if (typeof value === 'string') return value
   try {
-    return JSON.stringify(value)
+    return JSON.stringify(value) ?? String(value)
   } catch {
     return String(value)
   }

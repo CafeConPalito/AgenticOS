@@ -52,7 +52,7 @@ export type PhotoCheck = { ok: true; size: ImageSize } | { ok: false; reason: 'f
 /** Whether a file may be cropped: a PNG, JPEG or WebP of MAX_PHOTO_SIDE px or less per side. */
 export async function checkPhoto(file: File): Promise<PhotoCheck> {
   if (!PHOTO_TYPES.includes(file.type)) return { ok: false, reason: 'format' }
-  const size = headerSize(await file.slice(0, 65536).arrayBuffer())
+  const size = headerSize(await file.slice(0, 1048576).arrayBuffer())
   if (!size) return { ok: false, reason: 'format' }
   if (size.width > MAX_PHOTO_SIDE || size.height > MAX_PHOTO_SIDE)
     return { ok: false, reason: 'size' }

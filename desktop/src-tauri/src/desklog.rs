@@ -57,6 +57,12 @@ pub fn stderr_line(line: &str) {
     lines.push_back(line.trim_end().to_string());
 }
 
+fn user_home() -> Option<PathBuf> {
+    std::env::var_os("USERPROFILE")
+        .or_else(|| std::env::var_os("HOME"))
+        .map(PathBuf::from)
+}
+
 /// The sidecar died: write what it said last.
 pub fn dump_stderr() {
     let lines: Vec<String> = STDERR.lock().unwrap().drain(..).collect();
@@ -68,7 +74,7 @@ pub fn dump_stderr() {
         lines.len()
     ));
     for line in lines {
-        write(&format!("  | {}", redact(&line, None)));
+        write(&format!("  | {}", redact(&line, user_home().as_deref())));
     }
 }
 
@@ -100,16 +106,22 @@ fn patterns() -> &'static [(Regex, &'static str)] {
     static PATTERNS: OnceLock<Vec<(Regex, &'static str)>> = OnceLock::new();
     PATTERNS.get_or_init(|| {
         let keys = r"api[_-]?key|apikey|access[_-]?token|refresh[_-]?token|id[_-]?token|token|secret|client[_-]?secret|password|passwd|pwd|auth|authorization|code|state|session|sig|signature|credential|credentials|private[_-]?key|email";
+        // In `key=value` text the generic words (state, code, session…) are left alone.
+        let assign = r"api[_-]?key|apikey|access[_-]?token|refresh[_-]?token|id[_-]?token|token|secret|client[_-]?secret|password|passwd|pwd|authorization|credential|credentials|private[_-]?key|email";
         // The same as the backend's services/redact.py (the bundle without the backend).
         [
             (r#"(/[ra]/)[A-Za-z0-9_\-]{8,}"#.to_string(), "${1}«oculto»"),
             (
-                r#"(?i)\b(proxy-authorization|authorization|cookie|set-cookie|x-api-key)(["']?\s*[:=]\s*["']?)(?:(?:bearer|basic|token)\s+)?[^\s"',;]+"#.to_string(),
+                r#"(?i)\b((?:set-)?cookie["']?\s*[:=]\s*["']?)[^\r\n"']+"#.to_string(),
+                "${1}«oculto»",
+            ),
+            (
+                r#"(?i)\b(proxy-authorization|authorization|x-api-key)(["']?\s*[:=]\s*["']?)(?:(?:bearer|basic|token)\s+)?[^\s"',;]+"#.to_string(),
                 "${1}${2}«oculto»",
             ),
             (format!(r#"(?i)([?&](?:{keys})=)[^&\s#"']+"#), "${1}«oculto»"),
             (
-                format!(r#"(?i)(["']?\b(?:{keys})["']?\s*[:=]\s*["']?)[^\s"',;&}}«]{{4,}}"#),
+                format!(r#"(?i)(["']?(?:{assign})["']?\s*[:=]\s*["']?)[^\s"',;&}}«]{{4,}}"#),
                 "${1}«oculto»",
             ),
             (

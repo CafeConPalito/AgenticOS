@@ -24,15 +24,29 @@ _SECRET_KEYS = (
     r"signature|credential|credentials|private[_-]?key|email"
 )
 
+# In `key=value` text (not in a query) the generic words are too common to hide whatever follows
+# (`state=running`, `code=ENOENT`, `session=resumed`).
+_ASSIGN_KEYS = (
+    r"api[_-]?key|apikey|access[_-]?token|refresh[_-]?token|id[_-]?token|token|secret|"
+    r"client[_-]?secret|password|passwd|pwd|authorization|credential|credentials|"
+    r"private[_-]?key|email"
+)
+
 # (kind, pattern, replacement); applied in order.
 PATTERNS: list[tuple[str, re.Pattern[str], str]] = [
     # The run's and the Architect's MCP/hook tokens live in the path: /r/<token>/…, /a/<token>/…
     # (only tokens live under /r/ and /a/, so a short minimum is safe).
     ("run_token", re.compile(r"(/[ra]/)[A-Za-z0-9_\-]{8,}(?=[/?\s\"']|$)"), rf"\1{HIDDEN}"),
     (
+        # A cookie header carries several `name=value` pairs separated by `;`.
+        "cookie",
+        re.compile(r"(?i)\b((?:set-)?cookie[\"']?\s*[:=]\s*[\"']?)(?!«)[^\r\n\"']+"),
+        rf"\1{HIDDEN}",
+    ),
+    (
         "header",
         re.compile(
-            r"(?i)\b(proxy-authorization|authorization|cookie|set-cookie|x-api-key)"
+            r"(?i)\b(proxy-authorization|authorization|x-api-key)"
             # (what is already hidden is not hidden, nor counted, again)
             r"([\"']?\s*[:=]\s*[\"']?)(?:(?:bearer|basic|token)\s+)?(?!«)[^\s\"',;]+"
         ),
@@ -46,7 +60,7 @@ PATTERNS: list[tuple[str, re.Pattern[str], str]] = [
     (
         "assignment",
         re.compile(
-            rf"(?i)([\"']?\b(?:{_SECRET_KEYS})[\"']?\s*[:=]\s*[\"']?)(?!{HIDDEN})[^\s\"',;&}}]{{4,}}"
+            rf"(?i)([\"']?(?<![A-Za-z0-9])(?:{_ASSIGN_KEYS})[\"']?\s*[:=]\s*[\"']?)(?!{HIDDEN})[^\s\"',;&}}]{{4,}}"
         ),
         rf"\1{HIDDEN}",
     ),

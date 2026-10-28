@@ -284,6 +284,8 @@ def create_agent(payload: AgentCreate, request: Request, session: DbSession) -> 
         if row is None or row.workspace_id != DEFAULT_WORKSPACE:
             raise ApiError(422, "unknown_template", "unknown template", "template")
         overrides = payload.model_dump(exclude_unset=True, exclude={"template"})
+        if "avatar" in overrides:
+            overrides["avatar"] = avatars.check(_data_dir(request), overrides["avatar"])
         cli = str(overrides.get("cli") or (row.payload.get("agent") or {}).get("cli") or Cli.CLAUDE)
         _check_links(session, cli, overrides.get("team_id"), overrides.get("account_id"))
         agent, _notes = agent_io.apply(
@@ -370,6 +372,8 @@ async def upload_avatar(agent_id: str, request: Request, session: DbSession) -> 
     square and small. It is stored again as WebP without metadata; the original never comes
     here."""
     agent = _get(session, agent_id)
+    if int(request.headers.get("content-length") or 0) > avatars.MAX_CROP_BYTES:
+        raise ApiError(413, "avatar_too_big", "the crop is too heavy", "avatar")
     data = await request.body()
     agent.avatar = avatars.save_crop(_data_dir(request), data)
     proposals.record_hand_edit(session, agent, ["avatar"])

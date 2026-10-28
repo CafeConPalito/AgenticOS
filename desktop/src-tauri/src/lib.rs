@@ -99,7 +99,11 @@ fn open_logs() -> Result<(), String> {
 #[tauri::command]
 fn bundle_logs(path: String) -> Result<Vec<String>, String> {
     let target = std::path::PathBuf::from(&path);
-    if target.extension().and_then(|e| e.to_str()) != Some("zip") {
+    if !target
+        .extension()
+        .and_then(|e| e.to_str())
+        .is_some_and(|e| e.eq_ignore_ascii_case("zip"))
+    {
         return Err("the file must end in .zip".into());
     }
     let home = std::env::var_os("USERPROFILE")

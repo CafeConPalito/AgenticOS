@@ -30,6 +30,8 @@ RUN_TOKEN = "Zx9_kq3LmN0pQrStUvWx-yz12345678901234567890"
         ('{"password": "hunter2hunter2"}', "hunter2hunter2"),
         ("token=ghp_abcdefghijklmnopqrstuvwxyz0123", "ghp_abcdefghijklmnopqrstuvwxyz0123"),
         ("key sk-ant-api03-ABCDEFGHIJKLMNOPQRST in text", "ABCDEFGHIJKLMNOPQRST"),
+        ("GITHUB_TOKEN=abcd1234efgh", "abcd1234efgh"),
+        ("Cookie: sid=firstvalue1; csrf=secondvalue2", "secondvalue2"),
         ("jwt eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.abcdefghijk", "eyJzdWIi"),
     ],
     ids=[
@@ -42,6 +44,8 @@ RUN_TOKEN = "Zx9_kq3LmN0pQrStUvWx-yz12345678901234567890"
         "json",
         "github",
         "anthropic",
+        "prefixed",
+        "cookies",
         "jwt",
     ],
 )
@@ -55,6 +59,7 @@ def test_ordinary_lines_stay_readable():
         "GET /api/agents?status=active&page=2 HTTP/1.1",
         "run_started run_id=4f1c agent=Dev",
         "GET /api/runs/abc/terminal",
+        "state=running code=ENOENT session=resumed",
     ):
         assert redact.redact(line) == line
 
