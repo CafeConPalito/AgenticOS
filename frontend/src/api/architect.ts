@@ -32,6 +32,8 @@ export interface SheetAgent {
   role?: string
   description?: string
   color?: string
+  /** Phase 20: an owl of the gallery (`owl:<id>`), or null for the initials. */
+  avatar?: string | null
   team?: string | null
   cli?: CliId
   account?: string | null

@@ -110,9 +110,9 @@ function AgentEditor({ agent, tab }: { agent: Agent; tab: Tab }) {
     mode: 'onChange',
   })
   const { isDirty, dirtyFields } = form.formState
-  const [name, role, color, cli, model, status] = useWatch({
+  const [name, role, color, avatar, cli, model, status] = useWatch({
     control: form.control,
-    name: ['name', 'role', 'color', 'cli', 'model', 'status'],
+    name: ['name', 'role', 'color', 'avatar', 'cli', 'model', 'status'],
   })
 
   // Keep the form in sync when the agent is refetched and the user has no pending edits.
@@ -175,7 +175,7 @@ function AgentEditor({ agent, tab }: { agent: Agent; tab: Tab }) {
         {agent.status === 'draft' && agent.proposal_id && <DraftBanner agent={agent} />}
         {agent.status === 'active' && <ChangesBanner agent={agent} />}
         <header className="flex items-center gap-4 px-6 pt-[22px] pb-4">
-          <AgentAvatar name={name || '?'} color={color} size={52} />
+          <AgentAvatar name={name || '?'} color={color} avatar={avatar} size={52} />
           <div className="min-w-0 flex-1">
             <h1 className="truncate text-[26px] leading-[1.2] font-bold tracking-[-0.028em]">
               {name}

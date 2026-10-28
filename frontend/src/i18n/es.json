@@ -226,7 +226,7 @@
       "name": "Nombre",
       "role": "Rol",
       "avatar": "Avatar y color",
-      "colorHelp": "El color identifica al agente en el tablero, las colas y las pestañas de terminal.",
+      "colorHelp": "La imagen y el color identifican al agente en el tablero, las colas, las ejecuciones y las pestañas de terminal.",
       "color": "Color {{color}}",
       "description": "Descripción",
       "descriptionPlaceholder": "Qué hace este agente y en qué es bueno.",
@@ -3877,6 +3877,49 @@
       "logo-from": "Logo (inicio del degradado)",
       "logo-to": "Logo (fin del degradado)",
       "logo-dot": "Punto del logo"
+    }
+  },
+  "avatars": {
+    "title": "Imagen de {{name}}",
+    "description": "Un búho de la galería, una foto tuya o sus iniciales sobre su color.",
+    "change": "Cambiar imagen",
+    "remove": "Quitar imagen",
+    "saved": "Imagen guardada",
+    "hex": "Color en hexadecimal",
+    "faintColor": "Este color apenas se distingue del fondo de las tarjetas con el tema actual.",
+    "tabs": {
+      "owls": "Búhos",
+      "photo": "Foto",
+      "initials": "Iniciales"
+    },
+    "initialsHelp": "La inicial de su nombre sobre su color, como hasta ahora.",
+    "useInitials": "Usar iniciales",
+    "owls": {
+      "plain": "Búho",
+      "beanie": "Con gorro",
+      "book": "Lector",
+      "bow-tie": "Con pajarita",
+      "crown": "Rey",
+      "glasses": "Con gafas",
+      "grad-cap": "Graduado",
+      "headphones": "Con auriculares",
+      "monocle": "Con monóculo",
+      "scarf": "Con bufanda",
+      "sunglasses": "Con gafas de sol",
+      "top-hat": "Con chistera",
+      "wizard": "Mago"
+    },
+    "photo": {
+      "file": "Foto (PNG, JPG o WebP)",
+      "pick": "Elegir una foto",
+      "limits": "PNG, JPG o WebP de {{max}} px como mucho por lado. Solo se guarda el recorte.",
+      "format": "Ese archivo no es una imagen PNG, JPG o WebP.",
+      "size": "La foto mide más de {{max}} px en algún lado. Reduce su tamaño antes de subirla.",
+      "zoom": "Zoom",
+      "frameHelp": "Arrastra la foto para encuadrarla. Solo se guarda este recorte, nunca la foto original.",
+      "another": "Elegir otra",
+      "use": "Usar esta foto",
+      "saving": "Guardando…"
     }
   }
 }

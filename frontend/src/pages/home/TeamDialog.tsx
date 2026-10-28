@@ -129,7 +129,12 @@ function TeamForm({ team, onClose }: { team: Team | null; onClose: () => void })
                           )
                         }
                       />
-                      <AgentAvatar name={agent.name} color={agent.color} size={20} />
+                      <AgentAvatar
+                        name={agent.name}
+                        color={agent.color}
+                        agentId={agent.id}
+                        size={20}
+                      />
                       <span className="text-[13px]">{agent.name}</span>
                       {elsewhere && checked && (
                         <span className="ml-auto text-xs text-status-waiting">

@@ -91,7 +91,12 @@ function OpenDock() {
                 )}
               >
                 <span aria-hidden className={cn('size-[7px] rounded-full', dotClass(run))} />
-                <AgentAvatar name={run.agent_name} color={run.agent_color} size={16} />
+                <AgentAvatar
+                  name={run.agent_name}
+                  color={run.agent_color}
+                  agentId={run.agent_id}
+                  size={16}
+                />
                 {runTitle(run, 32)}
               </button>
             )

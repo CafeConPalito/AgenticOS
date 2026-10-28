@@ -48,6 +48,7 @@ export function LanesPanel({ task, pipeline }: { task: Task; pipeline: Pipeline 
             {lane.agent_name && (
               <AgentAvatar
                 name={lane.agent_name}
+                agentId={lane.agent_id}
                 color={lane.agent_color ?? NEUTRAL_COLOR}
                 size={18}
               />

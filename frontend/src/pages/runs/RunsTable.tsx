@@ -66,7 +66,12 @@ export function RunsTable({ runs, showAgent = true }: { runs: Run[]; showAgent?:
                 {showAgent && (
                   <TableCell>
                     <span className="inline-flex items-center gap-2 font-medium whitespace-nowrap">
-                      <AgentAvatar name={run.agent_name} color={run.agent_color} size={20} />
+                      <AgentAvatar
+                        name={run.agent_name}
+                        color={run.agent_color}
+                        agentId={run.agent_id}
+                        size={20}
+                      />
                       {run.agent_name}
                     </span>
                   </TableCell>

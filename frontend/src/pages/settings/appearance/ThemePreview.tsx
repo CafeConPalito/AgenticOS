@@ -53,7 +53,7 @@ export function ThemePreview() {
         </Button>
         <Button variant="destructive">{t(`${p}.destructive`)}</Button>
         <Input readOnly value={t(`${p}.input`)} className="max-w-[180px]" />
-        <AgentAvatar name="Arquitecto" color={DRAFT_AGENT_COLOR} size={24} />
+        <AgentAvatar name="Arquitecto" color={DRAFT_AGENT_COLOR} avatar="owl:wizard" size={24} />
       </div>
       <div className="overflow-hidden rounded-lg border border-terminal-border font-mono text-[12px]">
         <div className="bg-[var(--diff-add-bg)] px-3 py-0.5 text-[var(--diff-add-fg)]">

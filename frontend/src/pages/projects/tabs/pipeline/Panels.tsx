@@ -80,7 +80,7 @@ export function StagePanel({
             <SelectItem value={NONE}>{t('pipeline.noAgent')}</SelectItem>
             {agents.map((a) => (
               <SelectItem key={a.id} value={a.id}>
-                <AgentAvatar name={a.name} color={a.color} size={20} />
+                <AgentAvatar name={a.name} color={a.color} agentId={a.id} size={20} />
                 <span>
                   {a.name}
                   {a.role && <span className="text-muted-foreground"> · {a.role}</span>}

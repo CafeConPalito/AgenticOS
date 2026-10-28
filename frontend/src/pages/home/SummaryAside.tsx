@@ -327,6 +327,7 @@ export function SummaryAside({
                 <AgentAvatar
                   key={w.task_code}
                   name={w.agent_name}
+                  agentId={w.agent_id}
                   color={agents.find((a) => a.id === w.agent_id)?.color ?? DEFAULT_AGENT_COLOR}
                   size={16}
                 />

@@ -1,7 +1,9 @@
 // Visual primitives from docs/design/code/components/agentic/primitives.tsx, adapted:
 // tokens instead of hex where possible and labels passed in (i18n).
+import { useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { avatarSource, useAgentAvatar, useApiBase } from '@/lib/avatars'
 import { cn } from '@/lib/utils'
 import type { CliId } from '@/api/types'
 import { readableOn } from '@/theme/contrast'
@@ -54,9 +56,17 @@ export function StatusBadge({
   )
 }
 
+/**
+ * An agent's picture on its color (phase 20): an owl of the gallery, its cropped photo or,
+ * by default, its initial. Pass `avatar` when the agent is at hand; with only `agentId` it is
+ * read from the agents list (runs, tasks and the Inbox carry the name and color, not the
+ * picture).
+ */
 export function AgentAvatar({
   name,
   color,
+  avatar,
+  agentId,
   label,
   size = 24,
   withTooltip = false,
@@ -64,19 +74,29 @@ export function AgentAvatar({
 }: {
   name: string
   color: string
+  avatar?: string | null
+  agentId?: string | null
   /** Accessible name, e.g. "Dev · Desarrollador". */
   label?: string
   size?: number
   withTooltip?: boolean
   className?: string
 }) {
+  const looked = useAgentAvatar(avatar === undefined ? agentId : null)
+  const source = avatarSource(avatar === undefined ? looked : avatar, useApiBase())
+  // A picture that does not load (a deleted photo, the backend away) falls back to the initial.
+  const [broken, setBroken] = useState<string | null>(null)
   const radius = size <= 16 ? 4 : size <= 24 ? 6 : size <= 34 ? 8 : size <= 48 ? 12 : 14
   const initial = (name.trim()[0] ?? '?').toUpperCase()
-  const avatar = (
+  const picture = source && source !== broken ? source : null
+  const avatarNode = (
     <span
       role="img"
       aria-label={label ?? name}
-      className={cn('grid shrink-0 place-items-center font-bold select-none', className)}
+      className={cn(
+        'grid shrink-0 place-items-center overflow-hidden font-bold select-none',
+        className,
+      )}
       style={{
         width: size,
         height: size,
@@ -87,13 +107,23 @@ export function AgentAvatar({
         fontSize: Math.round(size * 0.44),
       }}
     >
-      {initial}
+      {picture ? (
+        <img
+          src={picture}
+          alt=""
+          draggable={false}
+          onError={() => setBroken(picture)}
+          className="size-full object-cover"
+        />
+      ) : (
+        initial
+      )}
     </span>
   )
-  if (!withTooltip) return avatar
+  if (!withTooltip) return avatarNode
   return (
     <Tooltip>
-      <TooltipTrigger asChild>{avatar}</TooltipTrigger>
+      <TooltipTrigger asChild>{avatarNode}</TooltipTrigger>
       <TooltipContent>{label ?? name}</TooltipContent>
     </Tooltip>
   )

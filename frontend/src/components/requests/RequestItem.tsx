@@ -70,7 +70,12 @@ export function RequestItem({
         onMouseLeave={() => onHover?.(null)}
         className="grid grid-cols-[30px_minmax(0,1fr)] gap-3.5 border-t border-sep px-[18px] py-4"
       >
-        <AgentAvatar name={item.agent_name || '?'} color={item.agent_color} size={30} />
+        <AgentAvatar
+          name={item.agent_name || '?'}
+          color={item.agent_color}
+          agentId={item.agent_id}
+          size={30}
+        />
         <div className="flex min-w-0 flex-col gap-1.5">
           <div className="flex items-baseline gap-3">
             <h3 className="min-w-0 flex-1 text-sm font-medium text-pretty">{title}</h3>
@@ -130,7 +135,12 @@ export function RequestItem({
     >
       <div className="flex gap-3 px-4 py-3.5">
         <div className="relative h-fit">
-          <AgentAvatar name={item.agent_name || '?'} color={item.agent_color} size={34} />
+          <AgentAvatar
+            name={item.agent_name || '?'}
+            color={item.agent_color}
+            agentId={item.agent_id}
+            size={34}
+          />
           <span
             className="absolute -right-1 -bottom-1 grid size-4 place-items-center rounded-full border bg-card"
             style={{ color: style.color }}

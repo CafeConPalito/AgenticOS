@@ -88,6 +88,7 @@ export function TeamSheet({ conversation }: { conversation: Conversation }) {
                     <AgentAvatar
                       name={agent?.name || '?'}
                       color={agent?.color || DRAFT_AGENT_COLOR}
+                      avatar={agent?.avatar ?? null}
                       size={32}
                     />
                     <div className="min-w-0 flex-1">
@@ -108,7 +109,12 @@ export function TeamSheet({ conversation }: { conversation: Conversation }) {
                   key={id}
                   className="flex items-center gap-3 rounded-lg border border-sep bg-card p-3"
                 >
-                  <AgentAvatar name={names[id] ?? '?'} color={DRAFT_AGENT_COLOR} size={32} />
+                  <AgentAvatar
+                    name={names[id] ?? '?'}
+                    color={DRAFT_AGENT_COLOR}
+                    agentId={id}
+                    size={32}
+                  />
                   <p className="min-w-0 flex-1 truncate font-medium">{names[id] ?? id}</p>
                   <span className="text-[12px] text-muted-foreground">
                     {t('architect.existingAgent')}

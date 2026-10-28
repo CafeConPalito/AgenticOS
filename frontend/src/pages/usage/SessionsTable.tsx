@@ -99,7 +99,12 @@ export function SessionsTable({
               </TableCell>
               <TableCell>
                 <span className="inline-flex items-center gap-2 font-medium whitespace-nowrap">
-                  <AgentAvatar name={row.agent_name} color={row.agent_color} size={20} />
+                  <AgentAvatar
+                    name={row.agent_name}
+                    color={row.agent_color}
+                    agentId={row.agent_id}
+                    size={20}
+                  />
                   {row.agent_name}
                 </span>
               </TableCell>

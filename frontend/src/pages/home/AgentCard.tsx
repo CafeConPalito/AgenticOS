@@ -117,7 +117,7 @@ export function AgentCard({
       )}
 
       <div className="flex min-w-0 items-center gap-2.5">
-        <AgentAvatar name={agent.name} color={agent.color} size={30} />
+        <AgentAvatar name={agent.name} color={agent.color} agentId={agent.id} size={30} />
         <span className="min-w-0 flex-1 truncate text-sm font-medium">{agent.name}</span>
         <span
           className={cn(

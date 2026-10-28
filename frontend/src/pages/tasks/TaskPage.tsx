@@ -151,6 +151,7 @@ function TaskDetail({ task }: { task: Task }) {
           <span className="inline-flex items-center gap-2 text-[12.5px] text-muted-foreground">
             <AgentAvatar
               name={task.agent_name}
+              agentId={task.agent_id}
               color={task.agent_color ?? NEUTRAL_COLOR}
               size={18}
             />
@@ -299,6 +300,7 @@ function StageStepper({ task, stages }: { task: Task; stages: Stage[] }) {
           {stage.agent_name && (
             <AgentAvatar
               name={stage.agent_name}
+              agentId={stage.agent_id}
               color={stage.agent_color ?? NEUTRAL_COLOR}
               size={16}
             />
@@ -614,7 +616,12 @@ function TaskSidePanel({
                   to={`/ejecuciones/${r.id}`}
                   className="flex items-center gap-2 rounded-md px-1 py-0.5 hover:bg-accent"
                 >
-                  <AgentAvatar name={r.agent_name} color={r.agent_color} size={16} />
+                  <AgentAvatar
+                    name={r.agent_name}
+                    color={r.agent_color}
+                    agentId={r.agent_id}
+                    size={16}
+                  />
                   <span className="truncate">{r.stage_name ?? r.agent_name}</span>
                   <span className="ml-auto">
                     <RunStatusBadge run={r} size="xs" />

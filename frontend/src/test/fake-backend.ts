@@ -109,6 +109,7 @@ export const TEMPLATES: AgentTemplate[] = [
     role: 'Desarrollador',
     description: 'Implementa las tareas.',
     color: '#4FD1C5',
+    avatar: null,
     cli: 'claude',
     model: 'sonnet',
     instructions: '# Dev',
@@ -124,6 +125,7 @@ export const TEMPLATES: AgentTemplate[] = [
     role: 'QA',
     description: 'Verifica.',
     color: '#B5E061',
+    avatar: null,
     cli: 'agy',
     model: '',
     instructions: '# QA',
@@ -171,6 +173,7 @@ export function makeAgent(overrides: Partial<Agent> = {}): Agent {
     role: 'Desarrollador',
     description: '',
     color: '#4FD1C5',
+    avatar: null,
     cli: 'claude',
     model: 'sonnet',
     instructions: '',
@@ -1969,6 +1972,15 @@ export function createFakeBackend(
       agent.using_fallback = false
       return json(200, agent)
     }
+    // Phase 20: the cropped photo arrives as the raw body; the fake keeps it to be inspected.
+    const avatarMatch = path.match(/^\/api\/agents\/([^/]+)\/avatar$/)
+    if (avatarMatch && method === 'PUT') {
+      const agent = agents.find((a) => a.id === avatarMatch[1])
+      if (!agent) return apiError(404, 'agent_not_found')
+      avatarUploads.push({ agentId: agent.id, body: rawBody })
+      agent.avatar = `photo:${String(avatarUploads.length).padStart(12, '0')}`
+      return json(200, agent)
+    }
     const agentMatch = path.match(/^\/api\/agents\/([^/]+)(\/duplicate)?$/)
     if (agentMatch) {
       const index = agents.findIndex((a) => a.id === agentMatch[1])
@@ -2585,6 +2597,9 @@ export function createFakeBackend(
   const skillsBackend = createSkillsBackend(seed.skills)
   const connectionsBackend = createConnectionsBackend(seed.connections)
   const architectBackend = createArchitectBackend(seed.architect)
+  // The last request's body when it is binary (an avatar crop).
+  let rawBody: Blob | null = null
+  const avatarUploads: { agentId: string; body: Blob | null }[] = []
   const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = new URL(typeof input === 'string' ? input : input.toString())
     const method = (init?.method ?? 'GET').toUpperCase()
@@ -2592,6 +2607,7 @@ export function createFakeBackend(
       typeof init?.body === 'string'
         ? (JSON.parse(init.body) as Record<string, unknown>)
         : ({} as Record<string, unknown>)
+    rawBody = init?.body instanceof Blob ? init.body : null
     const path = url.pathname + url.search
     calls.push({
       method,
@@ -2638,6 +2654,7 @@ export function createFakeBackend(
     dictationSettings,
     dictationStatus,
     appearance,
+    avatarUploads,
     queueState,
     tasks,
     inbox,

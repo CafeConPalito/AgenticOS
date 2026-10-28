@@ -63,7 +63,12 @@ export function TemplatePicker({
           )}
         >
           <div className="flex items-center gap-2.5">
-            <AgentAvatar name={template.name} color={template.color} size={30} />
+            <AgentAvatar
+              name={template.name}
+              color={template.color}
+              avatar={template.avatar ?? null}
+              size={30}
+            />
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5 font-medium">
                 {template.name}

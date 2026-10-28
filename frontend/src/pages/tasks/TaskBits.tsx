@@ -50,6 +50,7 @@ export function TaskAgent({ task, size = 18 }: { task: Task; size?: number }) {
   return (
     <AgentAvatar
       name={task.agent_name}
+      agentId={task.agent_id}
       color={task.agent_color ?? NEUTRAL_COLOR}
       size={size}
       label={task.agent_name}

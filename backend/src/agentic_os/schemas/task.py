@@ -52,6 +52,7 @@ class LaneRead(BaseModel):
     status: TaskStatus
     stage_id: str | None
     stage_name: str | None
+    agent_id: str | None = None  # phase 20: for its avatar
     agent_name: str | None
     agent_color: str | None
     waiting_reason: WaitingReason | None

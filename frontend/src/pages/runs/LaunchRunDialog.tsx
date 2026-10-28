@@ -133,7 +133,7 @@ function LaunchRunForm({
               <SelectContent>
                 {agents.map((a) => (
                   <SelectItem key={a.id} value={a.id}>
-                    <AgentAvatar name={a.name} color={a.color} size={16} />
+                    <AgentAvatar name={a.name} color={a.color} agentId={a.id} size={16} />
                     {a.name}
                     {a.role && <span className="text-muted-foreground"> · {a.role}</span>}
                   </SelectItem>

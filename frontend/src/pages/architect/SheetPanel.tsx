@@ -97,6 +97,7 @@ function AgentSheet({ conversation }: { conversation: Conversation }) {
               <AgentAvatar
                 name={agent.name || '?'}
                 color={agent.color || DRAFT_AGENT_COLOR}
+                avatar={agent.avatar ?? null}
                 size={36}
               />
               <div className="min-w-0 flex-1 space-y-1">
