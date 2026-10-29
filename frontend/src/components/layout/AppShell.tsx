@@ -55,7 +55,10 @@ export function AppShell() {
 
   return (
     <TooltipProvider delayDuration={300}>
-      <div className="relative flex h-screen flex-col overflow-hidden bg-background">
+      {/* Clip, not hidden: an overflow-hidden box can still be scrolled from code, and a
+          scrollIntoView near the end of a page (Ajustes › Limpieza) slid the whole app up with
+          no way back (phase 21). */}
+      <div className="relative flex h-screen flex-col overflow-clip bg-background">
         <div aria-hidden className="pointer-events-none absolute inset-0 bg-atmos" />
         <AppHeader
           section={section.id}

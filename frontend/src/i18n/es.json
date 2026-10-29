@@ -2696,7 +2696,7 @@
     "title": "Modelos locales",
     "description": "Los modelos que usa la biblioteca para leer, entender y describir tus documentos. Se descargan solo si los eliges y se pueden borrar.",
     "inUse": "En uso",
-    "default": "Recomendado",
+    "default": "Aconsejado",
     "bundled": "Incluido en la app",
     "needsAccount": "Requiere cuenta de Hugging Face",
     "unavailable": "no disponible en este sistema",
