@@ -14,6 +14,8 @@ from agentic_os.db.session import get_session
 from agentic_os.errors import ApiError, NotFound
 from agentic_os.models import (
     ACTIVE_STATUSES,
+    LISTED_RUN_KINDS,
+    ArchitectConversation,
     CliAccount,
     Run,
     RunEvent,
@@ -71,6 +73,10 @@ def _read(run: Run, manager: RunManager, detail: bool = False) -> RunRead:
         stage = db.get(Stage, run.stage_id) if run.stage_id else None
         result.task_code = task.code if task else None
         result.stage_name = stage.name if stage else None
+    if run.kind == RunKind.ARCHITECT and db is not None:
+        result.conversation_id = db.scalar(
+            select(ArchitectConversation.id).where(ArchitectConversation.run_id == run.id)
+        )
     if detail and db is not None and RunStatus(run.status) in resume_ops.RESUMABLE:
         result.resumed_by_id = resume_ops.resumed_by(db, run.id)
         result.resumable = resume_ops.resumable(db, run)
@@ -111,7 +117,7 @@ def list_runs(
     active: bool | None = None,
     limit: Annotated[int, Query(ge=1, le=500)] = 200,
 ) -> list[RunRead]:
-    query = select(Run).where(Run.workspace_id == DEFAULT_WORKSPACE, Run.kind == RunKind.AGENT)
+    query = select(Run).where(Run.workspace_id == DEFAULT_WORKSPACE, Run.kind.in_(LISTED_RUN_KINDS))
     if agent_id:
         query = query.where(Run.agent_id == agent_id)
     if task_id:

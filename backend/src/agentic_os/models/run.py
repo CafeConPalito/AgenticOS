@@ -42,6 +42,10 @@ class RunKind(StrEnum):
     ARCHITECT = "architect"  # the CLI of a conversation with the Architect (phase 19): no task
 
 
+# The runs with a terminal: the ones the Ejecuciones list and its counter show (phase 21).
+LISTED_RUN_KINDS = (RunKind.AGENT.value, RunKind.ARCHITECT.value)
+
+
 class Run(IdMixin, WorkspaceMixin, TimestampMixin, Base):
     """One execution of an agent CLI in a pseudo-terminal (a CLI session)."""
 

@@ -12,6 +12,7 @@ from agentic_os.db.base import DEFAULT_WORKSPACE, utcnow
 from agentic_os.models import (
     ACTIVE_STATUSES,
     FINISHED_TASK_STATUSES,
+    LISTED_RUN_KINDS,
     Agent,
     AgentStatus,
     InboxItem,
@@ -199,7 +200,12 @@ def build(db: Session) -> HomeRead:
         for p in projects
     ]
 
-    active_runs = db.scalar(select(func.count()).select_from(Run).where(Run.status.in_(_ACTIVE)))
+    # The same runs as the Ejecuciones list: not the decider's or the describer's calls.
+    active_runs = db.scalar(
+        select(func.count())
+        .select_from(Run)
+        .where(Run.status.in_(_ACTIVE), Run.kind.in_(LISTED_RUN_KINDS))
+    )
     return HomeRead(
         agents=home_agents,
         projects=home_projects,
