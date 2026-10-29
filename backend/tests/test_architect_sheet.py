@@ -313,12 +313,6 @@ def test_a_stage_with_an_unknown_agent_or_project_is_refused(world):
     [
         # a rejection written as a link: a cycle
         ([{"source": 0, "target": 1}, {"source": 1, "target": 0}], None, "cycle"),
-        # a fork whose branches have no condition
-        (
-            [{"source": 0, "target": 1}, {"source": 0, "target": 2}],
-            None,
-            "branch_without_condition",
-        ),
         # an unreachable stage: two starts
         ([{"source": 0, "target": 1}], None, "many_starts"),
         # rejection to a later stage

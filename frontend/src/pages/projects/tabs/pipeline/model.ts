@@ -136,7 +136,8 @@ export function toWrite(draft: Draft): PipelineWrite {
     target: index.get(l.target) ?? 0,
     name: l.name.trim(),
     condition: l.condition.trim(),
-    always: l.always,
+    // Phase 21: an empty condition is «always»; the old flag would hide a condition typed later.
+    always: false,
   }))
   return {
     name: draft.name,
@@ -161,7 +162,6 @@ export function graphOf(draft: Draft): GraphInput {
       key: l.key,
       source: l.source,
       target: l.target,
-      labelled: l.always || Boolean(l.condition.trim()),
     })),
     rejects,
   }

@@ -89,18 +89,11 @@ def test_a_cycle_without_start_is_reported_too():
     assert Code.NO_START in found and Code.CYCLE in found
 
 
-def test_a_fork_branch_needs_a_condition_or_always():
-    edges = [
-        Edge("ab", "A", "B", 0, labelled=True),
-        Edge("ac", "A", "C", 1, labelled=False),
-        Edge("bd", "B", "D", 0),
-        Edge("cd", "C", "D", 0),
-    ]
-    errors = Graph(list("ABCD"), edges).validate()
-    assert [(e.code, e.link) for e in errors] == [(Code.BRANCH_WITHOUT_CONDITION, "ac")]
-    # a single link has nothing to decide
-    single = Graph(list("AB"), [Edge("ab", "A", "B", 0, labelled=False)])
-    assert single.validate() == []
+def test_a_fork_branch_without_condition_is_valid():
+    # Phase 21: a branch without a condition is always taken, nothing to report.
+    edges = [Edge("ab", "A", "B", 0), Edge("ac", "A", "C", 1), Edge("bd", "B", "D", 0)]
+    edges.append(Edge("cd", "C", "D", 0))
+    assert Graph(list("ABCD"), edges).validate() == []
 
 
 def test_lanes_must_not_cross():

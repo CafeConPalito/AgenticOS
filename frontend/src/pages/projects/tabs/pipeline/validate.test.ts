@@ -5,7 +5,6 @@ function graph(
   links: [string, string][],
   rejects: Record<string, string[]> = {},
   nodes?: string,
-  unlabelled: string[] = [],
 ): GraphInput {
   const names = nodes ? [...nodes] : [...new Set(links.flat())].sort()
   return {
@@ -14,7 +13,6 @@ function graph(
       key: `${source}${target}`,
       source,
       target,
-      labelled: !unlabelled.includes(`${source}${target}`),
     })),
     rejects,
   }
@@ -114,11 +112,8 @@ describe('pipeline graph rules', () => {
     expect(lonely).toContain('cycle')
   })
 
-  it('wants a condition or «always» on every branch of a fork', () => {
-    const issues = validateGraph(graph(DIAMOND, {}, undefined, ['AC']))
-    expect(issues).toEqual([{ code: 'branch_without_condition', stage: 'A', link: 'AC' }])
-    // a single link has nothing to decide
-    expect(validateGraph(graph([['A', 'B']], {}, undefined, ['AB']))).toEqual([])
+  it('takes a branch without a condition as always taken (phase 21)', () => {
+    expect(validateGraph(graph(DIAMOND))).toEqual([])
   })
 
   it('refuses crossing lanes, empty branches and forks closing on the outer join', () => {

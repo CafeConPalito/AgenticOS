@@ -25,6 +25,7 @@ from agentic_os.models import (
     Project,
     Run,
     Stage,
+    StageLink,
     Task,
     TaskEvent,
     TaskEventKind,
@@ -48,6 +49,8 @@ def split_pipeline(
     """Requisitos → (Backend | Frontend) → QA; QA rejects to Backend or to Frontend."""
     names = ("Requisitos", "Backend", "Frontend", "QA")
     review = options.pop("review", ())
+    # Phase 21: without conditions the branches are always taken, as if marked «always».
+    back, front = (COND_BACK, COND_FRONT) if options.pop("conditions", True) else ("", "")
     payload = PipelineWrite(
         name="Split",
         stages=[
@@ -61,8 +64,8 @@ def split_pipeline(
             for name, agent in zip(names, agents, strict=True)
         ],
         links=[
-            LinkWrite(source=0, target=1, name="Backend", condition=COND_BACK, always=always),
-            LinkWrite(source=0, target=2, name="Frontend", condition=COND_FRONT, always=always),
+            LinkWrite(source=0, target=1, name="Backend", condition=back, always=always),
+            LinkWrite(source=0, target=2, name="Frontend", condition=front, always=always),
             LinkWrite(source=1, target=3),
             LinkWrite(source=2, target=3),
         ],
@@ -154,6 +157,33 @@ def test_branches_marked_always_are_taken_without_asking_and_go_one_after_the_ot
     with db_factory() as db:  # the join recorded what each lane said
         joined = db.scalar(select(TaskEvent).where(TaskEvent.kind == TaskEventKind.JOINED))
         assert "backend: api lista" in joined.detail and "frontend: ui lista" in joined.detail
+
+
+def test_branches_without_a_condition_are_taken_without_asking(db_factory, scheduler, launcher):
+    ids, _ = setup_split(db_factory, conditions=False)
+    new_task(db_factory)
+    scheduler.step()
+    finish_stage(db_factory, scheduler, launcher, "T-1", "requisitos")
+    with db_factory() as db:
+        decision = db.scalar(select(BranchDecision))
+        assert (decision.decided_by, sorted(decision.chosen)) == (
+            "always",
+            sorted(ids["links"].values()),
+        )
+    assert task_row(db_factory, key="backend").status == "running"
+
+
+def test_only_the_branches_with_a_condition_go_to_the_decider(db_factory):
+    with db_factory() as db:
+        agents = [make_agent(db, n) for n in ("Ana", "Bea", "Fran", "Quim")]
+        project = make_project(db, "web", WorkspaceMode.DIRECT)
+        ids = split_pipeline(db, project, agents)
+        front = db.get(StageLink, ids["links"]["Frontend"])
+        front.condition = ""
+        fork = db.get(Stage, ids["stages"]["Requisitos"])
+        undecided, always = lanes.open_links(db, fork)
+        assert [x.id for x in undecided] == [ids["links"]["Backend"]]
+        assert always == [ids["links"]["Frontend"]]
 
 
 def test_without_a_decider_the_person_chooses_and_the_join_waits_only_for_those_taken(

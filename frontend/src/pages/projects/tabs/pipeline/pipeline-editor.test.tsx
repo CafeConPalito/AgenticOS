@@ -114,9 +114,9 @@ describe('Pipeline editor', () => {
     })
   })
 
-  it('does not let a fork be saved until each branch has a condition', async () => {
+  it('a branch without a condition is always taken and can be saved (phase 21)', async () => {
     const { dev, tienda } = seed()
-    createFakeBackend({ agents: [dev], projects: [tienda] })
+    const backend = createFakeBackend({ agents: [dev], projects: [tienda] })
     const user = userEvent.setup()
     renderApp(`/proyectos/${tienda.id}/pipeline`)
     await user.click(await screen.findByRole('button', { name: es.pipeline.useTemplateSplit }))
@@ -125,21 +125,22 @@ describe('Pipeline editor', () => {
     const panel = await screen.findByRole('region', { name: /Etapa Requisitos/ })
     await user.click(within(panel).getByRole('button', { name: /Backend → Dev backend/ }))
     const branch = await screen.findByRole('region', { name: /Rama de Requisitos a Dev backend/ })
+    expect(within(branch).getByText(es.pipeline.conditionHelp)).toBeVisible()
     await user.clear(within(branch).getByLabelText(es.pipeline.condition))
+    expect(within(branch).getByText(es.pipeline.alwaysHelp)).toBeVisible()
 
-    const problems = await screen.findByRole('list', { name: es.pipeline.problems })
-    expect(within(problems).getByText(/necesita una condición/)).toBeVisible()
-    expect(screen.getByRole('button', { name: es.common.save })).toBeDisabled()
-    expect(within(await stagesNav()).getByRole('button', { name: /Requisitos/ })).toContainElement(
-      screen.getAllByLabelText(es.pipeline.hasProblem)[0],
-    )
-
-    // «Siempre se toma» is enough: no condition is needed
-    await user.click(within(branch).getByLabelText(es.pipeline.always))
+    expect(screen.queryByRole('list', { name: es.pipeline.problems })).toBeNull()
+    await user.click(screen.getByRole('button', { name: es.common.save }))
     await waitFor(() =>
-      expect(screen.queryByRole('list', { name: es.pipeline.problems })).toBeNull(),
+      expect(backend.callsTo('PUT', `/api/projects/${tienda.id}/pipeline`)).toHaveLength(1),
     )
-    expect(screen.getByRole('button', { name: es.common.save })).toBeEnabled()
+    const body = backend.callsTo('PUT', `/api/projects/${tienda.id}/pipeline`)[0].body as {
+      links: { source: number; target: number; condition: string; always: boolean }[]
+    }
+    expect(body.links.find((l) => l.source === 0 && l.target === 1)).toMatchObject({
+      condition: '',
+      always: false,
+    })
   })
 
   it('shows the problems of a graph that is not well built and goes to where they are', async () => {

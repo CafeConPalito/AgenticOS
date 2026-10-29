@@ -16,7 +16,6 @@ export type GraphErrorCode =
   | 'cycle'
   | 'unstructured'
   | 'empty_branch'
-  | 'branch_without_condition'
   | 'reject_not_backwards'
   | 'reject_outside_path'
 
@@ -36,8 +35,6 @@ export interface GraphEdge {
   key: string
   source: string
   target: string
-  /** Has a condition, or is «always»: required in the branches of a fork. */
-  labelled: boolean
 }
 
 /** The stages (in editor order), the links, and where each stage can send tasks back to. */
@@ -87,14 +84,6 @@ export function analyse(graph: GraphInput): Structure {
   }
   const cyclic = keys.filter((k) => !order.includes(k))
   for (const key of cyclic) issues.push({ code: 'cycle', stage: key })
-
-  for (const key of keys) {
-    const outs = out.get(key) ?? []
-    if (outs.length > 1)
-      for (const edge of outs)
-        if (!edge.labelled)
-          issues.push({ code: 'branch_without_condition', stage: key, link: edge.key })
-  }
 
   const forward = new Map<string, Set<string>>()
   const reach = (key: string): Set<string> => {

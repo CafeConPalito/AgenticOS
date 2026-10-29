@@ -109,7 +109,6 @@ GRAPH_MESSAGES = {
     "unstructured": "Las ramas no se unen bien: las que salen de una bifurcación deben volver "
     "a unirse en la misma etapa.",
     "empty_branch": "Una rama va directa a la unión sin pasar por ninguna etapa.",
-    "branch_without_condition": "Una rama de una bifurcación no tiene condición ni «always».",
     "reject_not_backwards": "reject_to debe apuntar a una etapa anterior.",
     "reject_outside_path": "reject_to apunta a una etapa que no está en el camino de esta.",
 }

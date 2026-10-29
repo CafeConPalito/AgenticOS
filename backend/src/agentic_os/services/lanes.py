@@ -207,6 +207,11 @@ def try_join(db: Session, parent: Task) -> None:
 
 
 # --------------------------------------------------------------------------------- forks
+def always_taken(link: StageLink) -> bool:
+    """A branch with nothing to decide: marked «always» or without a condition (phase 21)."""
+    return link.always or not link.condition.strip()
+
+
 def start_fork(db: Session, task: Task, fork: Stage) -> None:
     """The task reached a stage with several links: fix the branches that are fixed, and ask
     for the rest."""
@@ -216,22 +221,22 @@ def start_fork(db: Session, task: Task, fork: Stage) -> None:
     task.waiting_reason = task.waiting_detail = None
     links = list(db.scalars(select(StageLink).where(StageLink.from_stage_id == fork.id)))
     links.sort(key=lambda link: link.position)
-    always = [link.id for link in links if link.always]
+    always = [link.id for link in links if always_taken(link)]
     preset = root_of(db, task).preset_lanes.get(fork.id)
     if preset:
         chosen = {*preset, *always}
         take(db, task, fork, [link.id for link in links if link.id in chosen], DecisionBy.PRESET)
         return
-    if not [link for link in links if not link.always]:
+    if not [link for link in links if not always_taken(link)]:
         take(db, task, fork, always, DecisionBy.ALWAYS)
     # else the task stays `deciding`: the scheduler asks the decider (or the person) for it
 
 
 def open_links(db: Session, fork: Stage) -> tuple[list[StageLink], list[str]]:
-    """The links of a fork that need a decision, and the ids of the «always» ones."""
+    """The links of a fork that need a decision, and the ids of the ones always taken."""
     links = list(db.scalars(select(StageLink).where(StageLink.from_stage_id == fork.id)))
     links.sort(key=lambda link: link.position)
-    return [x for x in links if not x.always], [x.id for x in links if x.always]
+    return [x for x in links if not always_taken(x)], [x.id for x in links if always_taken(x)]
 
 
 def take(

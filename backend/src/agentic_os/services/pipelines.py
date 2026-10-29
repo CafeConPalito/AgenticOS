@@ -89,7 +89,7 @@ def graph_of(pipeline: Pipeline) -> Graph:
     """The saved pipeline as a graph (to ask where a task goes next)."""
     ids = [s.id for s in pipeline.stages]
     edges = [
-        Edge(link.id, link.from_stage_id, link.to_stage_id, link.position, True)
+        Edge(link.id, link.from_stage_id, link.to_stage_id, link.position)
         for link in pipeline.links
     ]
     rejects = {
@@ -117,7 +117,6 @@ def _payload_graph(payload: PipelineWrite) -> Graph:
             nodes[link.source],
             nodes[link.target],
             i,
-            labelled=link.always or bool(link.condition),
         )
         for i, link in enumerate(_links_of(payload))
     ]

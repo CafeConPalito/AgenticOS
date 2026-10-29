@@ -960,7 +960,8 @@
     "branchPanel": "Rama de {{from}} a {{to}}",
     "notABranch": "Esta conexión es la única salida de su etapa: no hay nada que decidir.",
     "branchName": "Nombre de la rama",
-    "always": "Siempre se toma",
+    "alwaysHelp": "Sin condición, esta rama se hace siempre, a la vez que las demás.",
+    "conditionHelp": "Solo se hace si la tarea cumple la condición. Déjala vacía para que se haga siempre.",
     "alwaysCondition": "Siempre se toma",
     "condition": "Se toma si…",
     "conditionPlaceholder": "La tarea toca la API, la base de datos o el backend",
@@ -997,7 +998,6 @@
       "cycle": "{{stage}} forma un ciclo: las conexiones solo van hacia delante.",
       "unstructured": "Las ramas de {{stage}} no se cierran bien: cada bifurcación debe terminar en una sola etapa donde se unan.",
       "empty_branch": "Una rama de {{stage}} no tiene etapas propias.",
-      "branch_without_condition": "Una rama de {{stage}} necesita una condición o «Siempre se toma».",
       "reject_not_backwards": "{{stage}} solo puede devolver la tarea a una etapa anterior.",
       "reject_outside_path": "Dentro de una rama, {{stage}} solo puede devolver la tarea a etapas de esa misma rama."
     },

@@ -196,9 +196,10 @@ def build(backend: ArchitectBackend, toolset: str) -> MCPServer:
         """El pipeline completo de un proyecto existente. `stages`: [{name, agent (agent_ref de
         un agente nuevo o nombre de uno existente), requires_review?, reject_to? (índice de una
         etapa anterior a la que vuelve el trabajo rechazado), id? (para conservar una etapa que
-        ya existía)}]. `links`: [{source, target, name?, condition?, always?}] por índice; sin
-        links, una cadena. Una etapa con varios enlaces de salida es una bifurcación: cada rama
-        necesita una condición (o always) y las ramas se vuelven a unir en una misma etapa."""
+        ya existía)}]. `links`: [{source, target, name?, condition?}] por índice; sin links, una
+        cadena. Una etapa con varios enlaces de salida es una bifurcación: una rama sin condición
+        se hace siempre, una con condición solo si la tarea la cumple, y las ramas se vuelven a
+        unir en una misma etapa."""
         return await call(
             ctx,
             "set_pipeline",
