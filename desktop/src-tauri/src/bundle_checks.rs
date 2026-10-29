@@ -38,4 +38,18 @@ mod tests {
             read("windows/installer.nsi").contains("MUI_PAGE_CUSTOMFUNCTION_SHOW FinishPageShow")
         );
     }
+
+    /// The avatar cropper shows the picked photo from a `blob:` URL (phase 21: without it the
+    /// photo never appeared, only the agent's colour behind it).
+    #[test]
+    fn csp_lets_the_cropper_show_a_picked_photo() {
+        let config = json("tauri.conf.json");
+        let csp = config["app"]["security"]["csp"].as_str().unwrap();
+        let img = csp
+            .split(';')
+            .map(str::trim)
+            .find(|d| d.starts_with("img-src"))
+            .unwrap();
+        assert!(img.split_whitespace().any(|s| s == "blob:"), "{img}");
+    }
 }

@@ -2,6 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import es from '@/i18n/es.json'
 import { createFakeBackend, makeAgent } from '@/test/fake-backend'
+import { installFakeWebSocket } from '@/test/fake-socket'
 import { renderApp } from '@/test/render'
 
 describe('Agents list', () => {
@@ -154,5 +155,27 @@ describe('Agent editor edge cases', () => {
     renderApp('/agentes/borrado/general')
     expect(await screen.findByText(es.agents.notFound, {}, { timeout: 1500 })).toBeVisible()
     expect(backend.callsTo('GET', '/api/agents/borrado')).toHaveLength(1)
+  })
+})
+
+describe('Agent editor · libraries (phase 21, CA8)', () => {
+  it.each(['knowledge', 'skills', 'connections'])(
+    'the %s tab does not sit a screen below the header',
+    async (tab) => {
+      installFakeWebSocket()
+      const agent = makeAgent({ name: 'Dev' })
+      createFakeBackend({ agents: [agent] })
+      renderApp(`/agentes/${agent.id}/${tab}`)
+      const tabs = await screen.findByRole('link', { name: es.agents.tabs.general })
+      expect(tabs.closest('form')).not.toHaveClass('min-h-full')
+    },
+  )
+
+  it('the form tabs keep the full height', async () => {
+    const agent = makeAgent({ name: 'Dev' })
+    createFakeBackend({ agents: [agent] })
+    renderApp(`/agentes/${agent.id}/general`)
+    const tabs = await screen.findByRole('link', { name: es.agents.tabs.general })
+    expect(tabs.closest('form')).toHaveClass('min-h-full')
   })
 })

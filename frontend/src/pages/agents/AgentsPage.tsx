@@ -1,4 +1,4 @@
-import { Bot, ChevronRight, FileUp, LayoutTemplate, Plus, Sparkles } from 'lucide-react'
+import { Bot, ChevronRight, FileUp, LayoutTemplate, Plus, Sparkles, Users } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useSearchParams } from 'react-router'
@@ -38,6 +38,7 @@ export default function AgentsPage() {
   const { t } = useTranslation()
   const { data: agents, isPending } = useAgents()
   const openNewAgent = useDialogs((s) => s.openNewAgent)
+  const openTeam = useDialogs((s) => s.openTeam)
   const [importing, setImporting] = useState(false)
   const [templates, setTemplates] = useState(false)
 
@@ -87,6 +88,10 @@ export default function AgentsPage() {
           description={t('pages.agents.emptyDescription')}
         >
           <TemplatePicker compact />
+          <Button variant="outline" className="mt-3" onClick={() => openTeam()}>
+            <Users />
+            {t('teams.new')}
+          </Button>
         </EmptyState>
       )}
       <ImportAgentDialog open={importing} onOpenChange={setImporting} />
