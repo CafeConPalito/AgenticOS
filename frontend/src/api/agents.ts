@@ -1,3 +1,4 @@
+import { saveFile } from '@/lib/save-file'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, apiFetch, getApiBaseUrl } from '@/lib/api'
 import type { Agent, AgentFields, AgentTemplate } from './types'
@@ -144,20 +145,18 @@ export function useDeleteTemplate() {
   })
 }
 
-/** Downloads the agent as `<name>.agent.json` (works in the browser and in Tauri's webview). */
-export async function downloadAgent(agent: Agent): Promise<void> {
+/** Saves the agent as `<name>.agent.json`: the path, null if cancelled (see `saveFile`). */
+export async function downloadAgent(agent: Agent): Promise<string | null | undefined> {
   const base = await getApiBaseUrl()
   const response = await fetch(`${base}/api/agents/${agent.id}/export`)
   if (!response.ok) throw new Error(`HTTP ${response.status}`)
-  const text = JSON.stringify(await response.json(), null, 2)
-  const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }))
-  const link = document.createElement('a')
-  link.href = url
-  link.download = `${agent.name.replace(/[^\w.-]+/g, '-') || 'agente'}.agent.json`
-  document.body.appendChild(link)
-  link.click()
-  link.remove()
-  URL.revokeObjectURL(url)
+  return saveFile({
+    name: `${agent.name.replace(/[^\w.-]+/g, '-') || 'agente'}.agent.json`,
+    text: JSON.stringify(await response.json(), null, 2),
+    type: 'application/json',
+    filter: 'Agente',
+    extensions: ['json'],
+  })
 }
 
 export interface ImportPreview {

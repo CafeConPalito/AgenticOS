@@ -1,3 +1,4 @@
+import { toastSaved } from '@/lib/save-file'
 import { ChartColumn, Download } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -84,9 +85,8 @@ export default function UsagePage() {
   }
 
   function exportCsv() {
-    downloadSessionsCsv(filters).then(
-      () => toast.success(t('usage.exported')),
-      (error: unknown) => toast.error(errorMessage(error)),
+    downloadSessionsCsv(filters).then(toastSaved, (error: unknown) =>
+      toast.error(errorMessage(error)),
     )
   }
 

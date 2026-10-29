@@ -77,6 +77,8 @@
     }
   },
   "common": {
+    "downloaded": "Descargado",
+    "savedAt": "Guardado en {{path}}",
     "tokensUnit": "{{value}} tok",
     "cancel": "Cancelar",
     "save": "Guardar cambios",
@@ -1385,7 +1387,6 @@
       "open": "Abrir la ejecución de {{name}}"
     },
     "export": "Exportar CSV",
-    "exported": "CSV exportado",
     "noCost": "—",
     "unavailable": "Consumo no disponible",
     "partialHint": "Cifra en vivo: la definitiva llega al cerrar la sesión.",

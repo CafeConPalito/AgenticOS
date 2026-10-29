@@ -11,6 +11,7 @@
 
 mod bundle_checks;
 mod desklog;
+mod export;
 mod sidecar;
 mod titlebar;
 
@@ -257,6 +258,7 @@ pub fn run() {
             restart_backend,
             open_logs,
             bundle_logs,
+            export::save_file,
             titlebar::set_titlebar
         ])
         .setup(|app| {

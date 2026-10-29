@@ -1,3 +1,4 @@
+import { saveFile } from '@/lib/save-file'
 import { BUILTIN_IDS } from '@/theme/builtin'
 import { type Appearance, type ThemeDefinition, themeSchema, type TokenName } from '@/theme/model'
 
@@ -120,17 +121,15 @@ export function freeId(name: string, taken: Iterable<string>): string {
   return id
 }
 
-/** Downloads a theme as `<id>.theme.json` (browser and Tauri's webview). */
+/** Saves a theme as `<id>.theme.json`: the path, null if cancelled (see `saveFile`). */
 export function downloadTheme(theme: ThemeDefinition) {
-  const text = JSON.stringify(theme, null, 2)
-  const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }))
-  const link = document.createElement('a')
-  link.href = url
-  link.download = `${theme.id}.theme.json`
-  document.body.appendChild(link)
-  link.click()
-  link.remove()
-  URL.revokeObjectURL(url)
+  return saveFile({
+    name: `${theme.id}.theme.json`,
+    text: JSON.stringify(theme, null, 2),
+    type: 'application/json',
+    filter: 'Tema',
+    extensions: ['json'],
+  })
 }
 
 export type ImportResult =

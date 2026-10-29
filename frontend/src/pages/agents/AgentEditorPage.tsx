@@ -1,3 +1,4 @@
+import { toastSaved } from '@/lib/save-file'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
   BookOpen,
@@ -251,7 +252,9 @@ function AgentEditor({ agent, tab }: { agent: Agent; tab: Tab }) {
               </DropdownMenuItem>
               <DropdownMenuItem
                 onSelect={() =>
-                  void downloadAgent(agent).catch((error) => toast.error(errorMessage(error)))
+                  void downloadAgent(agent).then(toastSaved, (error: unknown) =>
+                    toast.error(errorMessage(error)),
+                  )
                 }
               >
                 <Download />
