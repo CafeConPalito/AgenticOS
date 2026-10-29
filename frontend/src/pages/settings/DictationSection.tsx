@@ -1,5 +1,5 @@
 import { Mic, X } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import {
@@ -105,28 +105,49 @@ function ShortcutField({ value, onChange }: { value: string; onChange: (value: s
   )
 }
 
+/**
+ * The microphones. Until the page may use the microphone, the browser lists them without id nor
+ * name (phase 21: in the installed app the list was empty): `hidden` says so, and `allow` asks
+ * for the permission and lists them again.
+ */
 function useMicrophones() {
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([])
+  const [denied, setDenied] = useState(false)
+  const refresh = useCallback(async () => {
+    const media = navigator.mediaDevices
+    if (!media?.enumerateDevices) return
+    try {
+      const all = await media.enumerateDevices()
+      setDevices(all.filter((d) => d.kind === 'audioinput'))
+    } catch {
+      // Nothing to list: the default of the system still works.
+    }
+  }, [])
   useEffect(() => {
     const media = navigator.mediaDevices
     if (!media?.enumerateDevices) return
-    let alive = true
-    const refresh = () =>
-      void media
-        .enumerateDevices()
-        .then((all) => alive && setDevices(all.filter((d) => d.kind === 'audioinput')))
-        .catch(() => undefined)
-    refresh()
-    media.addEventListener?.('devicechange', refresh)
-    return () => {
-      alive = false
-      media.removeEventListener?.('devicechange', refresh)
+    const onChange = () => void refresh()
+    onChange()
+    media.addEventListener?.('devicechange', onChange)
+    return () => media.removeEventListener?.('devicechange', onChange)
+  }, [refresh])
+
+  async function allow() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      stream.getTracks().forEach((track) => track.stop())
+      setDenied(false)
+    } catch {
+      setDenied(true)
     }
-  }, [])
-  return devices
+    await refresh()
+  }
+
+  const hidden = devices.length > 0 && devices.every((d) => !d.deviceId && !d.label)
+  return { devices, hidden, denied, allow, refresh }
 }
 
-function MicrophoneTest({ deviceId }: { deviceId: string | null }) {
+function MicrophoneTest({ deviceId, onDone }: { deviceId: string | null; onDone: () => void }) {
   const { t } = useTranslation()
   const [state, setState] = useState<
     | { phase: 'idle' }
@@ -159,6 +180,8 @@ function MicrophoneTest({ deviceId }: { deviceId: string | null }) {
       }
       await recording.stop()
       setState({ phase: 'done', heard: peak.current > 0.05 })
+      // With the permission now given, the microphones have their names.
+      onDone()
     } catch (error) {
       if (error instanceof MicrophoneError && error.problem === 'permission')
         setState({ phase: 'denied' })
@@ -278,7 +301,7 @@ function Form({ settings }: { settings: DictationSettings }) {
   const save = useSaveDictationSettings()
   const status = useDictationStatus().data
   const models = useLocalModels().data?.models
-  const devices = useMicrophones()
+  const microphones = useMicrophones()
   const microphoneId = useUiPrefs((s) => s.microphoneId)
   const setMicrophoneId = useUiPrefs((s) => s.setMicrophoneId)
   const [seconds, setSeconds] = useState(String(settings.max_seconds))
@@ -402,7 +425,7 @@ function Form({ settings }: { settings: DictationSettings }) {
               <SelectItem value={SYSTEM_DEFAULT}>
                 {t('settings.dictation.microphoneDefault')}
               </SelectItem>
-              {devices
+              {microphones.devices
                 .filter((d) => d.deviceId && d.deviceId !== 'default')
                 .map((device, index) => (
                   <SelectItem key={device.deviceId} value={device.deviceId}>
@@ -411,7 +434,29 @@ function Form({ settings }: { settings: DictationSettings }) {
                 ))}
             </SelectContent>
           </Select>
-          <MicrophoneTest deviceId={microphoneId} />
+          {microphones.hidden && (
+            <div className="flex flex-col items-start gap-1">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => void microphones.allow()}
+              >
+                {t('settings.dictation.microphoneAllow')}
+              </Button>
+              {microphones.denied ? (
+                <div role="alert" className="text-xs text-status-failed">
+                  <p>{t('settings.dictation.permission')}</p>
+                  <p className="text-muted-foreground">{t('settings.dictation.permissionHelp')}</p>
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  {t('settings.dictation.microphoneAllowHelp')}
+                </p>
+              )}
+            </div>
+          )}
+          <MicrophoneTest deviceId={microphoneId} onDone={() => void microphones.refresh()} />
         </div>
       </Field>
 
