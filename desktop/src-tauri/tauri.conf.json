@@ -53,6 +53,8 @@
           "Spanish"
         ],
         "displayLanguageSelector": false,
+        "template": "windows/installer.nsi",
+        "installerIcon": "icons/icon.ico",
         "installerHooks": "windows/hooks.nsh",
         "headerImage": "windows/header.bmp",
         "sidebarImage": "windows/sidebar.bmp"
