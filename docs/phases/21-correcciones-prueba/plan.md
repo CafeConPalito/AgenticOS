@@ -118,3 +118,15 @@ La causa de cada fallo está localizada en el código (2026-10-29). Un bloque po
 - Sin ADR nuevo: son correcciones. Se anotan aquí dos cambios de criterio:
   - **Plantilla NSIS propia**: amplía lo decidido en la fase 20, enmienda 1. Al actualizar Tauri hay que revisarla, y un test lo recuerda.
   - **Rama sin condición = siempre**: cambia la regla de la fase 13. Se añade una nota al ADR 0020.
+
+## Estado (2026-10-29, fin de la sesión)
+Bloques 1–6 hechos y commiteados, cada uno con sus tests (enfocados en verde). Instalador compilado y probado por el usuario en la app instalada.
+
+**Comprobado por el usuario en la app instalada**: textos de la última pantalla del instalador en blanco (CA2), exportar agente, tema y CSV (CA4), Ajustes › Limpieza (CA5), lista de micrófonos tras el permiso (CA7, la parte de la lista), foto del agente (CA9), Conocimiento/Skills/Conexiones sin hueco (CA8), «Nuevo equipo» sin agentes (CA10), ejecuciones del Arquitecto en el listado (CA3).
+
+**Pendiente**:
+1. **CA1, el instalador sigue con el icono de NSIS** según el usuario, aunque el script generado ya define `INSTALLERICON` y `UNINSTALLERICON` con `icons/icon.ico`. Comprobar primero si es la caché de iconos de Windows (el `.exe` del escritorio se sobrescribió con el mismo nombre): mirar el icono del `.exe` recién generado en `target/release/bundle/nsis/`, con otro nombre o tras limpiar la caché. Si de verdad no lo lleva, revisar `icons/icon.ico` (tamaños dentro del `.ico`) y el `!define MUI_ICON` del script.
+2. **Fallo nuevo: el motor de voz no se instala** (Ajustes › Dictado / Modelos locales). La descarga real del motor quedó pendiente como prueba manual en la fase 16. Reproducir en la app instalada, leer el registro del backend y decidir con el usuario si entra en esta fase (la spec dice que los fallos nuevos se anotan y se decide con él).
+3. **Fallo nuevo: el diálogo de editar equipo tiene scroll horizontal** (`pages/home/TeamDialog.tsx`). Pequeño; proponer incluirlo.
+4. **CA11 por confirmar**: el usuario anotó «guardar pipeline sin condición» sin decir si funciona. Preguntarle; en los tests de backend y frontend se guarda y la tarea pasa por todas las ramas.
+5. **Suite completa del backend sin pasar**: se paró al 4 % (sin fallos hasta ahí) porque el sistema se quedó sin memoria con la compilación a la vez. Lanzarla sola cuando el usuario lo pida; falta también la suite del frontend, lint, `/code-review` y `validacion.md`.
