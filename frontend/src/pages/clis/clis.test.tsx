@@ -214,7 +214,9 @@ describe('CLIs y cuentas · iniciar sesión', () => {
   it('«Añadir cuenta» creates the account, opens its login and ends with the session checked', async () => {
     const { backend, Socket } = await openLogin('/clis')
     const user = userEvent.setup()
-    await user.click(await screen.findByRole('button', { name: es.clis.addAccount }))
+    // The «Añadir cuenta» of Claude Code's section (phase 23: the header has «Añadir CLI»).
+    const section = await screen.findByRole('region', { name: 'Claude Code' })
+    await user.click(within(section).getByRole('button', { name: es.accounts.add.button }))
     const add = await screen.findByRole('dialog', { name: 'Añadir cuenta de Claude Code' })
     await user.type(within(add).getByLabelText(es.accounts.add.label), 'Trabajo')
     await user.type(within(add).getByLabelText(es.accounts.add.email), 'marta@estudio.es')
@@ -376,5 +378,86 @@ describe('CLIs y cuentas · cuota de Antigravity', () => {
     renderApp('/clis')
     const claudeSection = await screen.findByRole('region', { name: 'Claude Code' })
     expect(within(claudeSection).queryByRole('switch')).toBeNull()
+  })
+})
+
+describe('CLIs y cuentas · «Añadir CLI» (phase 23)', () => {
+  const INSTALLER = {
+    command: 'irm https://antigravity.google/cli/install.ps1 | iex',
+    docs_url: 'https://antigravity.google/',
+  }
+  const A = es.clis.addCli
+
+  it('is only there while a supported CLI is missing (CA6)', async () => {
+    createFakeBackend({ clis: BOTH_INSTALLED })
+    renderApp('/clis')
+    await screen.findByRole('region', { name: 'Claude Code' })
+    expect(screen.queryByRole('button', { name: A.action })).toBeNull()
+    // Claude Code's own «Añadir cuenta» stays.
+    const section = screen.getByRole('region', { name: 'Claude Code' })
+    expect(within(section).getByRole('button', { name: es.accounts.add.button })).toBeVisible()
+  })
+
+  it('shows the official command, installs it in a terminal and offers the login (CA7)', async () => {
+    resetApiBaseUrl()
+    Terminal.instances = []
+    const clis = CLIS.map((cli) => ({ ...cli, installer: cli.id === 'agy' ? INSTALLER : null }))
+    const backend = createFakeBackend({ clis, accounts: systemAccounts() })
+    const Socket = installFakeWebSocket()
+    const user = userEvent.setup()
+    renderApp('/clis')
+    await user.click(await screen.findByRole('button', { name: A.action }))
+    const dialog = await screen.findByRole('dialog', { name: A.title })
+    // Only the CLI that is missing, and exactly what will run.
+    expect(
+      within(dialog)
+        .getAllByRole('radio')
+        .map((r) => r.textContent),
+    ).toEqual(['Antigravity CLIAntigravity CLI'])
+    expect(within(dialog).getByText(INSTALLER.command)).toBeVisible()
+    expect(within(dialog).getByRole('link', { name: A.docs })).toHaveAttribute(
+      'href',
+      INSTALLER.docs_url,
+    )
+    expect(backend.callsTo('POST', '/api/clis/agy/install')).toHaveLength(0)
+
+    await user.click(within(dialog).getByRole('button', { name: A.install }))
+    await waitFor(() => expect(backend.callsTo('POST', '/api/clis/agy/install')).toHaveLength(1))
+    await waitFor(() => expect(Socket.instances).toHaveLength(1))
+    const ws = Socket.instances[0]
+    expect(ws.url).toMatch(/\/api\/clis\/agy\/install\/terminal\?client_id=/)
+    act(() => ws.open({ type: 'snapshot', data: 'Descargando…\r\n' }))
+    expect(Terminal.instances[0].output).toContain('Descargando')
+
+    backend.clis[1].installed = true
+    act(() => ws.push({ type: 'exit', code: 0, status: 'exited' }))
+    expect(
+      await within(dialog).findByText(A.installed.replace('{{name}}', 'Antigravity CLI')),
+    ).toBeVisible()
+    await user.click(within(dialog).getByRole('button', { name: A.login }))
+    // agy has one session: its login opens.
+    expect(
+      await screen.findByRole('dialog', { name: 'Iniciar sesión · Antigravity' }),
+    ).toBeVisible()
+  })
+
+  it('a failed installation says how it ended, with the guide', async () => {
+    resetApiBaseUrl()
+    Terminal.instances = []
+    const clis = CLIS.map((cli) => ({ ...cli, installer: cli.id === 'agy' ? INSTALLER : null }))
+    createFakeBackend({ clis })
+    const Socket = installFakeWebSocket()
+    const user = userEvent.setup()
+    renderApp('/clis')
+    await user.click(await screen.findByRole('button', { name: A.action }))
+    const dialog = await screen.findByRole('dialog', { name: A.title })
+    await user.click(within(dialog).getByRole('button', { name: A.install }))
+    await waitFor(() => expect(Socket.instances).toHaveLength(1))
+    act(() => Socket.instances[0].open({ type: 'snapshot', data: '' }))
+    act(() => Socket.instances[0].push({ type: 'exit', code: 1, status: 'exited' }))
+    const alert = await within(dialog).findByRole('alert')
+    expect(alert).toHaveTextContent(A.failed.replace('{{code}}', '1'))
+    expect(within(alert).getByRole('link', { name: A.docs })).toBeVisible()
+    expect(within(dialog).queryByRole('button', { name: A.login })).toBeNull()
   })
 })

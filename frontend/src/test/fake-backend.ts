@@ -1213,6 +1213,8 @@ export function createFakeBackend(
   const agents = [...(seed.agents ?? [])]
   const projects = [...(seed.projects ?? [])]
   const runs = [...(seed.runs ?? [])]
+  // The CLIs the backend reports; a test flips `installed` once its installer ends.
+  const clis = (seed.clis ?? CLIS).map((cli) => ({ ...cli }))
 
   /** GET /api/home, derived from the seed the way the backend derives it. */
   function homeFor(): Home {
@@ -1994,7 +1996,9 @@ export function createFakeBackend(
       agents.push(agent)
       return json(201, { agent, notes: ['La skill «seo-basico» no existe aquí.'] })
     }
-    if (path.startsWith('/api/clis')) return json(200, seed.clis ?? CLIS)
+    // Phase 23: «Añadir CLI» runs the installer (its terminal is a WebSocket of the test).
+    if (/^\/api\/clis\/[^/]+\/install$/.test(path) && method === 'POST') return json(202, null)
+    if (path.startsWith('/api/clis')) return json(200, clis)
 
     if (path === '/api/agents') {
       if (method === 'GET') return json(200, agents)
@@ -2729,6 +2733,7 @@ export function createFakeBackend(
     skills: skillsBackend,
     connections: connectionsBackend,
     architect: architectBackend,
+    clis,
     callsTo: (method: string, path: string) =>
       calls.filter((c) => c.method === method && c.path === path),
   }

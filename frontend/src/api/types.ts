@@ -208,6 +208,8 @@ export interface CliInfo {
   /** Whether the CLI has a logged-in session; null when it cannot be told. */
   logged_in: boolean | null
   checked_at: string | null
+  /** Phase 23: its official installer on this system (null: follow its guide). */
+  installer?: { command: string; docs_url: string } | null
 }
 
 export type RunEventKind = 'mcp' | 'hook' | 'system'

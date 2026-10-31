@@ -95,7 +95,8 @@
     "required": "Obligatorio",
     "back": "Volver",
     "yes": "Sí",
-    "no": "No"
+    "no": "No",
+    "close": "Cerrar"
   },
   "markdown": {
     "edit": "Editar",
@@ -1967,7 +1968,6 @@
     "subtitle": "Cada cuenta tiene su sesión, su límite diario y la cuota de su suscripción. Puedes tener varias cuentas del mismo CLI y asignar a cada agente la que debe usar.",
     "check": "Comprobar",
     "checked": "CLIs y cuentas comprobados",
-    "addAccount": "Añadir cuenta",
     "installed": "Instalado",
     "noVersion": "v—",
     "notDetected": "No detectado",
@@ -1987,6 +1987,22 @@
       "running": "Cierra Antigravity para cambiar sus ajustes (los reescribe mientras está abierto).",
       "on": "Leyendo la cuota de Antigravity",
       "off": "Línea de estado de Antigravity quitada"
+    },
+    "addCli": {
+      "action": "Añadir CLI",
+      "title": "Añadir CLI",
+      "description": "Instala un CLI que la app admite y no tienes. Se usa su instalador oficial, solo para tu usuario.",
+      "choose": "CLI que instalar",
+      "willRun": "Se va a ejecutar en PowerShell:",
+      "official": "Es el instalador oficial, sacado de su guía de instalación.",
+      "docs": "Guía oficial",
+      "noInstaller": "En este sistema no se puede instalar desde la app: sigue su guía oficial.",
+      "install": "Instalar",
+      "terminal": "Instalación",
+      "installed": "{{name}} está instalado.",
+      "notFound": "El instalador terminó, pero {{name}} no aparece. Prueba «Comprobar» o reinicia la app.",
+      "failed": "La instalación falló (código {{code}}).",
+      "login": "Iniciar sesión"
     }
   },
   "accounts": {
