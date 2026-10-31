@@ -1,3 +1,4 @@
+import { AppWindow, Bot, Library, Wrench, type LucideIcon } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate } from 'react-router'
@@ -24,6 +25,14 @@ export const SECTION_GROUPS = [
   { id: 'resources', sections: ['knowledge', 'skills', 'connections', 'models'] },
   { id: 'maintenance', sections: ['cleanup'] },
 ] as const
+
+/** The icon of each group's title in the index (phase 22). */
+const GROUP_ICONS: Record<(typeof SECTION_GROUPS)[number]['id'], LucideIcon> = {
+  app: AppWindow,
+  agents: Bot,
+  resources: Library,
+  maintenance: Wrench,
+}
 
 /** The sections, in the order of the groups. */
 export const SECTIONS = SECTION_GROUPS.flatMap((group) => group.sections)
@@ -111,32 +120,46 @@ export default function SettingsPage() {
       <div className="grid grid-cols-[180px_minmax(0,1fr)] items-start gap-8 max-lg:grid-cols-1">
         <nav
           aria-label={t('settings.index')}
-          className="sticky top-4 flex flex-col gap-0.5 max-lg:static max-lg:flex-row max-lg:flex-wrap"
+          className="sticky top-4 flex flex-col max-lg:static max-lg:gap-2"
         >
-          {SECTION_GROUPS.map((group) => (
-            <div key={group.id} className="flex flex-col gap-0.5 max-lg:contents">
-              <p className="mt-3 mb-1 px-3 font-mono text-[10.5px] tracking-[0.12em] text-muted-foreground uppercase first:mt-0 max-lg:hidden">
-                {t(`settings.groups.${group.id}`)}
-              </p>
-              {group.sections.map((id) => (
-                <a
-                  key={id}
-                  href={`#${id}`}
-                  aria-current={visible === id ? 'true' : undefined}
-                  onClick={(e) => {
-                    e.preventDefault()
-                    go(id)
-                  }}
-                  className={cn(
-                    'rounded-full px-3 py-1.5 text-[13px] text-muted-foreground hover:bg-accent hover:text-foreground',
-                    visible === id && 'bg-accent font-medium text-foreground',
-                  )}
+          {SECTION_GROUPS.map((group) => {
+            const Icon = GROUP_ICONS[group.id]
+            return (
+              // Titles stand apart from the sections (phase 22): stronger, with an icon and a
+              // rule between groups; on narrow screens each group is a row led by its title.
+              <div
+                key={group.id}
+                role="group"
+                aria-labelledby={`settings-group-${group.id}`}
+                className="flex flex-col gap-0.5 border-sep not-first:mt-3 not-first:border-t not-first:pt-3 max-lg:flex-row max-lg:flex-wrap max-lg:items-center max-lg:gap-1 max-lg:not-first:mt-0 max-lg:not-first:pt-2"
+              >
+                <p
+                  id={`settings-group-${group.id}`}
+                  className="mb-1 flex items-center gap-2 px-3 text-[12px] font-semibold tracking-wide text-foreground max-lg:mb-0 max-lg:w-full max-lg:px-1"
                 >
-                  {t(`settings.sections.${id}`)}
-                </a>
-              ))}
-            </div>
-          ))}
+                  <Icon className="size-3.5 text-muted-foreground" aria-hidden />
+                  {t(`settings.groups.${group.id}`)}
+                </p>
+                {group.sections.map((id) => (
+                  <a
+                    key={id}
+                    href={`#${id}`}
+                    aria-current={visible === id ? 'true' : undefined}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      go(id)
+                    }}
+                    className={cn(
+                      'rounded-full py-1.5 pr-3 pl-8 text-[13px] text-muted-foreground hover:bg-accent hover:text-foreground max-lg:px-3',
+                      visible === id && 'bg-accent font-medium text-foreground',
+                    )}
+                  >
+                    {t(`settings.sections.${id}`)}
+                  </a>
+                ))}
+              </div>
+            )
+          })}
         </nav>
         <div className="mx-auto flex w-full max-w-[1000px] flex-col gap-5">
           {SECTIONS.map((id) => {
