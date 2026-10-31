@@ -167,6 +167,41 @@ describe('Settings · índice y atajos', () => {
     expect(links[0]).toHaveAttribute('aria-current', 'true')
   })
 
+  it('each group is labelled by its title, which stands apart from the sections (phase 22)', async () => {
+    createFakeBackend()
+    const user = userEvent.setup()
+    renderApp('/ajustes')
+    const index = await screen.findByRole('navigation', { name: es.settings.index })
+    const groups = within(index).getAllByRole('group')
+    expect(groups.map((g) => g.getAttribute('aria-labelledby'))).toEqual([
+      'settings-group-app',
+      'settings-group-agents',
+      'settings-group-resources',
+      'settings-group-maintenance',
+    ])
+    const agents = within(index).getByRole('group', { name: es.settings.groups.agents })
+    expect(
+      within(agents)
+        .getAllByRole('link')
+        .map((l) => l.textContent),
+    ).toEqual([
+      es.settings.sections.limits,
+      es.settings.sections.architect,
+      es.settings.sections.git,
+    ])
+    // The title is not a muted caption like the sections, and is shown on narrow screens too.
+    const title = within(agents).getByText(es.settings.groups.agents)
+    expect(title).toHaveClass('font-semibold', 'text-foreground')
+    expect(title.className).not.toMatch(/hidden/)
+    expect(within(agents).getByRole('link', { name: es.settings.sections.git })).toHaveClass(
+      'text-muted-foreground',
+    )
+    // Keyboard: the sections are links in order, Tab goes through them.
+    within(index).getAllByRole('link')[0].focus()
+    await user.tab()
+    expect(within(index).getByRole('link', { name: es.settings.sections.appearance })).toHaveFocus()
+  })
+
   it('clicking an entry scrolls to its section and marks it', async () => {
     createFakeBackend()
     const user = userEvent.setup()

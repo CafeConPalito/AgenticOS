@@ -1,3 +1,5 @@
+import { PALETTES, type PaletteId } from './builtin-palettes'
+import { fromPalette } from './derive'
 import type { Base, Density, Font, TokenName } from './model'
 
 export interface BuiltinTheme {
@@ -166,8 +168,29 @@ const graphite: BuiltinTheme = {
   },
 }
 
-export const BUILTIN_THEMES: BuiltinTheme[] = [navy, light, contrast, warm, graphite]
-export const BUILTIN_IDS = ['navy', 'light', 'contrast', 'warm', 'graphite'] as const
+/** Phase 22: the app's own first, then those of other projects (credits.ts), by name. */
+const FROM_PALETTES = (Object.keys(PALETTES) as PaletteId[]).map((id): BuiltinTheme => ({
+  id,
+  base: PALETTES[id].base,
+  colors: fromPalette(PALETTES[id]),
+}))
+
+export const BUILTIN_THEMES: BuiltinTheme[] = [
+  navy,
+  light,
+  contrast,
+  warm,
+  graphite,
+  ...FROM_PALETTES,
+]
+export const BUILTIN_IDS = [
+  'navy',
+  'light',
+  'contrast',
+  'warm',
+  'graphite',
+  ...(Object.keys(PALETTES) as PaletteId[]),
+] as const
 export type BuiltinId = (typeof BUILTIN_IDS)[number]
 export const isBuiltin = (id: string): id is BuiltinId =>
   (BUILTIN_IDS as readonly string[]).includes(id)

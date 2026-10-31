@@ -4,6 +4,7 @@ import es from '@/i18n/es.json'
 import { createFakeBackend } from '@/test/fake-backend'
 import { renderApp } from '@/test/render'
 import { DEFAULT_APPEARANCE, type ThemeDefinition } from '@/theme/model'
+import { FILTER_STORAGE_KEY } from './AppearancePage'
 import { freeId, parseTheme, withoutTheme } from './theme-io'
 
 const A = es.appearance
@@ -26,11 +27,23 @@ afterEach(() => {
   document.documentElement.classList.add('dark')
 })
 
+/** The gallery shows every theme (it starts with the system's light or dark ones). */
+async function showAll(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(await screen.findByRole('tab', { name: A.filter.all }))
+}
+
+const names = () =>
+  screen
+    .getAllByRole('listitem')
+    .map((item) => item.getAttribute('aria-label'))
+    .filter(Boolean)
+
 describe('Ajustes › Apariencia (phase 20, block 4)', () => {
   it('lists the built-in themes and uses one at once, saved in the backend', async () => {
     const backend = createFakeBackend()
     const user = userEvent.setup()
     renderApp('/ajustes/apariencia')
+    await showAll(user)
     for (const name of Object.values(A.builtin))
       expect(await screen.findByRole('listitem', { name })).toBeVisible()
     expect(screen.getByRole('listitem', { name: A.builtin.navy })).toHaveAttribute(
@@ -48,20 +61,100 @@ describe('Ajustes › Apariencia (phase 20, block 4)', () => {
     )
   })
 
-  it('follows the system with a theme for light and one for dark', async () => {
+  it('filters light and dark themes, custom ones too, and remembers it (phase 22)', async () => {
+    const light = mine({ id: 'claro', name: 'Mi claro', base: 'light', extends: 'warm' })
+    createFakeBackend({ appearance: { ...DEFAULT_APPEARANCE, custom: [mine(), light] } })
+    const user = userEvent.setup()
+    const { unmount } = renderApp('/ajustes/apariencia')
+    // The system is light here: the light themes, and navy (in use) first, still in sight.
+    expect(await screen.findByRole('tab', { name: A.filter.light })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+    await screen.findByRole('listitem', { name: 'Mi claro' })
+    expect(names()[0]).toBe(A.builtin.navy)
+    expect(names()).toContain(A.builtin.warm)
+    expect(names()).not.toContain(A.builtin.graphite)
+    expect(names()).not.toContain('Mío')
+
+    await user.click(screen.getByRole('tab', { name: A.filter.dark }))
+    expect(names()).toContain('Mío')
+    expect(names()).toContain(A.builtin.graphite)
+    expect(names()).not.toContain('Mi claro')
+    expect(localStorage.getItem(FILTER_STORAGE_KEY)).toBe('dark')
+
+    unmount()
+    renderApp('/ajustes/apariencia')
+    expect(await screen.findByRole('tab', { name: A.filter.dark })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+  })
+
+  it('starts with the dark themes when the system is dark, with no «Seguir al sistema»', async () => {
+    const original = window.matchMedia
+    window.matchMedia = ((query: string) => ({
+      ...original(query),
+      matches: true,
+    })) as typeof window.matchMedia
+    try {
+      createFakeBackend()
+      renderApp('/ajustes/apariencia')
+      expect(await screen.findByRole('tab', { name: A.filter.dark })).toHaveAttribute(
+        'aria-selected',
+        'true',
+      )
+      expect(screen.queryByText('Seguir al sistema')).toBeNull()
+    } finally {
+      window.matchMedia = original
+    }
+  })
+
+  it('«Nuevo tema» makes one from scratch, edits, saves and exports it', async () => {
     const backend = createFakeBackend()
     const user = userEvent.setup()
-    renderApp('/ajustes/apariencia')
-    await user.click(await screen.findByRole('tab', { name: A.mode.system }))
-    await waitFor(() => expect(backend.appearance.current.mode).toBe('system'))
-    expect(screen.getByLabelText(A.mode.light_theme)).toBeVisible()
-    expect(screen.getByLabelText(A.mode.dark_theme)).toBeVisible()
+    const { router } = renderApp('/ajustes/apariencia')
+    await user.click(await screen.findByRole('button', { name: A.create.action }))
+    const dialog = await screen.findByRole('dialog')
+    await user.type(within(dialog).getByLabelText(A.create.name), 'De cero')
+    await user.click(within(dialog).getByRole('tab', { name: E.bases.dark }))
+    await user.click(within(dialog).getByRole('button', { name: A.create.submit }))
+    await waitFor(() => expect(router.state.location.pathname).toBe('/ajustes/apariencia/de-cero'))
+    expect(backend.appearance.current.custom[0]).toEqual({
+      format: 'agentic-os.theme',
+      version: 2,
+      id: 'de-cero',
+      name: 'De cero',
+      base: 'dark',
+      colors: {},
+    })
+    // The navy base set underneath, previewed live.
+    await waitFor(() => expect(cssVar('--background')).toBe('#0a1a33'))
+    expect(screen.getByRole('combobox', { name: E.extends })).toHaveTextContent(E.extendsNone)
+    const background = screen.getByLabelText(A.tokens.background, {
+      selector: 'input:not([type="color"])',
+    })
+    await user.clear(background)
+    await user.type(background, '#101010')
+    await user.click(screen.getByRole('button', { name: E.saveAndUse }))
+    await waitFor(() =>
+      expect(backend.appearance.current).toMatchObject({
+        theme: 'de-cero',
+        custom: [{ id: 'de-cero', colors: { background: '#101010' } }],
+      }),
+    )
+    // What is exported imports back as it is.
+    const file = JSON.stringify(backend.appearance.current.custom[0])
+    const again = parseTheme(file, DEFAULT_APPEARANCE)
+    expect(again).toMatchObject({ ok: true, theme: { id: 'de-cero', base: 'dark' } })
+    expect(again.ok && again.theme.extends).toBeFalsy()
   })
 
   it('customizes a built-in theme in the editor, live, and saves it (CA7)', async () => {
     const backend = createFakeBackend()
     const user = userEvent.setup()
     const { router } = renderApp('/ajustes/apariencia')
+    await showAll(user)
     const graphite = await screen.findByRole('listitem', { name: A.builtin.graphite })
     await user.click(within(graphite).getByRole('button', { name: `Más acciones de «Grafito»` }))
     await user.click(await screen.findByRole('menuitem', { name: A.customize }))
@@ -147,6 +240,7 @@ describe('Ajustes › Apariencia (phase 20, block 4)', () => {
     })
     const user = userEvent.setup()
     renderApp('/ajustes/apariencia')
+    // The theme in use is in sight whatever the filter.
     const card = await screen.findByRole('listitem', { name: 'Mío' })
     await user.click(within(card).getByRole('button', { name: 'Más acciones de «Mío»' }))
     await user.click(await screen.findByRole('menuitem', { name: es.common.delete }))
@@ -184,18 +278,54 @@ describe('theme files (phase 20)', () => {
   })
 
   it('removing a theme reassigns what used it and the themes that extended it', () => {
-    const child = mine({ id: 'hijo', name: 'Hijo', extends: 'mio' })
-    const next = withoutTheme(
+    const child = mine({ id: 'hijo', name: 'Hijo', extends: 'mio', colors: { border: '#111111' } })
+    const next = withoutTheme({ theme: 'mio', custom: [mine({ font: 'inter' }), child] }, 'mio')
+    expect(next.theme).toBe('navy')
+    // The child takes in what it inherited, so it looks the same.
+    expect(next.custom).toEqual([
       {
-        mode: 'system',
-        theme: 'mio',
-        light_theme: 'mio',
-        dark_theme: 'mio',
-        custom: [mine(), child],
+        ...child,
+        extends: 'graphite',
+        colors: { 'primary-action': '#aa3377', border: '#111111' },
+        font: 'inter',
       },
-      'mio',
-    )
-    expect(next).toMatchObject({ theme: 'navy', light_theme: 'light', dark_theme: 'navy' })
-    expect(next.custom).toEqual([{ ...child, extends: 'graphite' }])
+    ])
+    // A child with its own font did not show the parent's font of the system: still so.
+    const own = mine({ id: 'propio', name: 'Propio', extends: 'mio', font: 'inter' })
+    const parent = mine({ font_family: 'Cascadia Code' })
+    const kept = withoutTheme({ theme: 'navy', custom: [parent, own] }, 'mio').custom[0]
+    expect(kept.font).toBe('inter')
+    expect(kept.font_family).toBeUndefined()
+    const scratch = mine({ extends: undefined, font_family: 'Cascadia Code' })
+    const orphan = withoutTheme({ theme: 'navy', custom: [scratch, child] }, 'mio').custom[0]
+    expect(orphan.extends).toBeUndefined()
+    expect(orphan.font_family).toBe('Cascadia Code')
+  })
+
+  it('reads a theme file exported in phase 20 (v1)', () => {
+    const v1 = {
+      format: 'agentic-os.theme',
+      version: 1,
+      id: 'mi-calido',
+      name: 'Mi cálido',
+      base: 'light',
+      extends: 'warm',
+      colors: { background: '#fdf6ec', 'primary-action': '#a4441c' },
+      font: 'atkinson',
+      scale: 1.1,
+      density: 'comfortable',
+      radius: 14,
+    }
+    expect(parseTheme(JSON.stringify(v1), DEFAULT_APPEARANCE)).toMatchObject({
+      ok: true,
+      renamed: false,
+      theme: v1,
+    })
+    const injected = JSON.stringify({ ...v1, font_family: 'x"; } body {' })
+    expect(parseTheme(injected, DEFAULT_APPEARANCE)).toMatchObject({
+      ok: false,
+      reason: 'field',
+      field: 'font_family',
+    })
   })
 })

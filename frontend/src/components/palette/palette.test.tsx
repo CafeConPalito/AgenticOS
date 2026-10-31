@@ -144,9 +144,9 @@ describe('Command palette (Ctrl+K)', () => {
     expect(await screen.findByRole('heading', { name: es.shortcuts.title })).toBeVisible()
     await user.keyboard('{Escape}')
 
+    // No light/dark switch any more (phase 22): the theme is chosen in Apariencia.
     dialog = await openPalette(user)
-    await user.click(await within(dialog).findByText(es.palette.actions.toggleTheme))
-    await waitFor(() => expect(document.documentElement).not.toHaveClass('dark'))
+    expect(within(dialog).queryByText('Cambiar tema')).toBeNull()
   })
 
   it('pauses and resumes the scheduler', async () => {

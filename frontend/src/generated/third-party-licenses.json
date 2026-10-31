@@ -1,8 +1,8 @@
 {
  "lockfiles": {
-  "package-lock.json": "488f08367599e8c14aad385660f2bad4550c9d114e0b67ab193ed1288300369a",
-  "backend/uv.lock": "51187c6501102ec1cd4a4999ba39c9638652509f1d9088e0a97a98af06123bea",
-  "desktop/src-tauri/Cargo.lock": "7a8fda69e6449e7a3c09539404bc6cf86cd2b292ba2c5b2b893b419c372eb8f7"
+  "package-lock.json": "b9a94d935809d4f78504ccfd1710b89e922e310c77aa9ffa2c71950e1585d661",
+  "backend/uv.lock": "d1f66d56d471c19e82316bef44ec84afb8ee997735f9136394e5b1360f73e8c1",
+  "desktop/src-tauri/Cargo.lock": "06a23f8a599f174ff9f7893379245d9270fc549f61b05baf0e1fa7d2f2292557"
  },
  "packages": [
   {
@@ -3052,6 +3052,13 @@
   },
   {
    "ecosystem": "rust",
+   "name": "fontdb",
+   "version": "0.24.0",
+   "license": "MIT",
+   "url": "https://github.com/RazrFalcon/fontdb"
+  },
+  {
+   "ecosystem": "rust",
    "name": "form_urlencoded",
    "version": "1.2.2",
    "license": "MIT OR Apache-2.0",
@@ -3322,6 +3329,13 @@
    "version": "2.8.3",
    "license": "Unlicense OR MIT",
    "url": "https://github.com/BurntSushi/memchr"
+  },
+  {
+   "ecosystem": "rust",
+   "name": "memmap2",
+   "version": "0.9.12",
+   "license": "MIT OR Apache-2.0",
+   "url": "https://github.com/RazrFalcon/memmap2-rs"
   },
   {
    "ecosystem": "rust",
@@ -3833,6 +3847,13 @@
    "version": "1.0.4",
    "license": "MIT OR Apache-2.0",
    "url": "https://github.com/jedisct1/rust-siphash"
+  },
+  {
+   "ecosystem": "rust",
+   "name": "slotmap",
+   "version": "1.1.1",
+   "license": "Zlib",
+   "url": "https://github.com/orlp/slotmap"
   },
   {
    "ecosystem": "rust",

@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from agentic_os.config import home_dir, read_pointer
 from agentic_os.db.session import get_session
 from agentic_os.errors import ApiError
-from agentic_os.schemas.appearance import Appearance
+from agentic_os.schemas.appearance import Appearance, StoredAppearance
 from agentic_os.services import appearance, datadir
 from agentic_os.services.proc import open_in_file_manager
 
@@ -111,13 +111,13 @@ def move_data_dir(
 
 
 @router.get("/settings/appearance")
-def get_appearance(db: DbSession) -> Appearance:
-    """The chosen theme and the custom themes (phase 20)."""
+def get_appearance(db: DbSession) -> StoredAppearance:
+    """The chosen theme and the custom themes (phases 20 and 22)."""
     return appearance.load(db)
 
 
 @router.put("/settings/appearance")
-def put_appearance(payload: Appearance, db: DbSession) -> Appearance:
+def put_appearance(payload: Appearance, db: DbSession) -> StoredAppearance:
     """Replaces the whole document; the theme references are checked by the schema."""
     saved = appearance.save(db, payload)
     db.commit()

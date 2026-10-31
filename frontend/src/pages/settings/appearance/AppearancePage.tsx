@@ -1,6 +1,6 @@
 import { errorMessage } from '@/lib/form-errors'
 import { toastSaved } from '@/lib/save-file'
-import { Check, Copy, Download, MoreHorizontal, Pencil, Trash2, Upload } from 'lucide-react'
+import { Check, Copy, Download, MoreHorizontal, Pencil, Plus, Trash2, Upload } from 'lucide-react'
 import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
@@ -14,49 +14,93 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Label } from '@/components/ui/label'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import { Segmented } from '@/pages/usage/parts'
-import { BUILTIN_IDS } from '@/theme/builtin'
-import type { Appearance, ThemeDefinition } from '@/theme/model'
+import { BUILTIN_THEMES, type BuiltinId } from '@/theme/builtin'
+import type { Appearance, Base, ThemeDefinition } from '@/theme/model'
 import { resolveTheme } from '@/theme/resolve'
 import { useTheme } from '@/theme/ThemeProvider'
+import { NewThemeDialog } from './NewThemeDialog'
 import { downloadTheme, freeId, parseTheme, withoutTheme } from './theme-io'
 import { ThemeSwatch } from './ThemeSwatch'
 
 interface ThemeEntry {
   id: string
   name: string
+  base: Base
   custom?: ThemeDefinition
 }
 
-/** Ajustes › Apariencia (phase 20): the theme on screen, the gallery and the person's themes. */
+type Filter = 'all' | Base
+const FILTERS: Filter[] = ['all', 'light', 'dark']
+/** The gallery filter last chosen in this browser (phase 22). */
+export const FILTER_STORAGE_KEY = 'agentic-os.appearance.filter'
+
+/** The filter chosen here before or, the first time, the one of the system's light or dark. */
+function initialFilter(): Filter {
+  try {
+    const stored = localStorage.getItem(FILTER_STORAGE_KEY)
+    if (FILTERS.includes(stored as Filter)) return stored as Filter
+  } catch {
+    // Storage unavailable: the system's.
+  }
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+}
+
+/**
+ * Ajustes › Apariencia (phases 20 and 22): the gallery of themes, filtered by light or dark,
+ * and the person's own themes.
+ */
 export default function AppearancePage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { appearance, setAppearance, resolved } = useTheme()
   const fileRef = useRef<HTMLInputElement>(null)
   const [deleting, setDeleting] = useState<ThemeDefinition | null>(null)
+  const [creating, setCreating] = useState(false)
+  const [filter, setFilter] = useState<Filter>(initialFilter)
   const a = 'appearance'
 
-  const themes = useMemo<ThemeEntry[]>(
-    () => [
-      ...BUILTIN_IDS.map((id) => ({ id, name: t(`${a}.builtin.${id}`) })),
-      ...appearance.custom.map((custom) => ({ id: custom.id, name: custom.name, custom })),
-    ],
-    [appearance.custom, t],
-  )
-  const nameOf = (id: string) => themes.find((x) => x.id === id)?.name ?? id
+  const themes = useMemo<ThemeEntry[]>(() => {
+    return [
+      ...BUILTIN_THEMES.map(({ id, base }) => ({
+        id,
+        name: t(`${a}.builtin.${id as BuiltinId}`),
+        base,
+      })),
+      ...appearance.custom.map((custom) => ({
+        id: custom.id,
+        name: custom.name,
+        base: custom.base,
+        custom,
+      })),
+    ]
+  }, [appearance.custom, t])
+  // The theme in use stays in sight, first, when the filter leaves it out.
+  const shown = useMemo(() => {
+    if (filter === 'all') return themes
+    const matching = themes.filter((theme) => theme.base === filter)
+    const current = themes.find((theme) => theme.id === resolved.id)
+    return current && current.base !== filter ? [current, ...matching] : matching
+  }, [themes, filter, resolved.id])
+
+  function choose(next: Filter) {
+    setFilter(next)
+    try {
+      localStorage.setItem(FILTER_STORAGE_KEY, next)
+    } catch {
+      // Storage unavailable: chosen for this visit only.
+    }
+  }
 
   function use(id: string) {
-    setAppearance({ ...appearance, mode: 'fixed', theme: id })
+    setAppearance({ ...appearance, theme: id })
+  }
+
+  /** A theme of the person's own; opens the editor. */
+  function add(theme: ThemeDefinition) {
+    setAppearance({ ...appearance, custom: [...appearance.custom, theme] })
+    void navigate(`/ajustes/apariencia/${theme.id}`)
   }
 
   /** A new theme of the person's own, starting from `source`; opens the editor. */
@@ -67,17 +111,7 @@ export default function AppearancePage() {
       appearance.custom.map((c) => c.id),
     )
     const base = resolveTheme(source.id, appearance.custom).base
-    const theme: ThemeDefinition = {
-      format: 'agentic-os.theme',
-      version: 1,
-      id,
-      name,
-      base,
-      extends: source.id,
-      colors: {},
-    }
-    setAppearance({ ...appearance, custom: [...appearance.custom, theme] })
-    void navigate(`/ajustes/apariencia/${id}`)
+    add({ format: 'agentic-os.theme', version: 2, id, name, base, extends: source.id, colors: {} })
   }
 
   async function onImport(file: File) {
@@ -114,65 +148,31 @@ export default function AppearancePage() {
               <Upload />
               {t(`${a}.import.action`)}
             </Button>
+            <Button
+              onClick={() => setCreating(true)}
+              className="bg-primary-action text-white hover:bg-primary-action-hover"
+            >
+              <Plus />
+              {t(`${a}.create.action`)}
+            </Button>
           </>
         }
       />
 
-      <section
-        aria-labelledby="appearance-mode"
-        className="flex flex-col gap-3 rounded-xl border border-sep p-4 shadow-card bg-card-grad"
-      >
-        <h2 id="appearance-mode" className="text-[15px] font-medium">
-          {t(`${a}.mode.title`)}
-        </h2>
-        <div className="self-start">
-          <Segmented<Appearance['mode']>
-            label={t(`${a}.mode.title`)}
-            value={appearance.mode}
-            onChange={(mode) => setAppearance({ ...appearance, mode })}
-            options={(['fixed', 'system'] as const).map((value) => ({
-              value,
-              label: t(`${a}.mode.${value}`),
-            }))}
+      <section aria-labelledby="appearance-themes" className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 id="appearance-themes" className="text-[15px] font-medium">
+            {t(`${a}.themes`)}
+          </h2>
+          <Segmented<Filter>
+            label={t(`${a}.filter.label`)}
+            value={filter}
+            onChange={choose}
+            options={FILTERS.map((value) => ({ value, label: t(`${a}.filter.${value}`) }))}
           />
         </div>
-        <p className="text-xs text-muted-foreground">
-          {appearance.mode === 'fixed'
-            ? t(`${a}.mode.fixedHelp`, { name: nameOf(appearance.theme) })
-            : t(`${a}.mode.systemHelp`)}
-        </p>
-        {appearance.mode === 'system' && (
-          <div className="grid grid-cols-2 gap-3 max-sm:grid-cols-1">
-            {(['light_theme', 'dark_theme'] as const).map((field) => (
-              <div key={field} className="flex flex-col gap-1.5">
-                <Label htmlFor={field}>{t(`${a}.mode.${field}`)}</Label>
-                <Select
-                  value={appearance[field]}
-                  onValueChange={(id) => setAppearance({ ...appearance, [field]: id })}
-                >
-                  <SelectTrigger id={field} className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {themes.map((theme) => (
-                      <SelectItem key={theme.id} value={theme.id}>
-                        {theme.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-
-      <section aria-labelledby="appearance-themes" className="flex flex-col gap-3">
-        <h2 id="appearance-themes" className="text-[15px] font-medium">
-          {t(`${a}.themes`)}
-        </h2>
         <ul className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-3">
-          {themes.map((theme) => {
+          {shown.map((theme) => {
             const current = resolved.id === theme.id
             return (
               <li
@@ -251,6 +251,17 @@ export default function AppearancePage() {
           })}
         </ul>
       </section>
+
+      <NewThemeDialog
+        open={creating}
+        onOpenChange={setCreating}
+        taken={appearance.custom.map((c) => c.id)}
+        defaultBase={filter === 'all' ? resolved.base : filter}
+        onCreate={(theme) => {
+          setCreating(false)
+          add(theme)
+        }}
+      />
 
       <ConfirmDialog
         open={deleting !== null}

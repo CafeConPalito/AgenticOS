@@ -12,6 +12,7 @@
 mod bundle_checks;
 mod desklog;
 mod export;
+mod fonts;
 mod sidecar;
 mod titlebar;
 
@@ -259,6 +260,7 @@ pub fn run() {
             open_logs,
             bundle_logs,
             export::save_file,
+            fonts::system_fonts,
             titlebar::set_titlebar
         ])
         .setup(|app| {

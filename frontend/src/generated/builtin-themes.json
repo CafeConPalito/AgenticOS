@@ -1,0 +1,32 @@
+{
+  "ids": [
+    "navy",
+    "light",
+    "contrast",
+    "warm",
+    "graphite",
+    "forest",
+    "ocean",
+    "wine",
+    "sand",
+    "lavender",
+    "mint",
+    "ayu-dark",
+    "ayu-light",
+    "catppuccin-latte",
+    "catppuccin-mocha",
+    "dracula",
+    "github-dark",
+    "github-light",
+    "gruvbox-dark",
+    "gruvbox-light",
+    "light-owl",
+    "night-owl",
+    "nord",
+    "one-dark",
+    "solarized-dark",
+    "solarized-light",
+    "tokyo-night",
+    "tokyo-night-day"
+  ]
+}

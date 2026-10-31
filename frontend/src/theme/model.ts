@@ -158,18 +158,25 @@ export const DEFAULTS = { font: 'ubuntu', scale: 1, density: 'normal', radius: 1
 
 const themeId = z.string().regex(/^[a-z0-9][a-z0-9-]{0,39}$/)
 const hex = z.string().regex(/^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$/)
+/** A font installed on the system (ADR 0028): safe to write quoted in a CSS font-family. */
+export const FONT_FAMILY = /^[\p{L}\p{N}][\p{L}\p{N} ._'&()+-]{0,79}$/u
 
-/** `agentic-os.theme` v1, as the backend stores it and as it is exported. */
+/**
+ * `agentic-os.theme` v2 (ADR 0028), as the backend stores it and as it is exported. It reads
+ * v1 too: v2 only adds themes made from scratch (no `extends`) and `font_family`.
+ */
 export const themeSchema = z
   .object({
     format: z.literal('agentic-os.theme').default('agentic-os.theme'),
-    version: z.literal(1).default(1),
+    version: z.union([z.literal(1), z.literal(2)]).default(2),
     id: themeId,
     name: z.string().trim().min(1).max(60),
     base: z.enum(['light', 'dark']),
-    extends: themeId,
+    extends: themeId.nullish(),
     colors: z.partialRecord(z.enum(TOKEN_NAMES as [TokenName, ...TokenName[]]), hex).default({}),
     font: z.enum(FONTS).nullish(),
+    /** Over `font` when set. */
+    font_family: z.string().regex(FONT_FAMILY).nullish(),
     scale: z.number().min(0.8).max(1.5).nullish(),
     density: z.enum(DENSITIES).nullish(),
     radius: z.number().int().min(0).max(20).nullish(),
@@ -179,20 +186,17 @@ export const themeSchema = z
 export type ThemeDefinition = z.infer<typeof themeSchema>
 
 export interface Appearance {
-  mode: 'fixed' | 'system'
   theme: string
-  light_theme: string
-  dark_theme: string
   custom: ThemeDefinition[]
 }
 
-export const DEFAULT_APPEARANCE: Appearance = {
-  mode: 'fixed',
-  theme: 'navy',
-  light_theme: 'light',
-  dark_theme: 'navy',
-  custom: [],
+/** «Seguir al sistema» of a phase 20 document, gone in phase 22: only ever read (ADR 0028). */
+export interface LegacyFollow {
+  light_theme: string
+  dark_theme: string
 }
+
+export const DEFAULT_APPEARANCE: Appearance = { theme: 'navy', custom: [] }
 
 /** A theme fully worked out: every token has a value. */
 export interface ResolvedTheme {
@@ -200,6 +204,8 @@ export interface ResolvedTheme {
   base: Base
   colors: TokenValues
   font: Font
+  /** A font of the system, over `font`. */
+  fontFamily: string | null
   scale: number
   density: Density
   radius: number

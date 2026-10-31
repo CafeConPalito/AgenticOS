@@ -36,11 +36,6 @@
     "inbox_one": "Inbox · {{count}} pendiente",
     "inbox_other": "Inbox · {{count}} pendientes"
   },
-  "theme": {
-    "toLight": "Tema claro",
-    "toDark": "Tema oscuro",
-    "toggle": "Cambiar tema"
-  },
   "backend": {
     "connected": "Conectado · v{{version}}",
     "connecting": "Conectando…",
@@ -1604,7 +1599,6 @@
       "newAgent": "Nuevo agente",
       "newProject": "Nuevo proyecto",
       "openTerminal": "Abrir terminal",
-      "toggleTheme": "Cambiar tema",
       "pauseScheduler": "Pausar el scheduler",
       "resumeScheduler": "Reanudar el scheduler",
       "shortcuts": "Atajos de teclado",
@@ -3699,21 +3693,47 @@
       "light": "Claro",
       "contrast": "Alto contraste",
       "warm": "Cálido",
-      "graphite": "Grafito"
+      "graphite": "Grafito",
+      "forest": "Bosque",
+      "ocean": "Océano",
+      "wine": "Vino",
+      "sand": "Arena",
+      "lavender": "Lavanda",
+      "mint": "Menta",
+      "ayu-dark": "Ayu Dark",
+      "ayu-light": "Ayu Light",
+      "catppuccin-latte": "Catppuccin Latte",
+      "catppuccin-mocha": "Catppuccin Mocha",
+      "dracula": "Dracula",
+      "github-dark": "GitHub Dark",
+      "github-light": "GitHub Light",
+      "gruvbox-dark": "Gruvbox Dark",
+      "gruvbox-light": "Gruvbox Light",
+      "light-owl": "Light Owl",
+      "night-owl": "Night Owl",
+      "nord": "Nord",
+      "one-dark": "One Dark",
+      "solarized-dark": "Solarized Dark",
+      "solarized-light": "Solarized Light",
+      "tokyo-night": "Tokyo Night",
+      "tokyo-night-day": "Tokyo Night Day"
     },
     "section": {
-      "fixed": "Tema fijo",
-      "system": "Sigue al sistema (claro u oscuro según Windows)",
       "open": "Abrir Apariencia"
     },
-    "mode": {
-      "title": "Cuándo cambia",
-      "fixed": "Tema fijo",
-      "system": "Seguir al sistema",
-      "fixedHelp": "Siempre «{{name}}». El botón de la luna o el sol de la cabecera alterna entre el tema claro y el oscuro.",
-      "systemHelp": "Cambia solo cuando Windows pasa de claro a oscuro o al revés.",
-      "light_theme": "Con Windows en claro",
-      "dark_theme": "Con Windows en oscuro"
+    "filter": {
+      "label": "Mostrar temas",
+      "all": "Todos",
+      "light": "Claros",
+      "dark": "Oscuros"
+    },
+    "create": {
+      "action": "Nuevo tema",
+      "title": "Nuevo tema",
+      "description": "Un tema desde cero: parte de los colores básicos claros u oscuros y en el editor cambias lo que quieras.",
+      "name": "Nombre",
+      "base": "Base",
+      "submit": "Crear y editar"
     },
     "themes": "Temas",
     "use": "Usar",
@@ -3755,7 +3775,15 @@
         "ubuntu": "Ubuntu (la de siempre)",
         "inter": "Inter",
         "atkinson": "Atkinson Hyperlegible (más legible)",
-        "system": "La del sistema"
+        "system": "Del sistema",
+        "title": "Fuente del tema",
+        "description": "Elige una fuente incluida en la app o una instalada en el sistema.",
+        "search": "Buscar una fuente…",
+        "none": "Ninguna fuente se llama así.",
+        "included": "Incluidas",
+        "typed": "Este navegador no deja ver las fuentes del sistema: escribe el nombre de una instalada.",
+        "use": "Usar",
+        "missing": "«{{name}}» no está instalada en este equipo: se usa la fuente del sistema."
       },
       "density": "Densidad",
       "densities": {
@@ -3782,7 +3810,8 @@
         "title": "Algunos textos se leen mal",
         "issue": "{{text}} sobre {{background}}: {{ratio}}:1 (mínimo {{minimum}}:1)",
         "flag": "Contraste bajo"
-      }
+      },
+      "extendsNone": "Ninguno (desde cero)"
     },
     "preview": {
       "title": "Vista previa",
@@ -3980,6 +4009,10 @@
       "version": "Versión",
       "license": "Licencia",
       "own": "Los búhos de los avatares y los temas incluidos son obra del proyecto, con su misma licencia."
+    },
+    "themes": {
+      "title": "Temas incluidos de otros proyectos",
+      "text": "Estos temas toman sus colores de proyectos conocidos con licencia libre. Están adaptados a la app: algunos colores se han ajustado para que el texto y los botones se lean bien."
     }
   },
   "support": {

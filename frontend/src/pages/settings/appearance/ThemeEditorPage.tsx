@@ -19,20 +19,22 @@ import { Segmented } from '@/pages/usage/parts'
 import { BUILTIN_IDS } from '@/theme/builtin'
 import { contrastIssues } from '@/theme/contrast'
 import {
+  BASE_TOKENS,
   type Base,
   DENSITIES,
   type Density,
-  FONTS,
-  type Font,
   type ThemeDefinition,
   type TokenName,
 } from '@/theme/model'
 import { resolveTheme } from '@/theme/resolve'
 import { useTheme } from '@/theme/ThemeProvider'
+import { FontPicker } from './FontPicker'
 import { TOKEN_GROUPS } from './theme-io'
 import { ThemePreview } from './ThemePreview'
 
 const HEX = /^#[0-9a-fA-F]{6}$/
+/** The «extends none» item: Radix Select cannot use "" as a value. */
+const NONE = '__none__'
 const ratio = (value: number) => value.toLocaleString('es-ES', { maximumFractionDigits: 1 })
 
 /** Ajustes › Apariencia › <theme> (phase 20): edit one of the person's themes, live. */
@@ -67,7 +69,11 @@ function Editor({ saved }: { saved: ThemeDefinition }) {
     [appearance.custom, saved.id],
   )
   const resolved = useMemo(() => resolveTheme(draft.id, [...others, draft]), [others, draft])
-  const parent = useMemo(() => resolveTheme(draft.extends, others), [draft.extends, others])
+  // What a color goes back to: the theme it extends, or the base set for one made from scratch.
+  const parent = useMemo(
+    () => (draft.extends ? resolveTheme(draft.extends, others).colors : BASE_TOKENS[draft.base]),
+    [draft.extends, draft.base, others],
+  )
   const issues = useMemo(() => contrastIssues(resolved.colors), [resolved.colors])
   const flagged = new Set(issues.flatMap((issue) => [issue.text, issue.background]))
 
@@ -88,7 +94,7 @@ function Editor({ saved }: { saved: ThemeDefinition }) {
 
   function save(andUse: boolean) {
     const custom = appearance.custom.map((theme) => (theme.id === saved.id ? draft : theme))
-    setAppearance({ ...appearance, custom, ...(andUse && { mode: 'fixed', theme: draft.id }) })
+    setAppearance({ ...appearance, custom, ...(andUse && { theme: draft.id }) })
   }
 
   const extendable = [
@@ -136,13 +142,18 @@ function Editor({ saved }: { saved: ThemeDefinition }) {
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="theme-extends">{t(`${e}.extends`)}</Label>
                 <Select
-                  value={draft.extends}
-                  onValueChange={(id) => set({ extends: id, base: resolveTheme(id, others).base })}
+                  value={draft.extends ?? NONE}
+                  onValueChange={(id) =>
+                    id === NONE
+                      ? set({ extends: undefined })
+                      : set({ extends: id, base: resolveTheme(id, others).base })
+                  }
                 >
                   <SelectTrigger id="theme-extends" className="w-full">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value={NONE}>{t(`${e}.extendsNone`)}</SelectItem>
                     {extendable.map((theme) => (
                       <SelectItem key={theme.id} value={theme.id}>
                         {theme.name}
@@ -167,18 +178,13 @@ function Editor({ saved }: { saved: ThemeDefinition }) {
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="theme-font">{t(`${e}.font`)}</Label>
-                <Select value={resolved.font} onValueChange={(font) => set({ font: font as Font })}>
-                  <SelectTrigger id="theme-font" className="w-[290px] max-w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {FONTS.map((font) => (
-                      <SelectItem key={font} value={font}>
-                        {t(`${e}.fonts.${font}`)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <FontPicker
+                  id="theme-font"
+                  value={{ font: resolved.font, fontFamily: resolved.fontFamily }}
+                  onChange={({ font, fontFamily }) =>
+                    set(fontFamily ? { font_family: fontFamily } : { font, font_family: undefined })
+                  }
+                />
               </div>
               <div className="flex flex-col gap-1.5">
                 <span className="text-sm font-medium">{t(`${e}.density`)}</span>
@@ -256,7 +262,7 @@ function Editor({ saved }: { saved: ThemeDefinition }) {
                     key={token}
                     token={token}
                     value={resolved.colors[token]}
-                    inherited={parent.colors[token]}
+                    inherited={parent[token]}
                     overridden={draft.colors[token] !== undefined}
                     flagged={flagged.has(token)}
                     onChange={(value) => setColor(token, value)}
