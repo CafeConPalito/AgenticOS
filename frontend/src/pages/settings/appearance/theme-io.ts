@@ -155,27 +155,35 @@ export function parseTheme(text: string, appearance: Appearance): ImportResult {
   }
   const theme = parsed.data
   const ids = appearance.custom.map((c) => c.id)
-  if (![...(BUILTIN_IDS as readonly string[]), ...ids].includes(theme.extends))
+  if (theme.extends && ![...(BUILTIN_IDS as readonly string[]), ...ids].includes(theme.extends))
     return { ok: false, reason: 'extends', field: theme.extends }
   const id = freeId(theme.id, ids)
   return { ok: true, theme: { ...theme, id }, renamed: id !== theme.id }
 }
 
-/** The appearance without `id`: whatever used it goes back to the built-in light or navy. */
+/**
+ * The appearance without `id`: if it was in use, navy comes back. The themes that extended it
+ * take in its values and extend what it extended (nothing, if it was made from scratch), so
+ * they look the same.
+ */
 export function withoutTheme(appearance: Appearance, id: string): Appearance {
-  const replace = (current: string, fallback: string) => (current === id ? fallback : current)
+  const gone = appearance.custom.find((c) => c.id === id)
   return {
-    ...appearance,
-    theme: replace(appearance.theme, 'navy'),
-    light_theme: replace(appearance.light_theme, 'light'),
-    dark_theme: replace(appearance.dark_theme, 'navy'),
-    // Themes that extended it now extend what it extended.
+    theme: appearance.theme === id ? 'navy' : appearance.theme,
     custom: appearance.custom
       .filter((c) => c.id !== id)
-      .map((c) =>
-        c.extends === id
-          ? { ...c, extends: appearance.custom.find((x) => x.id === id)?.extends ?? 'navy' }
-          : c,
-      ),
+      .map((c) => {
+        if (!gone || c.extends !== id) return c
+        const merged: ThemeDefinition = {
+          ...c,
+          extends: gone.extends,
+          colors: { ...gone.colors, ...c.colors },
+        }
+        for (const key of ['font', 'font_family', 'scale', 'density', 'radius'] as const)
+          if (merged[key] == null && gone[key] != null)
+            (merged as Record<string, unknown>)[key] = gone[key]
+        if (merged.extends == null) delete merged.extends
+        return merged
+      }),
   }
 }

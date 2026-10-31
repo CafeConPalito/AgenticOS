@@ -1,4 +1,6 @@
-"""Appearance settings (phase 20, block 3): the chosen theme and the custom themes."""
+"""Appearance settings (phase 20, block 3; phase 22): the chosen theme and the custom themes."""
+
+import json
 
 from fastapi.testclient import TestClient
 
@@ -24,29 +26,16 @@ def warm_copy(**changes) -> dict:
 
 def test_defaults_to_the_navy_theme(client: TestClient):
     body = client.get(URL).json()
-    assert body == {
-        "mode": "fixed",
-        "theme": "navy",
-        "light_theme": "light",
-        "dark_theme": "navy",
-        "custom": [],
-    }
+    assert body == {"theme": "navy", "custom": [], "legacy_follow": None}
 
 
-def test_saves_a_custom_theme_and_follows_the_system(client: TestClient):
-    document = {
-        "mode": "system",
-        "theme": "mi-tema",
-        "light_theme": "mi-tema",
-        "dark_theme": "graphite",
-        "custom": [warm_copy()],
-    }
-    saved = client.put(URL, json=document)
+def test_saves_a_custom_theme(client: TestClient):
+    saved = client.put(URL, json={"theme": "mi-tema", "custom": [warm_copy()]})
     assert saved.status_code == 200
     again = client.get(URL).json()
-    assert again["mode"] == "system"
-    assert again["light_theme"] == "mi-tema"
+    assert again["theme"] == "mi-tema"
     assert again["custom"][0]["format"] == "agentic-os.theme"
+    assert again["custom"][0]["version"] == 2
     assert again["custom"][0]["colors"]["primary-action"] == "#a4441c"
     assert again["custom"][0]["font"] == "atkinson"
 
@@ -64,7 +53,13 @@ def test_refuses_bad_documents_and_keeps_what_was_saved(client: TestClient):
         {"custom": [warm_copy(radius=-1)]},
         {"custom": [warm_copy(font="comic-sans")]},
         {"custom": [warm_copy(unknown=1)]},  # unknown field
+        {"custom": [warm_copy(font_family="Arial; } body { color: red")]},  # not a font name
+        {"custom": [warm_copy(font_family=" Arial")]},
+        {"custom": [warm_copy(font_family="x" * 81)]},
+        {"custom": [warm_copy(version=3)]},
         {"surprise": True},
+        {"mode": "system"},  # «Seguir al sistema» is gone (phase 22)
+        {"legacy_follow": {"light_theme": "light", "dark_theme": "navy"}},  # read only
     ]
     for document in bad:
         response = client.put(URL, json=document)
@@ -77,3 +72,60 @@ def test_unreadable_stored_value_falls_back_to_the_defaults(client: TestClient):
         db.add(AppState(key=APPEARANCE, value='{"theme": "deleted-theme"}'))
         db.commit()
     assert client.get(URL).json()["theme"] == "navy"
+
+
+def test_a_theme_from_scratch_with_a_system_font(client: TestClient):
+    scratch = warm_copy(extends=None, font_family="Cascadia Code", font=None)
+    del scratch["extends"]
+    assert client.put(URL, json={"theme": "mi-tema", "custom": [scratch]}).status_code == 200
+    stored = client.get(URL).json()["custom"][0]
+    assert stored["extends"] is None
+    assert stored["font_family"] == "Cascadia Code"
+    accents = warm_copy(font_family="Fuente Ñandú (Pro) 2.0 & Co + Más")
+    assert client.put(URL, json={"custom": [accents]}).status_code == 200
+
+
+def test_a_phase_20_theme_file_still_validates(client: TestClient):
+    v1 = {"format": "agentic-os.theme", "version": 1, **warm_copy()}
+    assert client.put(URL, json={"custom": [v1]}).status_code == 200
+    assert client.get(URL).json()["custom"][0]["version"] == 1
+
+
+def store(client: TestClient, document: dict) -> None:
+    with client.app.state.sessionmaker() as db:
+        db.add(AppState(key=APPEARANCE, value=json.dumps(document)))
+        db.commit()
+
+
+def test_a_phase_20_document_following_the_system_keeps_its_themes(client: TestClient):
+    store(
+        client,
+        {
+            "mode": "system",
+            "theme": "navy",
+            "light_theme": "mi-tema",
+            "dark_theme": "graphite",
+            "custom": [{"format": "agentic-os.theme", "version": 1, **warm_copy()}],
+        },
+    )
+    body = client.get(URL).json()
+    assert body["theme"] == "navy"
+    assert body["legacy_follow"] == {"light_theme": "mi-tema", "dark_theme": "graphite"}
+    assert body["custom"][0]["id"] == "mi-tema"
+    # The interface picks the theme on screen and saves the new document: the hint is gone.
+    assert client.put(URL, json={"theme": "graphite", "custom": body["custom"]}).status_code == 200
+    assert client.get(URL).json()["legacy_follow"] is None
+
+
+def test_a_phase_20_fixed_document_drops_the_old_fields(client: TestClient):
+    store(
+        client,
+        {
+            "mode": "fixed",
+            "theme": "warm",
+            "light_theme": "light",
+            "dark_theme": "navy",
+            "custom": [],
+        },
+    )
+    assert client.get(URL).json() == {"theme": "warm", "custom": [], "legacy_follow": None}

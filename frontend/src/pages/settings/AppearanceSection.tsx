@@ -6,7 +6,7 @@ import { isBuiltin } from '@/theme/builtin'
 import { useTheme } from '@/theme/ThemeProvider'
 import { ThemeSwatch } from './appearance/ThemeSwatch'
 
-/** «Apariencia» in Ajustes (phase 20): the theme on screen and the way to the full page. */
+/** «Apariencia» in Ajustes (phases 20 and 22): the theme on screen and the way to the full page. */
 export function AppearanceSection() {
   const { t } = useTranslation()
   const { appearance, resolved } = useTheme()
@@ -29,9 +29,7 @@ export function AppearanceSection() {
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
           <span className="text-[13px] font-medium">{name}</span>
           <span className="text-xs text-muted-foreground">
-            {appearance.mode === 'system'
-              ? t('appearance.section.system')
-              : t('appearance.section.fixed')}
+            {t(`appearance.editor.bases.${resolved.base}`)}
           </span>
         </div>
         <Button variant="outline" asChild>

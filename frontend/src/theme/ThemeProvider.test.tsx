@@ -1,5 +1,4 @@
 import { screen, waitFor } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import es from '@/i18n/es.json'
 import { createFakeBackend } from '@/test/fake-backend'
 import { mockHealth, renderApp } from '@/test/render'
@@ -11,20 +10,16 @@ const root = () => document.documentElement
 const cssVar = (name: string) => root().style.getPropertyValue(name)
 
 function setSystemDark(dark: boolean) {
-  const listeners: ((e: MediaQueryListEvent) => void)[] = []
   window.matchMedia = ((query: string) => ({
     matches: dark,
     media: query,
     onchange: null,
-    addEventListener: (_: string, fn: (e: MediaQueryListEvent) => void) => listeners.push(fn),
+    addEventListener: () => {},
     removeEventListener: () => {},
     addListener: () => {},
     removeListener: () => {},
     dispatchEvent: () => false,
   })) as unknown as typeof window.matchMedia
-  return (next: boolean) => {
-    for (const fn of listeners) fn({ matches: next } as MediaQueryListEvent)
-  }
 }
 
 afterEach(() => {
@@ -34,58 +29,90 @@ afterEach(() => {
 })
 
 describe('theme', () => {
-  it('defaults to the navy dark theme', async () => {
+  it('defaults to the navy dark theme, with no light/dark switch (phase 22)', async () => {
     mockHealth('ok')
     renderApp('/')
-    expect(await screen.findByRole('button', { name: es.theme.toLight })).toBeVisible()
+    expect(await screen.findByRole('button', { name: es.dock.toggle })).toBeVisible()
     expect(root()).toHaveClass('dark')
     expect(cssVar('--background')).toBe('#0a1a33')
+    expect(screen.queryByRole('button', { name: /tema (claro|oscuro)/i })).toBeNull()
   })
 
-  it('switches to light, saves it in the backend and remembers it here', async () => {
-    const backend = createFakeBackend()
-    const user = userEvent.setup()
-    renderApp('/')
-    await user.click(await screen.findByRole('button', { name: es.theme.toLight }))
-    expect(root()).not.toHaveClass('dark')
-    expect(cssVar('--background')).toBe('#f4f6fa')
-    await waitFor(() => expect(backend.appearance.current.theme).toBe('light'))
-    expect(JSON.parse(localStorage.getItem(APPEARANCE_STORAGE_KEY)!).theme).toBe('light')
-    expect(JSON.parse(localStorage.getItem(APPLIED_KEY)!).base).toBe('light')
-    expect(screen.getByRole('button', { name: es.theme.toDark })).toBeVisible()
-  })
-
-  it('takes the theme saved in the backend', async () => {
+  it('takes the theme saved in the backend and remembers it here', async () => {
     createFakeBackend({ appearance: { ...DEFAULT_APPEARANCE, theme: 'warm' } })
     renderApp('/')
     await waitFor(() => expect(cssVar('--background')).toBe('#f6efe5'))
     expect(root()).not.toHaveClass('dark')
+    expect(JSON.parse(localStorage.getItem(APPEARANCE_STORAGE_KEY)!).theme).toBe('warm')
+    expect(JSON.parse(localStorage.getItem(APPLIED_KEY)!).base).toBe('light')
   })
 
   it('carries over the light theme chosen before phase 20', async () => {
     localStorage.setItem(THEME_STORAGE_KEY, 'light')
     const backend = createFakeBackend()
     renderApp('/')
-    expect(await screen.findByRole('button', { name: es.theme.toDark })).toBeVisible()
     await waitFor(() => expect(backend.appearance.current.theme).toBe('light'))
+    expect(cssVar('--background')).toBe('#f4f6fa')
     expect(localStorage.getItem(THEME_STORAGE_KEY)).toBeNull()
   })
 
-  it('follows the system and changes live', async () => {
-    const change = setSystemDark(false)
+  it.each([
+    [true, 'graphite', '#17181b'],
+    [false, 'warm', '#f6efe5'],
+  ])(
+    'keeps the theme on screen of a phase 20 document that followed the system (dark %s)',
+    async (dark, theme, background) => {
+      setSystemDark(dark)
+      const backend = createFakeBackend({
+        appearance: {
+          ...DEFAULT_APPEARANCE,
+          legacy_follow: { light_theme: 'warm', dark_theme: 'graphite' },
+        } as typeof DEFAULT_APPEARANCE,
+      })
+      renderApp('/')
+      await waitFor(() => expect(cssVar('--background')).toBe(background))
+      await waitFor(() => expect(backend.appearance.current).toEqual({ theme, custom: [] }))
+    },
+  )
+
+  it('reads a copy of phase 20 that followed the system while the backend is away', async () => {
+    mockHealth('ok')
+    setSystemDark(true)
+    localStorage.setItem(
+      APPEARANCE_STORAGE_KEY,
+      JSON.stringify({
+        mode: 'system',
+        theme: 'navy',
+        light_theme: 'warm',
+        dark_theme: 'contrast',
+        custom: [],
+      }),
+    )
+    renderApp('/')
+    await waitFor(() => expect(cssVar('--background')).toBe('#000000'))
+  })
+
+  it('applies a theme made from scratch with a font of the system', async () => {
     createFakeBackend({
       appearance: {
-        ...DEFAULT_APPEARANCE,
-        mode: 'system',
-        light_theme: 'warm',
-        dark_theme: 'graphite',
+        theme: 'cero',
+        custom: [
+          {
+            format: 'agentic-os.theme',
+            version: 2,
+            id: 'cero',
+            name: 'Cero',
+            base: 'light',
+            colors: { background: '#fafafa' },
+            font_family: 'Cascadia Code',
+          },
+        ],
       },
     })
     renderApp('/')
-    await waitFor(() => expect(cssVar('--background')).toBe('#f6efe5'))
-    change(true)
-    await waitFor(() => expect(cssVar('--background')).toBe('#17181b'))
-    expect(root()).toHaveClass('dark')
+    await waitFor(() => expect(cssVar('--background')).toBe('#fafafa'))
+    expect(cssVar('--foreground')).toBe('#0a1a33') // from the light base set
+    expect(cssVar('--app-font')).toBe(`"Cascadia Code", system-ui, 'Segoe UI', sans-serif`)
   })
 
   it('applies a custom theme over the one it extends', async () => {

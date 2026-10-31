@@ -9,7 +9,6 @@ import {
   Play,
   Plus,
   Sparkles,
-  SunMoon,
   Terminal,
   UserPlus,
   UsersRound,
@@ -36,7 +35,6 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/compone
 import { SHORTCUTS } from '@/lib/shortcuts'
 import { errorMessage } from '@/lib/form-errors'
 import { useDialogs } from '@/stores/dialogs'
-import { useTheme } from '@/theme/ThemeProvider'
 import { Kbd } from './Kbd'
 
 /** At most this many results while searching. */
@@ -90,7 +88,6 @@ function useDebounced<T>(value: T, ms: number): T {
 function PaletteContent({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { theme, toggleTheme } = useTheme()
   const dialogs = useDialogs.getState()
   const toggleDock = useDock((s) => s.toggle)
   const [query, setQuery] = useState('')
@@ -156,13 +153,6 @@ function PaletteContent({ onClose }: { onClose: () => void }) {
         icon: Terminal,
         keys: keysOf('dock'),
         run: toggleDock,
-      },
-      {
-        id: 'theme',
-        group: 'actions',
-        label: t('palette.actions.toggleTheme'),
-        icon: SunMoon,
-        run: toggleTheme,
       },
       ...(scheduler
         ? [
@@ -236,7 +226,7 @@ function PaletteContent({ onClose }: { onClose: () => void }) {
     ]
     // `dialogs` is the store's own (stable) action set.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [t, navigate, agents, projects, scheduler, toggleDock, toggleTheme, theme])
+  }, [t, navigate, agents, projects, scheduler, toggleDock])
 
   const taskItems = useMemo<PaletteItem[]>(
     () =>

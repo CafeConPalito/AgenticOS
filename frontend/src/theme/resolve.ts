@@ -1,11 +1,5 @@
 import { BUILTIN_THEMES, type BuiltinTheme } from './builtin'
-import {
-  type Appearance,
-  BASE_TOKENS,
-  DEFAULTS,
-  type ResolvedTheme,
-  type ThemeDefinition,
-} from './model'
+import { BASE_TOKENS, DEFAULTS, type ResolvedTheme, type ThemeDefinition } from './model'
 
 type AnyTheme = BuiltinTheme | ThemeDefinition
 
@@ -16,16 +10,10 @@ export function themeIndex(custom: ThemeDefinition[]): Map<string, AnyTheme> {
   return index
 }
 
-/** The theme to show now: the fixed one, or the light/dark one when following the system. */
-export function activeThemeId(appearance: Appearance, systemDark: boolean): string {
-  if (appearance.mode === 'system')
-    return systemDark ? appearance.dark_theme : appearance.light_theme
-  return appearance.theme
-}
-
 /**
  * All the values of `id`: its base token set, then each theme it extends from the root
- * down, then its own. An unknown id falls back to the navy theme.
+ * down, then its own. A theme made from scratch extends none. An unknown id falls back to
+ * the navy theme.
  */
 export function resolveTheme(id: string, custom: ThemeDefinition[]): ResolvedTheme {
   const index = themeIndex(custom)
@@ -35,7 +23,7 @@ export function resolveTheme(id: string, custom: ThemeDefinition[]): ResolvedThe
   while (!seen.has(current.id)) {
     seen.add(current.id)
     chain.unshift(current)
-    const parent = 'extends' in current ? index.get(current.extends) : undefined
+    const parent = 'extends' in current && current.extends ? index.get(current.extends) : undefined
     if (!parent) break
     current = parent
   }
@@ -45,10 +33,12 @@ export function resolveTheme(id: string, custom: ThemeDefinition[]): ResolvedThe
     base: leaf.base,
     colors: { ...BASE_TOKENS[leaf.base] },
     ...DEFAULTS,
+    fontFamily: null,
   }
   for (const theme of chain) {
     Object.assign(resolved.colors, theme.colors)
     if (theme.font) resolved.font = theme.font
+    if ('font_family' in theme && theme.font_family) resolved.fontFamily = theme.font_family
     if (theme.density) resolved.density = theme.density
     if (theme.radius != null) resolved.radius = theme.radius
     if ('scale' in theme && theme.scale != null) resolved.scale = theme.scale

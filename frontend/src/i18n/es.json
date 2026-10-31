@@ -36,11 +36,6 @@
     "inbox_one": "Inbox · {{count}} pendiente",
     "inbox_other": "Inbox · {{count}} pendientes"
   },
-  "theme": {
-    "toLight": "Tema claro",
-    "toDark": "Tema oscuro",
-    "toggle": "Cambiar tema"
-  },
   "backend": {
     "connected": "Conectado · v{{version}}",
     "connecting": "Conectando…",
@@ -1604,7 +1599,6 @@
       "newAgent": "Nuevo agente",
       "newProject": "Nuevo proyecto",
       "openTerminal": "Abrir terminal",
-      "toggleTheme": "Cambiar tema",
       "pauseScheduler": "Pausar el scheduler",
       "resumeScheduler": "Reanudar el scheduler",
       "shortcuts": "Atajos de teclado",
@@ -3702,18 +3696,21 @@
       "graphite": "Grafito"
     },
     "section": {
-      "fixed": "Tema fijo",
-      "system": "Sigue al sistema (claro u oscuro según Windows)",
       "open": "Abrir Apariencia"
     },
-    "mode": {
-      "title": "Cuándo cambia",
-      "fixed": "Tema fijo",
-      "system": "Seguir al sistema",
-      "fixedHelp": "Siempre «{{name}}». El botón de la luna o el sol de la cabecera alterna entre el tema claro y el oscuro.",
-      "systemHelp": "Cambia solo cuando Windows pasa de claro a oscuro o al revés.",
-      "light_theme": "Con Windows en claro",
-      "dark_theme": "Con Windows en oscuro"
+    "filter": {
+      "label": "Mostrar temas",
+      "all": "Todos",
+      "light": "Claros",
+      "dark": "Oscuros"
+    },
+    "create": {
+      "action": "Nuevo tema",
+      "title": "Nuevo tema",
+      "description": "Un tema desde cero: parte de los colores básicos claros u oscuros y en el editor cambias lo que quieras.",
+      "name": "Nombre",
+      "base": "Base",
+      "submit": "Crear y editar"
     },
     "themes": "Temas",
     "use": "Usar",
@@ -3782,7 +3779,8 @@
         "title": "Algunos textos se leen mal",
         "issue": "{{text}} sobre {{background}}: {{ratio}}:1 (mínimo {{minimum}}:1)",
         "flag": "Contraste bajo"
-      }
+      },
+      "extendsNone": "Ninguno (desde cero)"
     },
     "preview": {
       "title": "Vista previa",

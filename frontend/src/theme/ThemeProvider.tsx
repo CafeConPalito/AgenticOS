@@ -8,10 +8,11 @@ import {
   type Appearance,
   type Base,
   DEFAULT_APPEARANCE,
+  type LegacyFollow,
   type ResolvedTheme,
   themeSchema,
 } from './model'
-import { activeThemeId, resolveTheme } from './resolve'
+import { resolveTheme } from './resolve'
 
 /** The base of the theme on screen: what the `dark:` variants and the toasts follow. */
 export type Theme = Base
@@ -23,23 +24,41 @@ export const APPEARANCE_STORAGE_KEY = 'agentic-os.appearance'
 
 export const appearanceKey = ['settings', 'appearance'] as const
 
-function isAppearance(value: unknown): value is Appearance {
-  if (!value || typeof value !== 'object') return false
-  const v = value as Partial<Appearance>
-  return (
-    (v.mode === 'fixed' || v.mode === 'system') &&
-    typeof v.theme === 'string' &&
-    typeof v.light_theme === 'string' &&
-    typeof v.dark_theme === 'string' &&
-    Array.isArray(v.custom) &&
-    v.custom.every((theme) => themeSchema.safeParse(theme).success)
+const systemDark = () => window.matchMedia('(prefers-color-scheme: dark)').matches
+
+/**
+ * An appearance document, or null if it is not one. One of phase 20 that followed the system
+ * (`mode` in this browser's copy, `legacy_follow` from the backend) becomes the theme that
+ * was on screen (ADR 0028); `legacy` says it still has to be saved that way.
+ */
+function readAppearance(value: unknown): { appearance: Appearance; legacy: boolean } | null {
+  if (!value || typeof value !== 'object') return null
+  const v = value as Partial<Appearance> &
+    Partial<LegacyFollow> & {
+      mode?: string
+      legacy_follow?: LegacyFollow | null
+    }
+  if (
+    typeof v.theme !== 'string' ||
+    !Array.isArray(v.custom) ||
+    !v.custom.every((theme) => themeSchema.safeParse(theme).success)
   )
+    return null
+  const follow =
+    v.legacy_follow ??
+    (v.mode === 'system' && v.light_theme && v.dark_theme
+      ? { light_theme: v.light_theme, dark_theme: v.dark_theme }
+      : null)
+  const theme = follow ? (systemDark() ? follow.dark_theme : follow.light_theme) : v.theme
+  return { appearance: { theme, custom: v.custom }, legacy: follow !== null }
 }
 
 function readStored(): Appearance {
   try {
-    const stored = JSON.parse(localStorage.getItem(APPEARANCE_STORAGE_KEY) ?? 'null') as unknown
-    if (isAppearance(stored)) return stored
+    const stored = readAppearance(
+      JSON.parse(localStorage.getItem(APPEARANCE_STORAGE_KEY) ?? 'null') as unknown,
+    )
+    if (stored) return stored.appearance
     if (localStorage.getItem(THEME_STORAGE_KEY) === 'light')
       return { ...DEFAULT_APPEARANCE, theme: 'light' }
   } catch {
@@ -56,18 +75,6 @@ function store(appearance: Appearance) {
   }
 }
 
-function useSystemDark(): boolean {
-  const query = '(prefers-color-scheme: dark)'
-  const [dark, setDark] = useState(() => window.matchMedia(query).matches)
-  useEffect(() => {
-    const media = window.matchMedia(query)
-    const onChange = (e: MediaQueryListEvent) => setDark(e.matches)
-    media.addEventListener('change', onChange)
-    return () => media.removeEventListener('change', onChange)
-  }, [])
-  return dark
-}
-
 interface ThemeContextValue {
   /** Base (light or dark) of the theme on screen. */
   theme: Theme
@@ -76,9 +83,6 @@ interface ThemeContextValue {
   appearance: Appearance
   /** Saves the whole appearance (and paints it at once). */
   setAppearance: (next: Appearance) => void
-  /** The light or the dark theme of the appearance, fixed. */
-  setTheme: (base: Theme) => void
-  toggleTheme: () => void
   /** Shows a theme without saving it (the editor's live preview); null goes back. */
   preview: (theme: ResolvedTheme | null) => void
 }
@@ -90,14 +94,15 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   // What this browser last saw: shown while the backend answers, or when it cannot.
   const [stored] = useState<Appearance>(readStored)
   const [previewing, setPreviewing] = useState<ResolvedTheme | null>(null)
-  const systemDark = useSystemDark()
 
   // The backend has the truth; a garbled answer (old backend, offline) is ignored.
   const remote = useQuery({
     queryKey: appearanceKey,
     queryFn: async () => {
-      const data = await api.get<unknown>('/api/settings/appearance')
-      return isAppearance(data) ? data : null
+      const read = readAppearance(await api.get<unknown>('/api/settings/appearance'))
+      // A phase 20 document that followed the system: saved now with the theme on screen.
+      if (read?.legacy) await api.put('/api/settings/appearance', read.appearance)
+      return read?.appearance ?? null
     },
     staleTime: Infinity,
   }).data
@@ -127,36 +132,25 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     } catch {
       // Nothing to carry over.
     }
-    const untouched =
-      remote.mode === 'fixed' && remote.theme === 'navy' && remote.custom.length === 0
+    const untouched = remote.theme === 'navy' && remote.custom.length === 0
     if (legacyLight && untouched) save({ ...remote, theme: 'light' })
   }, [remote, save])
 
-  const chosen = useMemo(
-    () => resolveTheme(activeThemeId(appearance, systemDark), appearance.custom),
-    [appearance, systemDark],
-  )
+  const chosen = useMemo(() => resolveTheme(appearance.theme, appearance.custom), [appearance])
   const resolved = previewing ?? chosen
 
   useEffect(() => applyTheme(resolved), [resolved])
 
-  const value = useMemo<ThemeContextValue>(() => {
-    const setTheme = (base: Theme) =>
-      save({
-        ...appearance,
-        mode: 'fixed',
-        theme: base === 'dark' ? appearance.dark_theme : appearance.light_theme,
-      })
-    return {
+  const value = useMemo<ThemeContextValue>(
+    () => ({
       theme: resolved.base,
       resolved,
       appearance,
       setAppearance: save,
-      setTheme,
-      toggleTheme: () => setTheme(resolved.base === 'dark' ? 'light' : 'dark'),
       preview: setPreviewing,
-    }
-  }, [appearance, resolved, save])
+    }),
+    [appearance, resolved, save],
+  )
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
 }

@@ -1,13 +1,4 @@
-import {
-  ArrowLeft,
-  ArrowRight,
-  ChevronRight,
-  Inbox,
-  Moon,
-  Search,
-  SquareTerminal,
-  Sun,
-} from 'lucide-react'
+import { ArrowLeft, ArrowRight, ChevronRight, Inbox, Search, SquareTerminal } from 'lucide-react'
 import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useLocation, useMatches, useNavigate } from 'react-router'
@@ -28,7 +19,6 @@ import { isMacDesktop } from '@/lib/platform'
 import { SHORTCUTS } from '@/lib/shortcuts'
 import { cn } from '@/lib/utils'
 import { useDialogs } from '@/stores/dialogs'
-import { useTheme } from '@/theme/ThemeProvider'
 import { BackendStatus } from './BackendStatus'
 import type { CrumbHandle } from './crumbs'
 import { Logo } from './Logo'
@@ -71,7 +61,6 @@ export function AppHeader({
   const dockOpen = useDock((s) => s.open)
   const toggleDock = useDock((s) => s.toggle)
   const openPalette = useDialogs((s) => s.openPalette)
-  const { theme, toggleTheme } = useTheme()
 
   const mac = isMacDesktop()
   const atHome = location.pathname === '/'
@@ -208,15 +197,6 @@ export function AppHeader({
       <span title={endpoint}>
         <BackendStatus state={backendState} version={backendVersion} />
       </span>
-      <button
-        type="button"
-        onClick={toggleTheme}
-        aria-label={theme === 'dark' ? t('theme.toLight') : t('theme.toDark')}
-        title={t('theme.toggle')}
-        className={ICON_BUTTON}
-      >
-        {theme === 'dark' ? <Sun className="size-[15px]" /> : <Moon className="size-[15px]" />}
-      </button>
     </header>
   )
 }

@@ -19,10 +19,17 @@ const SPACING: Record<Density, string> = {
   comfortable: '0.28rem',
 }
 
+/** A font of the system first, then the system's own (what a missing font falls back to). */
+export function fontStack(theme: Pick<ResolvedTheme, 'font' | 'fontFamily'>): string {
+  // FONT_FAMILY lets no quote or backslash through; escaped all the same.
+  if (theme.fontFamily) return `"${theme.fontFamily.replace(/["\\]/g, '')}", ${FONT_STACKS.system}`
+  return FONT_STACKS[theme.font]
+}
+
 export function cssVariables(theme: ResolvedTheme): Record<string, string> {
   const vars: Record<string, string> = {}
   for (const [name, value] of Object.entries(theme.colors)) vars[`--${name}`] = value
-  vars['--app-font'] = FONT_STACKS[theme.font]
+  vars['--app-font'] = fontStack(theme)
   vars['--spacing'] = SPACING[theme.density]
   vars['--radius'] = `${theme.radius / 16}rem`
   return vars
