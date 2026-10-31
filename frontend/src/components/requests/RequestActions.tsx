@@ -12,7 +12,7 @@ import {
 } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 import { toast } from 'sonner'
 import {
   inboxKeys,
@@ -29,7 +29,6 @@ import type { InboxItem } from '@/api/types'
 import { ChangesButton } from '@/components/changes/ChangesSheet'
 import { DocSheet } from '@/components/knowledge/DocSheet'
 import { SkillProposalReview } from '@/components/skills/SkillProposalReview'
-import { useDock } from '@/components/terminal/dock-store'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { api } from '@/lib/api'
@@ -93,7 +92,7 @@ export function RequestActions({
 }) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
-  const showDock = useDock((s) => s.show)
+  const navigate = useNavigate()
   const answer = useAnswerItem()
   const permission = usePermissionItem()
   const review = useReviewItem()
@@ -436,7 +435,8 @@ export function RequestActions({
           size="sm"
           variant="ghost"
           className="ml-auto"
-          onClick={() => showDock(item.run_id!)}
+          // The run's terminal is on its page (phase 23: the dock has the person's own).
+          onClick={() => void navigate(`/ejecuciones/${item.run_id}`)}
         >
           <SquareTerminal />
           {t('inbox.openTerminal')}

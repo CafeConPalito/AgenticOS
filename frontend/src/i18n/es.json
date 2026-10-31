@@ -646,13 +646,32 @@
   },
   "dock": {
     "label": "Terminal",
-    "tabs": "Ejecuciones activas",
+    "tabs": "Terminales abiertos",
     "toggle": "Abrir o cerrar la terminal (Ctrl+`)",
     "toBottom": "Acoplar abajo",
     "toRight": "Acoplar a la derecha",
-    "expand": "Abrir detalle",
-    "close": "Cerrar terminal",
-    "empty": "No hay ninguna ejecución activa. Lanza un agente para verlo trabajar aquí."
+    "close": "Ocultar el panel",
+    "closeTab": "Cerrar el terminal {{name}}",
+    "empty": "Abre un CLI con la cuenta y la carpeta que quieras, sin agente. Las ejecuciones de los agentes están en Ejecuciones.",
+    "ended": "El CLI ha terminado.",
+    "closeEnded": "Cerrar la pestaña",
+    "new": {
+      "open": "Nuevo terminal",
+      "title": "Nuevo terminal",
+      "description": "Un CLI interactivo, sin agente ni tarea. Lo que gaste sale en Consumo como «Terminal».",
+      "noCli": "No hay ningún CLI instalado. Instálalo en CLIs y cuentas.",
+      "cli": "CLI",
+      "account": "Cuenta",
+      "defaultAccount": "La predeterminada",
+      "folder": "Carpeta",
+      "project": "Proyecto",
+      "places": {
+        "home": "Carpeta personal",
+        "project": "La carpeta de un proyecto",
+        "other": "Otra carpeta…"
+      },
+      "submit": "Abrir terminal"
+    }
   },
   "tasks": {
     "status": {
