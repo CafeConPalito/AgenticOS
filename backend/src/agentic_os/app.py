@@ -23,6 +23,7 @@ from agentic_os.services import housekeeping
 from agentic_os.services.accounts_login import AccountLogins
 from agentic_os.services.architect import tools as architect_tools
 from agentic_os.services.architect.service import ArchitectService
+from agentic_os.services.cli_install import CliInstalls
 from agentic_os.services.clis import CliCatalog
 from agentic_os.services.connections.oauth import FlowManager, Renewer
 from agentic_os.services.connections.probe import ProbeRunner
@@ -148,6 +149,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             app.state.sessionmaker, manager, scheduler, account_id
         )
         app.state.logins = logins
+        # Phase 23: «Añadir CLI», the official installer in a terminal; then the CLIs again.
+        installs = CliInstalls()
+        installs.loop = asyncio.get_running_loop()
+        installs.on_end = lambda cli: app.state.cli_catalog.list(refresh=True)
+        app.state.installs = installs
         git_events = GitEvents()
         git_jobs = JobManager()
         git_jobs.listener = git_events.publish
@@ -262,6 +268,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             app.state.mcp_gate = app.state.architect_gate = None
             architect.stop()
             logins.shutdown()
+            installs.shutdown()
             git_jobs.shutdown()
             git_shells.shutdown()
             models.stop()

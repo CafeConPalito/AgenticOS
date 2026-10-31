@@ -1,6 +1,10 @@
-from fastapi import APIRouter, Request
+import uuid
+
+from fastapi import APIRouter, Request, WebSocket, status
 from pydantic import BaseModel, ConfigDict
 
+from agentic_os.api.terminal import serve_terminal
+from agentic_os.models import Cli
 from agentic_os.services import agy_status
 from agentic_os.services.clis import CliInfo
 from agentic_os.services.trust import agy_settings
@@ -11,6 +15,30 @@ router = APIRouter(tags=["clis"])
 @router.get("/clis")
 def list_clis(request: Request, refresh: bool = False) -> list[CliInfo]:
     return request.app.state.cli_catalog.list(refresh=refresh)
+
+
+# ---------------------------------------------------------------------- install (phase 23)
+@router.post("/clis/{cli}/install", status_code=status.HTTP_202_ACCEPTED)
+def install_cli(cli: Cli, request: Request) -> None:
+    """Runs the CLI's official installer in a terminal (see `/clis/{cli}/install/terminal`).
+    When it ends the CLIs are probed again, so the new one shows as installed."""
+    request.app.state.installs.start(cli)
+
+
+@router.websocket("/clis/{cli}/install/terminal")
+async def install_terminal(websocket: WebSocket, cli: str, client_id: str = "") -> None:
+    await websocket.accept()
+    session = websocket.app.state.installs.get(cli)
+    if session is not None and not session.alive:  # it ended: what it printed, and how
+        snapshot, _ = session.attach("ended")
+        session.detach("ended")
+        await websocket.send_json({"type": "snapshot", "data": snapshot})
+    if session is None or not session.alive:
+        code = session.exit_code if session is not None else None
+        await websocket.send_json({"type": "exit", "code": code, "status": "exited"})
+        await websocket.close()
+        return
+    await serve_terminal(websocket, session, client_id or uuid.uuid4().hex)
 
 
 class AgyQuotaState(BaseModel):
