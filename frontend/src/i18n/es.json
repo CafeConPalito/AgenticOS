@@ -1351,7 +1351,10 @@
         "no_model": "Falta descargar un modelo de voz",
         "engine_missing": "Falta descargar el motor de voz"
       },
-      "shortcutInvalid": "Usa una combinación con Ctrl, Alt o Mayús, o una tecla de función; si no, escribiría en el campo."
+      "shortcutInvalid": "Usa una combinación con Ctrl, Alt o Mayús, o una tecla de función; si no, escribiría en el campo.",
+      "microphoneHeardLabel": "Lo que ha entendido",
+      "microphoneNoEngine": "Para ver lo que entiende, descarga el motor de voz y un modelo.",
+      "microphoneModels": "Ir a Modelos locales"
     }
   },
   "usage": {

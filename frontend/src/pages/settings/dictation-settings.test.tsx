@@ -172,8 +172,68 @@ describe('Ajustes › Dictado', () => {
       const region = await section()
       fireEvent.click(within(region).getByRole('button', { name: d.microphoneTest }))
       expect(await within(region).findByRole('meter')).toHaveAttribute('aria-valuenow', '40')
-      await vi.advanceTimersByTimeAsync(3500)
+      await vi.advanceTimersByTimeAsync(5500)
       expect(await within(region).findByText(d.microphoneOk)).toBeVisible()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('shows what it understands while it is said, and at the end (phase 23, CA8)', async () => {
+    createFakeBackend({ dictation: { answers: ['me', 'me oyes bien'] }, localModels: [] })
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    try {
+      setRecorder({
+        start: vi.fn(async ({ onLevel }: { onLevel: (level: number) => void }) => {
+          onLevel(0.4)
+          return {
+            peek: () => ({ wav: new Blob(['wav']), end: 16_000, rate: 16_000 }),
+            stop: async () => new Blob(['wav']),
+            cancel: vi.fn(),
+          }
+        }),
+      })
+      renderApp('/ajustes')
+      const region = await section()
+      fireEvent.click(within(region).getByRole('button', { name: d.microphoneTest }))
+      await vi.advanceTimersByTimeAsync(1500)
+      const heard = await within(region).findByLabelText(d.microphoneHeardLabel)
+      expect(heard).toHaveTextContent('«me»')
+      await vi.advanceTimersByTimeAsync(5500)
+      await waitFor(() => expect(heard).toHaveTextContent('«me oyes bien»'))
+      expect(await within(region).findByText(d.microphoneOk)).toBeVisible()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('without the engine it shows only the level and says where to get it', async () => {
+    createFakeBackend({
+      dictation: { answers: [{ error: { status: 409, code: 'engine_missing' } }] },
+      localModels: [],
+    })
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    try {
+      setRecorder({
+        start: vi.fn(async ({ onLevel }: { onLevel: (level: number) => void }) => {
+          onLevel(0.4)
+          return {
+            peek: () => ({ wav: new Blob(['wav']), end: 16_000, rate: 16_000 }),
+            stop: async () => new Blob(['wav']),
+            cancel: vi.fn(),
+          }
+        }),
+      })
+      renderApp('/ajustes')
+      const region = await section()
+      fireEvent.click(within(region).getByRole('button', { name: d.microphoneTest }))
+      await vi.advanceTimersByTimeAsync(5500)
+      expect(await within(region).findByText(d.microphoneNoEngine, { exact: false })).toBeVisible()
+      expect(within(region).getByRole('link', { name: d.microphoneModels })).toHaveAttribute(
+        'href',
+        '/ajustes#models',
+      )
+      expect(within(region).queryByLabelText(d.microphoneHeardLabel)).toBeNull()
     } finally {
       vi.useRealTimers()
     }
