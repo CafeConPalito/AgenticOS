@@ -78,7 +78,7 @@ def install_real_whisper(data_dir: Path) -> None:
     folder = store.downloaded_folder(data_dir, engine)
     for source in REAL_ENGINE.parent.iterdir():
         if source.is_file():
-            _link(source, folder / "Release" / source.name)
+            _link(source, folder / "bin" / "Release" / source.name)  # as _unpack leaves it
     store.write_manifest(data_dir, engine)
     for name, source in (("ggml-base.bin", REAL_MODEL), ("ggml-silero-v5.1.2.bin", REAL_VAD)):
         _link(source, store.downloaded_folder(data_dir, model) / name)

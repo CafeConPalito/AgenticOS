@@ -332,7 +332,8 @@ CATALOG: tuple[CatalogEntry, ...] = (
                 ),
             ),
         ),
-        usage=_usage(version="b5454", executable="Release/whisper-server.exe"),
+        # The archive unpacks into bin/ (DownloadManager._unpack) and keeps its own Release/ folder.
+        usage=_usage(version="b5454", executable="bin/Release/whisper-server.exe"),
         unpack="whisper-bin-x64.zip",
     ),
 )
