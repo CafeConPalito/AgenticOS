@@ -7,6 +7,7 @@ import time
 import wave
 from pathlib import Path
 
+import numpy as np
 import pytest
 from fake_whisper import silent_wav, sine_wav
 from fastapi.testclient import TestClient
@@ -248,3 +249,70 @@ def test_a_long_dictation_that_mentions_a_known_phrase_is_kept():
     )
     assert len(note) > 100 and not is_phantom(note)
     assert is_phantom("Suscríbete") and is_phantom("Subtítulos por Amara.org")
+
+
+# ------------------------------------------------------------------------- phase 23: in pieces
+def voice_with_pauses(seconds: float, pauses: list[float]) -> bytes:
+    """A tone of `seconds` with 0.4 s of silence starting at each of `pauses`."""
+    rate = audio.SAMPLE_RATE
+    t = np.arange(int(seconds * rate)) / rate
+    samples = (np.sin(2 * np.pi * 220 * t) * 8000).astype("<i2")
+    for start in pauses:
+        samples[int(start * rate) : int((start + 0.4) * rate)] = 0
+    out = io.BytesIO()
+    with wave.open(out, "wb") as wav:
+        wav.setnchannels(1)
+        wav.setsampwidth(2)
+        wav.setframerate(rate)
+        wav.writeframes(samples.tobytes())
+    return out.getvalue()
+
+
+def lengths(pieces: list[bytes]) -> list[float]:
+    out = []
+    for piece in pieces:
+        with wave.open(io.BytesIO(piece)) as wav:
+            out.append(wav.getnframes() / wav.getframerate())
+    return out
+
+
+def test_long_audio_is_cut_in_pieces_of_at_most_9_s_at_the_pauses():
+    pieces = audio.split(voice_with_pauses(25, pauses=[7.5, 15.8]))
+    seconds = lengths(pieces)
+    assert all(s <= audio.CHUNK_SECONDS for s in seconds)
+    assert sum(seconds) == pytest.approx(25, abs=0.01)  # nothing lost
+    # Each cut falls inside a pause, not in the middle of the voice.
+    assert 7.5 <= seconds[0] <= 7.9
+    assert 15.8 <= seconds[0] + seconds[1] <= 16.2
+    assert lengths(audio.split(voice_with_pauses(5, []))) == [pytest.approx(5)]
+
+
+def test_a_long_dictation_goes_to_the_engine_in_pieces_and_comes_back_whole(
+    client: TestClient, speech
+):
+    fake = speech(text=" trozo. ")
+    response = say(client, voice_with_pauses(20, pauses=[8.0]))
+    assert response.status_code == 200
+    assert response.json()["text"] == "trozo. trozo. trozo."
+    assert len(fake.started[0].requests) == 3
+
+
+def test_the_engine_reads_a_short_window(client: TestClient, speech):
+    fake = speech()
+    say(client, sine_wav(1))
+    assert fake.server._argv(1234)[-2:] == ["-ac", "512"]
+
+
+def test_a_partial_text_gives_way_when_the_engine_is_busy(client: TestClient, speech):
+    speech()
+    service = client.app.state.dictation
+    assert client.post(f"{TRANSCRIBE}?partial=true", content=sine_wav(1), headers=WAV).json()[
+        "text"
+    ]
+    service._pending += 1  # another transcription is running
+    try:
+        busy = client.post(f"{TRANSCRIBE}?partial=true", content=sine_wav(1), headers=WAV)
+        assert busy.status_code == 409
+        assert busy.json()["detail"]["code"] == "busy"
+    finally:
+        service._pending -= 1

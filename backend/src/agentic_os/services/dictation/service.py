@@ -156,7 +156,11 @@ class DictationService:
             log.warning("dictation_warmup_failed", code=error.code, model=model.id)
 
     # ----------------------------------------------------------------------- transcribing
-    def transcribe(self, wav: bytes) -> Transcript:
+    def transcribe(self, wav: bytes, partial: bool = False) -> Transcript:
+        """The text of a recording. `partial` (phase 23): a look at what is being said while it
+        is said; it gives way when the engine is busy, so a final text never waits behind it."""
+        if partial and self._pending:
+            raise DictationError(409, "busy", "the engine is busy")
         with self.sessions() as db:
             settings, engine, model = self._ready(db)
             info = audio.inspect(wav, settings.max_seconds)
@@ -167,16 +171,22 @@ class DictationService:
         with self._lock:
             self._pending += 1
         try:
-            text = server.transcribe(wav, settings.language, prompt)
+            # In pieces the engine's short window reads whole (ADR 0029).
+            texts = [
+                server.transcribe(piece, settings.language, prompt) for piece in audio.split(wav)
+            ]
         except WhisperError as error:
             log.warning("dictation_failed", code=error.code, model=model.id)
             raise DictationError(STATUS.get(error.code, 502), error.code, error.message) from error
         finally:
             with self._lock:
                 self._pending -= 1
-        text = clean(text)
-        if is_phantom(text):
+        text = " ".join(t for t in (clean(piece) for piece in texts) if t and not is_phantom(t))
+        if not text:
             raise DictationError(422, "no_speech", "no speech was heard")
         # Only numbers: never the text or the audio (they are the person's).
-        log.info("dictation_done", seconds=round(info.seconds, 1), model=model.id, chars=len(text))
+        if not partial:
+            log.info(
+                "dictation_done", seconds=round(info.seconds, 1), model=model.id, chars=len(text)
+            )
         return Transcript(text=text, seconds=info.seconds, model=model.id)

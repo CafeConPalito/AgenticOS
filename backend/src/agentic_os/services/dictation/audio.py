@@ -75,3 +75,39 @@ def loudest_window(samples: np.ndarray) -> float:
 
 def is_silent(info: AudioInfo) -> bool:
     return info.loudest_rms < SILENCE_RMS
+
+
+# Phase 23 (ADR 0029): whisper-server runs with a ~10 s audio window (`-ac 512`), which takes a
+# third of the time and gives the same text up to 10 s. Longer audio is cut in pieces of at most
+# CHUNK_SECONDS, each at the quietest 30 ms of the last SEARCH_SECONDS before the limit.
+CHUNK_SECONDS = 9.0
+SEARCH_SECONDS = 2.0
+
+
+def split(data: bytes) -> list[bytes]:
+    """The WAV in pieces the engine reads whole, cut where nobody is speaking if possible."""
+    with wave.open(io.BytesIO(data)) as wav:
+        frames = wav.readframes(wav.getnframes())
+    samples = np.frombuffer(frames, dtype="<i2")
+    limit, search = int(CHUNK_SECONDS * SAMPLE_RATE), int(SEARCH_SECONDS * SAMPLE_RATE)
+    pieces: list[np.ndarray] = []
+    start = 0
+    while len(samples) - start > limit:
+        window = samples[start + limit - search : start + limit].astype(np.float64)
+        usable = len(window) // WINDOW * WINDOW
+        energy = np.sqrt(np.mean(np.square(window[:usable].reshape(-1, WINDOW)), axis=1))
+        cut = start + limit - search + int(np.argmin(energy)) * WINDOW + WINDOW // 2
+        pieces.append(samples[start:cut])
+        start = cut
+    pieces.append(samples[start:])
+    return [_wav(piece) for piece in pieces]
+
+
+def _wav(samples: np.ndarray) -> bytes:
+    out = io.BytesIO()
+    with wave.open(out, "wb") as wav:
+        wav.setnchannels(1)
+        wav.setsampwidth(2)
+        wav.setframerate(SAMPLE_RATE)
+        wav.writeframes(samples.astype("<i2").tobytes())
+    return out.getvalue()
