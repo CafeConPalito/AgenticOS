@@ -129,7 +129,7 @@
 ## Archivos
 | Archivo | Cambio |
 |---|---|
-| `docs/adr/0029-terminals-and-cli-install.md` | nuevo: terminal propio como ejecución «terminal», instalación de CLIs, logos |
+| `docs/adr/0029-terminals-cli-install-live-dictation.md` | nuevo: terminal propio como ejecución «terminal», instalación de CLIs, logos |
 | `backend/src/agentic_os/models/run.py` | `RunKind.TERMINAL` (sin migración) |
 | `backend/src/agentic_os/services/runs/manager.py` | `launch_terminal`, cierre de los terminales al apagar |
 | `backend/src/agentic_os/services/adapters/*` | modo «terminal» (sin instrucciones ni MCP) |
