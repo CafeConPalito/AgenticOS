@@ -49,6 +49,7 @@ from agentic_os.services import changes as change_ops
 from agentic_os.services import git, inbox, runrepos, snapshots
 from agentic_os.services import tasks as task_ops
 from agentic_os.services.adapters import CliAdapter, LaunchContext, adapter_for
+from agentic_os.services.adapters.terminal import terminal_adapter
 from agentic_os.services.agent_target import Target, target_for
 from agentic_os.services.architect import adapters as architect_adapters
 from agentic_os.services.architect import agent_proposals
@@ -95,6 +96,8 @@ PERMISSION_DETAIL = {
 
 SHUTDOWN_TIMEOUT = 5.0
 ARCHITECT_NAME, ARCHITECT_COLOR = "Arquitecto", "#B39CFF"  # the violet of the design
+# A terminal of the person's own (phase 23): how Consumo names it, in a neutral color.
+TERMINAL_NAME, TERMINAL_COLOR = "Terminal", "#C9D4E8"  # the neutral color of the interface
 MAX_SUBAGENTS = 3  # live subagents per run
 
 
@@ -151,6 +154,8 @@ class RunManager:
         # Phase 19: the Architect's conversations (set by the app), and its live CLIs by run.
         self.architect: Any = None
         self._architect_runs: dict[str, Cli] = {}
+        # Phase 23: the terminals the person opened by hand, live, by run.
+        self._terminal_runs: dict[str, Cli] = {}
 
     @property
     def _data_dir(self) -> Path:
@@ -553,6 +558,100 @@ class RunManager:
         db.refresh(run)
         return run
 
+    # ------------------------------------------------------------------ the person's terminals
+    def launch_terminal(self, db: Session, *, cli: Cli, account: CliAccount, cwd: str) -> Run:
+        """A CLI the person opens by hand (phase 23, ADR 0029): a run of kind «terminal», with
+        no agent, task or project, in the folder they chose and with the account they chose.
+        Only the hooks and the status line are added, for its usage."""
+        if self.loop is None:
+            raise RuntimeError("RunManager.loop is not set (lifespan not started)")
+        if not Path(cwd).is_dir():
+            raise ValueError(f"not a folder: {cwd}")
+        adapter = terminal_adapter(cli)
+        resolve_executable(cli, self._settings.cli_command_overrides)
+        run = Run(
+            workspace_id=DEFAULT_WORKSPACE,
+            kind=RunKind.TERMINAL,
+            agent_name=TERMINAL_NAME,
+            agent_color=TERMINAL_COLOR,
+            project_name="",
+            account_id=account.id,
+            account_label=account_ops.display_name(account),
+            cli=cli.value,
+            model="",
+            prompt="",
+            cwd=cwd,
+        )
+        db.add(run)
+        db.flush()
+        run.log_path = str(self.runs_dir / f"{run.id}.log")
+        run.cli_version = self.cli_version(cli)
+        run_dir = self.runs_dir / run.id
+        token = self.tokens.issue(run.id, TERMINAL_NAME)
+        ctx = LaunchContext(
+            run_id=run.id,
+            cli=cli,
+            model="",
+            prompt="",
+            permission_mode=PermissionMode.ASK,
+            allowed_tools=(),
+            cwd=Path(cwd),
+            run_dir=run_dir,
+            base_url=self.public_url,
+            token=token,
+            instructions="",
+            hook_command=write_hook_script(run_dir, self.public_url, token),
+            overrides=self._settings.cli_command_overrides,
+            account_env=account_ops.env_for(account),
+        )
+        try:
+            spec = adapter.prepare(ctx)
+        except Exception:
+            self.tokens.revoke(run.id)
+            adapter.cleanup(ctx)
+            raise
+        run.cli_session_id = spec.session_id
+        db.commit()
+        self._terminal_runs[run.id] = cli
+        session = RunSession(
+            run.id,
+            cli,
+            spec,
+            cwd,
+            Path(run.log_path),
+            self.loop,
+            lambda changes, run_id=run.id: self._persist(run_id, changes),
+            run.cols,
+            run.rows,
+            on_end=lambda run_id=run.id: self._on_terminal_end(run_id, adapter, ctx),
+            on_system_event=lambda name, detail="", run_id=run.id: self.add_event(
+                run_id, EventKind.SYSTEM, name, detail
+            ),
+            conversation=True,
+        )
+        try:
+            session.start()
+        except Exception as error:
+            self.tokens.revoke(run.id)
+            self._terminal_runs.pop(run.id, None)
+            adapter.cleanup(ctx)
+            run.status, run.error, run.ended_at = RunStatus.FAILED, str(error), utcnow()
+            db.commit()
+            return run
+        with self._live_lock:
+            if session.alive:
+                self._live[run.id] = session
+        db.refresh(run)
+        return run
+
+    def _on_terminal_end(self, run_id: str, adapter: CliAdapter, ctx: LaunchContext) -> None:
+        try:
+            adapter.cleanup(ctx)
+        finally:
+            self._terminal_runs.pop(run_id, None)
+            self.tokens.revoke(run_id)
+            self.usage.request(run_id, final=True)
+
     def _on_architect_end(self, run_id: str, adapter: CliAdapter, ctx: LaunchContext) -> None:
         try:
             adapter.cleanup(ctx)
@@ -583,7 +682,9 @@ class RunManager:
             "reason": "El Arquitecto solo puede usar las herramientas de su servidor MCP.",
         }
 
-    def _architect_hook(self, run_id: str, event: str, effect: HookEffect) -> None:
+    def _conversation_hook(self, run_id: str, event: str, effect: HookEffect) -> None:
+        """A hook of a CLI without a task (the Architect's, a terminal of the person's own):
+        only its session, transcript and turns matter."""
         session = self.get(run_id)
         if effect.session_id:
             with self._db() as db:
@@ -601,7 +702,8 @@ class RunManager:
             self.add_event(run_id, EventKind.HOOK, event)
         if effect.turn_ended:
             self.usage.request(run_id)
-        if self.architect is not None and (boundary or effect.transcript_path):
+        architect = self.architect is not None and run_id in self._architect_runs
+        if architect and (boundary or effect.transcript_path):
             self.architect.on_hook(run_id, effect, boundary)
 
     def cli_installed(self, cli: Cli) -> bool:
@@ -1694,9 +1796,9 @@ class RunManager:
                 return
             cli = Cli(run.cli)
             effect = interpret(cli, event, payload)
-            if run.kind == RunKind.ARCHITECT and event != STATUS_LINE:
+            if run.kind in (RunKind.ARCHITECT, RunKind.TERMINAL) and event != STATUS_LINE:
                 db.close()
-                self._architect_hook(run_id, event, effect)
+                self._conversation_hook(run_id, event, effect)
                 return
             if event == STATUS_LINE:  # the status line: cost so far, and the account's quota
                 account_id = run.account_id

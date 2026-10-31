@@ -40,6 +40,7 @@ class RunKind(StrEnum):
     DECISION = "decision"  # a call that picked the branches of a fork (phase 13): no terminal
     DESCRIBE = "describe"  # a call that described an image of a document (phase 14): no terminal
     ARCHITECT = "architect"  # the CLI of a conversation with the Architect (phase 19): no task
+    TERMINAL = "terminal"  # a CLI the person opens by hand (phase 23, ADR 0029): no agent
 
 
 # The runs with a terminal: the ones the Ejecuciones list and its counter show (phase 21).
