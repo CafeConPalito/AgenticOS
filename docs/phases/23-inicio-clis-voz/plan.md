@@ -36,6 +36,27 @@
 | S2 | **Instalador en un pseudo-terminal**: el de Antigravity con `--dir` en una carpeta temporal (no toca la instalación real). ¿Se ve la salida en ConPTY? ¿Termina sin preguntar nada? ¿Qué código de salida da al fallar sin red? | Si pide algo por pantalla, el terminal ya deja escribir; si no se ve la salida, se ejecuta con `-NoProfile -NonInteractive` y se vuelca a la vista. |
 | S3 | **Detección tras instalar**: leer el `PATH` del usuario del registro (`HKCU\Environment`) y probar las carpetas conocidas (`%USERPROFILE%\.local\bin`, `%LOCALAPPDATA%\agy\bin`). ¿Basta para encontrar el CLI sin reiniciar la app? | Pedir reiniciar la app al acabar la instalación. |
 
+## Resultados de los spikes (bloque 0, 2026-10-31)
+- **S1 · velocidad de whisper-server** (`spikes/dictation/s23_live_speed.py`, con la muestra `dictado.wav`, en este equipo):
+
+  | Modelo | 3 s | 6 s | 10 s | 20 s |
+  |---|---|---|---|---|
+  | small (el de por defecto) | 2,7 s | 2,9 s | 3,4 s | 4,0 s |
+  | base | 0,7 s | 0,7 s | 0,8 s | 1,2 s |
+  | small con `-ac 512` | 0,9 s | 1,1 s | 1,1 s | 1,2 s |
+
+  - Whisper procesa siempre ventanas de 30 s, así que con el modelo small cada petición cuesta ~3 s aunque el audio sea corto: así no se puede transcribir en vivo.
+  - Con `-ac 512` (una ventana de ~10 s), el mismo modelo tarda ~1 s y en clips de 8 y 10 s da **el mismo texto** que sin ella (comparado palabra a palabra). A partir de ~10 s se perdería audio.
+  - El modelo base es rápido, pero se equivoca más («compreve»).
+  - → **Diseño**: whisper-server arranca con `-ac 512`, y **todo** se transcribe en trozos de como mucho 9 s, cortados en una pausa.
+    - El backend corta él mismo cualquier WAV más largo, por el punto más silencioso cerca del límite, y junta los textos. Así ninguna petición pierde audio, venga de donde venga.
+    - En vivo, una petición cada ~1,5 s cabe de sobra (~1 s cada una).
+- **S2 · instalador en un pseudo-terminal**: no se ejecuta el instalador real en este equipo. Su paso `agy install` cambiaría el `PATH` del usuario, y los dos CLIs ya están instalados.
+  - Se prueba con un instalador simulado: salida en ConPTY, código de salida y error sin red.
+  - El instalador real se prueba en la validación, en una cuenta de Windows sin el CLI (CA7).
+  - Los dos scripts oficiales son no interactivos: no preguntan nada y acaban con un código de salida (leídos el 2026-10-31).
+- **S3 · detección tras instalar**: ✅ los dos instaladores dejan su carpeta en el `PATH` del usuario en el registro. En este equipo están `C:\Users\…\.local\bin` y `%LOCALAPPDATA%\agy\bin`: la segunda con la variable sin expandir, así que hay que expandirla. Leer `HKCU\Environment\Path` (con `winreg`, expandiendo las variables) y buscar ahí el ejecutable basta, sin reiniciar la app.
+
 ## Diseño
 ### 1. Accesos directos en Inicio
 - Componente `HomeShortcuts`, entre el saludo y «Te necesitan». Hay seis botones redondos con emoji:
@@ -94,10 +115,11 @@
 
 ### 4. Transcripción en vivo
 - **Recorder**: `Recording.snapshot(fromSample)` devuelve el WAV de lo grabado desde una muestra dada, sin parar de grabar. Los niveles ya marcan los silencios.
-- **Controller**: mientras se graba, transcribe el audio pendiente cada ~1,5 s (S1 fija el valor):
+- **whisper-server** arranca con `-ac 512` (S1). `WhisperServer.transcribe` corta el WAV en trozos de ≤ 9 s por el punto más silencioso de cada final de trozo, y junta los textos.
+- **Controller**: mientras se graba, transcribe el audio pendiente cada ~1,5 s:
   - El audio pendiente es el que va desde el último trozo **fijado**.
   - Lo que vuelve es el texto **provisional**: se escribe en el campo en el ancla y sustituye al provisional anterior (se sigue su longitud, como ya se sigue el ancla).
-  - Al llegar a una pausa (≥ 0,6 s por debajo del umbral de nivel) o a 20 s de audio pendiente, ese trozo se **fija**: su texto ya no cambia y el siguiente empieza desde ahí. Así cada petición manda poco audio y el texto no salta hacia atrás.
+  - Al llegar a una pausa (≥ 0,6 s por debajo del umbral de nivel) o a 8 s de audio pendiente, ese trozo se **fija**: su texto ya no cambia y el siguiente empieza desde ahí. Así cada petición manda poco audio y el texto no salta hacia atrás.
   - Solo hay una petición parcial a la vez: si una tarda, se salta el turno siguiente.
   - Al parar, se transcribe lo pendiente y queda el texto final.
   - Si el usuario escribe en el campo durante el dictado, el provisional se deja de tocar (`trackAnchor` ya lo detecta) y el resto se añade al final.
@@ -115,7 +137,7 @@
 | `backend/src/agentic_os/services/usage/limits.py` | fuera los terminales al sumar el gasto de la cuenta |
 | `backend/src/agentic_os/services/clis.py`, `services/runs/launcher.py` | instalador oficial por CLI; buscar en el `PATH` del usuario y en las carpetas conocidas |
 | `backend/src/agentic_os/services/cli_install.py`, `api/clis.py` | nuevo: instalación en un pseudo-terminal |
-| `backend/src/agentic_os/services/dictation/service.py`, `api/dictation.py` | `partial`, prioridad de la final |
+| `backend/src/agentic_os/services/dictation/service.py`, `api/dictation.py`, `services/localmodels/whisper.py` | `partial`, prioridad de la final, `-ac 512` y trozos de ≤ 9 s |
 | `frontend/src/pages/home/HomeShortcuts.tsx`, `HomePage.tsx` | accesos directos |
 | `frontend/src/components/terminal/*`, `NewTerminalDialog.tsx`, `api/terminals.ts` | panel de terminales propios |
 | `frontend/src/components/agentic/CliIcon.tsx`, `theme/palettes.ts` | iconos propios de los CLIs; sustituyen a `CliTag` |
@@ -146,7 +168,7 @@
 | `test_cli_install.py`: con un instalador simulado, la salida llega al terminal; al acabar, el CLI se detecta en una carpeta conocida y en el `PATH` del registro (simulado); error con su código | CA7 |
 | `add-cli.test.tsx`: comando visible, confirmación, terminal, «Iniciar sesión» al acabar, error con enlace | CA7 |
 | `dictation-live.test.ts`: con un *recorder* y un backend simulados, el texto provisional se sustituye, se fija en las pausas, el final completa; escribir durante el dictado no se pisa | CA8 |
-| `test_dictation_api.py`: `partial` y prioridad de la final | CA8 |
+| `test_dictation_api.py`, `test_whisper_server.py`: `partial`, prioridad de la final, `-ac 512` en los argumentos, un WAV de 25 s se corta en trozos de ≤ 9 s por las pausas y se juntan los textos; `test_dictation_real.py` sigue en verde con el motor real | CA8 |
 | `dictation-settings.test.tsx`: «Probar micrófono» muestra el texto en vivo; sin motor, solo el nivel y el enlace | CA8 |
 | Prueba en la app instalada: terminal propio con una cuenta y una carpeta cualquiera; dictado en vivo; instalar un CLI que falte | CA2, CA7, CA8 |
 
