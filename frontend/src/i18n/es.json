@@ -3752,7 +3752,15 @@
         "ubuntu": "Ubuntu (la de siempre)",
         "inter": "Inter",
         "atkinson": "Atkinson Hyperlegible (más legible)",
-        "system": "La del sistema"
+        "system": "Del sistema",
+        "title": "Fuente del tema",
+        "description": "Elige una fuente incluida en la app o una instalada en el sistema.",
+        "search": "Buscar una fuente…",
+        "none": "Ninguna fuente se llama así.",
+        "included": "Incluidas",
+        "typed": "Este navegador no deja ver las fuentes del sistema: escribe el nombre de una instalada.",
+        "use": "Usar",
+        "missing": "«{{name}}» no está instalada en este equipo: se usa la fuente del sistema."
       },
       "density": "Densidad",
       "densities": {

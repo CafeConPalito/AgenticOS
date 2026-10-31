@@ -37,7 +37,11 @@ export function resolveTheme(id: string, custom: ThemeDefinition[]): ResolvedThe
   }
   for (const theme of chain) {
     Object.assign(resolved.colors, theme.colors)
-    if (theme.font) resolved.font = theme.font
+    // A theme's own font takes over a font of the system it inherited, unless it sets one too.
+    if (theme.font) {
+      resolved.font = theme.font
+      resolved.fontFamily = null
+    }
     if ('font_family' in theme && theme.font_family) resolved.fontFamily = theme.font_family
     if (theme.density) resolved.density = theme.density
     if (theme.radius != null) resolved.radius = theme.radius

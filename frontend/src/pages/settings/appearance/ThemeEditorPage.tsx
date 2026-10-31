@@ -23,13 +23,12 @@ import {
   type Base,
   DENSITIES,
   type Density,
-  FONTS,
-  type Font,
   type ThemeDefinition,
   type TokenName,
 } from '@/theme/model'
 import { resolveTheme } from '@/theme/resolve'
 import { useTheme } from '@/theme/ThemeProvider'
+import { FontPicker } from './FontPicker'
 import { TOKEN_GROUPS } from './theme-io'
 import { ThemePreview } from './ThemePreview'
 
@@ -179,18 +178,13 @@ function Editor({ saved }: { saved: ThemeDefinition }) {
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="theme-font">{t(`${e}.font`)}</Label>
-                <Select value={resolved.font} onValueChange={(font) => set({ font: font as Font })}>
-                  <SelectTrigger id="theme-font" className="w-[290px] max-w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {FONTS.map((font) => (
-                      <SelectItem key={font} value={font}>
-                        {t(`${e}.fonts.${font}`)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <FontPicker
+                  id="theme-font"
+                  value={{ font: resolved.font, fontFamily: resolved.fontFamily }}
+                  onChange={({ font, fontFamily }) =>
+                    set(fontFamily ? { font_family: fontFamily } : { font, font_family: undefined })
+                  }
+                />
               </div>
               <div className="flex flex-col gap-1.5">
                 <span className="text-sm font-medium">{t(`${e}.density`)}</span>
