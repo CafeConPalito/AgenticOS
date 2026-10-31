@@ -106,7 +106,11 @@ describe('TerminalDock (phase 23: terminals of one\u2019s own)', () => {
     const { router } = renderApp('/')
 
     const tabs = await within(dock()!).findAllByRole('tab')
-    expect(tabs.map((t) => t.textContent)).toEqual(['CCPersonal · yo', 'CCTrabajo · web'])
+    expect(tabs.map((t) => t.textContent)).toEqual([
+      'Claude CodePersonal · yo',
+      'Claude CodeTrabajo · web',
+    ])
+    expect(within(tabs[0]).getByRole('img', { name: 'Claude Code' })).toBeInTheDocument()
     await waitFor(() => expect(Socket.instances.at(-1)?.url).toContain(`/runs/${first.id}/`))
     await waitFor(() =>
       expect(backend.callsTo('POST', `/api/runs/${first.id}/control`)[0]?.body).toMatchObject({

@@ -1,10 +1,11 @@
+import { CliIcon } from '@/components/agentic/CliIcon'
 import { Plus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
 import { toast } from 'sonner'
 import { useAgentTemplates, useCreateAgent } from '@/api/agents'
 import type { AgentTemplate } from '@/api/types'
-import { AgentAvatar, CliTag } from '@/components/agentic/primitives'
+import { AgentAvatar } from '@/components/agentic/primitives'
 import { errorMessage } from '@/lib/form-errors'
 import { cn } from '@/lib/utils'
 
@@ -80,7 +81,7 @@ export function TemplatePicker({
               </div>
               <div className="text-xs text-muted-foreground">{template.role}</div>
             </div>
-            <CliTag cli={template.cli} label={t(`cli.${template.cli}`)} size={20} />
+            <CliIcon cli={template.cli} label={t(`cli.${template.cli}`)} size={20} />
           </div>
           {!compact && (
             <p className="text-xs text-pretty text-muted-foreground">{template.description}</p>

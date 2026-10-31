@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 import { useAccounts, useProbeAccount } from '@/api/accounts'
 import { useAgyQuota, useClis, useRefreshClis, useSetAgyQuota } from '@/api/clis'
 import type { Account, CliId, CliInfo } from '@/api/types'
-import { CliTag } from '@/components/agentic/primitives'
+import { CliIcon } from '@/components/agentic/CliIcon'
 import { PageContainer, PageHeader } from '@/components/page'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -133,7 +133,7 @@ function CliSection({
       className="overflow-hidden rounded-2xl border border-sep shadow-card bg-card-grad"
     >
       <header className="flex flex-wrap items-center gap-3 border-b border-sep px-4 py-3.5">
-        <CliTag cli={cli.id} label={t(`cli.${cli.id}`)} size={32} />
+        <CliIcon cli={cli.id} label={t(`cli.${cli.id}`)} size={32} />
         <div className="min-w-0 flex-1">
           <h2 className="text-[14px] font-medium">{cli.name}</h2>
           <p className="text-xs text-muted-foreground">

@@ -1,3 +1,4 @@
+import { CliIcon } from '@/components/agentic/CliIcon'
 import {
   DndContext,
   type DragEndEvent,
@@ -32,7 +33,7 @@ import { useAgents } from '@/api/agents'
 import { useProjects } from '@/api/projects'
 import { useReorderQueue, useScheduler, useSetSchedulerPaused, useTasks } from '@/api/tasks'
 import type { Agent, Task, TaskStatus } from '@/api/types'
-import { AgentAvatar, CliTag } from '@/components/agentic/primitives'
+import { AgentAvatar } from '@/components/agentic/primitives'
 import { EmptyState } from '@/components/EmptyState'
 import { Button } from '@/components/ui/button'
 import { errorMessage } from '@/lib/form-errors'
@@ -421,7 +422,7 @@ function AgentQueueRow({
             <div className="truncate text-[13.5px] font-medium">{agent.name}</div>
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
               {agent.role}
-              <CliTag cli={agent.cli} label={t(`cli.${agent.cli}`)} size={16} />
+              <CliIcon cli={agent.cli} label={t(`cli.${agent.cli}`)} size={16} />
             </div>
           </div>
         </div>

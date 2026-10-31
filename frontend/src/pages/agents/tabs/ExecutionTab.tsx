@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 import { useClis, useRefreshClis } from '@/api/clis'
 import type { CliId, ModelOption, PermissionMode } from '@/api/types'
 import { MAX_CONCURRENCY, PERMISSION_MODES, TOOLS } from '@/api/types'
-import { CliTag } from '@/components/agentic/primitives'
+import { CliIcon } from '@/components/agentic/CliIcon'
 import { Field } from '@/components/page'
 import { Button } from '@/components/ui/button'
 import {
@@ -133,7 +133,7 @@ export function ExecutionTab() {
                         field.onChange(id)
                       }}
                     >
-                      <CliTag cli={id} label={t(`cli.${id}`)} size={28} />
+                      <CliIcon cli={id} label={t(`cli.${id}`)} size={28} />
                       <span className="min-w-0">
                         <span className="block font-medium">{t(`cli.${id}`)}</span>
                         <span className="block text-xs text-muted-foreground">

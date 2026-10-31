@@ -5,7 +5,6 @@ import { Badge } from '@/components/ui/badge'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { avatarSource, useAgentAvatar, useApiBase } from '@/lib/avatars'
 import { cn } from '@/lib/utils'
-import type { CliId } from '@/api/types'
 import { readableOn } from '@/theme/contrast'
 
 export type StatusTone =
@@ -157,18 +156,3 @@ export function ProjectChip({
 }
 
 /** The two-letter tag of a CLI («CC», «AG»). */
-export const CLI_TAG: Record<CliId, string> = { claude: 'CC', agy: 'AG' }
-
-/** CLI marker («CC», «AG»). To be replaced by official logos following each brand's guidelines. */
-export function CliTag({ cli, label, size = 22 }: { cli: CliId; label: string; size?: number }) {
-  return (
-    <span
-      role="img"
-      aria-label={label}
-      className="grid shrink-0 place-items-center rounded-md border bg-primary font-mono font-bold text-white"
-      style={{ width: size, height: size, fontSize: size > 26 ? 11 : 10 }}
-    >
-      {CLI_TAG[cli]}
-    </span>
-  )
-}

@@ -4,7 +4,8 @@ import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router'
 import type { Account, CliInfo, HomeAgent, HomeProject, LimitState, UsageToday } from '@/api/types'
-import { AgentAvatar, CLI_TAG } from '@/components/agentic/primitives'
+import { CliIcon } from '@/components/agentic/CliIcon'
+import { AgentAvatar } from '@/components/agentic/primitives'
 import { formatPercent, formatTokensUnit, formatUsd } from '@/lib/format'
 import { highestWindow, windowName } from '@/lib/quota'
 import { cn } from '@/lib/utils'
@@ -214,9 +215,7 @@ function CliRow({ cli, accounts }: { cli: CliInfo; accounts: Account[] }) {
           'grid w-[calc(100%+1rem)] grid-cols-[24px_minmax(0,1fr)_56px_34px_14px] items-center gap-x-2 gap-y-px py-1.5 text-left',
         )}
       >
-        <span className="grid h-[18px] place-items-center rounded-[5px] border font-mono text-[10px] font-bold text-muted-foreground">
-          {CLI_TAG[cli.id]}
-        </span>
+        <CliIcon cli={cli.id} label={t(`cli.${cli.id}`)} size={18} />
         <span className="truncate">{t(`cli.${cli.id}`)}</span>
         <LevelBar ratio={worst} />
         <LevelPercent ratio={worst} />

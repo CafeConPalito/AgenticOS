@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 import { isActive, useRunControl } from '@/api/runs'
 import { useCloseTerminal, useTerminals } from '@/api/terminals'
 import type { Run } from '@/api/types'
-import { CliTag } from '@/components/agentic/primitives'
+import { CliIcon } from '@/components/agentic/CliIcon'
 import { errorMessage } from '@/lib/form-errors'
 import { cn } from '@/lib/utils'
 import { useDock } from './dock-store'
@@ -105,7 +105,7 @@ function OpenDock() {
                   onClick={() => setActive(run.id)}
                   className="flex items-center gap-[7px] py-1 pr-1 pl-3 text-xs whitespace-nowrap"
                 >
-                  <CliTag cli={run.cli} label={t(`cli.${run.cli}`)} size={16} />
+                  <CliIcon cli={run.cli} label={t(`cli.${run.cli}`)} size={16} />
                   {name}
                 </button>
                 <button
