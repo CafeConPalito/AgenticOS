@@ -114,10 +114,17 @@ def test_claude_takes_away_the_tools_that_are_not_allowed_in_every_mode(
 
 
 def test_without_connections_the_claude_flags_do_not_change(tmp_path: Path):
-    plain = adapter_for(Cli.CLAUDE).prepare(context(tmp_path, Cli.CLAUDE)).argv
+    # An agent that may propose agents: otherwise propose_agent is disallowed (phase 19).
+    plain = (
+        adapter_for(Cli.CLAUDE)
+        .prepare(replace(context(tmp_path, Cli.CLAUDE), can_propose_agents=True))
+        .argv
+    )
     empty = adapter_for(Cli.CLAUDE).prepare(
         replace(
-            context(tmp_path, Cli.CLAUDE, run_id="r2"), connections=runtime.RunConnections("claude")
+            context(tmp_path, Cli.CLAUDE, run_id="r2"),
+            connections=runtime.RunConnections("claude"),
+            can_propose_agents=True,
         )
     )
     assert "--disallowedTools" not in plain and "--disallowedTools" not in empty.argv
@@ -137,7 +144,8 @@ def test_agy_gets_the_servers_in_its_plugin_with_the_values_in_clear(
         f"/api/connections/{made['id']}", json={"tool_mode": "selected", "allowed_tools": ["a"]}
     )
     prepared = _prepare(client, Cli.AGY)
-    ctx = replace(context(tmp_path, Cli.AGY), connections=prepared)
+    # An agent that may propose agents: otherwise propose_agent is disabled (phase 19).
+    ctx = replace(context(tmp_path, Cli.AGY), connections=prepared, can_propose_agents=True)
     adapter_for(Cli.AGY).prepare(ctx)
     config = json.loads((plugin_dir(ctx.cwd) / "mcp_config.json").read_text("utf-8"))["mcpServers"]
     assert set(config) == {"agentic-os", "db", "web"}
