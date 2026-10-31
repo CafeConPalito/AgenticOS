@@ -1,3 +1,4 @@
+import i18n from '@/i18n'
 import { saveFile } from '@/lib/save-file'
 import { BUILTIN_IDS } from '@/theme/builtin'
 import { type Appearance, type ThemeDefinition, themeSchema, type TokenName } from '@/theme/model'
@@ -127,7 +128,7 @@ export function downloadTheme(theme: ThemeDefinition) {
     name: `${theme.id}.theme.json`,
     text: JSON.stringify(theme, null, 2),
     type: 'application/json',
-    filter: 'Tema',
+    filter: i18n.t('saveFilters.theme'),
     extensions: ['json'],
   })
 }

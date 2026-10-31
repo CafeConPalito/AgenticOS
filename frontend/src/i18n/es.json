@@ -76,6 +76,11 @@
       "emptyDescription": "Cuando tus agentes trabajen, aquí verás sus tokens, su coste y sus horas."
     }
   },
+  "saveFilters": {
+    "agent": "Agente de Agentic OS",
+    "theme": "Tema de Agentic OS",
+    "csv": "CSV"
+  },
   "common": {
     "downloaded": "Descargado",
     "savedAt": "Guardado en {{path}}",

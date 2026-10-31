@@ -72,9 +72,7 @@ function Row({ model }: { model: LocalModel }) {
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-[13.5px] font-medium">{model.title}</span>
             {inUse && <Badge>{t('localModels.inUse')}</Badge>}
-            {!inUse && (model.default || model.selected) && (
-              <Badge variant="outline">{t('localModels.default')}</Badge>
-            )}
+            {!inUse && model.default && <Badge variant="outline">{t('localModels.default')}</Badge>}
             {model.bundled && <Badge variant="secondary">{t('localModels.bundled')}</Badge>}
             {model.needs_account && model.state !== 'ready' && (
               <Badge variant="outline">{t('localModels.needsAccount')}</Badge>

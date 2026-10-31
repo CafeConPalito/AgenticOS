@@ -1,3 +1,4 @@
+import i18n from '@/i18n'
 import { saveFile } from '@/lib/save-file'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, apiFetch, getApiBaseUrl } from '@/lib/api'
@@ -154,7 +155,7 @@ export async function downloadAgent(agent: Agent): Promise<string | null | undef
     name: `${agent.name.replace(/[^\w.-]+/g, '-') || 'agente'}.agent.json`,
     text: JSON.stringify(await response.json(), null, 2),
     type: 'application/json',
-    filter: 'Agente',
+    filter: i18n.t('saveFilters.agent'),
     extensions: ['json'],
   })
 }

@@ -282,7 +282,7 @@ export function BranchPanel({
       </Field>
       {branches > 1 && (
         <p className="text-[12.5px] text-muted-foreground">
-          {link.condition.trim() || link.always
+          {link.condition.trim() && !link.always
             ? t('pipeline.conditionHelp')
             : t('pipeline.alwaysHelp')}
         </p>

@@ -54,3 +54,27 @@ def test_the_architects_runs_are_listed_and_counted_like_the_list(api: TestClien
     # They have no agent: filtering by one leaves them out.
     agent = api.post("/api/agents", json={"name": "QA", "role": "QA"}).json()
     assert api.get("/api/runs", params={"agent_id": agent["id"]}).json() == []
+
+
+def test_a_link_marked_always_is_saved_without_its_condition(api: TestClient, tmp_path):
+    """Phase 21: «always» has one form in the data, no condition (code review)."""
+    folder = tmp_path / "web"
+    folder.mkdir()
+    project = api.post("/api/projects", json={"name": "Web", "path": str(folder)}).json()
+    body = {
+        "stages": [{"name": n} for n in "ABCD"],
+        "links": [
+            {"source": 0, "target": 1, "condition": "toca la API", "always": True},
+            {"source": 0, "target": 2, "condition": "toca los datos"},
+            {"source": 1, "target": 3},
+            {"source": 2, "target": 3},
+        ],
+    }
+    saved = api.put(f"/api/projects/{project['id']}/pipeline", json=body)
+    assert saved.status_code == 200, saved.text
+    links = {
+        (x["always"], x["condition"])
+        for x in saved.json()["links"]
+        if x["condition"] or x["always"]
+    }
+    assert links == {(True, ""), (False, "toca los datos")}

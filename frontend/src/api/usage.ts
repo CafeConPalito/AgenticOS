@@ -1,3 +1,4 @@
+import i18n from '@/i18n'
 import { saveFile } from '@/lib/save-file'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, getApiBaseUrl } from '@/lib/api'
@@ -170,9 +171,10 @@ export async function downloadSessionsCsv(f: UsageFilters): Promise<string | nul
   const name = /filename="([^"]+)"/.exec(disposition)?.[1] ?? 'consumo.csv'
   return saveFile({
     name,
-    text: await response.text(),
+    // With its BOM, which `text()` would drop: Excel needs it to read the accents.
+    text: new TextDecoder('utf-8', { ignoreBOM: true }).decode(await response.arrayBuffer()),
     type: 'text/csv',
-    filter: 'CSV',
+    filter: i18n.t('saveFilters.csv'),
     extensions: ['csv'],
   })
 }

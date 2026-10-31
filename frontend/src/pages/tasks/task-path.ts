@@ -20,7 +20,6 @@ export function taskPath(
       key: l.id,
       source: l.from_stage_id,
       target: l.to_stage_id,
-      labelled: true,
     })),
     rejects: {},
   }
