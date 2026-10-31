@@ -212,7 +212,7 @@ def test_the_decider_uses_the_first_cli_with_a_usable_account(db_factory, monkey
         agy.session_state = SessionState.OK
         pipeline.decider_model = "gemini-pro"
         assert decider.resolve_config(db, pipeline, OVERRIDES).model == "gemini-pro"
-        monkeypatch.setattr("agentic_os.services.runs.launcher.shutil.which", lambda name: None)
+        monkeypatch.setattr("agentic_os.services.cli_paths.shutil.which", lambda name: None)
         missing = decider.resolve_config(db, Pipeline(decider_cli="agy"), {})
         assert "no está instalado" in missing
 

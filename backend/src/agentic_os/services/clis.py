@@ -8,7 +8,6 @@ so results are cached for a while; callers can force a refresh.
 from __future__ import annotations
 
 import json
-import shutil
 import subprocess
 import threading
 import time
@@ -21,7 +20,7 @@ from pydantic import BaseModel
 
 from agentic_os.db.base import utcnow
 from agentic_os.models.agent import Cli
-from agentic_os.services import proc
+from agentic_os.services import cli_paths, proc
 
 CACHE_TTL = 600.0
 VERSION_TIMEOUT = 15
@@ -111,7 +110,7 @@ SPECS = [
 
 @dataclass
 class CliCatalog:
-    which: Callable[[str], str | None] = shutil.which
+    which: Callable[[str], str | None] = cli_paths.which
     run: Runner = run_command
     ttl: float = CACHE_TTL
     _cache: list[CliInfo] | None = None

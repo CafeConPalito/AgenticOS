@@ -254,7 +254,7 @@ def test_a_logged_out_account_raises_a_notice_that_goes_away_when_it_is_back(
 def test_probing_without_the_cli_installed_says_so(client: TestClient, monkeypatch):
     from agentic_os.services.runs import launcher
 
-    monkeypatch.setattr(launcher.shutil, "which", lambda name: None)
+    monkeypatch.setattr(launcher.cli_paths.shutil, "which", lambda name: None)
     response = client.post(f"/api/accounts/{by_cli(client, 'claude')['id']}/probe")
     assert response.status_code == 409 and response.json()["detail"]["code"] == "cli_not_installed"
 
@@ -280,7 +280,7 @@ def test_probing_a_missing_cli_is_refused_without_touching_the_account(
 ):
     from agentic_os.services.runs import launcher
 
-    monkeypatch.setattr(launcher.shutil, "which", lambda name: None)
+    monkeypatch.setattr(launcher.cli_paths.shutil, "which", lambda name: None)
     claude = by_cli(client, "claude")
     refused = client.post(f"/api/accounts/{claude['id']}/probe")
     assert refused.status_code == 409 and refused.json()["detail"]["code"] == "cli_not_installed"
