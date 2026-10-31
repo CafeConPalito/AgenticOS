@@ -3,7 +3,7 @@ into every run of the project."""
 
 from __future__ import annotations
 
-from sqlalchemy import select
+from sqlalchemy import literal_column, select
 from sqlalchemy.orm import Session
 
 from agentic_os.models import AuthorKind, MemoryNote
@@ -18,7 +18,9 @@ def list_notes(db: Session, project_id: str) -> list[MemoryNote]:
     query = (
         select(MemoryNote)
         .where(MemoryNote.project_id == project_id)
-        .order_by(MemoryNote.created_at, MemoryNote.id)
+        # Two notes in the same clock tick (15 ms on Windows) keep the order they were written
+        # in: the random id put them either way (phase 21, a flaky test). SQLite's rowid.
+        .order_by(MemoryNote.created_at, literal_column("rowid"))
     )
     return list(db.scalars(query))
 
