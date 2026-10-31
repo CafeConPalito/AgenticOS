@@ -15,6 +15,7 @@ frontend/dist/
 
 # Tauri / Rust
 desktop/src-tauri/target/
+spikes/themes/fonts/target/
 desktop/src-tauri/binaries/
 
 # Datos locales de la app

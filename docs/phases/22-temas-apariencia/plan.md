@@ -38,6 +38,14 @@
 |---|---|---|
 | S1 | **Fuentes del sistema en Windows**. (a) ¿`fontdb` (Rust puro, MIT) lista las fuentes de `C:\Windows\Fonts` y también las instaladas solo para el usuario (`%LOCALAPPDATA%\Microsoft\Windows\Fonts`)? (b) ¿WebView2 pinta con `font-family: "<nombre>"` cada familia que da `fontdb`, incluidas las de varios pesos («Segoe UI», «Cascadia Code»)? (c) ¿Cuánto tarda la primera lista y cuánto añade al binario? (d) ¿WebView2 ofrece `window.queryLocalFonts()`? | (a) Si `fontdb` no ve las fuentes del usuario, se leen las dos claves `…\CurrentVersion\Fonts` del registro (HKLM y HKCU) con `winreg`. (b) Se guarda el nombre tipográfico (`typographic family`) en lugar del de la familia antigua. (d) Si existe y no pide permiso, puede sustituir al comando de Rust; se decide con los datos. |
 
+## Resultados del spike (bloque 0, 2026-10-31)
+El script está en `spikes/themes/fonts/` y la lista completa, en [`evidencias/s1-fuentes.txt`](evidencias/s1-fuentes.txt).
+
+- **(a)** ✅ `fontdb` 0.24 recorre `C:\Windows\Fonts` y las dos carpetas de fuentes del usuario (`%LOCALAPPDATA%` y `%APPDATA%\Microsoft\Windows\Fonts`). En este equipo encuentra 295 caras y 116 familias, con su nombre tipográfico: «Segoe UI», no «Segoe UI Semibold».
+- **(b)** ⚠️ Edge en modo *headless* usa el mismo motor que WebView2. Midiendo con un *canvas*, pinta por su nombre 114 de las 116 familias. Las dos que fallan son **fuentes variables con instancias con nombre** (Segoe UI Variable y Sitka): el motor las expone con otros nombres, como «Sitka Text». → El frontend comprueba cada familia con la medición en *canvas* que ya estaba prevista para avisar de una fuente que falta, y **no muestra las que no se pintan**.
+- **(c)** ✅ La primera lista tarda 871 ms en frío y 18–20 ms después; el *shell* la calcula una vez, fuera del hilo principal. El *crate* pesa poco: el ejecutable del script ocupa 210 KB.
+- **(d)** `window.queryLocalFonts` existe, pero pide permiso. Se queda como lista para el navegador, como estaba previsto; en la app de escritorio se usa el comando de Rust.
+
 ## Diseño
 ### 1. Formato del tema: `agentic-os.theme` v2 (ADR 0028)
 - La v2 es una **ampliación compatible**: todo fichero v1 es un v2 válido.
