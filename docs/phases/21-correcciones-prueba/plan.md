@@ -119,14 +119,16 @@ La causa de cada fallo está localizada en el código (2026-10-29). Un bloque po
   - **Plantilla NSIS propia**: amplía lo decidido en la fase 20, enmienda 1. Al actualizar Tauri hay que revisarla, y un test lo recuerda.
   - **Rama sin condición = siempre**: cambia la regla de la fase 13. Se añade una nota al ADR 0020.
 
-## Estado (2026-10-29, fin de la sesión)
-Bloques 1–6 hechos y commiteados, cada uno con sus tests (enfocados en verde). Instalador compilado y probado por el usuario en la app instalada.
+## Estado (2026-10-31)
+Bloques 1–6 hechos, más los dos fallos encontrados en la prueba del 2026-10-29 (spec, apartado G). Tests enfocados en verde.
 
-**Comprobado por el usuario en la app instalada**: textos de la última pantalla del instalador en blanco (CA2), exportar agente, tema y CSV (CA4), Ajustes › Limpieza (CA5), lista de micrófonos tras el permiso (CA7, la parte de la lista), foto del agente (CA9), Conocimiento/Skills/Conexiones sin hueco (CA8), «Nuevo equipo» sin agentes (CA10), ejecuciones del Arquitecto en el listado (CA3).
+**Comprobado por el usuario en la app instalada (2026-10-29)**: CA2, CA3, CA4, CA5, CA7 (la lista), CA8, CA9, CA10.
+
+**Resuelto el 2026-10-31**:
+- **CA1**: el usuario veía el icono de NSIS, pero el `.exe` generado lleva el icono de la app en los seis tamaños (16–256 px, comprobado en sus recursos con `pefile`). Era la caché de iconos de Windows: el fichero del escritorio se sobrescribió con el mismo nombre. El desinstalador también lleva ya el icono de la app (`UNINSTALLERICON` en la plantilla).
+- **CA13, motor de voz**: el zip se descomprime en `bin/` y el catálogo buscaba `Release/whisper-server.exe` fuera de él; ahora es `bin/Release/whisper-server.exe`. Los *fakes* de los tests tenían la misma estructura equivocada y también se han corregido. Con la ruta buena, el motor que ya está descargado en la app instalada cuenta como instalado sin volver a descargarlo.
+- **CA14, diálogo de equipo**: los botones del pie pasan a la línea siguiente en vez de desbordar.
 
 **Pendiente**:
-1. **CA1, el instalador sigue con el icono de NSIS** según el usuario, aunque el script generado ya define `INSTALLERICON` y `UNINSTALLERICON` con `icons/icon.ico`. Comprobar primero si es la caché de iconos de Windows (el `.exe` del escritorio se sobrescribió con el mismo nombre): mirar el icono del `.exe` recién generado en `target/release/bundle/nsis/`, con otro nombre o tras limpiar la caché. Si de verdad no lo lleva, revisar `icons/icon.ico` (tamaños dentro del `.ico`) y el `!define MUI_ICON` del script.
-2. **Fallo nuevo: el motor de voz no se instala** (Ajustes › Dictado / Modelos locales). La descarga real del motor quedó pendiente como prueba manual en la fase 16. Reproducir en la app instalada, leer el registro del backend y decidir con el usuario si entra en esta fase (la spec dice que los fallos nuevos se anotan y se decide con él).
-3. **Fallo nuevo: el diálogo de editar equipo tiene scroll horizontal** (`pages/home/TeamDialog.tsx`). Pequeño; proponer incluirlo.
-4. **CA11 por confirmar**: el usuario anotó «guardar pipeline sin condición» sin decir si funciona. Preguntarle; en los tests de backend y frontend se guarda y la tarea pasa por todas las ramas.
-5. **Suite completa del backend sin pasar**: se paró al 4 % (sin fallos hasta ahí) porque el sistema se quedó sin memoria con la compilación a la vez. Lanzarla sola cuando el usuario lo pida; falta también la suite del frontend, lint, `/code-review` y `validacion.md`.
+1. Confirmar con el usuario CA11 (guardar un pipeline con una rama sin condición) y CA1, CA13 y CA14 con un instalador nuevo, copiado con otro nombre para esquivar la caché de iconos.
+2. Suites completas del backend y del frontend (una detrás de otra, por memoria), lint, `/code-review` y `validacion.md`.
