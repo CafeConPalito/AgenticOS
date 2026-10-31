@@ -25,7 +25,7 @@ Dictado  : test_dictation_real y test_dictation_e2e con el motor real de whisper
 ## Criterios de aceptación
 | # | Criterio | Estado | Evidencia |
 |---|---|---|---|
-| CA1 | Icono de la app en el `.exe` del instalador y en sus ventanas | ✅ (pendiente de que el usuario lo vea con el instalador nuevo) | `bundle_checks`; los recursos del `.exe` (`pefile`) llevan el icono de la app en los seis tamaños, de 16 a 256 px. El icono de NSIS que vio el usuario era la caché de iconos de Windows. El desinstalador también lleva el icono de la app |
+| CA1 | Icono de la app en el `.exe` del instalador y en sus ventanas | ✅ | Comprobado por el usuario con el instalador nuevo (2026-10-31); `bundle_checks`; los recursos del `.exe` (`pefile`) llevan el icono de la app en los seis tamaños, de 16 a 256 px. El icono de NSIS que vio el usuario era la caché de iconos de Windows. El desinstalador también lleva el icono de la app |
 | CA2 | Textos de la última pantalla legibles | ✅ | Comprobado por el usuario en el instalador (2026-10-29) |
 | CA3 | El Arquitecto en el listado de Ejecuciones; el contador coincide | ✅ | `test_phase21_fixes.py`, `runs.test.tsx`; comprobado por el usuario |
 | CA4 | Exportar agente, tema y CSV en la app de escritorio y en el navegador | ✅ | `save-file.test.ts`, `export.rs`; comprobado por el usuario en los tres sitios |
@@ -37,8 +37,8 @@ Dictado  : test_dictation_real y test_dictation_e2e con el motor real de whisper
 | CA10 | Equipo sin agentes | ✅ | `home.test.tsx`; comprobado por el usuario |
 | CA11 | Rama sin condición: se guarda y se toma siempre | ✅ | `test_lanes.py`, `test_pipeline_graph.py`, `test_migration_0023.py`, `pipeline-editor.test.tsx`; comprobado por el usuario |
 | CA12 | Suites, lint y `/code-review` en verde | ✅ | arriba y en la tabla siguiente |
-| CA13 | El motor de voz descargado cuenta como instalado | ✅ (pendiente de que el usuario lo pruebe) | `test_local_models.py::test_the_whisper_engine_counts_as_installed_once_unpacked`; tests de dictado con el motor real |
-| CA14 | Editar equipo sin scroll horizontal | ✅ (pendiente de que el usuario lo pruebe) | Pie del diálogo con `flex-wrap` |
+| CA13 | El motor de voz descargado cuenta como instalado | ✅ | Comprobado por el usuario en la app instalada (2026-10-31); `test_local_models.py::test_the_whisper_engine_counts_as_installed_once_unpacked`; tests de dictado con el motor real |
+| CA14 | Editar equipo sin scroll horizontal | ✅ | Comprobado por el usuario en la app instalada (2026-10-31); pie del diálogo con `flex-wrap` |
 
 ## Code review
 `/code-review medium` sobre la rama frente a `main`: 10 hallazgos, todos corregidos (`4a7c253`).
@@ -72,7 +72,7 @@ Dictado  : test_dictation_real y test_dictation_e2e con el motor real de whisper
   - El orden por `rowid` de las notas es propio de SQLite: el modo servidor (fase 30, Postgres) necesitará otro desempate.
 
 ## Cierre
-- [ ] OK del usuario
-- [ ] Merge a `main` (`--no-ff`)
-- [ ] Tag `v0.9.1` y versión `0.9.1` en los manifiestos
-- [ ] `docs/roadmap.md` actualizado
+- [x] OK del usuario (2026-10-31)
+- [x] Merge a `main` (`--no-ff`)
+- [x] Tag `v0.9.1` y versión `0.9.1` en los manifiestos
+- [x] `docs/roadmap.md` actualizado
