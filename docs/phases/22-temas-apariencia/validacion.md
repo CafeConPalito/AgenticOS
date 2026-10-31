@@ -20,7 +20,7 @@ Desktop  (cargo test): 19 en verde, entre ellos fonts (familias únicas, sin ocu
 | CA2 | El filtro de la galería muestra solo los temas claros u oscuros, propios incluidos, y se recuerda | ✅ | `appearance.test.tsx`; [`galeria-oscuros.png`](evidencias/galeria-oscuros.png) |
 | CA3 | «Seguir al sistema» ya no existe; quien lo tenía conserva el tema que veía; el filtro arranca según Windows | ✅ | `test_settings_appearance.py` (documentos de la fase 20 con `mode: system` y `fixed`), `ThemeProvider.test.tsx` (sistema claro y oscuro, copia local), `appearance.test.tsx` |
 | CA4 | «Nuevo tema» crea un tema claro u oscuro sin partir de otro, y se edita, guarda, exporta e importa | ✅ | `appearance.test.tsx`, `test_settings_appearance.py` |
-| CA5 | Un tema con una fuente del sistema la aplica en toda la app instalada | ⏳ pendiente de la prueba del usuario | `font-picker.test.tsx`, `ThemeProvider.test.tsx`; spike S1 (WebView2 pinta 114 de 116 familias por su nombre) |
+| CA5 | Un tema con una fuente del sistema la aplica en toda la app instalada | ✅ | Comprobado por el usuario en la app instalada (2026-10-31); `font-picker.test.tsx`, `ThemeProvider.test.tsx`; spike S1 (WebView2 pinta 114 de 116 familias por su nombre) |
 | CA6 | Una fuente que falta usa la del sistema y el editor avisa | ✅ | `font-picker.test.tsx`, `system-fonts.test.ts` |
 | CA7 | Los temas exportados en la fase 20 se siguen importando | ✅ | `appearance.test.tsx` (fichero v1), `test_settings_appearance.py` |
 | CA8 | Al menos 25 temas, claros y oscuros, con los de VS Code; contraste comprobado y licencia en Acerca de | ✅ | 28 temas (12 claros, 16 oscuros): `derive.test.ts`, `contrast.test.ts` (los 28), `about.test.tsx`, `test_builtin_themes.py`; licencias MIT comprobadas en GitHub (2026-10-31) |
@@ -54,7 +54,7 @@ Desktop  (cargo test): 19 en verde, entre ellos fonts (familias únicas, sin ocu
   - Un tema incluido nuevo exige su id en el backend; `test_builtin_themes.py` lo vigila.
 
 ## Cierre
-- [ ] OK del usuario (prueba en la app instalada: CA5)
-- [ ] Merge a `main` (`--no-ff`)
-- [ ] Tag `v0.9.2` y versión `0.9.2` en los manifiestos
-- [ ] `docs/roadmap.md` actualizado
+- [x] OK del usuario (2026-10-31, tras probar la app instalada)
+- [x] Merge a `main` (`--no-ff`)
+- [x] Tag `v0.9.2` y versión `0.9.2` en los manifiestos
+- [x] `docs/roadmap.md` actualizado

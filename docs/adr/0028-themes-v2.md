@@ -1,6 +1,6 @@
 # ADR 0028: Temas v2 (desde cero, fuentes del sistema y temas de terceros)
 
-- **Estado**: propuesto (plan aprobado el 2026-10-31; se acepta al cerrar la fase 22)
+- **Estado**: aceptado (plan aprobado y fase 22 cerrada el 2026-10-31)
 - **Fecha**: 2026-10-31
 - **Contexto de decisión**: fase 22 ([spec](../phases/22-temas-apariencia/spec.md) · [plan](../phases/22-temas-apariencia/plan.md))
 
