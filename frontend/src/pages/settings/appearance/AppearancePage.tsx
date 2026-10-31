@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 import { Segmented } from '@/pages/usage/parts'
-import { BUILTIN_IDS } from '@/theme/builtin'
+import { BUILTIN_THEMES, type BuiltinId } from '@/theme/builtin'
 import type { Appearance, Base, ThemeDefinition } from '@/theme/model'
 import { resolveTheme } from '@/theme/resolve'
 import { useTheme } from '@/theme/ThemeProvider'
@@ -62,13 +62,16 @@ export default function AppearancePage() {
   const a = 'appearance'
 
   const themes = useMemo<ThemeEntry[]>(() => {
-    const baseOf = (id: string) => resolveTheme(id, appearance.custom).base
     return [
-      ...BUILTIN_IDS.map((id) => ({ id, name: t(`${a}.builtin.${id}`), base: baseOf(id) })),
+      ...BUILTIN_THEMES.map(({ id, base }) => ({
+        id,
+        name: t(`${a}.builtin.${id as BuiltinId}`),
+        base,
+      })),
       ...appearance.custom.map((custom) => ({
         id: custom.id,
         name: custom.name,
-        base: baseOf(custom.id),
+        base: custom.base,
         custom,
       })),
     ]

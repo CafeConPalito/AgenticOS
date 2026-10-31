@@ -16,12 +16,12 @@ BUILTIN_THEMES = (
     "contrast",
     "warm",
     "graphite",
-    "bosque",
-    "oceano",
-    "vino",
-    "arena",
-    "lavanda",
-    "menta",
+    "forest",
+    "ocean",
+    "wine",
+    "sand",
+    "lavender",
+    "mint",
     "ayu-dark",
     "ayu-light",
     "catppuccin-latte",
@@ -111,8 +111,10 @@ class StoredAppearance(Appearance):
 
     @classmethod
     def from_stored(cls, data: Any) -> "StoredAppearance":
-        if isinstance(data, dict) and "mode" in data:
-            data = dict(data)
+        if not isinstance(data, dict):
+            return cls.model_validate(data)
+        data = _rename_clashes(dict(data))
+        if "mode" in data:
             mode = data.pop("mode")
             follow = {key: data.pop(key, None) for key in ("light_theme", "dark_theme")}
             custom = [t for t in data.get("custom", []) if isinstance(t, dict)]
@@ -120,3 +122,35 @@ class StoredAppearance(Appearance):
             if mode == "system" and all(value in known for value in follow.values()):
                 data["legacy_follow"] = follow
         return cls.model_validate(data)
+
+
+def _rename_clashes(data: dict) -> dict:
+    """A custom theme whose id became a built-in one later (phase 22 added 23) gets a free id,
+    and so do the references to it: they meant the custom theme, which shadowed nothing then."""
+    custom = [t for t in data.get("custom", []) if isinstance(t, dict)]
+    taken = {*BUILTIN_THEMES, *(t.get("id") for t in custom)}
+    renamed: dict[str, str] = {}
+    for theme in custom:
+        old = theme.get("id")
+        if old in BUILTIN_THEMES:
+            n = 2
+            while f"{old}-{n}" in taken:
+                n += 1
+            renamed[old] = f"{old}-{n}"
+            taken.add(renamed[old])
+    if not renamed:
+        return data
+    data["custom"] = [
+        {
+            **t,
+            "id": renamed.get(t.get("id"), t.get("id")),
+            **({"extends": renamed[t["extends"]]} if t.get("extends") in renamed else {}),
+        }
+        if isinstance(t, dict)
+        else t
+        for t in data.get("custom", [])
+    ]
+    for key in ("theme", "light_theme", "dark_theme"):
+        if data.get(key) in renamed:
+            data[key] = renamed[data[key]]
+    return data

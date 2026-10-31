@@ -129,3 +129,27 @@ def test_a_phase_20_fixed_document_drops_the_old_fields(client: TestClient):
         },
     )
     assert client.get(URL).json() == {"theme": "warm", "custom": [], "legacy_follow": None}
+
+
+def test_a_custom_theme_named_like_a_new_built_in_one_is_kept_with_another_id(client: TestClient):
+    # Phase 20 let a person call a theme «Dracula» (id `dracula`); phase 22 ships one.
+    store(
+        client,
+        {
+            "mode": "system",
+            "theme": "dracula",
+            "light_theme": "dracula",
+            "dark_theme": "navy",
+            "custom": [
+                warm_copy(id="dracula", name="Dracula"),
+                warm_copy(id="dracula-2", name="Otro"),
+                warm_copy(id="hijo", name="Hijo", extends="dracula"),
+            ],
+        },
+    )
+    body = client.get(URL).json()
+    assert [t["id"] for t in body["custom"]] == ["dracula-3", "dracula-2", "hijo"]
+    assert body["custom"][0]["name"] == "Dracula"
+    assert body["custom"][2]["extends"] == "dracula-3"
+    assert body["theme"] == "dracula-3"
+    assert body["legacy_follow"] == {"light_theme": "dracula-3", "dark_theme": "navy"}

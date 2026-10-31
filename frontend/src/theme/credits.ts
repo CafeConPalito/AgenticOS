@@ -87,4 +87,4 @@ export const THEME_CREDITS: ThemeCredit[] = [
 ]
 
 /** The app's own themes made from a palette: no credit needed. */
-export const OWN_PALETTES: PaletteId[] = ['bosque', 'oceano', 'vino', 'arena', 'lavanda', 'menta']
+export const OWN_PALETTES: PaletteId[] = ['forest', 'ocean', 'wine', 'sand', 'lavender', 'mint']

@@ -7,7 +7,7 @@ import type { Palette } from './derive'
  */
 export const PALETTES = {
   // The app's own.
-  bosque: {
+  forest: {
     base: 'dark',
     background: '#0f1a14',
     surface: '#15231b',
@@ -38,7 +38,7 @@ export const PALETTES = {
       '#ffffff',
     ],
   },
-  oceano: {
+  ocean: {
     base: 'dark',
     background: '#0b1b24',
     surface: '#102632',
@@ -69,7 +69,7 @@ export const PALETTES = {
       '#ffffff',
     ],
   },
-  vino: {
+  wine: {
     base: 'dark',
     background: '#1e1215',
     surface: '#28181c',
@@ -100,7 +100,7 @@ export const PALETTES = {
       '#ffffff',
     ],
   },
-  arena: {
+  sand: {
     base: 'light',
     background: '#f4efe6',
     surface: '#fbf8f2',
@@ -131,7 +131,7 @@ export const PALETTES = {
       '#ffffff',
     ],
   },
-  lavanda: {
+  lavender: {
     base: 'light',
     background: '#f3f0fa',
     surface: '#faf8fe',
@@ -162,7 +162,7 @@ export const PALETTES = {
       '#ffffff',
     ],
   },
-  menta: {
+  mint: {
     base: 'light',
     background: '#eef6f1',
     surface: '#f8fcf9',

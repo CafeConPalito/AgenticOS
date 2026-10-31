@@ -2,12 +2,12 @@
 //! gives no list without a permission prompt, so it is read here with `fontdb`, which looks in
 //! the system's font folders and in the user's own (spike S1).
 
-use std::collections::BTreeSet;
+use std::collections::BTreeMap;
 use std::sync::OnceLock;
 
 static FAMILIES: OnceLock<Vec<String>> = OnceLock::new();
 
-/// The font families of the system, sorted, each once. Read the first time it is asked
+/// The font families of the system, each once (the page sorts them for the language). Read the first time it is asked
 /// (under a second, cold) off the main thread, then kept: a font installed later shows up
 /// after a restart.
 #[tauri::command]
@@ -28,24 +28,17 @@ pub async fn system_fonts() -> Result<Vec<String>, String> {
     Ok(FAMILIES.get_or_init(|| families).clone())
 }
 
-/// Each family once, sorted without regard to case, leaving out the hidden ones (their name
+/// Each family once whatever its case, leaving out the hidden ones (their name
 /// starts with `@` for vertical text or `.` for the system's own).
 fn families<'a>(names: impl Iterator<Item = &'a str>) -> Vec<String> {
-    let unique: BTreeSet<(String, &str)> = names
-        .map(str::trim)
-        .filter(|name| !name.is_empty() && !name.starts_with(['@', '.']))
-        .map(|name| (name.to_lowercase(), name))
-        .collect();
-    let mut out: Vec<String> = Vec::with_capacity(unique.len());
-    for (_, name) in unique {
-        if out
-            .last()
-            .is_none_or(|last| !last.eq_ignore_ascii_case(name))
-        {
-            out.push(name.to_string());
+    // Keyed by the lowercase name: the same family in another case («Écrire», «écrire») once.
+    let mut unique: BTreeMap<String, &str> = BTreeMap::new();
+    for name in names.map(str::trim) {
+        if !name.is_empty() && !name.starts_with(['@', '.']) {
+            unique.entry(name.to_lowercase()).or_insert(name);
         }
     }
-    out
+    unique.into_values().map(str::to_string).collect()
 }
 
 #[cfg(test)]
@@ -63,10 +56,12 @@ mod tests {
             " ",
             "Cascadia Code",
             "Arial",
+            "Écrire",
+            "écrire",
         ];
         assert_eq!(
             families(names.into_iter()),
-            ["Arial", "Cascadia Code", "Segoe UI"]
+            ["Arial", "Cascadia Code", "Segoe UI", "Écrire"]
         );
     }
 }

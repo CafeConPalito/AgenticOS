@@ -182,6 +182,8 @@ export function withoutTheme(appearance: Appearance, id: string): Appearance {
         for (const key of ['font', 'font_family', 'scale', 'density', 'radius'] as const)
           if (merged[key] == null && gone[key] != null)
             (merged as Record<string, unknown>)[key] = gone[key]
+        // A child's own font took over the parent's font of the system (see resolveTheme).
+        if (c.font && !c.font_family) delete merged.font_family
         if (merged.extends == null) delete merged.extends
         return merged
       }),

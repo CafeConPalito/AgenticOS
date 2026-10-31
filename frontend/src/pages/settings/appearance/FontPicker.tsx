@@ -1,5 +1,5 @@
 import { AlertTriangle, Check, ChevronsUpDown } from 'lucide-react'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import {
@@ -43,7 +43,10 @@ export function FontPicker({
   // Read when the picker opens (in a browser it may ask for permission); kept afterwards.
   const fonts = useSystemFonts(open)
   const label = value.fontFamily ?? t(`${f}.${value.font}`)
-  const missing = value.fontFamily !== null && isFontMissing(value.fontFamily, fonts.data)
+  const missing = useMemo(
+    () => value.fontFamily !== null && isFontMissing(value.fontFamily, fonts.data),
+    [value.fontFamily, fonts.data],
+  )
 
   function pick(choice: FontChoice) {
     onChange(choice)
@@ -86,6 +89,7 @@ export function FontPicker({
                 {FONTS.map((font) => (
                   <FontItem
                     key={font}
+                    value={`included:${font}`}
                     name={t(`${f}.${font}`)}
                     stack={FONT_STACKS[font]}
                     selected={!value.fontFamily && value.font === font}
@@ -98,6 +102,7 @@ export function FontPicker({
                   {fonts.data.map((family) => (
                     <FontItem
                       key={family}
+                      value={`system:${family}`}
                       name={family}
                       stack={fontStack({ font: 'system', fontFamily: family })}
                       selected={value.fontFamily === family}
@@ -118,18 +123,21 @@ export function FontPicker({
 }
 
 function FontItem({
+  value,
   name,
   stack,
   selected,
   onSelect,
 }: {
+  /** Unique in the list: «Inter» ships with the app and may be installed too. */
+  value: string
   name: string
   stack: string
   selected: boolean
   onSelect: () => void
 }) {
   return (
-    <CommandItem value={name} onSelect={onSelect}>
+    <CommandItem value={value} keywords={[name]} onSelect={onSelect}>
       <span className="min-w-0 flex-1 truncate" style={{ fontFamily: stack }}>
         {name}
       </span>

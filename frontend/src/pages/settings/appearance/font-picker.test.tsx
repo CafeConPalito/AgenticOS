@@ -63,6 +63,20 @@ describe('theme editor › font of the system (phase 22)', () => {
     await waitFor(() => expect(cssVar('--app-font')).toContain('Atkinson Hyperlegible'))
   })
 
+  it('tells «Inter» of the app from an «Inter» installed on the system', async () => {
+    systemFonts(['Inter'])
+    fakeCanvas(['Inter'])
+    const backend = createFakeBackend({ appearance: { ...DEFAULT_APPEARANCE, custom: [mine()] } })
+    const user = userEvent.setup()
+    renderApp('/ajustes/apariencia/mio')
+    await user.click(await screen.findByRole('combobox', { name: E.font }))
+    const dialog = await screen.findByRole('dialog')
+    const system = await within(dialog).findByRole('group', { name: F.system })
+    await user.click(within(system).getByText('Inter'))
+    await user.click(screen.getByRole('button', { name: es.common.save }))
+    await waitFor(() => expect(backend.appearance.current.custom[0].font_family).toBe('Inter'))
+  })
+
   it('reports a font of the system missing on this machine (CA6)', async () => {
     fakeCanvas([])
     createFakeBackend({

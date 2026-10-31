@@ -1,3 +1,5 @@
+import { resetMeasurer } from '@/lib/system-fonts'
+
 /** A canvas where only `installed` fonts change the width of the text. */
 export function fakeCanvas(installed: string[]) {
   let font = ''
@@ -14,6 +16,7 @@ export function fakeCanvas(installed: string[]) {
         (font.includes('monospace') ? 100 : 80),
     }),
   }
+  resetMeasurer()
   return vi
     .spyOn(HTMLCanvasElement.prototype, 'getContext')
     .mockReturnValue(context as unknown as CanvasRenderingContext2D)

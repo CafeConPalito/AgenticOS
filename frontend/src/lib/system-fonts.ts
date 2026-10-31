@@ -10,12 +10,16 @@ type FontQuery = () => Promise<{ family: string }[]>
  * there is no way to know: the person types the name.
  */
 export async function listSystemFonts(): Promise<string[] | null> {
+  const families = await readFamilies()
+  return families && [...new Set(families)].sort((a, b) => a.localeCompare(b, 'es'))
+}
+
+async function readFamilies(): Promise<string[] | null> {
   if (isTauri()) return invoke<string[]>('system_fonts')
   const query = (window as unknown as { queryLocalFonts?: FontQuery }).queryLocalFonts
   if (!query) return null
   try {
-    const families = new Set((await query()).map((font) => font.family))
-    return [...families].sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }))
+    return (await query()).map((font) => font.family)
   } catch {
     return null // permission refused
   }
@@ -31,13 +35,31 @@ const FALLBACKS = ['monospace', 'serif'] as const
  * when it cannot be measured.
  */
 export function paintsByName(family: string): boolean {
+  const measure = measurer()
+  if (!measure) return true
+  return FALLBACKS.some(
+    (generic) => measure.width(`"${family}", ${generic}`) !== measure.generic[generic],
+  )
+}
+
+let shared: { width: (font: string) => number; generic: Record<string, number> } | null = null
+
+/** One canvas for every measure, and the widths of the generic families worked out once. */
+function measurer() {
+  if (shared) return shared
   const context = document.createElement('canvas').getContext('2d')
-  if (!context) return true
+  if (!context) return null
   const width = (font: string) => {
     context.font = `32px ${font}`
     return context.measureText(SAMPLE).width
   }
-  return FALLBACKS.some((generic) => width(`"${family}", ${generic}`) !== width(generic))
+  shared = { width, generic: Object.fromEntries(FALLBACKS.map((g) => [g, width(g)])) }
+  return shared
+}
+
+/** For tests: measure on a new canvas. */
+export function resetMeasurer() {
+  shared = null
 }
 
 /** The fonts of the system the webview can paint, once per session; null when unknown. */

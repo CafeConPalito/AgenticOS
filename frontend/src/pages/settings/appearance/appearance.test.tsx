@@ -290,6 +290,12 @@ describe('theme files (phase 20)', () => {
         font: 'inter',
       },
     ])
+    // A child with its own font did not show the parent's font of the system: still so.
+    const own = mine({ id: 'propio', name: 'Propio', extends: 'mio', font: 'inter' })
+    const parent = mine({ font_family: 'Cascadia Code' })
+    const kept = withoutTheme({ theme: 'navy', custom: [parent, own] }, 'mio').custom[0]
+    expect(kept.font).toBe('inter')
+    expect(kept.font_family).toBeUndefined()
     const scratch = mine({ extends: undefined, font_family: 'Cascadia Code' })
     const orphan = withoutTheme({ theme: 'navy', custom: [scratch, child] }, 'mio').custom[0]
     expect(orphan.extends).toBeUndefined()

@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { api } from '@/lib/api'
 import { errorMessage } from '@/lib/form-errors'
@@ -94,14 +94,15 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   // What this browser last saw: shown while the backend answers, or when it cannot.
   const [stored] = useState<Appearance>(readStored)
   const [previewing, setPreviewing] = useState<ResolvedTheme | null>(null)
+  // A phase 20 document that followed the system, still to be saved with one theme.
+  const legacy = useRef(false)
 
   // The backend has the truth; a garbled answer (old backend, offline) is ignored.
   const remote = useQuery({
     queryKey: appearanceKey,
     queryFn: async () => {
       const read = readAppearance(await api.get<unknown>('/api/settings/appearance'))
-      // A phase 20 document that followed the system: saved now with the theme on screen.
-      if (read?.legacy) await api.put('/api/settings/appearance', read.appearance)
+      legacy.current = read?.legacy ?? false
       return read?.appearance ?? null
     },
     staleTime: Infinity,
@@ -121,6 +122,13 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   )
 
   useEffect(() => store(appearance), [appearance])
+
+  // Saved once read: a failed save reads the backend again, and tries again from there.
+  useEffect(() => {
+    if (!remote || !legacy.current) return
+    legacy.current = false
+    save(remote)
+  }, [remote, save])
 
   // Carry over the light theme chosen before phase 20 (it lived only in this browser).
   useEffect(() => {
