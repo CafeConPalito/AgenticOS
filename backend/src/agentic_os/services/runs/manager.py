@@ -628,6 +628,7 @@ class RunManager:
                 run_id, EventKind.SYSTEM, name, detail
             ),
             conversation=True,
+            manual=True,
         )
         try:
             session.start()

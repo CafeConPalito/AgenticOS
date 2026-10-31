@@ -68,6 +68,14 @@ def test_opens_the_cli_with_the_account_in_the_folder_and_closes_it(
     assert not {"--mcp-config", "--append-system-prompt-file", "--tools"} & set(started["argv"])
 
     assert [t["id"] for t in app_client.get("/api/terminals").json()] == [run["id"]]
+    # The view that opens it takes the keyboard, the last one wins, and nothing is interrupted.
+    for viewer in ("pestaña-1", "pestaña-2"):
+        taken = app_client.post(
+            f"/api/runs/{run['id']}/control", json={"action": "take", "client_id": viewer}
+        )
+        assert taken.status_code == 200, taken.text
+        assert taken.json()["status"] == "running"
+
     # Not in Ejecuciones.
     assert run["id"] not in [r["id"] for r in app_client.get("/api/runs").json()]
 
