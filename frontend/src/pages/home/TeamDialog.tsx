@@ -85,7 +85,7 @@ function TeamForm({ team, onClose }: { team: Team | null; onClose: () => void })
   }
 
   return (
-    <DialogContent className="max-h-[calc(100vh-48px)] overflow-y-auto sm:max-w-[520px]">
+    <DialogContent className="max-h-[calc(100vh-48px)] overflow-x-hidden overflow-y-auto sm:max-w-[520px]">
       <form onSubmit={(e) => void submit(e)} className="grid gap-4">
         <DialogHeader>
           <DialogTitle>{team ? t('teams.editTitle') : t('teams.newTitle')}</DialogTitle>
@@ -158,7 +158,8 @@ function TeamForm({ team, onClose }: { team: Team | null; onClose: () => void })
             {error}
           </p>
         )}
-        <DialogFooter className="gap-2 sm:items-center">
+        {/* Four buttons when editing: they wrap instead of scrolling sideways (phase 21). */}
+        <DialogFooter className="gap-2 sm:flex-wrap sm:items-center">
           {team && (
             <Button
               type="button"
