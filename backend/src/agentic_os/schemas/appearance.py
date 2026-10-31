@@ -9,7 +9,37 @@ from typing import Annotated, Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
 # The themes that ship with the app; a custom theme cannot take one of these ids.
-BUILTIN_THEMES = ("navy", "light", "contrast", "warm", "graphite")
+# The frontend lists them too (`generated/builtin-themes.json`); a test keeps both in step.
+BUILTIN_THEMES = (
+    "navy",
+    "light",
+    "contrast",
+    "warm",
+    "graphite",
+    "bosque",
+    "oceano",
+    "vino",
+    "arena",
+    "lavanda",
+    "menta",
+    "ayu-dark",
+    "ayu-light",
+    "catppuccin-latte",
+    "catppuccin-mocha",
+    "dracula",
+    "github-dark",
+    "github-light",
+    "gruvbox-dark",
+    "gruvbox-light",
+    "light-owl",
+    "night-owl",
+    "nord",
+    "one-dark",
+    "solarized-dark",
+    "solarized-light",
+    "tokyo-night",
+    "tokyo-night-day",
+)
 MAX_CUSTOM_THEMES = 50
 MAX_COLORS = 160
 

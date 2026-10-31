@@ -37,6 +37,16 @@ describe('Acerca de (phase 20, block 7; CA10, CA11)', () => {
     expect(license).toHaveTextContent('Version 3, 29 June 2007')
   })
 
+  it('credits the themes of other projects, with author and license (phase 22)', async () => {
+    createFakeBackend()
+    renderApp('/acerca-de')
+    const themes = await screen.findByRole('region', { name: A.themes.title })
+    const dracula = within(themes).getByRole('link', { name: 'Dracula' })
+    expect(dracula).toHaveAttribute('href', 'https://github.com/dracula/visual-studio-code')
+    expect(within(themes).getByText('Ethan Schoonover')).toBeVisible()
+    expect(within(themes).getAllByText('MIT')).toHaveLength(10)
+  })
+
   it('lists the third-party licenses, searchable and by origin', async () => {
     createFakeBackend()
     const user = userEvent.setup()

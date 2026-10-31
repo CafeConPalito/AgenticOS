@@ -3693,7 +3693,30 @@
       "light": "Claro",
       "contrast": "Alto contraste",
       "warm": "Cálido",
-      "graphite": "Grafito"
+      "graphite": "Grafito",
+      "bosque": "Bosque",
+      "oceano": "Océano",
+      "vino": "Vino",
+      "arena": "Arena",
+      "lavanda": "Lavanda",
+      "menta": "Menta",
+      "ayu-dark": "Ayu Dark",
+      "ayu-light": "Ayu Light",
+      "catppuccin-latte": "Catppuccin Latte",
+      "catppuccin-mocha": "Catppuccin Mocha",
+      "dracula": "Dracula",
+      "github-dark": "GitHub Dark",
+      "github-light": "GitHub Light",
+      "gruvbox-dark": "Gruvbox Dark",
+      "gruvbox-light": "Gruvbox Light",
+      "light-owl": "Light Owl",
+      "night-owl": "Night Owl",
+      "nord": "Nord",
+      "one-dark": "One Dark",
+      "solarized-dark": "Solarized Dark",
+      "solarized-light": "Solarized Light",
+      "tokyo-night": "Tokyo Night",
+      "tokyo-night-day": "Tokyo Night Day"
     },
     "section": {
       "open": "Abrir Apariencia"
@@ -3986,6 +4009,10 @@
       "version": "Versión",
       "license": "Licencia",
       "own": "Los búhos de los avatares y los temas incluidos son obra del proyecto, con su misma licencia."
+    },
+    "themes": {
+      "title": "Temas incluidos de otros proyectos",
+      "text": "Estos temas toman sus colores de proyectos conocidos con licencia libre. Están adaptados a la app: algunos colores se han ajustado para que el texto y los botones se lean bien."
     }
   },
   "support": {

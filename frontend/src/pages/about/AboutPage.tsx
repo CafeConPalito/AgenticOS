@@ -15,6 +15,7 @@ import { openBackendLogs } from '@/lib/api'
 import { bugReportHref, CONTACT_EMAIL } from '@/lib/bug-report'
 import { cn } from '@/lib/utils'
 import { Segmented } from '@/pages/usage/parts'
+import { THEME_CREDITS } from '@/theme/credits'
 
 interface ThirdParty {
   ecosystem: 'npm' | 'python' | 'rust'
@@ -132,6 +133,7 @@ export default function AboutPage() {
         )}
       </section>
 
+      <ThemeCredits />
       <ThirdParties />
       {logsOpen && <LogsDialog open onOpenChange={setLogsOpen} />}
     </PageContainer>
@@ -162,6 +164,40 @@ function License() {
           {text ?? t(`${a}.loading`)}
         </pre>
       </details>
+    </section>
+  )
+}
+
+/** The built-in themes of other projects (phase 22): author, license and where they come from. */
+function ThemeCredits() {
+  const { t } = useTranslation()
+  const a = 'about.themes'
+  return (
+    <section aria-labelledby="about-themes" className={CARD}>
+      <h2 id="about-themes" className="text-[15px] font-medium">
+        {t(`${a}.title`)}
+      </h2>
+      <p className="text-[13px] text-muted-foreground">{t(`${a}.text`)}</p>
+      <ul className="flex flex-col divide-y divide-sep rounded-lg border border-sep text-[12.5px]">
+        {THEME_CREDITS.map((credit) => (
+          <li
+            key={credit.name}
+            className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 px-3 py-2"
+          >
+            <a
+              href={credit.url}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 font-medium hover:underline"
+            >
+              {credit.name}
+              <ExternalLink className="size-3 text-muted-foreground" />
+            </a>
+            <span className="text-muted-foreground">{credit.author}</span>
+            <span className="ml-auto">{credit.license}</span>
+          </li>
+        ))}
+      </ul>
     </section>
   )
 }
