@@ -238,6 +238,24 @@ describe('Runs list', () => {
     expect(router.state.location.pathname).toBe(`/ejecuciones/${live.id}`)
   })
 
+  it("lists the Architect's runs and opens their conversation (phase 21)", async () => {
+    const architect = makeRun({
+      kind: 'architect',
+      agent_id: null,
+      project_id: null,
+      agent_name: 'Arquitecto',
+      project_name: '',
+      prompt: 'Diseña un redactor',
+      conversation_id: 'conv-1',
+    })
+    createFakeBackend({ runs: [architect] })
+    const user = userEvent.setup()
+    const { router } = renderApp('/ejecuciones')
+
+    await user.click(await screen.findByRole('row', { name: /Diseña un redactor/ }))
+    expect(router.state.location.pathname).toBe('/agentes/arquitecto/conv-1')
+  })
+
   it('is reachable from the sidebar and offers to launch when empty', async () => {
     createFakeBackend()
     const user = userEvent.setup()

@@ -9,7 +9,9 @@
 //! down by itself as soon as we exit. Killing it would terminate the PyInstaller bootloader
 //! before it can delete its `_MEI*` extraction folder in %TEMP%.
 
+mod bundle_checks;
 mod desklog;
+mod export;
 mod sidecar;
 mod titlebar;
 
@@ -256,6 +258,7 @@ pub fn run() {
             restart_backend,
             open_logs,
             bundle_logs,
+            export::save_file,
             titlebar::set_titlebar
         ])
         .setup(|app| {

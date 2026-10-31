@@ -1,3 +1,5 @@
+import i18n from '@/i18n'
+import { saveFile } from '@/lib/save-file'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, getApiBaseUrl } from '@/lib/api'
 import { isoDay } from '@/lib/format'
@@ -160,19 +162,19 @@ export function useSaveUsageLimits() {
   })
 }
 
-/** Downloads the sessions of the period as CSV (works in the browser and in Tauri's webview). */
-export async function downloadSessionsCsv(f: UsageFilters): Promise<void> {
+/** Saves the sessions of the period as CSV: the path, null if cancelled (see `saveFile`). */
+export async function downloadSessionsCsv(f: UsageFilters): Promise<string | null | undefined> {
   const base = await getApiBaseUrl()
   const response = await fetch(`${base}/api/usage/sessions.csv?${periodQuery(f)}`)
   if (!response.ok) throw new Error(`HTTP ${response.status}`)
   const disposition = response.headers.get('content-disposition') ?? ''
   const name = /filename="([^"]+)"/.exec(disposition)?.[1] ?? 'consumo.csv'
-  const url = URL.createObjectURL(await response.blob())
-  const link = document.createElement('a')
-  link.href = url
-  link.download = name
-  document.body.appendChild(link)
-  link.click()
-  link.remove()
-  URL.revokeObjectURL(url)
+  return saveFile({
+    name,
+    // With its BOM, which `text()` would drop: Excel needs it to read the accents.
+    text: new TextDecoder('utf-8', { ignoreBOM: true }).decode(await response.arrayBuffer()),
+    type: 'text/csv',
+    filter: i18n.t('saveFilters.csv'),
+    extensions: ['csv'],
+  })
 }

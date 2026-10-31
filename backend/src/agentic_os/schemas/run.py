@@ -5,7 +5,7 @@ from typing import Annotated
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
 from agentic_os.models.agent import Cli
-from agentic_os.models.run import Activity, EventKind, RunStatus, Verdict
+from agentic_os.models.run import Activity, EventKind, RunKind, RunStatus, Verdict
 from agentic_os.schemas.changes import ChangesTotals
 from agentic_os.schemas.usage import RunUsage
 
@@ -24,6 +24,8 @@ class RunRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: str
+    # «agent» or «architect» (phase 21: the Architect's runs are in the list too).
+    kind: RunKind = RunKind.AGENT
     agent_id: str | None
     project_id: str | None
     agent_name: str
@@ -64,6 +66,8 @@ class RunRead(BaseModel):
     changes: ChangesTotals | None = None
     task_code: str | None = None
     stage_name: str | None = None
+    # An «architect» run: the conversation it is the CLI of, while it still is.
+    conversation_id: str | None = None
     created_at: datetime
     updated_at: datetime
     # Live state, only while the run has a session in this backend.

@@ -34,7 +34,7 @@ def speech_entries(
         "Fake engine",
         "mit",
         (RemoteFile("e.zip", 1, "0" * 64, ()),),
-        usage={"executable": "Release/whisper-server.exe"},
+        usage={"executable": "bin/Release/whisper-server.exe"},
         unpack="e.zip",
     )
     for entry in (model, engine):
@@ -42,8 +42,11 @@ def speech_entries(
     for name, data in files.items():
         (store.downloaded_folder(data_dir, model) / name).write_bytes(data)
     store.write_manifest(data_dir, model)
-    (store.downloaded_folder(data_dir, engine) / "Release").mkdir(exist_ok=True)
-    program = store.downloaded_folder(data_dir, engine) / "Release" / "whisper-server.exe"
+    # Where the real archive leaves it: unpacked into bin/, with its own Release/ folder.
+    (store.downloaded_folder(data_dir, engine) / "bin" / "Release").mkdir(
+        parents=True, exist_ok=True
+    )
+    program = store.downloaded_folder(data_dir, engine) / "bin" / "Release" / "whisper-server.exe"
     program.write_bytes(b"MZ")
     store.write_manifest(data_dir, engine)
     return data_dir, engine, model

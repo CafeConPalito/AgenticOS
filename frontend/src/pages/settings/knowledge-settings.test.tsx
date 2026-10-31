@@ -149,6 +149,29 @@ describe('Settings · Modelos locales', () => {
     expect(within(section).getByText(/libres en el disco/)).toBeVisible()
   })
 
+  it('a chosen model is advised, not in use, until it is downloaded (phase 21, CA6)', async () => {
+    installFakeWebSocket()
+    createFakeBackend({
+      localModels: [
+        makeLocalModel({ state: 'absent', done: 0 }),
+        makeLocalModel({
+          id: 'whisper-small',
+          kind: 'speech',
+          title: 'Whisper small',
+          state: 'absent',
+          done: 0,
+        }),
+      ],
+    })
+    renderApp('/ajustes')
+    const section = await loadedSection()
+    expect(within(section).queryByText(m.inUse)).not.toBeInTheDocument()
+    expect(within(section).getAllByText(m.default)).toHaveLength(2)
+    expect(
+      within(section).getByRole('button', { name: 'Descargar multilingual-e5-small' }),
+    ).toBeVisible()
+  })
+
   it('downloads, cancels and removes after confirming', async () => {
     installFakeWebSocket()
     const backend = createFakeBackend({ localModels: catalogue() })

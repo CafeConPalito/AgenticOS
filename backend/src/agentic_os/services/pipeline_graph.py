@@ -23,7 +23,6 @@ class GraphErrorCode(StrEnum):
     CYCLE = "cycle"
     UNSTRUCTURED = "unstructured"
     EMPTY_BRANCH = "empty_branch"
-    BRANCH_WITHOUT_CONDITION = "branch_without_condition"
     REJECT_NOT_BACKWARDS = "reject_not_backwards"
     REJECT_OUTSIDE_PATH = "reject_outside_path"
 
@@ -41,7 +40,6 @@ class Edge:
     src: str
     dst: str
     position: int = 0  # order among the links leaving the same stage
-    labelled: bool = True  # has a condition, or is «always»: required in a fork's branches
 
 
 # A position inside the forks: ((fork, branch index), …) from the outermost one.
@@ -85,15 +83,6 @@ class Graph:
 
         cyclic = self._topological_order()
         errors += [GraphError(GraphErrorCode.CYCLE, n) for n in cyclic]
-
-        for node in self.nodes:
-            outs = self.out[node]
-            if len(outs) > 1:
-                errors += [
-                    GraphError(GraphErrorCode.BRANCH_WITHOUT_CONDITION, node, e.id)
-                    for e in outs
-                    if not e.labelled
-                ]
 
         if not cyclic and len(starts) == 1:
             structure = self._analyse(starts[0])

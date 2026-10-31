@@ -193,6 +193,45 @@ describe('Ajustes › Dictado', () => {
     expect(await within(region).findByRole('alert')).toHaveTextContent(d.permission)
   })
 
+  it('asks for the microphone to list the ones of Windows by name (phase 21, CA7)', async () => {
+    createFakeBackend({ dictation: {}, localModels: [] })
+    let allowed = false
+    const hidden = { deviceId: '', label: '', kind: 'audioinput', groupId: '' }
+    const named = [
+      { deviceId: 'default', label: 'Predeterminado', kind: 'audioinput', groupId: 'g' },
+      { deviceId: 'mic-1', label: 'Micrófono (Realtek)', kind: 'audioinput', groupId: 'g' },
+    ]
+    const stop = vi.fn()
+    const getUserMedia = vi.fn(async () => {
+      allowed = true
+      return { getTracks: () => [{ stop }] }
+    })
+    vi.stubGlobal('navigator', {
+      ...navigator,
+      mediaDevices: {
+        enumerateDevices: async () => (allowed ? named : [hidden]),
+        getUserMedia,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      },
+    })
+    try {
+      const user = userEvent.setup()
+      renderApp('/ajustes')
+      const region = await section()
+      await user.click(await within(region).findByRole('button', { name: d.microphoneAllow }))
+      expect(getUserMedia).toHaveBeenCalledWith({ audio: true })
+      expect(stop).toHaveBeenCalled() // the permission only: nothing keeps recording
+      await waitFor(() =>
+        expect(within(region).queryByRole('button', { name: d.microphoneAllow })).toBeNull(),
+      )
+      await user.click(within(region).getByRole('combobox', { name: d.microphone }))
+      expect(await screen.findByRole('option', { name: 'Micrófono (Realtek)' })).toBeVisible()
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
   it('shows speed and quality of the speech models in «Modelos locales»', async () => {
     createFakeBackend({ dictation: {}, localModels: [whisper(), engine()] })
     renderApp('/ajustes')

@@ -99,12 +99,6 @@ def test_saving_again_keeps_the_ids_of_the_links_that_stay(api: TestClient, tmp_
 def test_a_badly_built_graph_is_refused_with_its_problems(api: TestClient, tmp_path: Path):
     project_id = project(api, tmp_path)
     url = f"/api/projects/{project_id}/pipeline"
-    no_condition = {**FORK, "links": [{**FORK["links"][0], "condition": ""}, *FORK["links"][1:]]}
-    refused = api.put(url, json=no_condition)
-    assert refused.status_code == 422
-    detail = refused.json()["detail"]
-    assert detail["code"] == "invalid_graph"
-    assert detail["issues"] == [{"code": "branch_without_condition", "stage": 0, "link": 0}]
 
     crossing = {
         "stages": [{"name": n} for n in "ABCD"],
@@ -132,6 +126,10 @@ def test_a_badly_built_graph_is_refused_with_its_problems(api: TestClient, tmp_p
     outside = {"stages": [{"name": "A"}], "links": [{"source": 0, "target": 4}]}
     assert api.put(url, json=outside).json()["detail"]["code"] == "invalid_link"
     assert api.get(url).json() is None  # nothing was saved
+
+    # Phase 21: a branch without a condition is fine, it is always taken.
+    no_condition = {**FORK, "links": [{**FORK["links"][0], "condition": ""}, *FORK["links"][1:]]}
+    assert api.put(url, json=no_condition).status_code == 200
 
 
 def test_a_stage_inside_a_branch_cannot_reject_to_before_the_fork(api: TestClient, tmp_path: Path):

@@ -1,3 +1,4 @@
+import { Sparkles } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
 import { useProjects } from '@/api/projects'
@@ -50,7 +51,13 @@ export function RunsTable({ runs, showAgent = true }: { runs: Run[]; showAgent?:
         </TableHeader>
         <TableBody>
           {runs.map((run) => {
-            const open = () => navigate(`/ejecuciones/${run.id}`)
+            // The Architect's runs open their conversation, where its CLI is followed.
+            const open = () =>
+              navigate(
+                run.kind === 'architect'
+                  ? `/agentes/arquitecto${run.conversation_id ? `/${run.conversation_id}` : ''}`
+                  : `/ejecuciones/${run.id}`,
+              )
             return (
               <TableRow
                 key={run.id}
@@ -66,12 +73,16 @@ export function RunsTable({ runs, showAgent = true }: { runs: Run[]; showAgent?:
                 {showAgent && (
                   <TableCell>
                     <span className="inline-flex items-center gap-2 font-medium whitespace-nowrap">
-                      <AgentAvatar
-                        name={run.agent_name}
-                        color={run.agent_color}
-                        agentId={run.agent_id}
-                        size={20}
-                      />
+                      {run.kind === 'architect' ? (
+                        <Sparkles aria-hidden className="size-4 text-status-review" />
+                      ) : (
+                        <AgentAvatar
+                          name={run.agent_name}
+                          color={run.agent_color}
+                          agentId={run.agent_id}
+                          size={20}
+                        />
+                      )}
                       {run.agent_name}
                     </span>
                   </TableCell>

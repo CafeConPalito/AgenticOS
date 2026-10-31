@@ -40,6 +40,8 @@ function Row({ model }: { model: LocalModel }) {
   const [removing, setRemoving] = useState(false)
   const job = JOB[model.kind]
   const percent = model.total > 0 ? Math.round((model.done / model.total) * 100) : 0
+  // Chosen is not in use until it is on disk (phase 21): until then it is only advised.
+  const inUse = model.selected && model.state === 'ready'
 
   async function run(action: () => Promise<unknown>) {
     try {
@@ -69,10 +71,8 @@ function Row({ model }: { model: LocalModel }) {
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-[13.5px] font-medium">{model.title}</span>
-            {model.selected && <Badge>{t('localModels.inUse')}</Badge>}
-            {model.default && !model.selected && (
-              <Badge variant="outline">{t('localModels.default')}</Badge>
-            )}
+            {inUse && <Badge>{t('localModels.inUse')}</Badge>}
+            {!inUse && model.default && <Badge variant="outline">{t('localModels.default')}</Badge>}
             {model.bundled && <Badge variant="secondary">{t('localModels.bundled')}</Badge>}
             {model.needs_account && model.state !== 'ready' && (
               <Badge variant="outline">{t('localModels.needsAccount')}</Badge>

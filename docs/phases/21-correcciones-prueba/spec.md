@@ -42,6 +42,10 @@ En la app de escritorio se abre «Guardar como» y se avisa de dónde quedó el 
 **F. Pipelines**
 12. Las **ramas sin condición** de una bifurcación se toman siempre por defecto: guardar un pipeline ya no exige marcar «Siempre se toma». El editor explica en la propia rama qué significa: sin condición, la rama se hace siempre, en paralelo con las demás.
 
+**G. Añadidos durante la fase** (encontrados por el usuario al probar el instalador de esta fase, 2026-10-29)
+13. El **motor de voz** (whisper.cpp) se descarga, pero la app no lo daba nunca por instalado y volvía a ofrecer la descarga: buscaba `Release/whisper-server.exe` fuera de la carpeta `bin/` donde se descomprime.
+14. El diálogo de **editar equipo** tenía scroll horizontal: sus cuatro botones no cabían en una fila.
+
 ### Fuera
 - Selector claro/oscuro, filtro de temas, modo lectura, temas de cero con fuentes del sistema y temas nuevos (fase 22).
 - Accesos directos en Inicio, terminal con un CLI independiente, logos y «Añadir CLI» con instalación desde la app, y transcripción en «Probar micrófono» (fase 23).
@@ -70,6 +74,8 @@ En la app de escritorio se abre «Guardar como» y se avisa de dónde quedó el 
 | CA9 | Una foto PNG, JPG o WebP se carga, se encuadra y se guarda como avatar sin verse en verde | Test de la interfaz + prueba en la app |
 | CA10 | Se crea un equipo sin agentes y después se le añade uno | Test de la API y la interfaz |
 | CA11 | Un pipeline con una bifurcación sin condiciones se guarda y la tarea pasa por todas las ramas | Tests del validador y del motor |
+| CA13 | Tras descargar el motor de voz, la app lo da por instalado y se puede dictar | Test del backend con la estructura real del zip + prueba en la app instalada |
+| CA14 | El diálogo de editar equipo no tiene scroll horizontal | Prueba en la app instalada |
 | CA12 | Suites completas, lint y `/code-review` en verde | Comandos de `package.json` |
 
 ## Prerrequisitos

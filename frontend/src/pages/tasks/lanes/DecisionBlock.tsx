@@ -68,7 +68,7 @@ export function DecisionBlock({ task, pipeline }: { task: Task; pipeline: Pipeli
               />
               <span>
                 {link.name}
-                {link.always && (
+                {(link.always || !link.condition.trim()) && (
                   <span className="text-muted-foreground"> · {t('tasks.lanes.always')}</span>
                 )}
                 <span className="block text-xs text-muted-foreground">

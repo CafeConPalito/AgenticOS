@@ -43,7 +43,8 @@ function OpenDock() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { position, activeRunId, setOpen, swapPosition, setActive } = useDock()
-  const { data: runs = [] } = useRuns({ active: true })
+  // Not the Architect's CLI (listed since phase 21): the app drives it, typing would break it.
+  const runs = (useRuns({ active: true }).data ?? []).filter((r) => r.kind !== 'architect')
   const active = runs.find((r) => r.id === activeRunId) ?? runs[0]
 
   const actions = [

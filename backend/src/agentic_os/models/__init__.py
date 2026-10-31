@@ -74,6 +74,7 @@ from agentic_os.models.repo import (
 )
 from agentic_os.models.run import (
     ACTIVE_STATUSES,
+    LISTED_RUN_KINDS,
     Activity,
     EventKind,
     Run,
@@ -121,6 +122,7 @@ __all__ = [
     "DICTATION",
     "FINISHED_TASK_STATUSES",
     "KNOWLEDGE",
+    "LISTED_RUN_KINDS",
     "NOTIFICATIONS",
     "PRIORITY_RANK",
     "PROCESSING",

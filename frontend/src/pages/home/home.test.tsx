@@ -419,6 +419,22 @@ describe('Inicio · CLI notices', () => {
 })
 
 describe('Inicio · agents', () => {
+  it('creates a team before there is any agent (phase 21, CA10)', async () => {
+    const backend = createFakeBackend()
+    const user = userEvent.setup()
+    renderApp('/')
+    const grid = await screen.findByRole('region', { name: es.home.agents.title })
+    await user.click(await within(grid).findByRole('button', { name: es.teams.new }))
+    const dialog = await screen.findByRole('dialog', { name: es.teams.newTitle })
+    await user.type(within(dialog).getByLabelText(es.teams.name), 'Producto')
+    await user.click(within(dialog).getByRole('button', { name: es.teams.create }))
+    await waitFor(() => expect(backend.callsTo('POST', '/api/teams')).toHaveLength(1))
+    expect(backend.callsTo('POST', '/api/teams')[0].body).toMatchObject({
+      name: 'Producto',
+      agent_ids: [],
+    })
+  })
+
   it('shows each agent with its state, sessions and queue; drafts go last', async () => {
     const { dev, qa, draft, project } = team()
     const running = makeTask({ agent_id: dev.id, project_id: project.id, status: 'running' })

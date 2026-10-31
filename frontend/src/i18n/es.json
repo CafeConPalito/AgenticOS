@@ -76,7 +76,14 @@
       "emptyDescription": "Cuando tus agentes trabajen, aquí verás sus tokens, su coste y sus horas."
     }
   },
+  "saveFilters": {
+    "agent": "Agente de Agentic OS",
+    "theme": "Tema de Agentic OS",
+    "csv": "CSV"
+  },
   "common": {
+    "downloaded": "Descargado",
+    "savedAt": "Guardado en {{path}}",
     "tokensUnit": "{{value}} tok",
     "cancel": "Cancelar",
     "save": "Guardar cambios",
@@ -958,7 +965,8 @@
     "branchPanel": "Rama de {{from}} a {{to}}",
     "notABranch": "Esta conexión es la única salida de su etapa: no hay nada que decidir.",
     "branchName": "Nombre de la rama",
-    "always": "Siempre se toma",
+    "alwaysHelp": "Sin condición, esta rama se hace siempre, a la vez que las demás.",
+    "conditionHelp": "Solo se hace si la tarea cumple la condición. Déjala vacía para que se haga siempre.",
     "alwaysCondition": "Siempre se toma",
     "condition": "Se toma si…",
     "conditionPlaceholder": "La tarea toca la API, la base de datos o el backend",
@@ -995,7 +1003,6 @@
       "cycle": "{{stage}} forma un ciclo: las conexiones solo van hacia delante.",
       "unstructured": "Las ramas de {{stage}} no se cierran bien: cada bifurcación debe terminar en una sola etapa donde se unan.",
       "empty_branch": "Una rama de {{stage}} no tiene etapas propias.",
-      "branch_without_condition": "Una rama de {{stage}} necesita una condición o «Siempre se toma».",
       "reject_not_backwards": "{{stage}} solo puede devolver la tarea a una etapa anterior.",
       "reject_outside_path": "Dentro de una rama, {{stage}} solo puede devolver la tarea a etapas de esa misma rama."
     },
@@ -1307,12 +1314,14 @@
       "shortcutReset": "Restablecer",
       "microphone": "Micrófono",
       "microphoneDefault": "El predeterminado del sistema",
+      "microphoneAllow": "Permitir el micrófono para verlos",
+      "microphoneAllowHelp": "Windows solo da los nombres de los micrófonos cuando la app puede usarlos.",
       "microphoneTest": "Probar",
       "microphoneTesting": "Hablando… {{seconds}} s",
       "microphoneOk": "Se oye bien.",
       "microphoneSilent": "No se oye nada: revisa el micrófono.",
       "permission": "El micrófono está bloqueado para la aplicación.",
-      "permissionHelp": "Concede el permiso y vuelve a probar. Si Windows lo bloquea, abre su configuración de privacidad.",
+      "permissionHelp": "Concede el permiso y vuelve a probar. Si Windows lo bloquea, actívalo en Configuración › Privacidad y seguridad › Micrófono.",
       "maxSeconds": "Duración máxima",
       "maxSecondsHelp": "A los {{seconds}} s se corta y se transcribe lo grabado.",
       "seconds": "segundos",
@@ -1385,7 +1394,6 @@
       "open": "Abrir la ejecución de {{name}}"
     },
     "export": "Exportar CSV",
-    "exported": "CSV exportado",
     "noCost": "—",
     "unavailable": "Consumo no disponible",
     "partialHint": "Cifra en vivo: la definitiva llega al cerrar la sesión.",
@@ -2695,7 +2703,7 @@
     "title": "Modelos locales",
     "description": "Los modelos que usa la biblioteca para leer, entender y describir tus documentos. Se descargan solo si los eliges y se pueden borrar.",
     "inUse": "En uso",
-    "default": "Recomendado",
+    "default": "Aconsejado",
     "bundled": "Incluido en la app",
     "needsAccount": "Requiere cuenta de Hugging Face",
     "unavailable": "no disponible en este sistema",

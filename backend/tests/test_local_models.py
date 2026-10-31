@@ -377,6 +377,26 @@ def test_an_engine_is_unpacked_and_its_archive_removed(manager: DownloadManager,
     assert store.is_installed(manager.data_dir, entry)
 
 
+def test_the_whisper_engine_counts_as_installed_once_unpacked(
+    manager: DownloadManager, server: Server
+):
+    # Phase 21: the catalog looked for Release/whisper-server.exe outside bin/, so the engine
+    # downloaded fine and never counted as installed (the user downloaded it five times).
+    real = catalog.entry("whisper-cpp")
+    archive = zipped(**{"Release__whisper-server.exe": b"MZ", "Release__whisper.dll": b"x"})
+    entry = make_entry(
+        server,
+        {"engine.zip": archive},
+        entry_id="engine",
+        kind=catalog.ENGINE,
+        unpack="engine.zip",
+        usage=dict(real.usage),
+    )
+    assert run(manager, entry).state == "ready"
+    assert store.is_installed(manager.data_dir, entry)
+    assert manager.state(entry).state == "ready"
+
+
 def test_an_archive_that_escapes_its_folder_is_refused(manager: DownloadManager, server: Server):
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w") as bundle:

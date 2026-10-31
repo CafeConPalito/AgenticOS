@@ -1,3 +1,5 @@
+import { cn } from '@/lib/utils'
+import { toastSaved } from '@/lib/save-file'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
   BookOpen,
@@ -68,6 +70,8 @@ const TABS = [
   'changes',
 ] as const
 type Tab = (typeof TABS)[number]
+/** The tabs drawn after the form, which have forms of their own. */
+const LIBRARY_TABS: readonly Tab[] = ['knowledge', 'skills', 'connections']
 
 export default function AgentEditorPage() {
   const { agentId = '', tab } = useParams()
@@ -170,7 +174,13 @@ function AgentEditor({ agent, tab }: { agent: Agent; tab: Tab }) {
 
   return (
     <FormProvider {...form}>
-      <form onSubmit={save} noValidate className="flex min-h-full flex-col">
+      {/* Full height only for the tabs inside the form: the libraries below it would start
+          a screen down, past an empty gap (phase 21). */}
+      <form
+        onSubmit={save}
+        noValidate
+        className={cn('flex flex-col', !LIBRARY_TABS.includes(tab) && 'min-h-full')}
+      >
         <UnsavedChangesGuard when={isDirty} allowRef={leaving} scope={`/agentes/${agent.id}`} />
         {agent.status === 'draft' && agent.proposal_id && <DraftBanner agent={agent} />}
         {agent.status === 'active' && <ChangesBanner agent={agent} />}
@@ -251,7 +261,9 @@ function AgentEditor({ agent, tab }: { agent: Agent; tab: Tab }) {
               </DropdownMenuItem>
               <DropdownMenuItem
                 onSelect={() =>
-                  void downloadAgent(agent).catch((error) => toast.error(errorMessage(error)))
+                  void downloadAgent(agent).then(toastSaved, (error: unknown) =>
+                    toast.error(errorMessage(error)),
+                  )
                 }
               >
                 <Download />

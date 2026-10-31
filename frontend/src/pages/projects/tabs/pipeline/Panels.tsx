@@ -240,7 +240,7 @@ export function StagePanel({
   )
 }
 
-/** One branch of a fork: its name, what makes the decider take it, or «always». */
+/** One branch of a fork: its name and what makes the decider take it; none: always taken. */
 export function BranchPanel({
   link,
   draft,
@@ -269,23 +269,24 @@ export function BranchPanel({
           onChange={(e) => onChange(patchLink(link.key, { name: e.target.value }))}
         />
       </Field>
-      <label className="flex items-center gap-2 text-[13px]">
-        <Switch
-          checked={link.always}
-          onCheckedChange={(v) => onChange(patchLink(link.key, { always: v }))}
-        />
-        {t('pipeline.always')}
-      </label>
       <Field label={t('pipeline.condition')}>
         <Textarea
           value={link.condition}
           rows={4}
           maxLength={500}
-          disabled={link.always}
           placeholder={t('pipeline.conditionPlaceholder')}
-          onChange={(e) => onChange(patchLink(link.key, { condition: e.target.value }))}
+          onChange={(e) =>
+            onChange(patchLink(link.key, { condition: e.target.value, always: false }))
+          }
         />
       </Field>
+      {branches > 1 && (
+        <p className="text-[12.5px] text-muted-foreground">
+          {link.condition.trim() && !link.always
+            ? t('pipeline.conditionHelp')
+            : t('pipeline.alwaysHelp')}
+        </p>
+      )}
       <Button
         variant="outline"
         size="sm"

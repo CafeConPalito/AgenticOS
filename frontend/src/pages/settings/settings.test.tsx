@@ -231,3 +231,24 @@ describe('Settings · índice y atajos', () => {
     expect(await screen.findByRole('dialog', { name: es.shortcuts.title })).toBeVisible()
   })
 })
+
+describe('Settings · index (phase 21, CA5)', () => {
+  it('going to Limpieza scrolls the page, never the app shell', async () => {
+    createFakeBackend()
+    const scrolled: Element[] = []
+    Element.prototype.scrollIntoView = vi.fn(function (this: Element) {
+      scrolled.push(this)
+    })
+    const user = userEvent.setup()
+    renderApp('/ajustes')
+    const index = await screen.findByRole('navigation', { name: es.settings.index })
+    await user.click(within(index).getByRole('link', { name: es.settings.sections.cleanup }))
+
+    expect(scrolled.at(-1)?.id).toBe('cleanup')
+    // The shell clips: a box with overflow hidden can be scrolled by scrollIntoView.
+    const main = screen.getByRole('main')
+    const shell = main.closest('.h-screen')
+    expect(shell).toHaveClass('overflow-clip')
+    expect(shell).not.toHaveClass('overflow-hidden')
+  })
+})

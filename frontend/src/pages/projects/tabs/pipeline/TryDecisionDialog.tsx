@@ -48,7 +48,7 @@ export function TryDecisionDialog({
         description,
         branches: branches.map((b) => ({
           name: b.name || draft.stages.find((s) => s.key === b.target)?.name || '?',
-          condition: b.always ? t('pipeline.alwaysCondition') : b.condition,
+          condition: b.always || !b.condition.trim() ? t('pipeline.alwaysCondition') : b.condition,
         })),
         decider_cli: draft.deciderCli,
         decider_account_id: draft.deciderAccountId,

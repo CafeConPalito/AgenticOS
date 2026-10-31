@@ -42,3 +42,6 @@ Un pipeline era una fila de etapas y una tarea estaba en un solo sitio: `Task.st
 - La unión y la reapertura dependen de que la carpeta de la madre esté limpia o se pueda limpiar; el trabajo suelto se commitea en la rama de cada tarea.
 - El decisor cuesta una llamada por bifurcación y tarea (céntimos con un modelo pequeño, algo más de 11 000 tokens de entrada con agy); «siempre» y las ramas fijadas la evitan.
 - Fuera de esta fase: etapas que solo deciden (sin agente), bifurcar sin una etapa previa, condiciones como código, bucles que no sean de rechazo y grafos no estructurados.
+
+## Nota (fase 21, 2026-10-29)
+Una rama **sin condición se toma siempre**: ya no hay que marcar «siempre» y el editor no lo pide. El decisor solo recibe las ramas con condición; si no hay ninguna, la bifurcación se resuelve sin llamarlo (`DecisionBy.ALWAYS`). La columna `stage_links.always` se conserva por compatibilidad, y la migración `0023` vacía la condición de las ramas que la tenían marcada.

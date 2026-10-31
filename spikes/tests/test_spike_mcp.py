@@ -2,8 +2,8 @@ import asyncio
 from pathlib import Path
 
 import httpx
-from mcp import Client
 
+from mcp import Client
 from spike_mcp import SpikeMcp
 
 INITIALIZE = {

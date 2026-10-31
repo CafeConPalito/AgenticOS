@@ -14,6 +14,8 @@ from agentic_os.db.session import get_session
 from agentic_os.errors import ApiError, NotFound
 from agentic_os.models import (
     ACTIVE_STATUSES,
+    LISTED_RUN_KINDS,
+    ArchitectConversation,
     CliAccount,
     Run,
     RunEvent,
@@ -57,8 +59,27 @@ def _get(db: Session, run_id: str) -> Run:
     return run
 
 
-def _read(run: Run, manager: RunManager, detail: bool = False) -> RunRead:
-    """`detail`: also whether it can be resumed (a few queries: not for every row of a list)."""
+def _conversations(db: Session, runs: list[Run]) -> dict[str, str]:
+    """The Architect conversation each of these runs is the CLI of, in one query."""
+    ids = [run.id for run in runs if run.kind == RunKind.ARCHITECT]
+    if not ids:
+        return {}
+    rows = db.execute(
+        select(ArchitectConversation.run_id, ArchitectConversation.id).where(
+            ArchitectConversation.run_id.in_(ids)
+        )
+    )
+    return {run_id: conversation_id for run_id, conversation_id in rows}
+
+
+def _read(
+    run: Run,
+    manager: RunManager,
+    detail: bool = False,
+    conversations: dict[str, str] | None = None,
+) -> RunRead:
+    """`detail`: also whether it can be resumed (a few queries: not for every row of a list).
+    `conversations`: the Architect's, looked up beforehand for a list (`_conversations`)."""
     result = RunRead.model_validate(run)
     result.usage = RunUsage(**usage_payload(run))
     result.changes = change_ops.run_totals(run)
@@ -71,6 +92,10 @@ def _read(run: Run, manager: RunManager, detail: bool = False) -> RunRead:
         stage = db.get(Stage, run.stage_id) if run.stage_id else None
         result.task_code = task.code if task else None
         result.stage_name = stage.name if stage else None
+    if run.kind == RunKind.ARCHITECT and db is not None:
+        if conversations is None:
+            conversations = _conversations(db, [run])
+        result.conversation_id = conversations.get(run.id)
     if detail and db is not None and RunStatus(run.status) in resume_ops.RESUMABLE:
         result.resumed_by_id = resume_ops.resumed_by(db, run.id)
         result.resumable = resume_ops.resumable(db, run)
@@ -111,7 +136,7 @@ def list_runs(
     active: bool | None = None,
     limit: Annotated[int, Query(ge=1, le=500)] = 200,
 ) -> list[RunRead]:
-    query = select(Run).where(Run.workspace_id == DEFAULT_WORKSPACE, Run.kind == RunKind.AGENT)
+    query = select(Run).where(Run.workspace_id == DEFAULT_WORKSPACE, Run.kind.in_(LISTED_RUN_KINDS))
     if agent_id:
         query = query.where(Run.agent_id == agent_id)
     if task_id:
@@ -124,7 +149,9 @@ def list_runs(
     elif active is False:
         query = query.where(Run.status.not_in(statuses))
     query = query.order_by(Run.created_at.desc()).limit(limit)
-    return [_read(run, manager) for run in db.scalars(query)]
+    runs = list(db.scalars(query))
+    conversations = _conversations(db, runs)
+    return [_read(run, manager, conversations=conversations) for run in runs]
 
 
 @router.get("/runs/{run_id}")

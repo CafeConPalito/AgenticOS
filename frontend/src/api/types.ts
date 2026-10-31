@@ -137,6 +137,10 @@ export interface RunUsage extends UsageTotals {
 
 export interface Run {
   id: string
+  /** «architect»: the CLI of a conversation with the Architect (phase 21: listed too). */
+  kind?: 'agent' | 'architect'
+  /** An architect run: its conversation, while the run is still its CLI. */
+  conversation_id?: string | null
   agent_id: string | null
   project_id: string | null
   agent_name: string

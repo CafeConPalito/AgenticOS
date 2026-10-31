@@ -116,6 +116,11 @@ export function AgentGrid({
               <Plus />
               {t('home.agents.new')}
             </Button>
+            {/* A team can come first and get its agents later (phase 21). */}
+            <Button variant="outline" onClick={() => openTeam()}>
+              <Users />
+              {t('teams.new')}
+            </Button>
           </div>
         </EmptyState>
       ) : teams.length === 0 ? (

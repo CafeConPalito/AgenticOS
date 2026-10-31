@@ -1,3 +1,5 @@
+import { errorMessage } from '@/lib/form-errors'
+import { toastSaved } from '@/lib/save-file'
 import { Check, Copy, Download, MoreHorizontal, Pencil, Trash2, Upload } from 'lucide-react'
 import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -221,7 +223,13 @@ export default function AppearancePage() {
                         {t(theme.custom ? 'common.duplicate' : `${a}.customize`)}
                       </DropdownMenuItem>
                       {theme.custom && (
-                        <DropdownMenuItem onSelect={() => downloadTheme(theme.custom!)}>
+                        <DropdownMenuItem
+                          onSelect={() =>
+                            void downloadTheme(theme.custom!).then(toastSaved, (error: unknown) =>
+                              toast.error(errorMessage(error)),
+                            )
+                          }
+                        >
                           <Download />
                           {t(`${a}.export`)}
                         </DropdownMenuItem>

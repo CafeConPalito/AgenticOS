@@ -51,7 +51,9 @@ describe('TerminalDock', () => {
     const first = makeRun({ prompt: 'Primera tarea', agent_name: 'Dev' })
     const second = makeRun({ prompt: 'Segunda tarea', agent_name: 'Rita', activity: 'idle' })
     const finished = makeRun({ prompt: 'Vieja', status: 'exited', exit_code: 0 })
-    createFakeBackend({ runs: [first, second, finished] })
+    // The Architect's CLI is driven by the app: no tab for it (phase 21).
+    const architect = makeRun({ prompt: 'Diseña', agent_name: 'Arquitecto', kind: 'architect' })
+    createFakeBackend({ runs: [first, second, finished, architect] })
     const Socket = installFakeWebSocket()
     useDock.setState({ open: true })
     const user = userEvent.setup()

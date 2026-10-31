@@ -89,7 +89,7 @@ def graph_of(pipeline: Pipeline) -> Graph:
     """The saved pipeline as a graph (to ask where a task goes next)."""
     ids = [s.id for s in pipeline.stages]
     edges = [
-        Edge(link.id, link.from_stage_id, link.to_stage_id, link.position, True)
+        Edge(link.id, link.from_stage_id, link.to_stage_id, link.position)
         for link in pipeline.links
     ]
     rejects = {
@@ -117,7 +117,6 @@ def _payload_graph(payload: PipelineWrite) -> Graph:
             nodes[link.source],
             nodes[link.target],
             i,
-            labelled=link.always or bool(link.condition),
         )
         for i, link in enumerate(_links_of(payload))
     ]
@@ -300,7 +299,8 @@ def _save_links(db: Session, pipeline: Pipeline, rows: list[Stage], links: list[
             row = StageLink(pipeline_id=pipeline.id, from_stage_id=key[0], to_stage_id=key[1])
             pipeline.links.append(row)
         row.name = link.name or rows[link.target].name
-        row.condition = link.condition
+        # One way of saying «always» (phase 21): no condition. A flagged link drops its text.
+        row.condition = "" if link.always else link.condition
         row.always = link.always
         row.position = per_source.get(source, 0)
         per_source[source] = row.position + 1
