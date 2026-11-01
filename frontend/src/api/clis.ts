@@ -12,6 +12,17 @@ export function useClis() {
   })
 }
 
+/** Reads the CLIs as the backend has them now, without probing them again (an installation
+ * that just ended was already probed there). */
+export function useReloadClis() {
+  const queryClient = useQueryClient()
+  return async () => {
+    const fresh = await api.get<CliInfo[]>('/api/clis')
+    queryClient.setQueryData(KEY, fresh)
+    return fresh
+  }
+}
+
 /** Forces the backend to re-probe the CLIs (version, login, models). */
 export function useRefreshClis() {
   const queryClient = useQueryClient()

@@ -83,7 +83,10 @@ export function resetDictation(): void {
   if (session?.ticker) clearInterval(session.ticker)
   for (const timer of session?.timers ?? []) clearTimeout(timer)
   if (session) window.removeEventListener('keydown', session.onKey, true)
-  for (const job of queue) job.tracker.stop()
+  for (const job of queue) {
+    job.tracker.stop()
+    job.live?.stop()
+  }
   session = null
   queue = []
   running = false
@@ -234,7 +237,8 @@ export async function stopDictation(): Promise<void> {
     ended.live?.discard()
     return
   }
-  // Live: the rest of the audio is read when the job runs, after the last guess.
+  // Live: the microphone is released now; the rest of the audio is read when the job runs.
+  if (ended.live) await ended.live.end()
   const wav = ended.live ? null : await ended.recording.stop()
   const job: Job = {
     id: nextJobId++,
@@ -276,13 +280,17 @@ async function drain(): Promise<void> {
       try {
         if (job.live) {
           const text = await job.live.finish()
-          if (!job.live.deliver(text)) toClipboard(text)
+          if (!text) {
+            job.live.discard()
+            reportError(job.fieldId, 'no_speech')
+          } else if (!job.live.deliver(text)) toClipboard(text)
         } else {
           const result = await transcribe(job.wav!)
           deliver(job, result.text)
         }
       } catch (error) {
-        job.live?.discard()
+        // What was already fixed and shown stays; only the last piece is lost.
+        job.live?.keep()
         if (error instanceof ApiError) reportError(job.fieldId, error.code, error.message)
         else reportError(job.fieldId, 'failed', error instanceof Error ? error.message : undefined)
       }

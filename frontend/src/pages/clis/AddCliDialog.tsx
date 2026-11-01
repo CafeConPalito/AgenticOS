@@ -2,7 +2,7 @@ import { CheckCircle2, ExternalLink, XCircle } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-import { useInstallCli, useRefreshClis } from '@/api/clis'
+import { useInstallCli, useReloadClis } from '@/api/clis'
 import type { CliId, CliInfo } from '@/api/types'
 import { CliIcon } from '@/components/agentic/CliIcon'
 import { Button } from '@/components/ui/button'
@@ -57,7 +57,8 @@ function AddCliBody({
   const { t } = useTranslation()
   const a = 'clis.addCli'
   const install = useInstallCli()
-  const refresh = useRefreshClis()
+  // The backend probed the CLIs when the installer ended: read its result, do not probe again.
+  const reload = useReloadClis()
   const [chosen, setChosen] = useState<CliInfo | undefined>(missing[0])
   const [step, setStep] = useState<Step>({ phase: 'choose' })
 
@@ -72,7 +73,7 @@ function AddCliBody({
   }
 
   async function ended(code: number | null) {
-    const clis = await refresh().catch(() => undefined)
+    const clis = await reload().catch(() => undefined)
     const found = clis?.find((c) => c.id === chosen?.id)?.installed ?? false
     setStep({ phase: 'done', code: code === 0 && !found ? -1 : code })
   }

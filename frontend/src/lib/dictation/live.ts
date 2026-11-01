@@ -4,7 +4,8 @@
  * `TICK_MS` and written into the field as provisional text, replacing the previous guess. At a
  * pause (or after `MAX_PIECE_SECONDS`) that piece is fixed: its text stays and the next guess
  * starts after it. So every request carries little audio and the text never jumps back. When
- * the recording stops, what is left is transcribed once more and the text is final.
+ * the recording stops (`end`: the microphone is released at once), what is left is transcribed
+ * once more (`finish`) and the text is final.
  */
 
 import { transcribe } from '@/api/dictation'
@@ -76,26 +77,43 @@ export class LiveTranscript {
         this.show()
       })
       .catch((error: unknown) => {
-        // The engine is busy, or the piece had no words: the next turn tries again.
-        if (!(error instanceof ApiError)) throw error
+        // A piece without words is left behind, so silence does not pile up; anything else
+        // (the engine busy, the network) only loses this guess: the next turn tries again.
+        if (fix && error instanceof ApiError && error.code === 'no_speech') this.from = end
       })
       .finally(() => {
         this.busy = null
       })
   }
 
-  /** The recording stopped: the rest is transcribed and the text is final. */
+  /** The person stopped: the recording ends and the microphone is released now, even if the
+   * text comes later (its audio stays to be read by `finish`). */
+  async end(): Promise<void> {
+    await this.recording.stop()
+  }
+
+  /** After `end`: the rest is transcribed and the text is final ("" when nothing was said). */
   async finish(): Promise<string> {
     await this.busy
-    const rest = await this.recording.stop(this.from)
-    try {
-      const { text } = await transcribe(rest)
-      this.fixed = joined(this.fixed, text)
-    } catch (error) {
-      // Nothing more was said after the last piece: what is fixed stays.
-      if (!(error instanceof ApiError && error.code === 'no_speech')) throw error
+    const { wav, end, rate } = this.recording.peek!(this.from)
+    if ((end - this.from) / rate >= MIN_PIECE_SECONDS) {
+      try {
+        const { text } = await transcribe(wav)
+        this.fixed = joined(this.fixed, text)
+      } catch (error) {
+        // Nothing more was said after the last piece: what is fixed stays.
+        if (!(error instanceof ApiError && error.code === 'no_speech')) throw error
+      }
     }
     this.guess = ''
+    return this.fixed
+  }
+
+  /** The last transcription failed: what was already fixed stays in the field, the guess goes. */
+  keep(): string {
+    this.guess = ''
+    this.show()
+    this.stop()
     return this.fixed
   }
 

@@ -108,8 +108,11 @@ describe('LiveTranscript (phase 23, CA8)', () => {
     await turn(live)
     state.samples = RATE * 3
     answer('A las diez.')
+    await live.end()
+    expect(state.stoppedFrom).toBe(0) // the microphone is released at once
     const text = await live.finish()
-    expect(state.stoppedFrom).toBe(RATE * 2)
+    // Only the audio after the fixed piece, read after the microphone was released.
+    expect(await (api.transcribe.mock.lastCall![0] as Blob).text()).toBe(`${RATE * 2}-${RATE * 3}`)
     expect(api.transcribe).toHaveBeenLastCalledWith(expect.any(Blob))
     expect(text).toBe('reunión del lunes. A las diez.')
     expect(live.deliver(text)).toBe(true)
@@ -168,5 +171,59 @@ describe('LiveTranscript (phase 23, CA8)', () => {
     expect(textarea.value).toBe('Antes esto no')
     live.discard()
     expect(textarea.value).toBe('Antes')
+  })
+
+  it('a piece without words is left behind, so silence does not pile up', async () => {
+    const textarea = field('')
+    const { recording, state } = fakeRecording()
+    const live = new LiveTranscript(textarea, { start: 0, end: 0 }, recording)
+    vi.setSystemTime(Date.now() + PAUSE_MS + 50)
+    state.samples = RATE * 3
+    api.transcribe.mockRejectedValueOnce(new ApiError(422, 'no_speech', 'no speech'))
+    await turn(live)
+    expect(live['from']).toBe(RATE * 3)
+  })
+
+  it('a guess lost to the network does not break the dictation', async () => {
+    const textarea = field('')
+    const { recording, state } = fakeRecording()
+    const live = new LiveTranscript(textarea, { start: 0, end: 0 }, recording)
+    live.level(0.5)
+    state.samples = RATE
+    api.transcribe.mockRejectedValueOnce(new TypeError('Failed to fetch'))
+    await turn(live)
+    answer('hola')
+    await live.end()
+    await expect(live.finish()).resolves.toBe('hola')
+  })
+
+  it('when the last piece fails, what was fixed stays in the field', async () => {
+    const textarea = field('')
+    const { recording, state } = fakeRecording()
+    const live = new LiveTranscript(textarea, { start: 0, end: 0 }, recording)
+    vi.setSystemTime(Date.now() + PAUSE_MS + 50)
+    state.samples = RATE * 2
+    answer('lo ya dicho.')
+    await turn(live)
+    live.level(0.5)
+    state.samples = RATE * 3
+    answer('y un poco')
+    await turn(live)
+    expect(textarea.value).toBe('lo ya dicho. y un poco')
+    api.transcribe.mockRejectedValueOnce(new ApiError(502, 'request_failed', 'down'))
+    await live.end()
+    await expect(live.finish()).rejects.toBeInstanceOf(ApiError)
+    expect(live.keep()).toBe('lo ya dicho.')
+    expect(textarea.value).toBe('lo ya dicho.')
+  })
+
+  it('nothing said: no text', async () => {
+    const textarea = field('')
+    const { recording, state } = fakeRecording()
+    const live = new LiveTranscript(textarea, { start: 0, end: 0 }, recording)
+    state.samples = RATE * 2
+    api.transcribe.mockRejectedValueOnce(new ApiError(422, 'no_speech', 'no speech'))
+    await live.end()
+    await expect(live.finish()).resolves.toBe('')
   })
 })
