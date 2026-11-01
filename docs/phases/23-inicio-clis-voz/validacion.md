@@ -1,27 +1,23 @@
 # Fase 23: Inicio, CLIs y voz · Validación
 
-> **Estado (2026-10-31, noche)**: desarrollo terminado y en commits en `phase/23-inicio-clis-voz`. Validación a medias.
->
-> **Hecho**: frontend completo (81 ficheros, 809 tests), lint y `cargo test` (19), todo en verde. Los tests nuevos del backend y los de cada parte que se tocó, también en verde, incluido el dictado con el motor real.
->
-> **En curso**: suite completa del backend en dos tandas (`backend/.test-progress.log`). Dos intentos anteriores se cortaron por falta de memoria del sistema (12 % y 52 %), sin fallos hasta ahí. Causa: 16 GB de RAM con un archivo de paginación de 1,2 GB (límite de memoria comprometida de 17,1 GB) y ~13 GB ya en uso con las apps de fondo. Se recomendó al usuario ampliar el archivo de paginación.
->
-> **Falta, en orden**:
-> 1. Resultado de la suite del backend; corregir lo que falle.
-> 2. ~~`/code-review medium` de la rama y sus correcciones~~ ✅ (2026-11-01, 10 hallazgos corregidos).
-> 3. Instalador en el escritorio (`npm run build:desktop`, sin nada más corriendo a la vez).
-> 4. Prueba del usuario en la app instalada:
->    - terminal propio con una cuenta y una carpeta cualquiera (CA2);
->    - dictado en vivo y «Probar micrófono» (CA8);
->    - si puede, «Añadir CLI» en una cuenta de Windows sin el CLI (CA7).
-> 5. Completar este documento (criterios con evidencias, code review, retro) y cerrar con el OK del usuario: merge, versión `0.9.3` y tag `v0.9.3`.
+> **Estado (2026-11-01)**: desarrollo, suites, lint y `/code-review` terminados. Falta el instalador y la prueba del usuario en la app instalada (CA2, CA7, CA8), y después su OK para cerrar: merge, versión `0.9.3` y tag `v0.9.3`.
 
 ## Tests automáticos
 ```
-Frontend (npm run test:frontend): 81 ficheros, 809 tests en verde.
+Frontend (npm run test:frontend): 81 ficheros, 809 tests en verde; tras el code-review, los
+         ficheros de dictado y CLIs (67 tests) otra vez en verde.
 Lint     (npm run lint): en verde.
 Desktop  (cargo test): 19 en verde.
-Backend  : pendiente de la suite completa (ver arriba).
+Backend  (uv run pytest, backend/.test-progress.log): la suite completa no cabía en memoria de una
+         vez (16 GB de RAM y 1,2 GB de archivo de paginación: el sistema cortó dos intentos). Se
+         pasó por partes: el primer cuarto (sesión del 31) y el resto en tres tandas (2026-11-01).
+         - 16 tests de test_launcher.py, test_resume.py, test_clis.py y test_runs.py no
+           arrancaban: aún sustituían `launcher.shutil.which`, que pasó a `cli_paths`. Corregidos
+           (7368fb0) y en verde.
+         - test_switching.py::test_alert_at_the_threshold_once_per_agent falló una vez (dos
+           avisos en lugar de uno) y pasa 3 de 3 al repetirlo: dos comprobaciones de cuota en
+           paralelo. Es código de la fase 10, que esta fase no toca: se anota para una fase futura.
+         Todo lo demás, en verde.
 ```
 
 ## Criterios de aceptación
@@ -35,7 +31,7 @@ Backend  : pendiente de la suite completa (ver arriba).
 | CA6 | «Añadir CLI» solo con CLIs que faltan | ✅ | `clis.test.tsx` |
 | CA7 | Instalación desde la app | ⏳ falta la prueba en una máquina sin el CLI | `test_cli_install.py`, `test_cli_paths.py`, `clis.test.tsx` |
 | CA8 | Dictado en vivo y «Probar micrófono» | ⏳ falta la prueba en la app | `dictation-live.test.ts`, `dictation.test.tsx`, `dictation-settings.test.tsx`, `test_dictation_api.py`, `test_dictation_real.py` |
-| CA9 | Suites, lint y `/code-review` | ⏳ | arriba |
+| CA9 | Suites, lint y `/code-review` | ✅ | arriba y en la tabla siguiente |
 
 ## Code review
 `/code-review medium` sobre la rama frente a `main` (2026-11-01): 10 hallazgos, todos corregidos (`4ca7d4b`, `6a8539e`).
