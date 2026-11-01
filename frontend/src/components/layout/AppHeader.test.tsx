@@ -27,17 +27,15 @@ describe('AppHeader', () => {
     renderApp('/')
     const nav = await screen.findByRole('navigation', { name: es.nav.main })
     const links = within(nav).getAllByRole('link')
-    expect(links.map((l) => l.textContent?.replace(/\d+$/, ''))).toEqual([
-      `${es.nav.board}`,
-      `${es.nav.runs}`,
-      `${es.nav.settings}`,
-    ])
     expect(await within(nav).findByRole('link', { name: `${es.nav.board}2` })).toBeVisible()
     expect(within(nav).getByRole('link', { name: `${es.nav.runs}1` })).toBeVisible()
-    // Icons (phase 23): the name in the tooltip.
+    // Icons (phase 23), in order: the work, what the agents use, Ajustes; the name in the tooltip.
     expect(links.map((l) => l.getAttribute('title'))).toEqual([
       es.nav.board,
       es.nav.runs,
+      'Inbox · 0 pendientes',
+      es.header.knowledge,
+      es.header.connections,
       es.nav.settings,
     ])
     expect(document.querySelector('[data-sidebar]')).toBeNull()

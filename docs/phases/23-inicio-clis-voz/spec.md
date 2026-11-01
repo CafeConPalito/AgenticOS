@@ -27,7 +27,7 @@ Llegar antes a lo que más se usa y quitar pasos fuera de la app:
 ### Dentro
 **A. Accesos directos en Inicio**
 
-> **Cambio en la validación (2026-11-01, a petición del usuario):** los accesos pasan a la barra superior, junto al Inbox y con sus mismos iconos. Tablero, Ejecuciones y Ajustes ya son pestañas de esa barra, y Contexto y Skills llevan a la misma página, así que quedan dos iconos: Conocimiento (documentos y skills) y Conexiones (MCPs). Inicio ya no tiene la fila de emojis. Tablero, Ejecuciones y Ajustes pasan también a iconos; el contador de Tablero y Ejecuciones va dentro de la misma píldora que su icono.
+> **Cambio en la validación (2026-11-01, a petición del usuario):** los accesos pasan a la barra superior, junto al Inbox y con sus mismos iconos. Tablero, Ejecuciones y Ajustes ya son pestañas de esa barra, y Contexto y Skills llevan a la misma página, así que quedan dos iconos: Conocimiento (documentos y skills) y Conexiones (MCPs). Inicio ya no tiene la fila de emojis. Tablero, Ejecuciones y Ajustes pasan también a iconos; el contador de Tablero y Ejecuciones va dentro de la misma píldora que su icono. Orden, en tres grupos separados por una raya: el trabajo (Tablero, Ejecuciones, Inbox), lo que usan los agentes (Conocimiento, Conexiones) y Ajustes.
 
 1. Inicio tiene una fila de accesos directos con un emoji cada uno: Contexto (la biblioteca de Conocimiento), Skills, MCPs (Conexiones), Tablero, Ejecuciones y Ajustes.
 2. El nombre de cada acceso sale en un *tooltip* al pasar el ratón o al llegar con el teclado. Cada botón tiene además su nombre accesible para lectores de pantalla.

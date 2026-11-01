@@ -1,13 +1,4 @@
-import {
-  ArrowLeft,
-  ArrowRight,
-  ChevronRight,
-  Inbox,
-  Library,
-  Plug,
-  Search,
-  SquareTerminal,
-} from 'lucide-react'
+import { ArrowLeft, ArrowRight, ChevronRight, Inbox, Search, SquareTerminal } from 'lucide-react'
 import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useLocation, useMatches, useNavigate } from 'react-router'
@@ -45,13 +36,6 @@ function useCrumbs() {
     .filter((m) => (m.handle as CrumbHandle | undefined)?.crumb)
     .map((m) => ({ id: m.id, path: m.pathname, node: (m.handle as CrumbHandle).crumb(m.params) }))
 }
-
-/** Next to the Inbox (phase 23): the pages without a tab that are used most. Documents and
- * skills are one page, Conocimiento. */
-const QUICK_LINKS = [
-  { id: 'knowledge', to: '/conocimiento', Icon: Library },
-  { id: 'connections', to: '/conexiones', Icon: Plug },
-] as const
 
 const PALETTE_KEYS = SHORTCUTS.find((s) => s.id === 'palette')!.keys
 
@@ -172,37 +156,29 @@ export function AppHeader({
         </BreadcrumbList>
       </Breadcrumb>
 
-      <TopNav active={section} counts={{ board: counts?.open_tasks, runs: counts?.active_runs }} />
-
-      {QUICK_LINKS.map(({ id, to, Icon }) => (
-        <Link
-          key={id}
-          to={to}
-          aria-label={t(`header.${id}`)}
-          title={t(`header.${id}`)}
-          aria-current={section === id ? 'page' : undefined}
-          className={cn(ICON_BUTTON, section === id && 'bg-accent')}
-        >
-          <Icon className="size-[15px]" />
-        </Link>
-      ))}
-      <Link
-        to="/inbox"
-        aria-label={t('header.inbox', { count: inboxPending })}
-        title={t('header.inbox', { count: inboxPending })}
-        aria-current={section === 'inbox' ? 'page' : undefined}
-        className={cn(ICON_BUTTON, 'relative', section === 'inbox' && 'bg-accent')}
-      >
-        <Inbox className="size-[15px]" />
-        {inboxPending > 0 && (
-          <span
-            aria-hidden
-            className="absolute -top-0.5 -right-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-status-intervening px-1 font-mono text-[10px] font-bold text-status-intervening-foreground"
+      <TopNav
+        active={section}
+        counts={{ board: counts?.open_tasks, runs: counts?.active_runs }}
+        inbox={
+          <Link
+            to="/inbox"
+            aria-label={t('header.inbox', { count: inboxPending })}
+            title={t('header.inbox', { count: inboxPending })}
+            aria-current={section === 'inbox' ? 'page' : undefined}
+            className={cn(ICON_BUTTON, 'relative', section === 'inbox' && 'bg-accent')}
           >
-            {inboxPending > 99 ? '99+' : inboxPending}
-          </span>
-        )}
-      </Link>
+            <Inbox className="size-[15px]" />
+            {inboxPending > 0 && (
+              <span
+                aria-hidden
+                className="absolute -top-0.5 -right-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-status-intervening px-1 font-mono text-[10px] font-bold text-status-intervening-foreground"
+              >
+                {inboxPending > 99 ? '99+' : inboxPending}
+              </span>
+            )}
+          </Link>
+        }
+      />
       <button
         type="button"
         onClick={openPalette}
