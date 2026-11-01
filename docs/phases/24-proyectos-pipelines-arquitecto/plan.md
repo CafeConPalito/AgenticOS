@@ -35,6 +35,28 @@
 | S2 | **Pautas de SDD**: las instrucciones del Analista de requisitos con 10 peticiones en 3 repositorios de prueba: uno con `.specify/`, uno con specs por fase como este y uno sin nada. Hay 4 peticiones pequeñas y 6 grandes o en proyecto con SDD. ¿Elige bien en ≥ 9 de 10? ¿Sigue el formato que ya tiene el repositorio? | Ajustar las pautas con ejemplos y repetir. Si sigue fallando en los casos frontera, inclinarse por SDD (la revisión humana lo corrige). |
 | S3 | **Formatos de SDD que se detectan**: confirmar las carpetas y los ficheros de spec-kit (`.specify/`, `specs/NNN-*/spec.md`), Kiro (`.kiro/specs/*/requirements.md`, `design.md`, `tasks.md`) y OpenSpec (`openspec/`) en su documentación actual. | Detectar solo lo confirmado. Lo demás lo encuentra el agente leyendo el repositorio. |
 
+## Resultados de los spikes (bloque 0, 2026-11-01)
+- **S1 · decisor con salida** (`spikes/pipelines/s24_exit_decider.py`, `claude -p` con haiku, el modelo del decisor): ✅ **12 de 12**, a 0,001 $ por llamada y ~5 s.
+  - Acierta en las seis tareas de la validación de requisitos (tres terminan ahí y tres siguen).
+  - Acierta en las seis de la arquitectura: dos terminan, y en las cuatro que siguen elige exactamente las ramas esperadas (solo Frontend; Frontend y Backend; solo Datos; solo Backend).
+  - → **Diseño**: un solo prompt con dos pasos (primero «¿termina aquí?», luego las ramas si sigue) y el esquema `{"exit": {"take", "reason"}, "branches": [...]}`. El prompt dice que la tarea no termina si pide además cualquier trabajo posterior.
+- **S2 · pautas de SDD** (`spikes/pipelines/s24_sdd_decision.py`, `claude -p` con sonnet y herramientas de solo lectura en tres repositorios de prueba): ✅ **10 de 10**, a 0,02 $ de media.
+  - En el proyecto con spec-kit, la carpeta siguiente es `specs/002-…`; en el de specs por fase, `docs/phases/03-…`; en el que no tiene nada, `specs/001-…`.
+  - → **Pautas, en este orden** (concretan la spec, a confirmar con el usuario):
+    1. Un cambio **trivial** (errata, renombrar, un ajuste de una línea) va **sin SDD aunque el proyecto lo use**.
+    2. Si el proyecto ya usa SDD, va con SDD en su formato.
+    3. Un trabajo grande (varias capas, un módulo nuevo, integraciones, decisiones de diseño) va con SDD en el formato de la app.
+    4. Lo demás (un cambio acotado de una sola pieza en un proyecto sin SDD) va sin SDD.
+
+    Van tal cual en las instrucciones del Analista de requisitos.
+- **S3 · formatos de SDD**:
+  - **spec-kit**: la marca es `.specify/` (sus comandos fallan sin ella: «not a Spec Kit project: no .specify/ directory found»). Dentro están `memory/constitution.md`, `templates/` y `extensions.yml`, y las specs van en `specs/NNN-nombre/` con `spec.md`, `plan.md` y `tasks.md` ([artefactos](https://github.github.io/spec-kit/reference/artifacts.html), [repositorio](https://github.com/github/spec-kit)).
+  - **Kiro**: `.kiro/specs/<nombre>/` con `requirements.md` (o `bugfix.md`), `design.md` y `tasks.md` ([docs](https://kiro.dev/docs/specs/)). La carpeta solo la confirman guías de terceros, pero coinciden todas.
+  - **OpenSpec**: `openspec/specs/` (las specs vivas) y `openspec/changes/<id>/` con `proposal.md`, `specs/`, `design.md` y `tasks.md`; lo terminado va a `changes/archive/` ([repositorio](https://github.com/Fission-AI/OpenSpec)).
+  - **Specs por fase** (como este repositorio): `docs/phases/NN-nombre/spec.md`.
+  - **Genérico**: `specs/*/spec.md`.
+  - → `sdd.detect()` mira esas marcas en ese orden. El agente lee el resto del repositorio para seguir el formato al detalle.
+
 ## Diseño
 ### 1. Foto del proyecto
 - **Migración `0024`**: `projects.avatar String(80) NULL`.
