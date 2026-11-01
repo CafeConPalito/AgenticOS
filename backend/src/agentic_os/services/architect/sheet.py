@@ -640,6 +640,8 @@ def set_pipeline(catalog: Catalog, sheet: Mapping, pipeline: Mapping) -> PatchRe
                 "reject_to": stage.get("reject_to"),
                 "reject_also": list(stage.get("reject_also") or []),
                 "confirm_decision": bool(stage.get("confirm_decision", False)),
+                # Phase 24: «Terminar aquí» (null: no exit).
+                "exit_condition": _exit_condition(stage.get("exit_condition")),
             }
         )
     if unknown:
@@ -707,6 +709,7 @@ def pipeline_write(sheet: Mapping, agent_ids: Mapping[str, str] | None = None) -
                 reject_to=s.get("reject_to"),
                 reject_also=s.get("reject_also", []),
                 confirm_decision=s.get("confirm_decision", False),
+                exit_condition=s.get("exit_condition"),
             )
             for s in data["stages"]
         ],
@@ -714,6 +717,13 @@ def pipeline_write(sheet: Mapping, agent_ids: Mapping[str, str] | None = None) -
         if data.get("links") is not None
         else None,
     )
+
+
+def _exit_condition(value: object) -> str | None:
+    """A stage's exit as the model wrote it: null (none) or its condition, trimmed."""
+    if value is None:
+        return None
+    return str(value).strip()[:500]
 
 
 def pipeline_issues(sheet: Mapping) -> list[Issue]:
@@ -804,6 +814,7 @@ def pipeline_of(db: Session, project: Project) -> dict | None:
                 "reject_to": index.get(s.reject_to_stage_id) if s.reject_to_stage_id else None,
                 "reject_also": [index[x] for x in s.reject_extra_ids if x in index],
                 "confirm_decision": s.confirm_decision,
+                "exit_condition": s.exit_condition,
             }
             for s in stages
         ],
@@ -839,6 +850,7 @@ def _stage_key(stage: Mapping) -> tuple:
         bool(stage.get("requires_review")),
         stage.get("reject_to"),
         tuple(stage.get("reject_also") or []),
+        stage.get("exit_condition"),  # phase 24
     )
 
 

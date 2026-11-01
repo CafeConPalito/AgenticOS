@@ -33,6 +33,10 @@ BRANCH_BACKEND = "La tarea toca la API, la base de datos o el backend"
 BRANCH_FRONTEND = "La tarea toca la interfaz de usuario o el frontend"
 
 
+# Where a new «Fin» node goes when the editor does not say: under its stage.
+EXIT_OFFSET = 110
+
+
 def _web() -> PipelineWrite:
     """«Desarrollo web»: Requisitos → Desarrollo → QA, and QA can send the task back."""
     return PipelineWrite(
@@ -95,7 +99,8 @@ def graph_of(pipeline: Pipeline) -> Graph:
     rejects = {
         s.id: [t for t in [s.reject_to_stage_id, *s.reject_extra_ids] if t] for s in pipeline.stages
     }
-    return Graph(ids, edges, rejects)
+    exits = {s.id: s.exit_condition for s in pipeline.stages if s.exit_condition is not None}
+    return Graph(ids, edges, rejects, exits)
 
 
 def _links_of(payload: PipelineWrite) -> list[LinkWrite]:
@@ -124,7 +129,12 @@ def _payload_graph(payload: PipelineWrite) -> Graph:
         nodes[i]: [nodes[t] for t in [s.reject_to, *s.reject_also] if t is not None]
         for i, s in enumerate(payload.stages)
     }
-    return Graph(nodes, edges, rejects)
+    exits = {
+        nodes[i]: s.exit_condition
+        for i, s in enumerate(payload.stages)
+        if s.exit_condition is not None
+    }
+    return Graph(nodes, edges, rejects, exits)
 
 
 def layout_of(payload: PipelineWrite) -> dict[int, tuple[int, int]]:
@@ -246,6 +256,13 @@ def save(db: Session, project: Project, payload: PipelineWrite) -> Pipeline:
         stage.confirm_decision = data.confirm_decision
         if data.x is not None and data.y is not None:
             stage.x, stage.y = data.x, data.y
+        stage.exit_condition = data.exit_condition
+        if data.exit_condition is None:
+            stage.exit_x = stage.exit_y = None
+        elif data.exit_x is not None and data.exit_y is not None:
+            stage.exit_x, stage.exit_y = data.exit_x, data.exit_y
+        elif stage.exit_x is None or stage.exit_y is None:
+            stage.exit_x, stage.exit_y = stage.x, stage.y + EXIT_OFFSET
         rows.append(stage)
         if stage.id and old_agent != data.agent_id:
             _move_queued(db, stage)

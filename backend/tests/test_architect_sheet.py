@@ -380,3 +380,23 @@ def test_the_pipeline_becomes_the_editor_payload_with_the_real_ids(world):
     payload = S.pipeline_write(sheet, {"redactor": "agent-123"})
     assert [s.agent_id for s in payload.stages] == ["agent-123", world["qa"].id]
     assert payload.links is None
+
+
+def test_a_stage_exit_goes_into_the_payload_and_counts_as_a_change(world):
+    """Phase 24: the Architect keeps «Terminar aquí» exits, and a changed one shows in the diff."""
+    sheet = _team_sheet(world)
+    stages = [
+        {"name": "A", "agent": "redactor", "exit_condition": "  Solo pide un borrador  "},
+        {"name": "B", "agent": "QA"},
+    ]
+    sheet = S.set_pipeline(world["catalog"], sheet, {"project": "Tienda", "stages": stages}).sheet
+    assert sheet["pipeline"]["stages"][0]["exit_condition"] == "Solo pide un borrador"
+    assert sheet["pipeline"]["stages"][1]["exit_condition"] is None
+    payload = S.pipeline_write(sheet, {"redactor": "agent-123"})
+    assert [s.exit_condition for s in payload.stages] == ["Solo pide un borrador", None]
+
+    before = {"stages": [dict(s, id=f"s{i}") for i, s in enumerate(sheet["pipeline"]["stages"])]}
+    after = {"stages": [dict(s) for s in before["stages"]]}
+    after["stages"][0]["exit_condition"] = None
+    assert S.pipeline_diff(before, after)["changed"] == ["A"]
+    assert not S.same_pipeline(before, after)

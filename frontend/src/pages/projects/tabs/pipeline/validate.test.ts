@@ -1,3 +1,5 @@
+import { makePipeline } from '@/test/fake-backend'
+import { graphOf, toDraft, toWrite } from './model'
 import { analyse, rejectCandidates, validateGraph, type GraphInput } from './validate'
 
 // The same graphs as backend/tests/test_pipeline_graph.py: the editor and the server must agree.
@@ -171,5 +173,78 @@ describe('pipeline graph rules', () => {
     expect(rejectCandidates(graph(DIAMOND), 'D').sort()).toEqual(['A', 'B', 'C'])
     expect(rejectCandidates(graph(LONG), 'B2').sort()).toEqual(['B'])
     expect(rejectCandidates(graph(LINEAR), 'A')).toEqual([])
+  })
+})
+
+// Phase 24 (ADR 0030): the same cases as backend/tests/test_pipeline_exits_graph.py.
+describe('«Terminar aquí» exits', () => {
+  // A → (B | C) → D → E
+  const WITH_TAIL: [string, string][] = [...DIAMOND, ['D', 'E']]
+  const exits = (links: [string, string][], at: Record<string, string>) => ({
+    ...graph(links),
+    exits: at,
+  })
+  const found = (g: GraphInput) => validateGraph(g).map((i) => [i.code, i.stage])
+
+  it('is valid before the fork, on the fork and after the join', () => {
+    expect(validateGraph(exits(WITH_TAIL, { A: 'Solo requisitos', D: 'Sin despliegue' }))).toEqual(
+      [],
+    )
+  })
+
+  it('needs a condition', () => {
+    expect(found(exits(WITH_TAIL, { A: '   ' }))).toEqual([['exit_no_condition', 'A']])
+  })
+
+  it('is not needed on a final stage', () => {
+    expect(found(exits(WITH_TAIL, { E: 'Terminar' }))).toEqual([['exit_on_final', 'E']])
+  })
+
+  it('cannot sit inside an open fork', () => {
+    expect(found(exits(WITH_TAIL, { B: 'Terminar', C: 'Terminar' }))).toEqual([
+      ['exit_in_branch', 'B'],
+      ['exit_in_branch', 'C'],
+    ])
+    const apart: [string, string][] = [
+      ['A', 'B'],
+      ['B', 'B2'],
+      ['A', 'C'],
+    ]
+    expect(found(exits(apart, { B: 'Terminar' }))).toEqual([['exit_in_branch', 'B']])
+    expect(found(exits(apart, { C: 'Terminar' }))).toEqual([['exit_on_final', 'C']])
+  })
+})
+
+describe('the editor model keeps the exits (phase 24)', () => {
+  it('reads an exit, writes it back trimmed and drops it when removed', () => {
+    const pipeline = makePipeline('p1', [
+      { id: 's1', name: 'Requisitos' },
+      { id: 's2', name: 'Validación', exit_condition: 'Solo requisitos', exit_x: 300, exit_y: 120 },
+      { id: 's3', name: 'Desarrollo' },
+    ])
+    const draft = toDraft(pipeline)
+    expect(draft.stages[1].exit).toEqual({ condition: 'Solo requisitos', x: 300, y: 120 })
+    expect(draft.stages[0].exit).toBeNull()
+    expect(graphOf(draft).exits).toEqual({ s2: 'Solo requisitos' })
+
+    draft.stages[1].exit = { condition: '  Solo requisitos  ', x: 310.4, y: 99.6 }
+    const written = toWrite(draft).stages
+    expect(written[1]).toMatchObject({
+      exit_condition: 'Solo requisitos',
+      exit_x: 310,
+      exit_y: 100,
+    })
+    expect(written[0]).toMatchObject({ exit_condition: null, exit_x: null, exit_y: null })
+
+    draft.stages[1].exit = null
+    expect(toWrite(draft).stages[1].exit_condition).toBeNull()
+  })
+
+  it('places the «Fin» node under its stage when the server has no place for it', () => {
+    const pipeline = makePipeline('p1', [
+      { id: 's1', name: 'A', x: 40, y: 10, exit_condition: 'Terminar', exit_x: null, exit_y: null },
+      { id: 's2', name: 'B' },
+    ])
+    expect(toDraft(pipeline).stages[0].exit).toEqual({ condition: 'Terminar', x: 40, y: 120 })
   })
 })

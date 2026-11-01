@@ -508,6 +508,9 @@ export function makeStage(overrides: Partial<Stage> = {}): Stage {
     x: 0,
     y: 0,
     confirm_decision: false,
+    exit_condition: null,
+    exit_x: null,
+    exit_y: null,
     join_stage_id: null,
     active_tasks: 0,
     ...overrides,
@@ -1363,6 +1366,9 @@ export function createFakeBackend(
         x?: number | null
         y?: number | null
         confirm_decision?: boolean
+        exit_condition?: string | null
+        exit_x?: number | null
+        exit_y?: number | null
       }
       type LinkBody = {
         source: number
@@ -1432,6 +1438,9 @@ export function createFakeBackend(
             x: st.x ?? i * 280,
             y: st.y ?? 0,
             confirm_decision: st.confirm_decision ?? false,
+            exit_condition: st.exit_condition ?? null,
+            exit_x: st.exit_condition == null ? null : (st.exit_x ?? st.x ?? i * 280),
+            exit_y: st.exit_condition == null ? null : (st.exit_y ?? (st.y ?? 0) + 110),
             join_stage_id: null,
             active_tasks: 0,
           }

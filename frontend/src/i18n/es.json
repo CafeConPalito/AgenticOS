@@ -1030,7 +1030,10 @@
       "unstructured": "Las ramas de {{stage}} no se cierran bien: cada bifurcación debe terminar en una sola etapa donde se unan.",
       "empty_branch": "Una rama de {{stage}} no tiene etapas propias.",
       "reject_not_backwards": "{{stage}} solo puede devolver la tarea a una etapa anterior.",
-      "reject_outside_path": "Dentro de una rama, {{stage}} solo puede devolver la tarea a etapas de esa misma rama."
+      "reject_outside_path": "Dentro de una rama, {{stage}} solo puede devolver la tarea a etapas de esa misma rama.",
+      "exit_no_condition": "La salida de {{stage}} necesita una condición: cuándo termina ahí la tarea.",
+      "exit_on_final": "{{stage}} ya es una etapa final: no necesita salida.",
+      "exit_in_branch": "{{stage}} está dentro de una rama: una salida ahí pararía las demás ramas. Ponla antes de bifurcar o después de que se unan."
     },
     "emptyTitle": "Este proyecto no tiene pipeline",
     "emptyDescription": "Sin pipeline, cada tarea la hace el agente que elijas. Con uno, cada tarea pasa por sus etapas.",

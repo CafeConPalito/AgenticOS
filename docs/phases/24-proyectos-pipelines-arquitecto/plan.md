@@ -224,7 +224,7 @@
 ## Tareas (en orden)
 1. [x] **Bloque 0**: spikes S1–S3 y resultados en este plan.
 2. [x] **Bloque 1 · Foto del proyecto**: migración `0024` (solo `projects.avatar`), API, limpieza y `ProjectMark` en todas las pantallas.
-3. [ ] **Bloque 2 · Salidas en el grafo**: reglas en Python y en `validate.ts`, con los mismos casos en los dos; guardar y cargar las salidas; ADR 0030.
+3. [x] **Bloque 2 · Salidas en el grafo**: reglas en Python y en `validate.ts`, con los mismos casos en los dos; guardar y cargar las salidas (también en la hoja del Arquitecto, para que mejorar un pipeline no las pierda); migración `0025` con los campos de las salidas y del modo SDD; ADR 0030 y nota en el 0020.
 4. [ ] **Bloque 3 · Salidas en el motor**: `start_decision`, decisor con salida, `finish_at_exit`, revisión final, confirmación, «Terminar aquí» y «Seguir con el pipeline».
 5. [ ] **Bloque 4 · Salidas en la interfaz**: nodo Fin en el editor, `TryDecisionDialog`, `DecisionBlock`, tarjeta y tarea.
 6. [ ] **Bloque 5 · SDD**: detección, `set_work_mode`, contexto por etapa, cambio a mano y en la revisión, interfaz.

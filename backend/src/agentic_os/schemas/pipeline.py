@@ -25,6 +25,13 @@ class StageWrite(BaseModel):
     y: int | None = None
     # If the stage forks, its decision waits for the person to confirm it.
     confirm_decision: bool = False
+    # Phase 24: «Terminar aquí». Null: no exit; text: the condition the decider evaluates (an
+    # empty one is refused by the graph rules). The «Fin» node's place (null: beside the stage).
+    exit_condition: (
+        Annotated[str, StringConstraints(strip_whitespace=True, max_length=500)] | None
+    ) = None
+    exit_x: int | None = None
+    exit_y: int | None = None
 
 
 class LinkWrite(BaseModel):
@@ -125,6 +132,9 @@ class StageRead(BaseModel):
     x: int
     y: int
     confirm_decision: bool
+    exit_condition: str | None = None  # phase 24: «Terminar aquí»
+    exit_x: int | None = None
+    exit_y: int | None = None
     join_stage_id: str | None  # for a fork: the stage where its branches meet
     active_tasks: int  # tasks that are at this stage and not finished
 

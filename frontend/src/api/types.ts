@@ -430,6 +430,10 @@ export interface Stage {
   x: number
   y: number
   confirm_decision: boolean
+  /** Phase 24: «Terminar aquí» — the condition the decider evaluates (null: no exit). */
+  exit_condition: string | null
+  exit_x: number | null
+  exit_y: number | null
   /** For a fork: the stage where its branches meet. */
   join_stage_id: string | null
   active_tasks: number
@@ -470,6 +474,10 @@ export interface StageWrite {
   x?: number | null
   y?: number | null
   confirm_decision?: boolean
+  /** Phase 24: «Terminar aquí» (null: no exit) and the place of its «Fin» node. */
+  exit_condition?: string | null
+  exit_x?: number | null
+  exit_y?: number | null
 }
 
 /** A link between two stages of the same save, by their index in `stages`. */

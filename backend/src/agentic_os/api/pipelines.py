@@ -68,6 +68,9 @@ def read_pipeline(db: Session, pipeline: Pipeline) -> PipelineRead:
                 x=s.x,
                 y=s.y,
                 confirm_decision=s.confirm_decision,
+                exit_condition=s.exit_condition,
+                exit_x=s.exit_x,
+                exit_y=s.exit_y,
                 join_stage_id=graph.join_of(s.id),
                 active_tasks=active.get(s.id, 0),
             )
