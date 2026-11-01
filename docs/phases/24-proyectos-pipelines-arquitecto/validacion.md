@@ -1,7 +1,6 @@
 # Fase 24: Proyectos, pipelines y Arquitecto · Validación
 
 > **Estado (2026-11-01)**: en validación. Pendiente:
-> - el último tercio de la suite del backend;
 > - las pruebas manuales con `claude` real (CA5 y CA7);
 > - el OK del usuario.
 
@@ -13,7 +12,11 @@ Backend  (uv run pytest, backend/.test-progress.log): el sistema paró la suite 
          de memoria en el test 1118 de 1728 (~62 %, en test_main.py), como ya pasó en la fase 23.
          Hasta ahí, dos fallos, ya corregidos (7f0eb61): test_agent_io y test_agents_api esperaban
          las 5 plantillas fijas de antes, y ahora son 11.
-         Pendiente: de test_main.py al final (~610 tests), por partes.
+         De test_main.py al final (611 tests), por tandas de serie: 38, 20, 11 y 11 ficheros,
+         todas en verde. La primera se colgó en test_main.py: el log de arranque, con las
+         migraciones 0024 y 0025, ya pasa de los 4 KB de una tubería de Windows. El test no la
+         leía y el watchdog esperaba el lock del log antes de su salida forzada; corregidos los
+         dos (b1b599f). Probablemente es también lo que cortó la suite completa al ~62 %.
          Pasados aparte, en verde, los ficheros nuevos y los que toca la fase:
          test_project_avatar, test_pipeline_exits_graph, test_pipeline_exits, test_migration_0025,
          test_sdd, test_apply_development, test_architect_design_e2e, test_e2e_development,
@@ -38,7 +41,7 @@ e2e      test_e2e_development (CLI falso en ConPTY): un proyecto nuevo con «Des
 | CA7 | Un proyecto nuevo con «Desarrollo» completa una tarea de desarrollo y otra que termina tras la validación | ✅ e2e · ⏳ prueba con `claude` real | `test_e2e_development.py` |
 | CA8 | Copiar el pipeline de otro proyecto con sus agentes y ajustes por etapa, con aviso por agentes archivados | ✅ | `test_apply_development.py`, `copy-pipeline.test.tsx` |
 | CA9 | El Arquitecto diseña el pipeline de un proyecto vacío y un equipo sin pipeline | ✅ | `test_architect_design_e2e.py`, `architect-team.test.tsx` |
-| CA10 | Suites completas, lint y `/code-review` | ⏳ falta el último tercio del backend | arriba y en la tabla siguiente |
+| CA10 | Suites completas, lint y `/code-review` | ✅ | arriba (backend por tandas) y en la tabla siguiente |
 
 ## Code review
 `/code-review` sobre la rama frente a `main` (2026-11-01): 8 hallazgos; 7 corregidos (`35f8ace`) y 1 justificado.
@@ -65,6 +68,7 @@ e2e      test_e2e_development (CLI falso en ConPTY): un proyecto nuevo con «Des
   - El decisor barato (haiku) acierta a la vez la salida y las ramas con un prompt en dos pasos, a 0,001 $ por llamada.
   - Las salidas encajan como atributo de la etapa porque el grafo ya sabe si una etapa está dentro de una bifurcación.
   - La suite completa del backend vuelve a no caber en memoria de una vez: hay que pasarla por partes de serie.
+  - Un subproceso con `stderr=PIPE` que nadie lee se bloquea en cuanto su log pasa de 4 KB: el cuelgue de `test_main.py` no avisaba y parecía falta de memoria.
 - **Impacto en fases futuras**:
   - Anotado para el futuro: salidas que terminen solo una rama, tareas que empiecen en una etapa intermedia y cambiar el modo SDD después de bifurcar.
   - Fase 25 (GitHub): el README puede explicar «Desarrollo», las salidas y SDD.
