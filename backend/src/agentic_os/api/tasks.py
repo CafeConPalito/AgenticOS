@@ -43,6 +43,7 @@ from agentic_os.schemas.task import (
     TaskRead,
     TaskUpdate,
     TreeNode,
+    WorkModeRequest,
 )
 from agentic_os.schemas.usage import UsageTotals
 from agentic_os.services import accounts as account_ops
@@ -172,6 +173,11 @@ def read_tasks(db: Session, tasks: list[Task]) -> list[TaskRead]:
         gates = usage_limits.blocked_all(db)
         index = account_ops.AccountIndex(db)
         deciding = switching.decisions_pending(db)
+    # Phase 24: a lane works the way its root does.
+    modes: dict[str, tuple[str | None, str | None, str | None]] = {}
+    for task in tasks:
+        root = lane_ops.root_of(db, task) if task.lane_of_id else task
+        modes[task.id] = (root.work_mode, root.work_mode_reason, root.spec_path)
     result = []
     for task in tasks:
         project = projects[task.project_id]
@@ -208,6 +214,9 @@ def read_tasks(db: Session, tasks: list[Task]) -> list[TaskRead]:
                 stage_exit_condition=stage.exit_condition if stage else None,
                 exit_stage_id=task.exit_stage_id,
                 exit_stage_name=ended_at.name if ended_at else None,
+                work_mode=modes.get(task.id, (None, None, None))[0],
+                work_mode_reason=modes.get(task.id, (None, None, None))[1],
+                spec_path=modes.get(task.id, (None, None, None))[2],
                 stage_id=task.stage_id,
                 stage_name=stage.name if stage else None,
                 stage_index=(project_stages.index(stage) + 1) if stage else 0,
@@ -452,6 +461,18 @@ def decide_branches(
     """The person picks the branches of a task that waits at a fork."""
     task = _get(db, task_id)
     lane_ops.decide(db, task, payload.chosen)
+    db.commit()
+    scheduler.poke()
+    return read_task(db, task)
+
+
+@router.put("/tasks/{task_id}/work-mode")
+def change_work_mode(
+    task_id: str, payload: WorkModeRequest, db: DbSession, scheduler: SchedulerDep
+) -> TaskRead:
+    """Phase 24: the person changes the mode; the task goes back to its first stage."""
+    task = _get(db, task_id)
+    task_ops.change_work_mode(db, task, payload.mode)
     db.commit()
     scheduler.poke()
     return read_task(db, task)

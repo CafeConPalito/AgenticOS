@@ -73,6 +73,7 @@ class AgentBackend(Protocol):
         self, run_id: str, summary: str, verdict: Verdict, reject_to: str = ""
     ) -> str | None: ...
     def write_project_memory(self, run_id: str, note: str) -> None: ...
+    def set_work_mode(self, run_id: str, mode: str, reason: str, spec_path: str) -> str: ...
     def search_knowledge(self, run_id: str, query: str, limit: int, graph: str) -> str: ...
     def knowledge_map(self, run_id: str, topic: str) -> str: ...
     def related_knowledge(self, run_id: str, document: str, kinds: str, origin: str) -> str: ...
@@ -448,6 +449,22 @@ def build_mcp(backend: AgentBackend) -> MCPServer:
         no, la respuesta te dice qué. Como mucho una propuesta por ejecución."""
         return await call(
             backend.propose_agent, _run_id(ctx), dict(sheet or {}), reason.strip()[:1000]
+        )
+
+    @server.tool()
+    async def set_work_mode(
+        mode: Literal["sdd", "direct"], reason: str, ctx: Context, spec_path: str = ""
+    ) -> str:
+        """Fase 24: marca cómo se hace la tarea. "sdd" (desarrollo guiado por especificaciones):
+        `spec_path` es la carpeta de su spec, relativa a la raíz del proyecto. "direct": sin
+        spec, con los requisitos de la propia tarea. `reason` lo explica en una frase. Lo usa la
+        etapa que toma los requisitos; las siguientes lo reciben en su contexto."""
+        return await call(
+            backend.set_work_mode,
+            _run_id(ctx),
+            mode,
+            reason.strip()[:500],
+            spec_path.strip()[:300],
         )
 
     @server.tool()

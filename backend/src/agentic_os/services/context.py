@@ -116,9 +116,45 @@ def task_section(task: TaskContext) -> str:
         lines.append(task.joined)
     if task.rejection:
         lines += ["", "## Vuelve a ti porque se rechazó", task.rejection]
+    lines += work_mode_lines(task)
     if task.history:
         lines += ["", "## Historial de la tarea", *task.history]
     return "\n".join(lines)
+
+
+def work_mode_lines(task: TaskContext) -> list[str]:
+    """Phase 24 (ADR 0030): how the task is worked, for every stage; at the first stage of a
+    task still undecided, what SDD format the project uses."""
+    if task.work_mode == "sdd":
+        why = f" ({task.work_mode_reason})" if task.work_mode_reason else ""
+        return [
+            "",
+            "## Modo de trabajo: con SDD",
+            f"Esta tarea se hace con desarrollo guiado por especificaciones{why}. Su spec está en "
+            f"`{task.spec_path}`: los requisitos y criterios de aceptación, el plan (diseño y "
+            "arquitectura) y la lista de tareas, en el formato del proyecto.",
+            "- Trabaja a partir de la spec y respeta lo que dice. Si algo de lo que haces la "
+            "cambia, actualízala.",
+            "- Si implementas, sigue la lista de tareas y marca las que termines.",
+            "- Si revisas o pruebas, comprueba los criterios de aceptación de la spec.",
+        ]
+    if task.work_mode == "direct":
+        why = f" ({task.work_mode_reason})" if task.work_mode_reason else ""
+        return [
+            "",
+            "## Modo de trabajo: sin SDD",
+            f"Esta tarea se hace sin SDD{why}: trabaja con los requisitos de la propia tarea y no "
+            "crees documentos de spec.",
+        ]
+    if task.sdd_hint:
+        return [
+            "",
+            "## Modo de trabajo: sin decidir",
+            task.sdd_hint,
+            "Si tomas los requisitos, decide si la tarea va con SDD y márcalo con la herramienta "
+            "`set_work_mode` antes de terminar.",
+        ]
+    return []
 
 
 def build_instructions(
