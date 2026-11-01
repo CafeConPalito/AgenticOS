@@ -112,6 +112,7 @@ export function SessionsTable({
                 <ProjectChip
                   name={row.project_name}
                   color={projectColor(row.project_id)}
+                  projectId={row.project_id}
                   variant="dot"
                 />
               </TableCell>

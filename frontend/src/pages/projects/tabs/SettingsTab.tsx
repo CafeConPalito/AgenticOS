@@ -18,6 +18,7 @@ import {
   toApiValues,
 } from '../project-form'
 import { ProjectFormFields } from '../ProjectFormFields'
+import { SavedProjectPhoto } from '../ProjectPhotoField'
 import { GitSettingsSection } from './GitSettingsSection'
 import { RepositoriesSection } from './RepositoriesSection'
 
@@ -77,6 +78,7 @@ export function SettingsTab({ project }: { project: Project }) {
 
   return (
     <div className="flex max-w-[1052px] flex-col gap-8 px-6 pt-5 pb-8">
+      <SavedProjectPhoto project={project} />
       <FormProvider {...form}>
         <form onSubmit={save} noValidate className="flex flex-col gap-4">
           <UnsavedChangesGuard when={form.formState.isDirty} allowRef={leaving} />

@@ -204,6 +204,7 @@ export function makeProject(overrides: Partial<Project> = {}): Project {
     id: `project-${seq}`,
     name: 'Tienda online',
     color: '#7C9CFF',
+    avatar: null,
     description: '',
     path: 'D:\\proyectos\\tienda',
     workspace_mode: 'direct',
@@ -2056,6 +2057,15 @@ export function createFakeBackend(
       const project = makeProject({ ...fields, git: null } as Partial<Project>)
       projects.push(project)
       return json(201, project)
+    }
+    // Phase 24: the project's cropped photo, kept like an agent's to be inspected.
+    const projectAvatar = path.match(/^\/api\/projects\/([^/]+)\/avatar$/)
+    if (projectAvatar && method === 'PUT') {
+      const project = projects.find((p) => p.id === projectAvatar[1])
+      if (!project) return apiError(404, 'project_not_found')
+      avatarUploads.push({ agentId: project.id, body: rawBody })
+      project.avatar = `photo:${String(avatarUploads.length).padStart(12, '0')}`
+      return json(200, project)
     }
     const projectMatch = path.match(/^\/api\/projects\/([^/]+)(\/open)?$/)
     if (projectMatch) {

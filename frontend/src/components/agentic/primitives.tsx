@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { avatarSource, useAgentAvatar, useApiBase } from '@/lib/avatars'
+import { avatarSource, useAgentAvatar, useApiBase, useProjectAvatar } from '@/lib/avatars'
 import { cn } from '@/lib/utils'
 import { readableOn } from '@/theme/contrast'
 
@@ -128,19 +128,88 @@ export function AgentAvatar({
   )
 }
 
+/**
+ * The mark of a project (phase 24): its photo, or its color — a small square in lists and
+ * chips, its initial on the color from 24 px up. `projectId` looks the photo up in the
+ * projects list when the caller only has the name and color; `src` shows a crop that is not
+ * uploaded yet.
+ */
+export function ProjectMark({
+  name,
+  color,
+  avatar,
+  projectId,
+  src,
+  size = 8,
+  className,
+}: {
+  name: string
+  color: string
+  avatar?: string | null
+  projectId?: string | null
+  src?: string | null
+  size?: number
+  className?: string
+}) {
+  const looked = useProjectAvatar(avatar === undefined ? projectId : null)
+  const stored = avatarSource(avatar === undefined ? looked : avatar, useApiBase())
+  const [broken, setBroken] = useState<string | null>(null)
+  const source = src ?? stored
+  const picture = source && source !== broken ? source : null
+  const big = size >= 24
+  // A photo needs some room to be told apart: never under 14 px.
+  const side = picture ? Math.max(size, 14) : size
+  const radius = side <= 10 ? 2 : side <= 16 ? 4 : side <= 34 ? 8 : 12
+  return (
+    <span
+      role={big ? 'img' : undefined}
+      aria-label={big ? name : undefined}
+      aria-hidden={big ? undefined : true}
+      data-testid="project-mark"
+      className={cn(
+        'grid shrink-0 place-items-center overflow-hidden font-bold select-none',
+        className,
+      )}
+      style={{
+        width: side,
+        height: side,
+        borderRadius: radius,
+        background: color,
+        color: readableOn(color),
+        fontSize: Math.round(side * 0.44),
+      }}
+    >
+      {picture ? (
+        <img
+          src={picture}
+          alt=""
+          draggable={false}
+          onError={() => setBroken(picture)}
+          className="size-full object-cover"
+        />
+      ) : big ? (
+        (name.trim()[0] ?? '?').toUpperCase()
+      ) : null}
+    </span>
+  )
+}
+
 export function ProjectChip({
   name,
   color,
+  projectId,
   variant = 'chip',
 }: {
   name: string
   color: string
+  /** Phase 24: to show the project's photo instead of its color. */
+  projectId?: string | null
   variant?: 'chip' | 'dot'
 }) {
   if (variant === 'dot')
     return (
       <span className="inline-flex items-center gap-1.5 text-muted-foreground">
-        <span className="size-2 rounded-[2px]" style={{ background: color }} />
+        <ProjectMark name={name} color={color} projectId={projectId} />
         {name}
       </span>
     )
@@ -149,7 +218,7 @@ export function ProjectChip({
       className="inline-flex h-[18px] items-center gap-1.5 rounded-[5px] px-1.5 text-[11px] text-foreground"
       style={{ background: `color-mix(in oklch, ${color} 16%, transparent)` }}
     >
-      <span className="size-1.5 rounded-[2px]" style={{ background: color }} />
+      <ProjectMark name={name} color={color} projectId={projectId} size={6} />
       {name}
     </span>
   )

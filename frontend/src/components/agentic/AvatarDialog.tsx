@@ -40,6 +40,7 @@ export function AvatarDialog({
   value,
   onPick,
   uploadPhoto,
+  photoOnly = false,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -50,6 +51,8 @@ export function AvatarDialog({
   onPick: (avatar: string | null) => void
   /** Sends the crop and returns the agent's new `avatar` (`photo:<hash>`). */
   uploadPhoto: (crop: Blob) => Promise<string | null>
+  /** Phase 24 (projects): a photo or the initial, without the owl gallery. */
+  photoOnly?: boolean
 }) {
   const { t } = useTranslation()
   const a = 'avatars'
@@ -58,13 +61,16 @@ export function AvatarDialog({
       <DialogContent className="sm:max-w-[620px]">
         <DialogHeader>
           <DialogTitle>{t(`${a}.title`, { name })}</DialogTitle>
-          <DialogDescription>{t(`${a}.description`)}</DialogDescription>
+          <DialogDescription>
+            {t(photoOnly ? `${a}.photoOnlyDescription` : `${a}.description`)}
+          </DialogDescription>
         </DialogHeader>
         {open && (
           <Picker
             name={name}
             color={color}
             value={value}
+            photoOnly={photoOnly}
             onPick={(avatar) => {
               onPick(avatar)
               onOpenChange(false)
@@ -87,20 +93,22 @@ function Picker({
   value,
   onPick,
   uploadPhoto,
+  photoOnly,
 }: {
   name: string
   color: string
   value: string | null
   onPick: (avatar: string | null) => void
   uploadPhoto: (crop: Blob) => Promise<string | null>
+  photoOnly: boolean
 }) {
   const { t } = useTranslation()
   const a = 'avatars'
-  const [tab, setTab] = useState<Tab>(value?.startsWith('photo:') ? 'photo' : 'owls')
+  const [tab, setTab] = useState<Tab>(photoOnly || value?.startsWith('photo:') ? 'photo' : 'owls')
   return (
     <Tabs value={tab} onValueChange={(next) => setTab(next as Tab)}>
       <TabsList>
-        <TabsTrigger value="owls">{t(`${a}.tabs.owls`)}</TabsTrigger>
+        {!photoOnly && <TabsTrigger value="owls">{t(`${a}.tabs.owls`)}</TabsTrigger>}
         <TabsTrigger value="photo">{t(`${a}.tabs.photo`)}</TabsTrigger>
         <TabsTrigger value="initials">{t(`${a}.tabs.initials`)}</TabsTrigger>
       </TabsList>

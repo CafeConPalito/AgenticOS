@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router'
 import { useAgents } from '@/api/agents'
 import { useProjects } from '@/api/projects'
 import { useLaunchRun } from '@/api/runs'
-import { AgentAvatar } from '@/components/agentic/primitives'
+import { AgentAvatar, ProjectMark } from '@/components/agentic/primitives'
 import { Field } from '@/components/page'
 import { Button } from '@/components/ui/button'
 import {
@@ -153,7 +153,7 @@ function LaunchRunForm({
               <SelectContent>
                 {projects.map((p) => (
                   <SelectItem key={p.id} value={p.id}>
-                    <span className="size-2 rounded-[2px]" style={{ background: p.color }} />
+                    <ProjectMark name={p.name} color={p.color} avatar={p.avatar} />
                     {p.name}
                   </SelectItem>
                 ))}

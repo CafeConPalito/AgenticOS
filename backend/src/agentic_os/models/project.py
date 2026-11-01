@@ -44,6 +44,8 @@ class Project(IdMixin, WorkspaceMixin, TimestampMixin, Base):
 
     name: Mapped[str] = mapped_column(String(80), nullable=False)
     color: Mapped[str] = mapped_column(String(9), nullable=False, default="#7C9CFF")
+    # Phase 24: null for the initials on the color, or `photo:<hash>` (no owls for projects).
+    avatar: Mapped[str | None] = mapped_column(String(80), nullable=True)
     description: Mapped[str] = mapped_column(Text, nullable=False, default="")
     path: Mapped[str] = mapped_column(Text, nullable=False)
     # Normalized path (resolved, case-folded on Windows) used to detect duplicates.

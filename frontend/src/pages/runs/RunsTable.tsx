@@ -108,7 +108,11 @@ export function RunsTable({ runs, showAgent = true }: { runs: Run[]; showAgent?:
                   </div>
                 </TableCell>
                 <TableCell>
-                  <ProjectChip name={run.project_name} color={projectColor(run.project_id)} />
+                  <ProjectChip
+                    name={run.project_name}
+                    color={projectColor(run.project_id)}
+                    projectId={run.project_id}
+                  />
                 </TableCell>
                 <TableCell>
                   <RunStatusBadge run={run} size="xs" />

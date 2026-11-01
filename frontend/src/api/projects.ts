@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { api } from '@/lib/api'
+import { api, apiFetch } from '@/lib/api'
 import type { GitProjectFields, Project, ProjectFields } from './types'
 
 export const projectKeys = {
@@ -44,8 +44,22 @@ export function useCreateProject() {
 export function useUpdateProject(id: string) {
   const invalidate = useInvalidateProjects()
   return useMutation({
-    mutationFn: (body: Partial<ProjectFields & GitProjectFields>) =>
+    mutationFn: (body: Partial<ProjectFields & GitProjectFields & { avatar: string | null }>) =>
       api.patch<Project>(`/api/projects/${id}`, body),
+    onSuccess: (project) => invalidate(project),
+  })
+}
+
+/** Phase 24: the cropped photo of a project, like an agent's (only the crop is sent). */
+export function useUploadProjectAvatar() {
+  const invalidate = useInvalidateProjects()
+  return useMutation({
+    mutationFn: ({ id, crop }: { id: string; crop: Blob }) =>
+      apiFetch<Project>(`/api/projects/${id}/avatar`, {
+        method: 'PUT',
+        headers: { 'Content-Type': crop.type || 'image/webp' },
+        body: crop,
+      }),
     onSuccess: (project) => invalidate(project),
   })
 }

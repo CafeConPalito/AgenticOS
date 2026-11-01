@@ -31,6 +31,7 @@ import { errorMessage } from '@/lib/form-errors'
 import { cn } from '@/lib/utils'
 import type { NewTaskInit } from '@/stores/dialogs'
 import { useUiPrefs } from '@/stores/ui-prefs'
+import { ProjectMark } from '@/components/agentic/primitives'
 
 const PRIORITIES: Priority[] = ['high', 'normal', 'low']
 
@@ -195,7 +196,7 @@ function NewTaskForm({ onClose, init }: { onClose: () => void; init: NewTaskInit
                 <SelectContent>
                   {projects.map((p) => (
                     <SelectItem key={p.id} value={p.id}>
-                      <span className="size-2 rounded-[2px]" style={{ background: p.color }} />
+                      <ProjectMark name={p.name} color={p.color} avatar={p.avatar} />
                       {p.name}
                     </SelectItem>
                   ))}

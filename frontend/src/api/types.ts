@@ -97,6 +97,8 @@ export interface GitProjectFields {
 
 export interface Project extends ProjectFields, GitProjectFields {
   id: string
+  /** Phase 24: null (its initial on its color) or `photo:<hash>`; projects have no owls. */
+  avatar: string | null
   created_at: string
   updated_at: string
   git: GitInfo | null

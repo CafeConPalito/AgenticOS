@@ -81,7 +81,11 @@ export function TaskCard({
       )}
     >
       <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-        <ProjectChip name={task.project_name} color={task.project_color} />
+        <ProjectChip
+          name={task.project_name}
+          color={task.project_color}
+          projectId={task.project_id}
+        />
         {task.stage_name && <span className="truncate">{task.stage_name}</span>}
         {task.lane_name && (
           <span className="truncate rounded-full border px-1.5 text-[10.5px]">

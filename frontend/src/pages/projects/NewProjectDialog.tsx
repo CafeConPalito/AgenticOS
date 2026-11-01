@@ -1,11 +1,11 @@
 import { FolderPlus } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
 import { toast } from 'sonner'
 import { useClone } from '@/api/git-more'
 import { useApplyPipelineTemplate } from '@/api/pipelines'
-import { useCreateProject } from '@/api/projects'
+import { useCreateProject, useUploadProjectAvatar } from '@/api/projects'
 import { FolderPicker } from '@/components/FolderPicker'
 import { Field } from '@/components/page'
 import { Button } from '@/components/ui/button'
@@ -22,6 +22,7 @@ import { ApiError, api } from '@/lib/api'
 import { errorMessage } from '@/lib/form-errors'
 import { cn } from '@/lib/utils'
 import { PROJECT_COLORS } from '@/theme/palettes'
+import { ProjectPhotoField } from './ProjectPhotoField'
 
 /** The six swatches the project can be marked with. */
 const COLORS = PROJECT_COLORS
@@ -67,6 +68,13 @@ function NewProjectForm({ onClose }: { onClose: () => void }) {
   // Until the person types a name, it follows the folder.
   const [nameTouched, setNameTouched] = useState(false)
   const [color, setColor] = useState(COLORS[0])
+  // Phase 24: the framed photo waits in memory until the project exists.
+  const [photo, setPhoto] = useState<{ crop: Blob; url: string } | null>(null)
+  const uploadPhoto = useUploadProjectAvatar()
+  useEffect(() => {
+    if (!photo) return
+    return () => URL.revokeObjectURL(photo.url)
+  }, [photo])
   const [pipeline, setPipeline] = useState<PipelineChoice>('web')
   const [errors, setErrors] = useState<{ path?: string; name?: string; form?: string }>({})
   const [offerCreate, setOfferCreate] = useState(false)
@@ -155,7 +163,14 @@ function NewProjectForm({ onClose }: { onClose: () => void }) {
       )
       return
     }
-    // The project exists from here on: a failing pipeline must not undo it.
+    // The project exists from here on: a failing photo or pipeline must not undo it.
+    if (photo) {
+      try {
+        await uploadPhoto.mutateAsync({ id: project.id, crop: photo.crop })
+      } catch (error) {
+        toast.error(t('projects.photo.failed', { name: project.name, error: errorMessage(error) }))
+      }
+    }
     if (pipeline === 'web') {
       try {
         await applyTemplate.mutateAsync({ projectId: project.id, template: 'web' })
@@ -288,6 +303,17 @@ function NewProjectForm({ onClose }: { onClose: () => void }) {
                 </button>
               ))}
             </div>
+          </Field>
+
+          <Field label={t('projects.photo.title')}>
+            <ProjectPhotoField
+              name={shownName}
+              color={color}
+              avatar={null}
+              preview={photo?.url ?? null}
+              onUpload={async (crop) => setPhoto({ crop, url: URL.createObjectURL(crop) })}
+              onRemove={() => setPhoto(null)}
+            />
           </Field>
 
           <Field label={t('projects.fields.color')}>

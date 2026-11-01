@@ -12,12 +12,16 @@ from agentic_os.db.session import get_session
 from agentic_os.errors import ApiError, NotFound
 from agentic_os.models import Project, Task, TaskStatus, WorkspaceMode
 from agentic_os.schemas.project import ProjectCreate, ProjectRead, ProjectUpdate
-from agentic_os.services import git, maintenance, paths, repos
+from agentic_os.services import avatars, git, maintenance, paths, repos
 from agentic_os.services.knowledge import docs as knowledge_docs
 from agentic_os.services.proc import open_in_file_manager
 
 router = APIRouter(tags=["projects"])
 DbSession = Annotated[Session, Depends(get_session)]
+
+
+def _data_dir(request: Request) -> Path:
+    return Path(request.app.state.settings.data_dir)
 
 
 def get_project_or_404(session: Session, project_id: str) -> Project:
@@ -117,7 +121,9 @@ def get_project(project_id: str, session: DbSession) -> ProjectRead:
 
 
 @router.patch("/projects/{project_id}")
-def update_project(project_id: str, payload: ProjectUpdate, session: DbSession) -> ProjectRead:
+def update_project(
+    project_id: str, payload: ProjectUpdate, session: DbSession, request: Request
+) -> ProjectRead:
     project = get_project_or_404(session, project_id)
     changes = payload.model_dump(exclude_unset=True)
     if changes.get("path"):
@@ -126,10 +132,27 @@ def update_project(project_id: str, payload: ProjectUpdate, session: DbSession) 
         paths.ensure_folder(path, create=False)
         project.path, project.path_key = path, key
         repos.sync(session, project)
-    for field, value in changes.items():  # nulls are rejected by the schema
+    if "avatar" in changes:
+        changes["avatar"] = avatars.check(_data_dir(request), changes["avatar"], owls=False)
+    for field, value in changes.items():  # nulls are rejected by the schema (not the avatar)
         setattr(project, field, value)
     if {"workspace_mode", "path", "base_branch"} & payload.model_fields_set:
         _check_worktree(session, project)
+    _commit(session)
+    return _read(project)
+
+
+@router.put("/projects/{project_id}/avatar")
+async def upload_project_avatar(
+    project_id: str, request: Request, session: DbSession
+) -> ProjectRead:
+    """The cropped photo of a project (phase 24), like an agent's: the body is the square crop
+    (PNG, WebP or JPEG), stored again as WebP without metadata."""
+    project = get_project_or_404(session, project_id)
+    if int(request.headers.get("content-length") or 0) > avatars.MAX_CROP_BYTES:
+        raise ApiError(413, "avatar_too_big", "the crop is too heavy", "avatar")
+    data = await request.body()
+    project.avatar = avatars.save_crop(_data_dir(request), data)
     _commit(session)
     return _read(project)
 

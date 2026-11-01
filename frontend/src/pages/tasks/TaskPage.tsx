@@ -146,7 +146,11 @@ function TaskDetail({ task }: { task: Task }) {
             {t(`tasks.lanes.phase.${task.phase}`)}
           </span>
         )}
-        <ProjectChip name={task.project_name} color={task.project_color} />
+        <ProjectChip
+          name={task.project_name}
+          color={task.project_color}
+          projectId={task.project_id}
+        />
         {task.agent_name && (
           <span className="inline-flex items-center gap-2 text-[12.5px] text-muted-foreground">
             <AgentAvatar

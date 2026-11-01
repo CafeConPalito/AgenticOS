@@ -33,7 +33,7 @@ import { useAgents } from '@/api/agents'
 import { useProjects } from '@/api/projects'
 import { useReorderQueue, useScheduler, useSetSchedulerPaused, useTasks } from '@/api/tasks'
 import type { Agent, Task, TaskStatus } from '@/api/types'
-import { AgentAvatar } from '@/components/agentic/primitives'
+import { AgentAvatar, ProjectMark } from '@/components/agentic/primitives'
 import { EmptyState } from '@/components/EmptyState'
 import { Button } from '@/components/ui/button'
 import { errorMessage } from '@/lib/form-errors'
@@ -135,7 +135,7 @@ export default function BoardPage() {
               active={projectId === p.id}
               onClick={() => setProjectId(projectId === p.id ? null : p.id)}
             >
-              <span className="size-2 rounded-[2px]" style={{ background: p.color }} />
+              <ProjectMark name={p.name} color={p.color} avatar={p.avatar} />
               {p.name}
             </ChipButton>
           ))}
@@ -554,7 +554,12 @@ function QueueCard({
       <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
         {handle}
         <span className="font-mono font-bold text-foreground">{label}</span>
-        <span className="size-1.5 rounded-[2px]" style={{ background: task.project_color }} />
+        <ProjectMark
+          name={task.project_name}
+          color={task.project_color}
+          projectId={task.project_id}
+          size={6}
+        />
         <span className="truncate">{task.project_name}</span>
         {controls}
         {!controls && (

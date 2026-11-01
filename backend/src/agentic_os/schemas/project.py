@@ -4,7 +4,7 @@ from typing import Annotated
 from pydantic import BaseModel, ConfigDict, StringConstraints, field_validator
 
 from agentic_os.models.project import IntegrationMode, OnApprove, WorkspaceMode
-from agentic_os.schemas.agent import Color, Name, reject_null
+from agentic_os.schemas.agent import Avatar, Color, Name, reject_null
 from agentic_os.services.git import GitInfo
 
 PathStr = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
@@ -39,6 +39,8 @@ class ProjectUpdate(BaseModel):
     integration_mode: IntegrationMode | None = None
     on_approve: OnApprove | None = None
     agents_git_authorized: bool | None = None
+    # Phase 24: null goes back to the initials; a new photo comes through PUT …/avatar.
+    avatar: Avatar | None = None
 
     _no_nulls = field_validator(
         "name",
@@ -59,6 +61,7 @@ class ProjectRead(BaseModel):
     id: str
     name: str
     color: str
+    avatar: str | None = None
     description: str
     path: str
     workspace_mode: WorkspaceMode

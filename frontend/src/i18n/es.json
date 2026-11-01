@@ -333,6 +333,15 @@
     "noGit": "Sin git",
     "dirty": "Con cambios sin commitear",
     "folderMissing": "La carpeta ya no existe",
+    "photo": {
+      "title": "Foto",
+      "add": "Poner foto",
+      "change": "Cambiar foto",
+      "remove": "Quitar foto",
+      "saved": "Foto guardada",
+      "removed": "Foto quitada",
+      "failed": "No se pudo guardar la foto de {{name}}: {{error}}"
+    },
     "mode": {
       "direct": "Carpeta directa",
       "directHelp": "Los agentes trabajan sobre la carpeta del proyecto, una tarea de código a la vez.",
@@ -3959,6 +3968,7 @@
   "avatars": {
     "title": "Imagen de {{name}}",
     "description": "Un búho de la galería, una foto tuya o sus iniciales sobre su color.",
+    "photoOnlyDescription": "Una foto tuya encuadrada o su inicial sobre su color.",
     "change": "Cambiar imagen",
     "remove": "Quitar imagen",
     "saved": "Imagen guardada",
