@@ -74,6 +74,21 @@ SCHEMA = {
     "required": ["branches"],
 }
 
+# Phase 24 (ADR 0030, spike S1): at a stage with an exit the answer also says whether the task
+# ends there; with `exit.take` the branches are ignored.
+EXIT_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "exit": {
+            "type": "object",
+            "properties": {"take": {"type": "boolean"}, "reason": {"type": "string"}},
+            "required": ["take", "reason"],
+        },
+        "branches": SCHEMA["properties"]["branches"],
+    },
+    "required": ["exit", "branches"],
+}
+
 Runner = Callable[..., subprocess.CompletedProcess[str]]
 
 
@@ -101,6 +116,9 @@ class DecisionRequest:
     model: str
     prefix: tuple[str, ...]  # argv that starts the CLI
     env: Mapping[str, str]
+    # Phase 24: «Terminar aquí» of the stage (its condition), and the stage's name.
+    exit: BranchView | None = None
+    stage_name: str = ""
 
 
 @dataclass
@@ -121,6 +139,8 @@ class DecisionResult:
     model: str = ""
     seconds: float = 0.0
     error: str | None = None
+    exit_taken: bool = False  # phase 24: the task ends at the stage
+    exit_reason: str = ""
 
     @property
     def chosen(self) -> list[str]:
@@ -128,6 +148,8 @@ class DecisionResult:
 
 
 def build_prompt(request: DecisionRequest) -> str:
+    if request.exit is not None:
+        return _exit_prompt(request)
     branches = "\n".join(f"- {b.id} · {b.name}: {b.condition}" for b in request.branches)
     history = "\n".join(request.history) or "(todavía no hay trabajo previo)"
     return (
@@ -140,6 +162,44 @@ def build_prompt(request: DecisionRequest) -> str:
         'Responde solo con JSON: {"branches": [{"id": "...", "take": true|false, '
         '"reason": "..."}]} con todas las ramas.'
     )
+
+
+def _exit_prompt(request: DecisionRequest) -> str:
+    """Spike S1: first whether the task ends at the stage, then (only if it goes on) its
+    branches."""
+    assert request.exit is not None
+    history = "\n".join(request.history) or "(todavía no hay trabajo previo)"
+    head = (
+        "Eres el enrutador de un pipeline de desarrollo. La etapa "
+        f"«{request.stage_name or 'actual'}» acaba de terminar.\n\n"
+        "1. Decide primero si la tarea **termina aquí**: termina solo si se cumple esta "
+        f"condición: «{request.exit.condition}». Si la tarea pide además cualquier trabajo "
+        "posterior (programar, desplegar…), no termina.\n"
+    )
+    if request.branches:
+        branches = "\n".join(f"- {b.id} · {b.name}: {b.condition}" for b in request.branches)
+        head += (
+            "2. Si no termina, decide por qué ramas debe pasar según sus condiciones: una, "
+            "varias o todas, pero al menos una. Si termina, no tomes ninguna rama.\n\n"
+            f"Ramas:\n{branches}\n\n"
+        )
+    else:
+        head += "2. Esta etapa no tiene ramas que decidir: devuelve `branches` vacío.\n\n"
+    return (
+        head
+        + f"Tarea: {request.title}\n{request.description.strip()}\n\n"
+        + f"Trabajo ya hecho:\n{history}\n\n"
+        + 'Explica cada decisión en una frase. Responde solo con JSON: {"exit": {"take": '
+        'true|false, "reason": "..."}, "branches": [{"id": "...", "take": true|false, '
+        '"reason": "..."}]}.'
+    )
+
+
+def _read_exit(value: object, result: DecisionResult) -> None:
+    exit_ = value.get("exit") if isinstance(value, dict) else None
+    if isinstance(exit_, dict):
+        result.exit_taken = bool(exit_.get("take"))
+        result.exit_reason = str(exit_.get("reason") or "")[:500]
 
 
 # ----------------------------------------------------------------------------- parsing
@@ -194,6 +254,8 @@ def parse_claude(stdout: str, request: DecisionRequest) -> DecisionResult:
         result.error = "la respuesta no tiene el formato esperado"
         return result
     result.taken, result.reasons = parsed
+    if request.exit is not None:
+        _read_exit(value, result)
     return result
 
 
@@ -215,11 +277,14 @@ def parse_agy(stdout: str, request: DecisionRequest) -> DecisionResult:
     if inner.get("status") not in (None, "SUCCESS"):
         result.error = f"agy terminó con {inner.get('status')}"
         return result
-    parsed = _read_branches(_loads_object(str(inner.get("response") or "")), request)
+    value = _loads_object(str(inner.get("response") or ""))
+    parsed = _read_branches(value, request)
     if parsed is None:
         result.error = "la respuesta no tiene el formato esperado"
         return result
     result.taken, result.reasons = parsed
+    if request.exit is not None:
+        _read_exit(value, result)
     return result
 
 
@@ -230,7 +295,8 @@ def call(request: DecisionRequest, runner: Runner = run_process) -> DecisionResu
     if request.cli == Cli.CLAUDE:
         argv = [
             *request.prefix, "-p", prompt, "--model", request.model,
-            "--output-format", "json", "--json-schema", json.dumps(SCHEMA),
+            "--output-format", "json",
+            "--json-schema", json.dumps(EXIT_SCHEMA if request.exit else SCHEMA),
             "--tools", "", "--strict-mcp-config", "--no-session-persistence",
             "--max-budget-usd", MAX_BUDGET_USD,
         ]  # fmt: skip
@@ -252,7 +318,7 @@ def call(request: DecisionRequest, runner: Runner = run_process) -> DecisionResu
     if proc.returncode and result.error is None and not result.taken:
         result.error = (proc.stderr or "").strip()[:300] or f"el CLI terminó con {proc.returncode}"
     result.seconds = time.monotonic() - started
-    if result.error is None and not result.chosen and not request.always:
+    if result.error is None and not result.exit_taken and not result.chosen and not request.always:
         result.error = "no eligió ninguna rama"
     return result
 
@@ -339,6 +405,12 @@ class DecisionService:
             model=config.model,
             prefix=config.prefix,
             env={**clean_env(), **account_ops.env_for(config.account)},
+            exit=(
+                BranchView(lane_ops.EXIT, lane_ops.EXIT_LABEL, fork.exit_condition or "")
+                if lane_ops.has_exit(fork)
+                else None
+            ),
+            stage_name=fork.name,
         )
         with self._lock:
             if task.id in self.pending:
@@ -383,10 +455,18 @@ class DecisionService:
             return
         chosen = [*request.always, *result.chosen]
         reasons = {**{i: ALWAYS_REASON for i in request.always}, **result.reasons}
+        by = DecisionBy.MODEL
+        if request.exit is not None:
+            reasons[lane_ops.EXIT] = result.exit_reason
+            if result.exit_taken:
+                chosen = [lane_ops.EXIT]
+            elif preset := lane_ops.root_of(db, task).preset_lanes.get(fork.id):
+                # Branches fixed when the task was created still hold once it goes on.
+                chosen, by = list(dict.fromkeys([*preset, *request.always])), DecisionBy.PRESET
         if fork.confirm_decision:
             lane_ops.propose(db, task, fork, chosen, reasons, run.id)
             return
-        lane_ops.take(db, task, fork, chosen, DecisionBy.MODEL, reasons, run.id)
+        lane_ops.take(db, task, fork, chosen, by, reasons, run.id)
 
     @staticmethod
     def give_up(db: Session, task: Task, reason: str) -> None:
@@ -424,7 +504,7 @@ def record_run(
         stage_id=fork_stage_id,
         started_at=now,
         ended_at=now,
-        summary=", ".join(result.chosen),
+        summary=lane_ops.EXIT_LABEL if result.exit_taken else ", ".join(result.chosen),
         input_tokens=usage.input_tokens,
         output_tokens=usage.output_tokens,
         thinking_tokens=usage.thinking_tokens,
@@ -450,6 +530,8 @@ def preview(
     description: str,
     overrides: Mapping[str, list[str]] | None = None,
     runner: Runner = run_process,
+    exit_condition: str | None = None,
+    stage_name: str = "",
 ) -> tuple[DecisionResult, DecisionRequest | None]:
     """«Probar»: asks what the decider would choose for an example task, without a task. The
     call is recorded (it costs like any other); `pipeline` may be unsaved."""
@@ -469,6 +551,12 @@ def preview(
         model=config.model,
         prefix=config.prefix,
         env={**clean_env(), **account_ops.env_for(config.account)},
+        exit=(
+            BranchView(lane_ops.EXIT, lane_ops.EXIT_LABEL, exit_condition)
+            if exit_condition
+            else None
+        ),
+        stage_name=stage_name,
     )
     result = call(request, runner)
     record_run(db, project, None, None, request, result)

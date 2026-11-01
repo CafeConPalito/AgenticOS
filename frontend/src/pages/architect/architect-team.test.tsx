@@ -137,6 +137,27 @@ describe('Teams and pipelines with the Architect (phase 19, block 10)', () => {
     )
   })
 
+  it('designs the pipeline of a project from its tab (phase 24)', async () => {
+    installFakeWebSocket()
+    const backend = createFakeBackend({})
+    renderApp('/agentes/arquitecto?disenar=p1')
+    await waitFor(() =>
+      expect(backend.callsTo('POST', '/api/architect/conversations')[0]?.body).toEqual({
+        mode: 'team',
+        project_id: 'p1',
+      }),
+    )
+  })
+
+  it('Agentes offers a new team with the Architect (phase 24)', async () => {
+    createFakeBackend({})
+    renderApp('/agentes')
+    expect(await screen.findByRole('link', { name: es.teams.withArchitect })).toHaveAttribute(
+      'href',
+      '/agentes/arquitecto?equipo',
+    )
+  })
+
   it('improving a team or a pipeline starts the matching conversation', async () => {
     installFakeWebSocket()
     const backend = createFakeBackend({})

@@ -75,6 +75,10 @@ export function taskPath(
   return result
 }
 
+/** Phase 24: decisions happen at forks and at stages with an exit («Terminar aquí»). */
+export const hasDecisions = (pipeline: Pipeline): boolean =>
+  hasFork(pipeline) || pipeline.stages.some((s) => s.exit_condition !== null)
+
 export const hasFork = (pipeline: Pipeline): boolean => {
   const count = new Map<string, number>()
   for (const l of pipeline.links) count.set(l.from_stage_id, (count.get(l.from_stage_id) ?? 0) + 1)

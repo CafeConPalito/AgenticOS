@@ -43,6 +43,7 @@ from agentic_os.schemas.task import (
     TaskRead,
     TaskUpdate,
     TreeNode,
+    WorkModeRequest,
 )
 from agentic_os.schemas.usage import UsageTotals
 from agentic_os.services import accounts as account_ops
@@ -172,11 +173,24 @@ def read_tasks(db: Session, tasks: list[Task]) -> list[TaskRead]:
         gates = usage_limits.blocked_all(db)
         index = account_ops.AccountIndex(db)
         deciding = switching.decisions_pending(db)
+    # Phase 24: a lane works the way its root does (usually already in this batch).
+    by_id = {t.id: t for t in tasks}
+    modes: dict[str, tuple[str | None, str | None, str | None]] = {}
+    for task in tasks:
+        root = task
+        while root.lane_of_id:
+            parent = by_id.get(root.lane_of_id)
+            if parent is None:
+                root = lane_ops.root_of(db, root)
+                break
+            root = parent
+        modes[task.id] = (root.work_mode, root.work_mode_reason, root.spec_path)
     result = []
     for task in tasks:
         project = projects[task.project_id]
         project_stages = stages.get(task.project_id, [])
         stage = next((s for s in project_stages if s.id == task.stage_id), None)
+        ended_at = next((s for s in project_stages if s.id == task.exit_stage_id), None)
         agent = agents.get(task.agent_id) if task.agent_id else None
         blocked = blocked_by = None
         if task.status == TaskStatus.QUEUED:
@@ -204,6 +218,12 @@ def read_tasks(db: Session, tasks: list[Task]) -> list[TaskRead]:
                 lane_name=link_names.get(task.lane_link_id or ""),
                 fork_stage_id=task.fork_stage_id,
                 lanes=lanes_by_parent.get(task.id, []),
+                stage_exit_condition=stage.exit_condition if stage else None,
+                exit_stage_id=task.exit_stage_id,
+                exit_stage_name=ended_at.name if ended_at else None,
+                work_mode=modes[task.id][0],
+                work_mode_reason=modes[task.id][1],
+                spec_path=modes[task.id][2],
                 stage_id=task.stage_id,
                 stage_name=stage.name if stage else None,
                 stage_index=(project_stages.index(stage) + 1) if stage else 0,
@@ -448,6 +468,28 @@ def decide_branches(
     """The person picks the branches of a task that waits at a fork."""
     task = _get(db, task_id)
     lane_ops.decide(db, task, payload.chosen)
+    db.commit()
+    scheduler.poke()
+    return read_task(db, task)
+
+
+@router.put("/tasks/{task_id}/work-mode")
+def change_work_mode(
+    task_id: str, payload: WorkModeRequest, db: DbSession, scheduler: SchedulerDep
+) -> TaskRead:
+    """Phase 24: the person changes the mode; the task goes back to its first stage."""
+    task = _get(db, task_id)
+    task_ops.change_work_mode(db, task, payload.mode)
+    db.commit()
+    scheduler.poke()
+    return read_task(db, task)
+
+
+@router.post("/tasks/{task_id}/continue")
+def continue_task(task_id: str, db: DbSession, scheduler: SchedulerDep) -> TaskRead:
+    """Phase 24: «Seguir con el pipeline» for a task that ended at an exit."""
+    task = _get(db, task_id)
+    lane_ops.continue_after_exit(db, task)
     db.commit()
     scheduler.poke()
     return read_task(db, task)

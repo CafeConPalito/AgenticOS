@@ -63,10 +63,11 @@ import { RunEventsPanel } from '@/pages/runs/RunEventsPanel'
 import { RunStatusBadge } from '@/pages/runs/RunStatusBadge'
 import { IntegrationBlock } from './IntegrationBlock'
 import { DecisionBlock } from './lanes/DecisionBlock'
+import { WorkModeSection } from './WorkModeSection'
 import { JoinBlock } from './lanes/JoinBlock'
 import { LanesPanel } from './lanes/LanesPanel'
 import { TaskPathGraph } from './lanes/TaskPathGraph'
-import { hasFork } from './task-path'
+import { hasDecisions, hasFork } from './task-path'
 import { SessionFactsLine } from './SessionFactsLine'
 import { PriorityLabel, TaskStatusBadge } from './TaskBits'
 import { NEUTRAL_COLOR } from '@/theme/palettes'
@@ -146,7 +147,11 @@ function TaskDetail({ task }: { task: Task }) {
             {t(`tasks.lanes.phase.${task.phase}`)}
           </span>
         )}
-        <ProjectChip name={task.project_name} color={task.project_color} />
+        <ProjectChip
+          name={task.project_name}
+          color={task.project_color}
+          projectId={task.project_id}
+        />
         {task.agent_name && (
           <span className="inline-flex items-center gap-2 text-[12.5px] text-muted-foreground">
             <AgentAvatar
@@ -462,7 +467,8 @@ function TaskSidePanel({
   pipeline: Pipeline | undefined
 }) {
   const { t } = useTranslation()
-  const decisions = useTaskDecisions(task.id, Boolean(pipeline && hasFork(pipeline))).data ?? []
+  const decisions =
+    useTaskDecisions(task.id, Boolean(pipeline && hasDecisions(pipeline))).data ?? []
   const events = useTaskEvents(task.id, isMoving(task)).data ?? []
   const runs = useRuns({ taskId: task.id }).data ?? []
   const requests = (useInbox('pending').data ?? []).filter((item) => item.task_id === task.id)
@@ -505,13 +511,14 @@ function TaskSidePanel({
           {t('tasks.lanes.lanePrefix', { code: task.code.split('·')[0] })}
         </Link>
       )}
-      {pipeline && hasFork(pipeline) && (
+      {pipeline && hasDecisions(pipeline) && (
         <>
           <JoinBlock task={task} />
           <DecisionBlock task={task} pipeline={pipeline} />
           <LanesPanel task={task} pipeline={pipeline} />
         </>
       )}
+      <WorkModeSection task={task} />
       {task.parent_task_id && (
         <Link
           to={`/tablero/tareas/${task.parent_task_id}`}

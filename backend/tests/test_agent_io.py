@@ -104,7 +104,7 @@ def test_a_template_creates_the_agent_again_with_another_account(client: TestCli
     ) == (2, 1, 1)
     listed = client.get("/api/agent-templates").json()
     assert [t["id"] for t in listed if t["own"]] == [template["id"]]
-    assert len([t for t in listed if not t["own"]]) == 5  # the fixed ones
+    assert len([t for t in listed if not t["own"]]) == 11  # the fixed ones (phase 24)
     with client.app.state.sessionmaker() as db:
         other = CliAccount(cli="claude", label="empresa")
         db.add(other)

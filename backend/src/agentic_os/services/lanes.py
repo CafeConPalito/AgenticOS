@@ -49,6 +49,11 @@ FORK_WAITS = (
 # A lane in one of these is working or waiting for someone: the fork is not over.
 IDLE_LANE = (TaskStatus.DONE, TaskStatus.CANCELLED, TaskStatus.BACKLOG)
 
+# Phase 24 (ADR 0030): «Terminar aquí» in a decision's `chosen`, next to the link ids. It goes
+# alone: ending the task takes no branch.
+EXIT = "exit"
+EXIT_LABEL = "Terminar aquí"
+
 
 # ----------------------------------------------------------------------------- the graph
 def pipeline_graph(db: Session, task: Task) -> tuple[Pipeline, Graph] | None:
@@ -133,9 +138,12 @@ def advance(db: Session, task: Task) -> None:
         _end(db, task)
         return
     _, graph = found
+    if task.exit_stage_id == stage.id:  # the final review of an exit was approved
+        _finish_at_exit(db, task, stage)
+        return
     outs = graph.out.get(stage.id, [])
-    if len(outs) > 1:
-        start_fork(db, task, stage)
+    if len(outs) > 1 or (has_exit(stage) and outs and task.lane_of_id is None):
+        start_decision(db, task, stage)
         return
     following = outs[0].dst if outs else None
     if task.lane_of_id is not None:
@@ -212,13 +220,21 @@ def always_taken(link: StageLink) -> bool:
     return link.always or not link.condition.strip()
 
 
-def start_fork(db: Session, task: Task, fork: Stage) -> None:
-    """The task reached a stage with several links: fix the branches that are fixed, and ask
-    for the rest."""
+def has_exit(stage: Stage) -> bool:
+    """Phase 24: the stage can end the task («Terminar aquí»)."""
+    return stage.exit_condition is not None and bool(stage.exit_condition.strip())
+
+
+def start_decision(db: Session, task: Task, fork: Stage) -> None:
+    """The task reached a stage with several links or an exit: fix the branches that are
+    fixed, and ask for the rest. With an exit there is always something to ask: whether the
+    task ends here (the decider, or the person)."""
     task.status = TaskStatus.DECIDING
     task.stage_id = fork.id
     task.agent_id = None
     task.waiting_reason = task.waiting_detail = None
+    if has_exit(fork):
+        return  # the scheduler asks the decider (or the person) for it
     links = list(db.scalars(select(StageLink).where(StageLink.from_stage_id == fork.id)))
     links.sort(key=lambda link: link.position)
     always = [link.id for link in links if always_taken(link)]
@@ -230,6 +246,9 @@ def start_fork(db: Session, task: Task, fork: Stage) -> None:
     if not [link for link in links if not always_taken(link)]:
         take(db, task, fork, always, DecisionBy.ALWAYS)
     # else the task stays `deciding`: the scheduler asks the decider (or the person) for it
+
+
+start_fork = start_decision  # the phase 13 name
 
 
 def open_links(db: Session, fork: Stage) -> tuple[list[StageLink], list[str]]:
@@ -248,14 +267,44 @@ def take(
     reasons: dict[str, str] | None = None,
     run_id: str | None = None,
 ) -> None:
-    """Records the decision and starts the lanes it chose."""
+    """Records the decision and starts the lanes it chose; at a stage that does not fork,
+    goes on to the next one; with «Terminar aquí» (`EXIT`), ends the task here."""
     links = {
         link.id: link
         for link in db.scalars(select(StageLink).where(StageLink.from_stage_id == fork.id))
     }
+    reasons = reasons or {}
+    if EXIT in link_ids:
+        if len(link_ids) != 1 or not has_exit(fork):
+            raise ApiError(
+                422, "invalid_branches", "«Terminar aquí» goes alone, at a stage with an exit"
+            )
+        _record(db, task, fork, [EXIT], by, reasons, run_id, links)
+        exit_at(db, task, fork, reasons.get(EXIT, ""))
+        return
     if not link_ids or any(i not in links for i in link_ids):
         raise ApiError(422, "invalid_branches", "choose at least one branch of the fork")
-    reasons = reasons or {}
+    _record(db, task, fork, link_ids, by, reasons, run_id, links)
+    if len(links) == 1:  # a stage with an exit that does not fork: the task goes on
+        nxt = db.get(Stage, links[link_ids[0]].to_stage_id)
+        assert nxt is not None
+        task_ops.move_to_stage(db, task, nxt, front=False)
+        return
+    _fork_into(db, task, fork, [links[i] for i in link_ids])
+
+
+def _record(
+    db: Session,
+    task: Task,
+    fork: Stage,
+    link_ids: list[str],
+    by: DecisionBy,
+    reasons: dict[str, str],
+    run_id: str | None,
+    links: dict[str, StageLink],
+) -> None:
+    """The decision in the history (`BranchDecision` and a task event); what waited for the
+    person about it is over."""
     db.execute(  # a proposal that waited for confirmation is replaced by what was decided
         delete(BranchDecision).where(
             BranchDecision.task_id == task.id,
@@ -274,13 +323,78 @@ def take(
         )
     )
     lines = []
-    for link in sorted(links.values(), key=lambda x: x.position):
-        mark = "✓" if link.id in link_ids else "✗"
-        why = reasons.get(link.id)
-        lines.append(f"{mark} {link.name}" + (f": {why}" if why else ""))
+    if has_exit(fork):
+        why = reasons.get(EXIT)
+        lines.append(
+            f"{'✓' if EXIT in link_ids else '✗'} {EXIT_LABEL}" + (f": {why}" if why else "")
+        )
+    if EXIT not in link_ids and len(links) > 1:
+        for link in sorted(links.values(), key=lambda x: x.position):
+            mark = "✓" if link.id in link_ids else "✗"
+            why = reasons.get(link.id)
+            lines.append(f"{mark} {link.name}" + (f": {why}" if why else ""))
     task_ops.add_event(db, task, TaskEventKind.DECISION, f"[{by}]\n" + "\n".join(lines), run_id)
     inbox.resolve_pending(db, Resolution.DISMISSED, task_id=task.id, kinds=task_ops.ATTENTION_KINDS)
-    _fork_into(db, task, fork, [links[i] for i in link_ids])
+
+
+# --------------------------------------------------------------------------------- exits
+def _final_review(db: Session, task: Task) -> bool:
+    """Whether the pipeline asks for a review at its end (a final stage that requires one)."""
+    found = pipeline_graph(db, task)
+    if found is None:
+        return False
+    pipeline, graph = found
+    return any(s.requires_review and not graph.out.get(s.id) for s in pipeline.stages)
+
+
+def exit_at(db: Session, task: Task, stage: Stage, reason: str) -> None:
+    """«Terminar aquí»: the task ends at `stage`. A stage without a review of its own still
+    goes through the pipeline's final review, if it has one, before the task is done."""
+    task.exit_stage_id = stage.id
+    task.stage_id = stage.id
+    task.waiting_reason = task.waiting_detail = None
+    if not stage.requires_review and _final_review(db, task):
+        task.status = TaskStatus.REVIEW
+        detail = f"Revisión final: la tarea termina en {stage.name}" + (
+            f".\n{reason}" if reason else ""
+        )
+        inbox.create(db, InboxKind.REVIEW, f"{task.code} · {task.title}", detail, task=task)
+        return
+    _finish_at_exit(db, task, stage)
+
+
+def _finish_at_exit(db: Session, task: Task, stage: Stage) -> None:
+    task.exit_stage_id = stage.id
+    task_ops.add_event(
+        db, task, TaskEventKind.EXITED, f"{stage.name}: {stage.exit_condition or ''}"
+    )
+    _end(db, task)
+
+
+def continue_after_exit(db: Session, task: Task) -> None:
+    """«Seguir con el pipeline»: a task that ended at an exit goes on as if the decider had
+    said so: to the next stage, or to the branches (asked to the person when they need a
+    decision)."""
+    stage = db.get(Stage, task.exit_stage_id) if task.exit_stage_id else None
+    found = pipeline_graph(db, task) if stage is not None else None
+    if task.status != TaskStatus.DONE or stage is None or found is None:
+        raise ApiError(409, "task_status", "the task did not end at an exit", "status")
+    task.exit_stage_id = None
+    task.finished_at = None
+    task.stage_id = stage.id
+    task.agent_id = None
+    # Code review: it is not delivered any more. Its worktree, if it was released, is made
+    # again by the next run; whatever was integrated stays, and the rest is integrated at the
+    # new end.
+    inbox.resolve_pending(db, Resolution.DISMISSED, task_id=task.id)
+    undecided, always = open_links(db, stage)
+    if undecided:
+        task_ops.add_event(
+            db, task, TaskEventKind.DECISION, f"[user]\n✗ {EXIT_LABEL}: seguir con el pipeline"
+        )
+        task_ops.wait_for_human(db, task, WaitingReason.CHOOSE_BRANCH, "Elige por qué ramas sigue")
+        return
+    take(db, task, stage, always, DecisionBy.USER, {EXIT: "seguir con el pipeline"})
 
 
 def pending_proposal(db: Session, task: Task) -> BranchDecision | None:
@@ -320,6 +434,8 @@ def propose(
         x.id: x.name
         for x in db.scalars(select(StageLink).where(StageLink.from_stage_id == fork.id))
     }
+    if has_exit(fork):
+        names = {EXIT: EXIT_LABEL, **(names if EXIT not in link_ids and len(names) > 1 else {})}
     text = "\n".join(
         f"{'✓' if i in link_ids else '✗'} {names[i]}" + (f": {r}" if (r := reasons.get(i)) else "")
         for i in names

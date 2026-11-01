@@ -204,6 +204,7 @@ export function makeProject(overrides: Partial<Project> = {}): Project {
     id: `project-${seq}`,
     name: 'Tienda online',
     color: '#7C9CFF',
+    avatar: null,
     description: '',
     path: 'D:\\proyectos\\tienda',
     workspace_mode: 'direct',
@@ -488,9 +489,64 @@ export function makeTask(overrides: Partial<Task> = {}): Task {
     lane_name: null,
     fork_stage_id: null,
     lanes: [],
+    stage_exit_condition: null,
+    exit_stage_id: null,
+    exit_stage_name: null,
+    work_mode: null,
+    work_mode_reason: null,
+    spec_path: null,
     ...overrides,
   }
 }
+
+/** Phase 24: the «Desarrollo» template as the backend builds it. */
+const DEVELOPMENT_TEMPLATES: [string, string][] = [
+  ['analyst', 'Analista'],
+  ['requirements_validator', 'Validador de requisitos'],
+  ['software_architect', 'Arquitecto de software'],
+  ['frontend_developer', 'Desarrollador frontend'],
+  ['backend_developer', 'Desarrollador backend'],
+  ['data_scientist', 'Data analyst / scientist'],
+  ['qa', 'QA'],
+  ['devops', 'IT / DevOps'],
+]
+const DEVELOPMENT = [
+  { name: 'Toma de requisitos', requires_review: false, reject_to: null },
+  {
+    name: 'Validación de requisitos',
+    requires_review: true,
+    reject_to: 0,
+    exit_condition: 'La tarea solo pide definir o revisar requisitos',
+  },
+  {
+    name: 'Arquitectura',
+    requires_review: true,
+    reject_to: 0,
+    exit_condition: 'La tarea solo pide definir o revisar la arquitectura',
+  },
+  { name: 'Frontend', requires_review: false, reject_to: null },
+  { name: 'Backend', requires_review: false, reject_to: null },
+  { name: 'Datos', requires_review: false, reject_to: null },
+  {
+    name: 'QA',
+    requires_review: false,
+    reject_to: 3,
+    reject_also: [4, 5],
+    exit_condition: 'La tarea no necesita despliegue',
+  },
+  { name: 'IT / despliegue', requires_review: true, reject_to: 6 },
+]
+const DEVELOPMENT_LINKS = [
+  { source: 0, target: 1, name: '', condition: '', always: false },
+  { source: 1, target: 2, name: '', condition: '', always: false },
+  { source: 2, target: 3, name: 'Frontend', condition: 'Toca la interfaz', always: false },
+  { source: 2, target: 4, name: 'Backend', condition: 'Toca la API', always: false },
+  { source: 2, target: 5, name: 'Datos', condition: 'Pide datos', always: false },
+  { source: 3, target: 6, name: '', condition: '', always: false },
+  { source: 4, target: 6, name: '', condition: '', always: false },
+  { source: 5, target: 6, name: '', condition: '', always: false },
+  { source: 6, target: 7, name: '', condition: '', always: false },
+]
 
 export function makeStage(overrides: Partial<Stage> = {}): Stage {
   seq += 1
@@ -507,6 +563,9 @@ export function makeStage(overrides: Partial<Stage> = {}): Stage {
     x: 0,
     y: 0,
     confirm_decision: false,
+    exit_condition: null,
+    exit_x: null,
+    exit_y: null,
     join_stage_id: null,
     active_tasks: 0,
     ...overrides,
@@ -1207,6 +1266,19 @@ export function createFakeBackend(
   const taskEvents = { ...(seed.taskEvents ?? {}) }
   const decisions = { ...(seed.decisions ?? {}) }
   const pipelines: Record<string, Pipeline | null> = { ...(seed.pipelines ?? {}) }
+  /** Phase 24: each stage of «Desarrollo» and the active agent made from its template. */
+  const developmentPlan = () =>
+    DEVELOPMENT_TEMPLATES.map(([template_id, template_name], index) => {
+      const agent = agents.find((a) => a.template === template_id && a.status === 'active')
+      return {
+        index,
+        name: DEVELOPMENT[index].name,
+        template_id,
+        template_name,
+        agent_id: agent?.id ?? null,
+        agent_name: agent?.name ?? null,
+      }
+    })
   const previewResult = seed.preview
   const scheduler = { paused: seed.paused ?? false }
   let switchThreshold = 90
@@ -1322,6 +1394,19 @@ export function createFakeBackend(
         queued: mine.filter((t) => t.status === 'queued'),
       })
     }
+    if (path === '/api/pipeline-templates/development/plan') return json(200, developmentPlan())
+    const copyMatch = path.match(/^\/api\/projects\/([^/]+)\/pipeline\/copy$/)
+    if (copyMatch && method === 'POST') {
+      const original = pipelines[String(body.from_project_id)]
+      if (!original) return apiError(422, 'no_pipeline', 'from_project_id')
+      const copied = {
+        ...structuredClone(original),
+        id: `pipeline-${copyMatch[1]}`,
+        project_id: copyMatch[1],
+      }
+      pipelines[copyMatch[1]] = copied
+      return json(201, { ...copied, warnings: [] })
+    }
     const pipelineMatch = path.match(
       /^\/api\/projects\/([^/]+)\/pipeline(\/template|\/validate|\/decide-preview)?$/,
     )
@@ -1344,6 +1429,10 @@ export function createFakeBackend(
           200,
           previewResult ?? {
             branches,
+            // Phase 24: an exit is tried too.
+            exit: body.exit_condition
+              ? { name: 'Terminar aquí', take: true, reason: 'Solo pide requisitos' }
+              : null,
             cli: 'claude',
             model: 'claude-haiku-5-5',
             cost_usd: 0.0003,
@@ -1362,6 +1451,9 @@ export function createFakeBackend(
         x?: number | null
         y?: number | null
         confirm_decision?: boolean
+        exit_condition?: string | null
+        exit_x?: number | null
+        exit_y?: number | null
       }
       type LinkBody = {
         source: number
@@ -1370,35 +1462,29 @@ export function createFakeBackend(
         condition: string
         always: boolean
       }
+      // Phase 24: «Desarrollo», the one template; `create` makes the agents it is missing.
+      const assign = (body.assign ?? {}) as Record<string, string>
+      const plan = developmentPlan()
+      const templateAgent = (index: number): string | null => {
+        if (assign[index]) return assign[index]
+        const found = plan[index].agent_id
+        if (found) return found
+        if (!body.create) return null
+        const made = makeAgent({
+          name: plan[index].template_name,
+          template: plan[index].template_id,
+          cli: (body.create as { cli: Agent['cli'] }).cli,
+        })
+        agents.push(made)
+        return made.id
+      }
       const stages: StageBody[] =
         sub === '/template'
-          ? body.template === 'web_split'
-            ? [
-                { name: 'Requisitos', agent_id: null, requires_review: false, reject_to: null },
-                { name: 'Dev backend', agent_id: null, requires_review: false, reject_to: null },
-                { name: 'Dev frontend', agent_id: null, requires_review: false, reject_to: null },
-                {
-                  name: 'QA',
-                  agent_id: null,
-                  requires_review: false,
-                  reject_to: 1,
-                  reject_also: [2],
-                },
-              ]
-            : [
-                { name: 'Requisitos', agent_id: null, requires_review: false, reject_to: null },
-                { name: 'Desarrollo', agent_id: null, requires_review: false, reject_to: null },
-                { name: 'QA', agent_id: null, requires_review: false, reject_to: 1 },
-              ]
+          ? DEVELOPMENT.map((st, index) => ({ ...st, agent_id: templateAgent(index) }))
           : (body.stages as StageBody[])
       const links: LinkBody[] =
-        sub === '/template' && body.template === 'web_split'
-          ? [
-              { source: 0, target: 1, name: 'Backend', condition: 'Toca la API', always: false },
-              { source: 0, target: 2, name: 'Frontend', condition: 'Toca la UI', always: false },
-              { source: 1, target: 3, name: 'QA', condition: '', always: false },
-              { source: 2, target: 3, name: 'QA', condition: '', always: false },
-            ]
+        sub === '/template'
+          ? DEVELOPMENT_LINKS
           : ((body.links as LinkBody[] | null | undefined) ??
             stages.slice(1).map((st, i) => ({
               source: i,
@@ -1411,7 +1497,7 @@ export function createFakeBackend(
       const pipeline: Pipeline = {
         id: `pipeline-${projectId}`,
         project_id: projectId,
-        name: sub === '/template' ? 'Desarrollo web' : String(body.name ?? ''),
+        name: sub === '/template' ? 'Desarrollo' : String(body.name ?? ''),
         max_rejections: sub === '/template' ? 3 : Number(body.max_rejections ?? 3),
         decider_cli: (body.decider_cli as Pipeline['decider_cli']) ?? null,
         decider_account_id: (body.decider_account_id as string | null) ?? null,
@@ -1431,6 +1517,9 @@ export function createFakeBackend(
             x: st.x ?? i * 280,
             y: st.y ?? 0,
             confirm_decision: st.confirm_decision ?? false,
+            exit_condition: st.exit_condition ?? null,
+            exit_x: st.exit_condition == null ? null : (st.exit_x ?? st.x ?? i * 280),
+            exit_y: st.exit_condition == null ? null : (st.exit_y ?? (st.y ?? 0) + 110),
             join_stage_id: null,
             active_tasks: 0,
           }
@@ -1500,10 +1589,24 @@ export function createFakeBackend(
       tasks.unshift(task)
       return json(201, task)
     }
+    // Phase 24: the person changes the mode; the task goes back to its first stage.
+    const modeMatch = path.match(/^\/api\/tasks\/([^/]+)\/work-mode$/)
+    if (modeMatch && method === 'PUT') {
+      const task = tasks.find((t) => t.id === modeMatch[1])
+      if (!task) return apiError(404, 'task_not_found')
+      const mode = body.mode as 'sdd' | 'direct'
+      Object.assign(task, {
+        work_mode: mode,
+        work_mode_reason: 'Lo cambió la persona',
+        spec_path: mode === 'direct' ? null : task.spec_path,
+        status: 'queued',
+      })
+      return json(200, task)
+    }
     const treeMatch = path.match(/^\/api\/tasks\/([^/]+)\/tree$/)
     if (treeMatch) return json(200, trees[treeMatch[1]] ?? [])
     const forkMatch = path.match(
-      /^\/api\/tasks\/([^/]+)\/(decisions|decision|lanes|join(?:\/editor(?:\/finish)?|\/agent)?)$/,
+      /^\/api\/tasks\/([^/]+)\/(decisions|decision|continue|lanes|join(?:\/editor(?:\/finish)?|\/agent)?)$/,
     )
     if (forkMatch) {
       const forked = tasks.find((t) => t.id === forkMatch[1])
@@ -1512,7 +1615,19 @@ export function createFakeBackend(
         case 'decisions':
           return json(200, decisions[forked.id] ?? [])
         case 'decision':
-          Object.assign(forked, { status: 'running', phase: 'forked', waiting_reason: null })
+          // Phase 24: «Terminar aquí» ends the task at its stage.
+          if ((body.chosen as string[] | undefined)?.includes('exit'))
+            Object.assign(forked, {
+              status: 'done',
+              phase: null,
+              waiting_reason: null,
+              exit_stage_id: forked.stage_id,
+              exit_stage_name: forked.stage_name,
+            })
+          else Object.assign(forked, { status: 'running', phase: 'forked', waiting_reason: null })
+          return json(200, forked)
+        case 'continue':
+          Object.assign(forked, { status: 'queued', exit_stage_id: null, exit_stage_name: null })
           return json(200, forked)
         case 'lanes':
           return json(201, forked)
@@ -2056,6 +2171,15 @@ export function createFakeBackend(
       const project = makeProject({ ...fields, git: null } as Partial<Project>)
       projects.push(project)
       return json(201, project)
+    }
+    // Phase 24: the project's cropped photo, kept like an agent's to be inspected.
+    const projectAvatar = path.match(/^\/api\/projects\/([^/]+)\/avatar$/)
+    if (projectAvatar && method === 'PUT') {
+      const project = projects.find((p) => p.id === projectAvatar[1])
+      if (!project) return apiError(404, 'project_not_found')
+      avatarUploads.push({ agentId: project.id, body: rawBody })
+      project.avatar = `photo:${String(avatarUploads.length).padStart(12, '0')}`
+      return json(200, project)
     }
     const projectMatch = path.match(/^\/api\/projects\/([^/]+)(\/open)?$/)
     if (projectMatch) {

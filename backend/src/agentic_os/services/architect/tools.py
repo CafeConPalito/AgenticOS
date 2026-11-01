@@ -166,6 +166,13 @@ def build(backend: ArchitectBackend, toolset: str) -> MCPServer:
 
     # ------------------------------------------------------------------- teams and pipelines
     @server.tool()
+    async def get_pipeline_templates(ctx: Context) -> str:
+        """Fase 24: las plantillas fijas de pipeline (hoy, «Desarrollo»), con sus etapas, el
+        rol de agente de cada una (`agent_template`, una plantilla de agente), ramas, salidas y
+        revisiones. Úsala de base para un equipo de desarrollo de software."""
+        return await call(ctx, "get_pipeline_templates")
+
+    @server.tool()
     async def list_projects(ctx: Context) -> str:
         """Proyectos y su pipeline actual (etapas con su agente y enlaces)."""
         return await call(ctx, "list_projects")
@@ -196,7 +203,9 @@ def build(backend: ArchitectBackend, toolset: str) -> MCPServer:
         """El pipeline completo de un proyecto existente. `stages`: [{name, agent (agent_ref de
         un agente nuevo o nombre de uno existente), requires_review?, reject_to? (índice de una
         etapa anterior a la que vuelve el trabajo rechazado), id? (para conservar una etapa que
-        ya existía)}]. `links`: [{source, target, name?, condition?}] por índice; sin links, una
+        ya existía), exit_condition? (salida «Terminar aquí»: la tarea termina en esa etapa si
+        se cumple la condición; solo fuera de bifurcaciones abiertas y nunca en la última
+        etapa)}]. `links`: [{source, target, name?, condition?}] por índice; sin links, una
         cadena. Una etapa con varios enlaces de salida es una bifurcación: una rama sin condición
         se hace siempre, una con condición solo si la tarea la cumple, y las ramas se vuelven a
         unir en una misma etapa."""

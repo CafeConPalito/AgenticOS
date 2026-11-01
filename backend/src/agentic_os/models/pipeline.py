@@ -59,6 +59,12 @@ class Stage(IdMixin, Base):
     y: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     # A fork's decision waits for the person to confirm it (only matters if the stage forks).
     confirm_decision: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # Phase 24 (ADR 0030): «Terminar aquí». When this stage ends, the branch decider says
+    # whether the task ends here (this condition holds) or goes on. Null: no exit. Only outside
+    # open forks. Its «Fin» node sits at (exit_x, exit_y) on the canvas (null: beside the stage).
+    exit_condition: Mapped[str | None] = mapped_column(Text, nullable=True)
+    exit_x: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    exit_y: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
 
 class StageLink(IdMixin, Base):

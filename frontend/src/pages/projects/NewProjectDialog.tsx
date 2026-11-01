@@ -1,11 +1,10 @@
 import { FolderPlus } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
 import { toast } from 'sonner'
 import { useClone } from '@/api/git-more'
-import { useApplyPipelineTemplate } from '@/api/pipelines'
-import { useCreateProject } from '@/api/projects'
+import { useCreateProject, useUploadProjectAvatar } from '@/api/projects'
 import { FolderPicker } from '@/components/FolderPicker'
 import { Field } from '@/components/page'
 import { Button } from '@/components/ui/button'
@@ -22,10 +21,12 @@ import { ApiError, api } from '@/lib/api'
 import { errorMessage } from '@/lib/form-errors'
 import { cn } from '@/lib/utils'
 import { PROJECT_COLORS } from '@/theme/palettes'
+import { ProjectPhotoField } from './ProjectPhotoField'
 
 /** The six swatches the project can be marked with. */
 const COLORS = PROJECT_COLORS
-type PipelineChoice = 'none' | 'web'
+/** Phase 24: how the new project's pipeline starts (the choice opens in its Pipeline tab). */
+type PipelineChoice = 'development' | 'copy' | 'architect' | 'blank' | 'none'
 type Source = 'folder' | 'clone'
 
 /** How often a running clone is asked for its progress. */
@@ -61,13 +62,19 @@ function NewProjectForm({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const create = useCreateProject()
-  const applyTemplate = useApplyPipelineTemplate()
   const [path, setPath] = useState('')
   const [name, setName] = useState('')
   // Until the person types a name, it follows the folder.
   const [nameTouched, setNameTouched] = useState(false)
   const [color, setColor] = useState(COLORS[0])
-  const [pipeline, setPipeline] = useState<PipelineChoice>('web')
+  // Phase 24: the framed photo waits in memory until the project exists.
+  const [photo, setPhoto] = useState<{ crop: Blob; url: string } | null>(null)
+  const uploadPhoto = useUploadProjectAvatar()
+  useEffect(() => {
+    if (!photo) return
+    return () => URL.revokeObjectURL(photo.url)
+  }, [photo])
+  const [pipeline, setPipeline] = useState<PipelineChoice>('development')
   const [errors, setErrors] = useState<{ path?: string; name?: string; form?: string }>({})
   const [offerCreate, setOfferCreate] = useState(false)
   const [source, setSource] = useState<Source>('folder')
@@ -155,24 +162,30 @@ function NewProjectForm({ onClose }: { onClose: () => void }) {
       )
       return
     }
-    // The project exists from here on: a failing pipeline must not undo it.
-    if (pipeline === 'web') {
+    // The project exists from here on: a failing photo or pipeline must not undo it.
+    if (photo) {
       try {
-        await applyTemplate.mutateAsync({ projectId: project.id, template: 'web' })
-        toast.success(t('projects.new.created', { name: project.name }))
+        await uploadPhoto.mutateAsync({ id: project.id, crop: photo.crop })
       } catch (error) {
-        toast.error(
-          t('projects.new.pipelineFailed', { name: project.name, error: errorMessage(error) }),
-        )
+        toast.error(t('projects.photo.failed', { name: project.name, error: errorMessage(error) }))
       }
-    } else {
-      toast.success(t('projects.new.created', { name: project.name }))
     }
+    toast.success(t('projects.new.created', { name: project.name }))
     onClose()
+    // The pipeline is chosen where it lives: its tab, with the dialog of that choice open.
+    if (pipeline === 'architect') {
+      void navigate(`/agentes/arquitecto?disenar=${project.id}`)
+      return
+    }
+    const start = { development: 'desarrollo', copy: 'copiar', blank: 'blanco' } as const
+    if (pipeline !== 'none') {
+      void navigate(`/proyectos/${project.id}/pipeline?empezar=${start[pipeline]}`)
+      return
+    }
     void navigate(`/proyectos/${project.id}/summary`)
   }
 
-  const busy = create.isPending || applyTemplate.isPending || clone.isPending || cloning !== null
+  const busy = create.isPending || clone.isPending || cloning !== null
 
   return (
     <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-[540px]">
@@ -268,7 +281,14 @@ function NewProjectForm({ onClose }: { onClose: () => void }) {
             >
               {(
                 [
-                  ['web', t('projects.new.webPipeline'), t('projects.new.webPipelineHelp')],
+                  ['development', t('projects.new.webPipeline'), t('projects.new.webPipelineHelp')],
+                  ['copy', t('projects.new.copyPipeline'), t('projects.new.copyPipelineHelp')],
+                  [
+                    'architect',
+                    t('projects.new.architectPipeline'),
+                    t('projects.new.architectPipelineHelp'),
+                  ],
+                  ['blank', t('projects.new.blankPipeline'), t('projects.new.blankPipelineHelp')],
                   ['none', t('projects.new.noPipeline'), t('projects.new.noPipelineHelp')],
                 ] as const
               ).map(([id, label, help]) => (
@@ -288,6 +308,17 @@ function NewProjectForm({ onClose }: { onClose: () => void }) {
                 </button>
               ))}
             </div>
+          </Field>
+
+          <Field label={t('projects.photo.title')}>
+            <ProjectPhotoField
+              name={shownName}
+              color={color}
+              avatar={null}
+              preview={photo?.url ?? null}
+              onUpload={async (crop) => setPhoto({ crop, url: URL.createObjectURL(crop) })}
+              onRemove={() => setPhoto(null)}
+            />
           </Field>
 
           <Field label={t('projects.fields.color')}>

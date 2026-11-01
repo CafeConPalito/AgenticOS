@@ -1,21 +1,28 @@
-import { Workflow } from 'lucide-react'
+import { Copy, Sparkles, Workflow } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from 'sonner'
-import { usePipeline, usePipelineFromTemplate } from '@/api/pipelines'
+import { useNavigate, useSearchParams } from 'react-router'
+import { usePipeline } from '@/api/pipelines'
 import type { Project } from '@/api/types'
 import { EmptyState } from '@/components/EmptyState'
 import { Button } from '@/components/ui/button'
-import { errorMessage } from '@/lib/form-errors'
+import { ApplyDevelopmentDialog } from './pipeline/ApplyDevelopmentDialog'
+import { CopyPipelineDialog } from './pipeline/CopyPipelineDialog'
 import { PipelineEditor } from './pipeline/PipelineEditor'
 
 /** The project's pipeline: a graph of stages, with forks where a task takes one or more
- * branches (phase 13). Without one, tasks go straight to the agent chosen for each. */
+ * branches (phase 13). Without one, tasks go straight to the agent chosen for each; phase 24
+ * starts it from «Desarrollo», a copy of another project's, the Architect or a blank one.
+ * `?empezar=desarrollo|copiar|blanco` (from «Nuevo proyecto») opens that choice at once. */
 export function PipelineTab({ project }: { project: Project }) {
   const { t } = useTranslation()
+  const navigate = useNavigate()
+  const [params] = useSearchParams()
+  const start = params.get('empezar')
   const pipeline = usePipeline(project.id)
-  const fromTemplate = usePipelineFromTemplate(project.id)
-  const [blank, setBlank] = useState(false)
+  const [blank, setBlank] = useState(start === 'blanco')
+  const [applying, setApplying] = useState(start === 'desarrollo')
+  const [copying, setCopying] = useState(start === 'copiar')
 
   if (pipeline.isPending) return null
   if (!pipeline.data && !blank)
@@ -28,28 +35,29 @@ export function PipelineTab({ project }: { project: Project }) {
         >
           <div className="flex flex-wrap justify-center gap-2">
             <Button
-              onClick={() =>
-                fromTemplate.mutate('web', { onError: (e) => toast.error(errorMessage(e)) })
-              }
-              disabled={fromTemplate.isPending}
+              onClick={() => setApplying(true)}
               className="bg-primary-action text-white hover:bg-primary-action-hover"
             >
               {t('pipeline.useTemplate')}
             </Button>
+            <Button variant="outline" onClick={() => setCopying(true)}>
+              <Copy />
+              {t('pipeline.copy.button')}
+            </Button>
             <Button
               variant="outline"
-              onClick={() =>
-                fromTemplate.mutate('web_split', { onError: (e) => toast.error(errorMessage(e)) })
-              }
-              disabled={fromTemplate.isPending}
+              onClick={() => void navigate(`/agentes/arquitecto?disenar=${project.id}`)}
             >
-              {t('pipeline.useTemplateSplit')}
+              <Sparkles />
+              {t('pipeline.withArchitect')}
             </Button>
             <Button variant="outline" onClick={() => setBlank(true)}>
               {t('pipeline.startBlank')}
             </Button>
           </div>
         </EmptyState>
+        <ApplyDevelopmentDialog open={applying} onOpenChange={setApplying} projectId={project.id} />
+        <CopyPipelineDialog open={copying} onOpenChange={setCopying} projectId={project.id} />
       </div>
     )
   return (

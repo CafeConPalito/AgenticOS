@@ -3,6 +3,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 
 import httpx
@@ -24,15 +25,29 @@ def start_backend(
         env={**os.environ, "AGENTIC_OS_DATA_DIR": data_dir},
     )
     assert proc.stdout is not None
+    if stderr == subprocess.PIPE:
+        # The startup log is longer than a pipe's buffer (4 KB on Windows): unread, the backend
+        # blocks writing it and never gets ready. Drained until the startup is complete.
+        assert proc.stderr is not None
+        drain = threading.Thread(target=drain_startup, args=(proc.stderr,), daemon=True)
+        drain.start()
     deadline = time.monotonic() + 20
     while time.monotonic() < deadline:
         line = proc.stdout.readline()
         if line.startswith(READY_PREFIX):
+            if stderr == subprocess.PIPE:
+                drain.join(5)  # "startup complete" is logged before READY is printed
             return proc, json.loads(line.removeprefix(READY_PREFIX))["port"]
         if not line and proc.poll() is not None:
             break
     proc.kill()
     pytest.fail("backend never announced readiness")
+
+
+def drain_startup(stream) -> None:
+    for line in stream:
+        if "Application startup complete" in line:
+            return
 
 
 def test_free_port_handshake_serves_health():

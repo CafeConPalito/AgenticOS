@@ -35,14 +35,36 @@
 | S2 | **Pautas de SDD**: las instrucciones del Analista de requisitos con 10 peticiones en 3 repositorios de prueba: uno con `.specify/`, uno con specs por fase como este y uno sin nada. Hay 4 peticiones pequeñas y 6 grandes o en proyecto con SDD. ¿Elige bien en ≥ 9 de 10? ¿Sigue el formato que ya tiene el repositorio? | Ajustar las pautas con ejemplos y repetir. Si sigue fallando en los casos frontera, inclinarse por SDD (la revisión humana lo corrige). |
 | S3 | **Formatos de SDD que se detectan**: confirmar las carpetas y los ficheros de spec-kit (`.specify/`, `specs/NNN-*/spec.md`), Kiro (`.kiro/specs/*/requirements.md`, `design.md`, `tasks.md`) y OpenSpec (`openspec/`) en su documentación actual. | Detectar solo lo confirmado. Lo demás lo encuentra el agente leyendo el repositorio. |
 
+## Resultados de los spikes (bloque 0, 2026-11-01)
+- **S1 · decisor con salida** (`spikes/pipelines/s24_exit_decider.py`, `claude -p` con haiku, el modelo del decisor): ✅ **12 de 12**, a 0,001 $ por llamada y ~5 s.
+  - Acierta en las seis tareas de la validación de requisitos (tres terminan ahí y tres siguen).
+  - Acierta en las seis de la arquitectura: dos terminan, y en las cuatro que siguen elige exactamente las ramas esperadas (solo Frontend; Frontend y Backend; solo Datos; solo Backend).
+  - → **Diseño**: un solo prompt con dos pasos (primero «¿termina aquí?», luego las ramas si sigue) y el esquema `{"exit": {"take", "reason"}, "branches": [...]}`. El prompt dice que la tarea no termina si pide además cualquier trabajo posterior.
+- **S2 · pautas de SDD** (`spikes/pipelines/s24_sdd_decision.py`, `claude -p` con sonnet y herramientas de solo lectura en tres repositorios de prueba): ✅ **10 de 10**, a 0,02 $ de media.
+  - En el proyecto con spec-kit, la carpeta siguiente es `specs/002-…`; en el de specs por fase, `docs/phases/03-…`; en el que no tiene nada, `specs/001-…`.
+  - → **Pautas, en este orden** (concretan la spec, a confirmar con el usuario):
+    1. Un cambio **trivial** (errata, renombrar, un ajuste de una línea) va **sin SDD aunque el proyecto lo use**.
+    2. Si el proyecto ya usa SDD, va con SDD en su formato.
+    3. Un trabajo grande (varias capas, un módulo nuevo, integraciones, decisiones de diseño) va con SDD en el formato de la app.
+    4. Lo demás (un cambio acotado de una sola pieza en un proyecto sin SDD) va sin SDD.
+
+    Van tal cual en las instrucciones del Analista de requisitos. **Confirmado con el usuario (2026-11-01).**
+- **S3 · formatos de SDD**:
+  - **spec-kit**: la marca es `.specify/` (sus comandos fallan sin ella: «not a Spec Kit project: no .specify/ directory found»). Dentro están `memory/constitution.md`, `templates/` y `extensions.yml`, y las specs van en `specs/NNN-nombre/` con `spec.md`, `plan.md` y `tasks.md` ([artefactos](https://github.github.io/spec-kit/reference/artifacts.html), [repositorio](https://github.com/github/spec-kit)).
+  - **Kiro**: `.kiro/specs/<nombre>/` con `requirements.md` (o `bugfix.md`), `design.md` y `tasks.md` ([docs](https://kiro.dev/docs/specs/)). La carpeta solo la confirman guías de terceros, pero coinciden todas.
+  - **OpenSpec**: `openspec/specs/` (las specs vivas) y `openspec/changes/<id>/` con `proposal.md`, `specs/`, `design.md` y `tasks.md`; lo terminado va a `changes/archive/` ([repositorio](https://github.com/Fission-AI/OpenSpec)).
+  - **Specs por fase** (como este repositorio): `docs/phases/NN-nombre/spec.md`.
+  - **Genérico**: `specs/*/spec.md`.
+  - → `sdd.detect()` mira esas marcas en ese orden. El agente lee el resto del repositorio para seguir el formato al detalle.
+
 ## Diseño
 ### 1. Foto del proyecto
-- **Migración `0024`**: `projects.avatar String(80) NULL`.
+- **Migración `0024`**: `projects.avatar String(80) NULL` (las salidas y el modo SDD van en la `0025`, con su bloque).
 - `avatars.check(..., owls=False)` solo acepta `photo:<digest>` para proyectos. `ProjectWrite`/`ProjectRead` ganan `avatar`, y la foto sube con el mismo `POST /avatars/crop` de la fase 20.
 - `remove_unused()` cuenta también `Project.avatar`.
 - **Interfaz**:
   - `AvatarDialog` gana el modo `photoOnly` (sin la pestaña de búhos).
-  - `ProjectAvatar` (foto o iniciales sobre el color) se usa en `ProjectChip`, la lista y la cabecera del proyecto, el Tablero, Inicio, las tareas y el selector de proyecto.
+  - `ProjectMark` (foto, inicial sobre el color desde 24 px o el cuadrado de color en pequeño) se usa en `ProjectChip`, la lista y la cabecera del proyecto, el Tablero, Inicio, las tareas y el selector de proyecto.
   - En Nuevo proyecto y en la ficha del proyecto: «Poner foto», «Cambiar» y «Quitar».
 
 ### 2. Varios finales (ADR 0030, amplía el 0020)
@@ -85,7 +107,7 @@
   - La tarea muestra dónde terminó y por qué, en su historial y en el bloque de decisiones.
 
 ### 3. Decisión sobre SDD
-- **Modelo** (migración `0024`): `tasks.work_mode String(8) NULL` (`sdd` | `direct`), `tasks.work_mode_reason Text` y `tasks.spec_path Text NULL`. Las ramas paralelas leen los de la tarea raíz.
+- **Modelo** (migración `0025`): `tasks.work_mode String(8) NULL` (`sdd` | `direct`), `tasks.work_mode_reason Text` y `tasks.spec_path Text NULL`. Las ramas paralelas leen los de la tarea raíz.
 - **Detección** (`services/sdd.py`, formatos según S3): `detect(project_path) → SddFormat | None` (nombre, carpeta y ficheros de cada spec). El contexto de la **primera etapa** lo incluye: «El proyecto usa spec-kit en `.specify/`» o «El proyecto no usa SDD».
 - **MCP**: herramienta nueva `set_work_mode(mode, reason, spec_path="")` en `agentic-os`.
   - Guarda la decisión con un evento `WORK_MODE`.
@@ -179,7 +201,8 @@
 | Archivo | Cambio |
 |---|---|
 | `docs/adr/0030-pipeline-exits-sdd-mode.md` | nuevo: salidas en el pipeline (amplía el 0020) y modo de trabajo SDD por tarea |
-| `backend/src/agentic_os/db/migrations/versions/0024_projects_exits_sdd.py` | nuevo: `projects.avatar`, `stages.exit_*`, `tasks.exit_stage_id`, `tasks.work_mode*`, `tasks.spec_path` |
+| `backend/src/agentic_os/db/migrations/versions/0024_project_avatar.py` | nuevo: `projects.avatar` (bloque 1) |
+| `backend/src/agentic_os/db/migrations/versions/0025_pipeline_exits_sdd.py` | nuevo: `stages.exit_*`, `tasks.exit_stage_id`, `tasks.work_mode*`, `tasks.spec_path` |
 | `backend/src/agentic_os/models/{project,pipeline,task}.py` | campos nuevos; `TaskEventKind.EXITED` y `WORK_MODE` |
 | `backend/src/agentic_os/services/avatars.py`, `api/projects.py`, `schemas/project.py` | foto del proyecto |
 | `backend/src/agentic_os/services/pipeline_graph.py` | reglas de las salidas |
@@ -199,15 +222,15 @@
 | `frontend/src/i18n/es.json` | textos |
 
 ## Tareas (en orden)
-1. [ ] **Bloque 0**: spikes S1–S3 y resultados en este plan.
-2. [ ] **Bloque 1 · Foto del proyecto**: migración (parte de proyectos), API, limpieza y `ProjectAvatar` en todas las pantallas.
-3. [ ] **Bloque 2 · Salidas en el grafo**: reglas en Python y en `validate.ts`, con los mismos casos en los dos; guardar y cargar las salidas; ADR 0030.
-4. [ ] **Bloque 3 · Salidas en el motor**: `start_decision`, decisor con salida, `finish_at_exit`, revisión final, confirmación, «Terminar aquí» y «Seguir con el pipeline».
-5. [ ] **Bloque 4 · Salidas en la interfaz**: nodo Fin en el editor, `TryDecisionDialog`, `DecisionBlock`, tarjeta y tarea.
-6. [ ] **Bloque 5 · SDD**: detección, `set_work_mode`, contexto por etapa, cambio a mano y en la revisión, interfaz.
-7. [ ] **Bloque 6 · Plantillas**: las ocho plantillas de agentes y la plantilla «Desarrollo»; fuera las antiguas.
-8. [ ] **Bloque 7 · Aplicar y copiar**: plan de la plantilla, aplicar con agentes nuevos en una transacción, copiar; `ApplyDevelopmentDialog`, `CopyPipelineDialog`, Nuevo proyecto y pestaña Pipeline.
-9. [ ] **Bloque 8 · Arquitecto**: `team` con proyecto, pipeline opcional, salidas en la hoja, `get_pipeline_templates`, accesos.
+1. [x] **Bloque 0**: spikes S1–S3 y resultados en este plan.
+2. [x] **Bloque 1 · Foto del proyecto**: migración `0024` (solo `projects.avatar`), API, limpieza y `ProjectMark` en todas las pantallas.
+3. [x] **Bloque 2 · Salidas en el grafo**: reglas en Python y en `validate.ts`, con los mismos casos en los dos; guardar y cargar las salidas (también en la hoja del Arquitecto, para que mejorar un pipeline no las pierda); migración `0025` con los campos de las salidas y del modo SDD; ADR 0030 y nota en el 0020.
+4. [x] **Bloque 3 · Salidas en el motor**: `start_decision`, decisor con salida (prompt de S1 y su esquema), `exit_at`, revisión final, confirmación, «Terminar aquí» y «Seguir con el pipeline» (`POST /tasks/{id}/continue`); la tarea expone la salida de su etapa y dónde terminó.
+5. [x] **Bloque 4 · Salidas en la interfaz**: nodo Fin en el editor (se mueve y se borra con su etapa), panel de la salida, «Probar» también para la salida (el backend de la vista previa la admite), `DecisionBlock` con «Terminar aquí» excluyente y «Seguir con el pipeline», y «Terminó en …» en las tarjetas del Tablero y de las colas.
+6. [x] **Bloque 5 · SDD**: detección (`services/sdd.py`), `set_work_mode` en el MCP, contexto por etapa (pista del formato en la primera etapa sin decidir), carpeta de la spec obligatoria al cerrar la primera etapa, cambio a mano (`PUT /tasks/{id}/work-mode`, también desde la revisión porque la sección está en la tarea) e interfaz (sección «Modo de trabajo» y etiqueta en las tarjetas).
+7. [x] **Bloque 6 · Plantillas**: las ocho plantillas de agentes (el Analista con las pautas de SDD de S2) y la plantilla «Desarrollo»; fuera «web» y «web_split» (el e2e de ramas guarda ese mismo pipeline a mano).
+8. [x] **Bloque 7 · Aplicar y copiar**: plan de la plantilla, aplicar con agentes nuevos en una transacción, copiar (con los ajustes de skills y conexiones de cada etapa); `ApplyDevelopmentDialog`, `CopyPipelineDialog`, Nuevo proyecto (la elección se abre en la pestaña Pipeline del proyecto recién creado, `?empezar=…`) y pestaña Pipeline vacía.
+9. [x] **Bloque 8 · Arquitecto**: `team` con proyecto (título y prompt con el proyecto), pipeline opcional, salidas en la hoja, `get_pipeline_templates`, accesos (`?disenar=<proyecto>` desde la pestaña Pipeline y Nuevo proyecto; «Nuevo equipo con el Arquitecto» en Agentes e Inicio).
 10. [ ] **Bloque 9 · e2e y cierre**: e2e con el CLI falso (CA7 y CA9), prueba manual con `claude` real (CA5 y CA7), suites completas, lint, `/code-review`, `validacion.md`.
 
 ## Tests previstos

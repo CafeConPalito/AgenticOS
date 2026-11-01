@@ -97,6 +97,8 @@ export interface GitProjectFields {
 
 export interface Project extends ProjectFields, GitProjectFields {
   id: string
+  /** Phase 24: null (its initial on its color) or `photo:<hash>`; projects have no owls. */
+  avatar: string | null
   created_at: string
   updated_at: string
   git: GitInfo | null
@@ -339,6 +341,16 @@ export interface Task {
   lane_name: string | null
   fork_stage_id: string | null
   lanes: Lane[]
+  /** Phase 24: the exit of the stage the task is at (its condition), if it has one. */
+  stage_exit_condition: string | null
+  /** Phase 24: where an exit ended the task («Terminar aquí»). */
+  exit_stage_id: string | null
+  exit_stage_name: string | null
+  /** Phase 24: SDD or direct, as its requirements stage chose (a lane shows its root's). */
+  work_mode: 'sdd' | 'direct' | null
+  work_mode_reason: string | null
+  /** With SDD: the folder of its spec, relative to the project. */
+  spec_path: string | null
 }
 
 export type TaskEventKind =
@@ -428,6 +440,10 @@ export interface Stage {
   x: number
   y: number
   confirm_decision: boolean
+  /** Phase 24: «Terminar aquí» — the condition the decider evaluates (null: no exit). */
+  exit_condition: string | null
+  exit_x: number | null
+  exit_y: number | null
   /** For a fork: the stage where its branches meet. */
   join_stage_id: string | null
   active_tasks: number
@@ -468,6 +484,10 @@ export interface StageWrite {
   x?: number | null
   y?: number | null
   confirm_decision?: boolean
+  /** Phase 24: «Terminar aquí» (null: no exit) and the place of its «Fin» node. */
+  exit_condition?: string | null
+  exit_x?: number | null
+  exit_y?: number | null
 }
 
 /** A link between two stages of the same save, by their index in `stages`. */
@@ -489,7 +509,39 @@ export interface PipelineWrite {
   decider_model?: string | null
 }
 
-export type PipelineTemplateId = 'web' | 'web_split'
+/** Phase 24: the one fixed pipeline template. */
+export type PipelineTemplateId = 'development'
+
+/** Phase 24: how the agents a template is missing are created, and in which team. */
+export interface NewAgents {
+  cli: CliId
+  account_id?: string | null
+  model?: string | null
+  team_id?: string | null
+  team_name?: string
+}
+
+export interface TemplateApply {
+  template: PipelineTemplateId
+  /** An agent picked by hand per stage index. */
+  assign?: Record<string, string>
+  create?: NewAgents | null
+}
+
+/** One stage of a template and the active agent made from its agent template, if any. */
+export interface TemplatePlanStage {
+  index: number
+  name: string
+  template_id: string
+  template_name: string
+  agent_id: string | null
+  agent_name: string | null
+}
+
+export interface CopiedPipeline extends Pipeline {
+  /** Stages left without their agent (archived or a draft). */
+  warnings: { stage: string; agent: string }[]
+}
 
 export interface GraphIssue {
   code: string
@@ -501,6 +553,9 @@ export interface PreviewRequest {
   title: string
   description: string
   branches: { name: string; condition: string }[]
+  /** Phase 24: to also try the stage's «Terminar aquí». */
+  exit_condition?: string | null
+  stage_name?: string
   decider_cli?: DeciderCli | null
   decider_account_id?: string | null
   decider_model?: string | null
@@ -508,6 +563,8 @@ export interface PreviewRequest {
 
 export interface PreviewResult {
   branches: { name: string; take: boolean; reason: string }[]
+  /** Phase 24: whether the task would end at the stage. */
+  exit?: { name: string; take: boolean; reason: string } | null
   cli: string | null
   model: string | null
   cost_usd: number | null

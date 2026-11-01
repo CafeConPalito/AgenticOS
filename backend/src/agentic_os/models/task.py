@@ -128,6 +128,15 @@ class Task(IdMixin, WorkspaceMixin, TimestampMixin, Base):
     lane_key: Mapped[str] = mapped_column(String(80), nullable=False, default="")
     # Branches fixed by hand when the task was created: {fork stage id: [link id, …]}.
     preset_lanes: Mapped[dict[str, list[str]]] = mapped_column(JSON, nullable=False, default=dict)
+    # Phase 24 (ADR 0030): the stage whose exit ended the task (null: it went to the end).
+    exit_stage_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("stages.id", ondelete="SET NULL"), nullable=True
+    )
+    # How the task is worked, chosen by its requirements stage: `sdd` (a spec in `spec_path`,
+    # a folder of the project) or `direct`; null until chosen. Lanes read their root's.
+    work_mode: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    work_mode_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    spec_path: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     @property
     def code(self) -> str:
@@ -166,6 +175,8 @@ class TaskEventKind(StrEnum):
     LANE_ADDED = "lane_added"  # the user added a branch to a running fork
     LANE_CANCELLED = "lane_cancelled"
     JOINED = "joined"  # the lanes met again
+    EXITED = "exited"  # phase 24: the task ended at a stage's exit («Terminar aquí»)
+    WORK_MODE = "work_mode"  # phase 24: SDD or direct, chosen or changed
 
 
 class TaskEvent(IdMixin, Base):

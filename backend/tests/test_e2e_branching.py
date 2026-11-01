@@ -44,16 +44,28 @@ def setup(api: Api, tmp_path: Path) -> str:
     folder = tmp_path / "Web"
     folder.mkdir()
     project = api.post("/api/projects", {"name": "Web", "path": str(folder)})["id"]
-    for template in ("analyst", "developer", "qa"):
-        api.post("/api/agents", {"template": template})
-    created = api.post(f"/api/projects/{project}/pipeline/template", {"template": "web_split"})
-    assert [s["name"] for s in created["stages"]] == [
-        "Requisitos",
-        "Dev backend",
-        "Dev frontend",
-        "QA",
-    ]
-    assert all(s["agent_id"] for s in created["stages"])  # the template found its agents
+    ids = {
+        t: api.post("/api/agents", {"template": t})["id"] for t in ("analyst", "developer", "qa")
+    }
+    # Requisitos → (Dev backend | Dev frontend) → QA (the phase 13 split template, by hand).
+    created = api.client_put(
+        f"/api/projects/{project}/pipeline",
+        {
+            "stages": [
+                {"name": "Requisitos", "agent_id": ids["analyst"]},
+                {"name": "Dev backend", "agent_id": ids["developer"]},
+                {"name": "Dev frontend", "agent_id": ids["developer"]},
+                {"name": "QA", "agent_id": ids["qa"], "reject_to": 1, "reject_also": [2]},
+            ],
+            "links": [
+                {"source": 0, "target": 1, "name": "Backend", "condition": "Toca la API"},
+                {"source": 0, "target": 2, "name": "Frontend", "condition": "Toca la UI"},
+                {"source": 1, "target": 3},
+                {"source": 2, "target": 3},
+            ],
+        },
+    )
+    assert all(s["agent_id"] for s in created["stages"])
     return project
 
 

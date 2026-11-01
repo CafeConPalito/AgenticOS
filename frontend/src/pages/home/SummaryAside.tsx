@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router'
 import type { Account, CliInfo, HomeAgent, HomeProject, LimitState, UsageToday } from '@/api/types'
 import { CliIcon } from '@/components/agentic/CliIcon'
-import { AgentAvatar } from '@/components/agentic/primitives'
+import { AgentAvatar, ProjectMark } from '@/components/agentic/primitives'
 import { formatPercent, formatTokensUnit, formatUsd } from '@/lib/format'
 import { highestWindow, windowName } from '@/lib/quota'
 import { cn } from '@/lib/utils'
@@ -311,7 +311,7 @@ export function SummaryAside({
               'grid grid-cols-[8px_minmax(0,1fr)_auto] items-center gap-x-2.5 gap-y-px py-1.5',
             )}
           >
-            <span className="size-2 rounded-[2px]" style={{ background: project.color }} />
+            <ProjectMark name={project.name} color={project.color} projectId={project.id} />
             <span className="truncate">{project.name}</span>
             <span className="text-xs whitespace-nowrap text-muted-foreground">
               {t('home.summary.openTasks', { count: project.open_tasks })}

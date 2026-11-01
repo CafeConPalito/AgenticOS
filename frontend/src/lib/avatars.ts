@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useAgents } from '@/api/agents'
+import { useProjects } from '@/api/projects'
 import { getApiBaseUrl } from '@/lib/api'
 
 /** The owl gallery (phase 20): `assets/owls/<id>.svg`, drawn by `scripts/owls.py`. */
@@ -55,4 +56,13 @@ export function avatarSource(
 export function useAgentAvatar(agentId: string | null | undefined): string | null {
   const agents = useAgents({ enabled: Boolean(agentId) }).data
   return agentId ? (agents?.find((a) => a.id === agentId)?.avatar ?? null) : null
+}
+
+/**
+ * Phase 24: the photo of a project known only by its id (tasks, runs and the Inbox carry its
+ * name and color): read from the projects list the app already keeps.
+ */
+export function useProjectAvatar(projectId: string | null | undefined): string | null {
+  const projects = useProjects().data
+  return projectId ? (projects?.find((p) => p.id === projectId)?.avatar ?? null) : null
 }

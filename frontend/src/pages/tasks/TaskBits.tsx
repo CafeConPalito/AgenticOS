@@ -11,6 +11,7 @@ import {
 } from '@/components/agentic/primitives'
 import { cn } from '@/lib/utils'
 import { NEUTRAL_COLOR } from '@/theme/palettes'
+import { WorkModeTag } from './WorkModeSection'
 
 export const TASK_TONE: Record<TaskStatus, StatusTone> = {
   backlog: 'cancelled',
@@ -81,8 +82,19 @@ export function TaskCard({
       )}
     >
       <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-        <ProjectChip name={task.project_name} color={task.project_color} />
-        {task.stage_name && <span className="truncate">{task.stage_name}</span>}
+        <ProjectChip
+          name={task.project_name}
+          color={task.project_color}
+          projectId={task.project_id}
+        />
+        {task.status === 'done' && task.exit_stage_name ? (
+          // Phase 24: an exit ended it before the last stage.
+          <span className="truncate">
+            {t('tasks.exit.endedAt', { stage: task.exit_stage_name })}
+          </span>
+        ) : (
+          task.stage_name && <span className="truncate">{task.stage_name}</span>
+        )}
         {task.lane_name && (
           <span className="truncate rounded-full border px-1.5 text-[10.5px]">
             {t('tasks.lanes.laneTag', { name: task.lane_name })}
@@ -93,6 +105,7 @@ export function TaskCard({
             {t('tasks.lanes.lanesTag', { count: task.lanes.length })}
           </span>
         )}
+        <WorkModeTag task={task} />
         <span className="ml-auto font-mono">{task.code}</span>
       </div>
       <div className="mt-1.5 line-clamp-2 text-[13.5px] font-medium">{task.title}</div>

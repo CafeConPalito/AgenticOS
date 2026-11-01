@@ -359,7 +359,7 @@ describe('Clone from URL', () => {
     await user.click(within(dialog).getByRole('button', { name: es.projects.new.cloneSubmit }))
 
     await waitFor(
-      () => expect(router.state.location.pathname).toMatch(/^\/proyectos\/project-\d+\/summary$/),
+      () => expect(router.state.location.pathname).toMatch(/^\/proyectos\/project-\d+\/pipeline$/),
       { timeout: 5000 },
     )
     expect(backend.callsTo('POST', '/api/git/clone')[0].body).toEqual({

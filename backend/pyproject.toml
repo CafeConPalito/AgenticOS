@@ -1,6 +1,6 @@
 [project]
 name = "agentic-os"
-version = "0.9.3"
+version = "0.9.4"
 description = "Agentic OS backend"
 license = "GPL-3.0-or-later"
 authors = [{ name = "Albano Díez de Paulino", email = "contacto@cafeconpalito.com" }]
@@ -77,3 +77,5 @@ filterwarnings = ["ignore:Using `httpx` with `starlette.testclient` is deprecate
 "tests/test_knowledge_describe.py" = ["F811"]
 "tests/test_decider.py" = ["F811"]
 "tests/test_lanes_git.py" = ["F811"]
+"tests/test_pipeline_exits.py" = ["F811"]
+"tests/test_sdd.py" = ["F811"]

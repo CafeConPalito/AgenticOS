@@ -45,3 +45,6 @@ Un pipeline era una fila de etapas y una tarea estaba en un solo sitio: `Task.st
 
 ## Nota (fase 21, 2026-10-29)
 Una rama **sin condición se toma siempre**: ya no hay que marcar «siempre» y el editor no lo pide. El decisor solo recibe las ramas con condición; si no hay ninguna, la bifurcación se resuelve sin llamarlo (`DecisionBy.ALWAYS`). La columna `stage_links.always` se conserva por compatibilidad, y la migración `0023` vacía la condición de las ramas que la tenían marcada.
+
+## Nota (fase 24, 2026-11-01)
+Un pipeline puede **terminar antes de su última etapa**. Una etapa fuera de las bifurcaciones abiertas puede tener una salida «Terminar aquí» con una condición. La decide el decisor de ramas en la misma llamada que las ramas, y terminar es excluyente. Ver el [ADR 0030](0030-pipeline-exits-sdd-mode.md).

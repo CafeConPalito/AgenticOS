@@ -17,6 +17,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { relativeTime } from '@/lib/time'
+import { ProjectMark } from '@/components/agentic/primitives'
 
 export default function ProjectsPage() {
   const { t } = useTranslation()
@@ -125,9 +126,11 @@ function ProjectsTable({ projects }: { projects: Project[] }) {
               >
                 <TableCell className="px-4 py-3.5">
                   <span className="inline-flex items-center gap-2.5 font-medium">
-                    <span
-                      className="size-2.5 rounded-[3px]"
-                      style={{ background: project.color }}
+                    <ProjectMark
+                      name={project.name}
+                      color={project.color}
+                      avatar={project.avatar}
+                      size={10}
                     />
                     {project.name}
                   </span>

@@ -7,6 +7,9 @@
  * branches, and all the branches meet again in one stage (the join) or all end in final stages.
  * Forks nest inside a branch. Rejection arrows are not links: they go back to an earlier stage
  * of the same path.
+ *
+ * Phase 24 (ADR 0030): a stage may have an exit («Terminar aquí», with a condition). It ends the
+ * whole task, so it is only allowed outside open forks and never on a stage that is final.
  */
 
 export type GraphErrorCode =
@@ -18,6 +21,9 @@ export type GraphErrorCode =
   | 'empty_branch'
   | 'reject_not_backwards'
   | 'reject_outside_path'
+  | 'exit_no_condition'
+  | 'exit_on_final'
+  | 'exit_in_branch'
 
 export interface GraphIssueKeys {
   code: GraphErrorCode
@@ -42,6 +48,8 @@ export interface GraphInput {
   nodes: GraphNode[]
   edges: GraphEdge[]
   rejects: Record<string, string[]>
+  /** Phase 24: the stages with an exit, and its condition. */
+  exits?: Record<string, string>
 }
 
 /** A position inside the forks: [fork, branch index] pairs from the outermost one. */
@@ -163,6 +171,16 @@ export function analyse(graph: GraphInput): Structure {
         if (!inside) issues.push({ code: 'reject_outside_path', stage })
       }
     }
+  }
+
+  for (const key of keys) {
+    const condition = graph.exits?.[key]
+    if (condition === undefined) continue
+    if (!condition.trim()) issues.push({ code: 'exit_no_condition', stage: key })
+    if (!out.get(key)?.length) issues.push({ code: 'exit_on_final', stage: key })
+    else if (structured && (paths.get(key)?.length ?? 1) > 0)
+      // Not reached from the start counts as inside, as on the server (`path != ()`).
+      issues.push({ code: 'exit_in_branch', stage: key })
   }
   return { issues, paths, joins, lanes }
 }

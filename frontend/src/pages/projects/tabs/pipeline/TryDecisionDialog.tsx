@@ -38,7 +38,10 @@ export function TryDecisionDialog({
   const [description, setDescription] = useState('')
   const [result, setResult] = useState<PreviewResult | null>(null)
   const stage = draft.stages.find((s) => s.key === fork)
-  const branches = linksFrom(draft, fork)
+  const outs = linksFrom(draft, fork)
+  // A stage that does not fork has no branches to ask about, only its exit (phase 24).
+  const branches = outs.length > 1 ? outs : []
+  const exitCondition = stage?.exit?.condition.trim() || null
 
   function run() {
     setResult(null)
@@ -50,6 +53,8 @@ export function TryDecisionDialog({
           name: b.name || draft.stages.find((s) => s.key === b.target)?.name || '?',
           condition: b.always || !b.condition.trim() ? t('pipeline.alwaysCondition') : b.condition,
         })),
+        exit_condition: exitCondition,
+        stage_name: stage?.name ?? '',
         decider_cli: draft.deciderCli,
         decider_account_id: draft.deciderAccountId,
         decider_model: draft.deciderModel.trim() || null,
@@ -91,7 +96,7 @@ export function TryDecisionDialog({
           {result && !result.error && (
             <>
               <ul aria-label={t('pipeline.tryResult')} className="grid gap-2">
-                {result.branches.map((b) => (
+                {[...(result.exit ? [result.exit] : []), ...result.branches].map((b) => (
                   <li key={b.name} className="flex gap-2 text-[13px]">
                     {b.take ? (
                       <Check

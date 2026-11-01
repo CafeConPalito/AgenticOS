@@ -16,6 +16,14 @@ export interface DraftStage {
   x: number
   y: number
   activeTasks: number
+  /** Phase 24: «Terminar aquí» — its condition and where its «Fin» node sits (null: none). */
+  exit: DraftExit | null
+}
+
+export interface DraftExit {
+  condition: string
+  x: number
+  y: number
 }
 
 /** A link between two stages; with several leaving a stage, each is a branch. */
@@ -39,6 +47,9 @@ export interface Draft {
   links: DraftLink[]
 }
 
+/** Where a new «Fin» node goes: under its stage (as the server places it). */
+export const EXIT_OFFSET = 110
+
 let seq = 0
 export const newKey = (prefix = 'new') => `${prefix}-${++seq}`
 
@@ -55,6 +66,7 @@ export function newStage(name: string, x: number, y: number): DraftStage {
     x,
     y,
     activeTasks: 0,
+    exit: null,
   }
 }
 
@@ -101,6 +113,10 @@ export function toDraft(pipeline: Pipeline): Draft {
       x: s.x,
       y: s.y,
       activeTasks: s.active_tasks,
+      exit:
+        s.exit_condition === null
+          ? null
+          : { condition: s.exit_condition, x: s.exit_x ?? s.x, y: s.exit_y ?? s.y + EXIT_OFFSET },
     })),
     links: [...pipeline.links]
       .sort((a, b) => a.position - b.position)
@@ -130,6 +146,9 @@ export function toWrite(draft: Draft): PipelineWrite {
     x: Math.round(s.x),
     y: Math.round(s.y),
     confirm_decision: s.confirmDecision,
+    exit_condition: s.exit ? s.exit.condition.trim() : null,
+    exit_x: s.exit ? Math.round(s.exit.x) : null,
+    exit_y: s.exit ? Math.round(s.exit.y) : null,
   }))
   const links: LinkWrite[] = draft.links.map((l) => ({
     source: index.get(l.source) ?? 0,
@@ -156,7 +175,10 @@ export function graphOf(draft: Draft): GraphInput {
     const targets = [s.rejectTo, ...s.rejectAlso].filter((k): k is string => Boolean(k))
     if (targets.length) rejects[s.key] = targets
   }
+  const exits: Record<string, string> = {}
+  for (const s of draft.stages) if (s.exit) exits[s.key] = s.exit.condition
   return {
+    exits,
     nodes: draft.stages.map((s) => ({ key: s.key })),
     edges: draft.links.map((l) => ({
       key: l.key,

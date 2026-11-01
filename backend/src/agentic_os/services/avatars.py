@@ -3,6 +3,7 @@
 The photo is cropped in the interface; only the crop reaches the backend, which checks it and
 writes it again as a small WebP without metadata, named by its hash. The original is never
 stored. `Agent.avatar` (and a saved template's) is null, `owl:<id>` or `photo:<hash>`.
+Phase 24: `Project.avatar` is null or `photo:<hash>` (projects have no owls).
 """
 
 import base64
@@ -16,7 +17,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from agentic_os.errors import ApiError
-from agentic_os.models import Agent
+from agentic_os.models import Agent, Project
 from agentic_os.models.proposal import AgentTemplateRow
 
 # The gallery: frontend/src/assets/owls/<id>.svg, drawn by scripts/owls.py (a test compares).
@@ -54,12 +55,17 @@ def photo_path(data_dir: Path, digest: str) -> Path:
     return folder(data_dir) / f"{digest}.webp"
 
 
-def check(data_dir: Path, value: str | None, field: str = "avatar") -> str | None:
-    """A value the agent may take: null, an owl of the gallery or a photo that is stored."""
+def check(
+    data_dir: Path, value: str | None, field: str = "avatar", owls: bool = True
+) -> str | None:
+    """A value the agent may take: null, an owl of the gallery or a photo that is stored.
+    `owls=False` (projects): only null or a photo."""
     if value is None:
         return None
     if not _VALUE.match(value):
         raise ApiError(422, "avatar_invalid", "not an avatar value", field)
+    if not owls and value.startswith("owl:"):
+        raise ApiError(422, "avatar_no_owls", "only a photo can be used here", field)
     if value.startswith("owl:") and value[4:] not in OWL_IDS:
         raise ApiError(422, "avatar_unknown_owl", "no such owl in the gallery", field)
     photo = _PHOTO.match(value)
@@ -127,10 +133,10 @@ def from_import(data_dir: Path, value: object) -> str | None:
 
 
 def remove_unused(db: Session, data_dir: Path) -> int:
-    """Deletes the stored photos no agent nor template uses; returns how many."""
+    """Deletes the stored photos no agent, template nor project uses; returns how many."""
     used = {
         value[len("photo:") :]
-        for model in (Agent, AgentTemplateRow)
+        for model in (Agent, AgentTemplateRow, Project)
         for value in db.scalars(select(model.avatar).where(model.avatar.like("photo:%")))
     }
     removed = 0

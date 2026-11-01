@@ -528,6 +528,7 @@ describe('Inicio · agents', () => {
       es.home.agents.new,
       es.agents.architect,
       es.teams.new,
+      es.teams.withArchitect, // phase 24
     ])
     await user.click(screen.getByRole('menuitem', { name: es.home.agents.new }))
     expect(useDialogs.getState().newAgent).toBe(true)

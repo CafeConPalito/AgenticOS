@@ -241,6 +241,12 @@ class ArchitectService:
             sheet["pipeline"] = sheets.pipeline_of(db, project)
             sheet["base"] = {"pipeline": sheet["pipeline"]}
             title = f"Mejorar el pipeline de {project.name}"
+        elif mode == ArchitectMode.TEAM and project_id:
+            # Phase 24: designing the team and pipeline of one project (from its Pipeline tab).
+            project = db.get(Project, project_id)
+            if project is None:
+                raise ApiError(422, "project_required", "the project does not exist")
+            title = f"Equipo y pipeline de {project.name}"
         elif mode not in (ArchitectMode.AGENT, ArchitectMode.TEAM):
             raise ApiError(422, "unknown_mode", f"unknown mode {mode!r}")
         conversation = ArchitectConversation(
@@ -455,6 +461,10 @@ class ArchitectService:
             target = (conversation.sheet.get("team") or {}).get("name", "")
         elif conversation.mode == ArchitectMode.IMPROVE_PIPELINE:
             target = (conversation.sheet.get("pipeline") or {}).get("project_name", "")
+        elif conversation.mode == ArchitectMode.TEAM and conversation.project_id:
+            # Phase 24: «Diseñar con el Arquitecto» from a project.
+            project = db.get(Project, conversation.project_id)
+            target = project.name if project else ""
         instructions = prompts.instructions(
             settings.instructions or None, conversation.mode, target
         )
@@ -880,6 +890,34 @@ class ArchitectService:
             if template in (own.id, own.name):
                 return {"id": own.id, "name": own.name, **(own.payload.get("agent") or {})}, []
         return {"error": f"No hay ninguna plantilla {template}"}, []
+
+    def _tool_get_pipeline_templates(self, db: Session, conversation, **_) -> tuple[Any, list]:
+        """Phase 24: the fixed pipeline templates in the sheet's format, each stage naming the
+        agent template of its role."""
+        from agentic_os.services import pipelines as pipeline_ops
+
+        result = []
+        for key, build in pipeline_ops.TEMPLATES.items():
+            payload = build()
+            result.append(
+                {
+                    "template": key.value,
+                    "name": payload.name,
+                    "stages": [
+                        {
+                            "name": s.name,
+                            "agent_template": s.agent_id,
+                            "requires_review": s.requires_review,
+                            "reject_to": s.reject_to,
+                            "reject_also": s.reject_also,
+                            "exit_condition": s.exit_condition,
+                        }
+                        for s in payload.stages
+                    ],
+                    "links": [x.model_dump() for x in payload.links or []],
+                }
+            )
+        return result, []
 
     def _tool_list_projects(self, db: Session, conversation, **_) -> tuple[Any, list]:
         projects = db.scalars(select(Project).where(Project.workspace_id == DEFAULT_WORKSPACE))

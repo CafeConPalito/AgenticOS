@@ -38,22 +38,47 @@ describe('New project dialog', () => {
     expect(router.state.location.pathname).toBe('/proyectos')
   })
 
-  it('proposes the name from the folder, with the web pipeline by default', async () => {
+  it('proposes the name from the folder, with «Desarrollo» by default (phase 24)', async () => {
     const backend = createFakeBackend()
     const { user, dialog, router } = await openDialog()
     await user.type(within(dialog).getByLabelText(es.projects.fields.path), 'D:\\proyectos\\mi-web')
     expect(within(dialog).getByLabelText(es.projects.fields.name)).toHaveValue('mi-web')
+    expect(within(dialog).getByRole('radio', { name: /^Desarrollo/ })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    )
     await user.click(within(dialog).getByRole('button', { name: es.projects.new.submit }))
 
+    // The pipeline is chosen in its tab, with the «Desarrollo» dialog open.
     await waitFor(() =>
-      expect(router.state.location.pathname).toMatch(/^\/proyectos\/project-\d+\/summary$/),
+      expect(router.state.location.pathname).toMatch(/^\/proyectos\/project-\d+\/pipeline$/),
     )
+    expect(router.state.location.search).toBe('?empezar=desarrollo')
+    expect(await screen.findByRole('dialog', { name: es.pipeline.development.title })).toBeVisible()
     expect(backend.callsTo('POST', '/api/projects')[0].body).toMatchObject({
       name: 'mi-web',
       path: 'D:\\proyectos\\mi-web',
       create_folder: false,
     })
-    expect(backend.calls.some((c) => c.path.endsWith('/pipeline/template'))).toBe(true)
+    expect(backend.calls.some((c) => c.path.endsWith('/pipeline/template'))).toBe(false)
+  })
+
+  it('offers to copy a pipeline, the Architect or a blank one (phase 24)', async () => {
+    createFakeBackend()
+    const { user, dialog, router } = await openDialog()
+    for (const label of [
+      es.projects.new.copyPipeline,
+      es.projects.new.architectPipeline,
+      es.projects.new.blankPipeline,
+    ])
+      expect(within(dialog).getByRole('radio', { name: new RegExp(label) })).toBeVisible()
+    await user.type(within(dialog).getByLabelText(es.projects.fields.path), 'D:\\otra')
+    await user.click(
+      within(dialog).getByRole('radio', { name: new RegExp(es.projects.new.architectPipeline) }),
+    )
+    await user.click(within(dialog).getByRole('button', { name: es.projects.new.submit }))
+    await waitFor(() => expect(router.state.location.pathname).toBe('/agentes/arquitecto'))
+    expect(router.state.location.search).toMatch(/^\?disenar=project-\d+$/)
   })
 
   it('without pipeline and with the chosen colour', async () => {
@@ -84,7 +109,7 @@ describe('New project dialog', () => {
     expect(await within(dialog).findByText(es.errors.folder_not_found)).toBeVisible()
     await user.click(within(dialog).getByRole('button', { name: es.projects.new.createFolder }))
     await waitFor(() =>
-      expect(router.state.location.pathname).toMatch(/^\/proyectos\/project-\d+\/summary$/),
+      expect(router.state.location.pathname).toMatch(/^\/proyectos\/project-\d+\/pipeline$/),
     )
     const posts = backend.callsTo('POST', '/api/projects')
     expect(posts).toHaveLength(2)

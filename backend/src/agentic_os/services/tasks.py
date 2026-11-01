@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
+from pathlib import Path
 
 from sqlalchemy import and_, case, func, or_, select
 from sqlalchemy.orm import Session
@@ -451,6 +452,7 @@ def review(
     inbox.resolve_pending(
         db, Resolution.REJECTED, task_id=task.id, kinds=(InboxKind.REVIEW,), response=reason
     )
+    task.exit_stage_id = None  # phase 24: a rejected final review undoes the exit
     if target is None:  # no pipeline: the same agent does it again
         requeue(db, task, front=True)
         return
@@ -470,7 +472,7 @@ def retry(db: Session, task: Task) -> None:
     stage = db.get(Stage, task.stage_id) if task.stage_id else None
     forking = task.waiting_reason in (WaitingReason.CHOOSE_BRANCH, WaitingReason.LANES_CANCELLED)
     if forking and stage is not None:
-        lanes.start_fork(db, task, stage)  # decide again
+        lanes.start_decision(db, task, stage)  # decide again
         return
     if task.waiting_reason == WaitingReason.JOIN_CONFLICT:
         task.status = TaskStatus.FORKED
@@ -509,6 +511,12 @@ class TaskContext:
     siblings: tuple[str, ...] = ()
     # After a join: what each branch said (the task goes on from where they meet).
     joined: str | None = None
+    # Phase 24 (ADR 0030): how the task is worked (its root's), and, for its first stage, the
+    # SDD format the project already uses (or that it uses none).
+    work_mode: str | None = None
+    work_mode_reason: str | None = None
+    spec_path: str | None = None
+    sdd_hint: str | None = None
 
 
 HISTORY_KINDS = (
@@ -518,6 +526,7 @@ HISTORY_KINDS = (
     TaskEventKind.REVIEW_REJECTED,
     TaskEventKind.HUMAN_REQUEST,
     TaskEventKind.HUMAN_ANSWERED,
+    TaskEventKind.WORK_MODE,
 )
 HISTORY_LIMIT = 8_000
 STATUS_TEXT = {
@@ -573,6 +582,7 @@ def task_context(db: Session, task: Task) -> TaskContext:
         TaskEventKind.REVIEW_REJECTED: "rechazada en revisión",
         TaskEventKind.HUMAN_REQUEST: "preguntó a la persona",
         TaskEventKind.HUMAN_ANSWERED: "la persona respondió",
+        TaskEventKind.WORK_MODE: "eligió el modo de trabajo",
     }
     history: list[str] = []
     size = 0
@@ -599,7 +609,19 @@ def task_context(db: Session, task: Task) -> TaskContext:
         .order_by(TaskEvent.seq.desc())
         .limit(1)
     )
+    from agentic_os.services import lanes, sdd
+
+    root = lanes.root_of(db, task)
+    hint = None
+    undecided = root.work_mode is None or (root.work_mode == "sdd" and not root.spec_path)
+    if stage is not None and stages and stage.id == stages[0].id and undecided:
+        project = db.get(Project, task.project_id)
+        hint = sdd.describe(sdd.detect(project.path)) if project else None
     return TaskContext(
+        work_mode=root.work_mode,
+        work_mode_reason=root.work_mode_reason,
+        spec_path=root.spec_path,
+        sdd_hint=hint,
         code=task.code,
         title=task.title,
         description=task.description,
@@ -656,3 +678,110 @@ def task_prompt(task: Task) -> str:
     the whole task is in its plugin rules)."""
     first = f"{task.code} · {task.title}"
     return f"{first}\n\n{task.description.strip()}" if task.description.strip() else first
+
+
+# ------------------------------------------------------------------- working mode (phase 24)
+WORK_MODES = ("sdd", "direct")
+WORK_MODE_TEXT = {"sdd": "con SDD", "direct": "sin SDD"}
+
+
+def _clean_spec_path(value: str) -> str | None:
+    """A folder of the project, relative and inside it; None if it is not one."""
+    text = value.strip().replace("\\", "/").strip("/")
+    if not text or text.startswith("~") or ":" in text or ".." in text.split("/"):
+        return None
+    return text
+
+
+def set_work_mode(
+    db: Session, task: Task, mode: str, reason: str, spec_path: str = ""
+) -> str | None:
+    """The requirements stage chose how the task is worked (`set_work_mode`). Stored on the
+    root task (lanes read it from there). Returns an error for the agent, or None."""
+    from agentic_os.services import lanes
+
+    if mode not in WORK_MODES:
+        return 'mode debe ser "sdd" o "direct".'
+    stages = stages_of(db, task.project_id)
+    if stages and task.stage_id != stages[0].id:
+        return (
+            "El modo de trabajo lo marca la etapa que toma los requisitos. Si crees que no "
+            "encaja, dilo en tu resumen o pídelo con request_human."
+        )
+    root = lanes.root_of(db, task)
+    path = None
+    if mode == "sdd":
+        path = _clean_spec_path(spec_path)
+        if path is None:
+            return (
+                "Con SDD, spec_path es la carpeta de la spec de esta tarea, relativa a la raíz "
+                "del proyecto (p. ej. specs/003-login)."
+            )
+    root.work_mode, root.work_mode_reason, root.spec_path = mode, reason.strip() or None, path
+    detail = f"{WORK_MODE_TEXT[mode]}" + (f" ({path})" if path else "")
+    add_event(
+        db,
+        root,
+        TaskEventKind.WORK_MODE,
+        detail + (f": {reason.strip()}" if reason.strip() else ""),
+    )
+    return None
+
+
+def spec_problem(db: Session, task: Task) -> str | None:
+    """At the first stage of an SDD task, the spec folder must be there before it ends."""
+    from agentic_os.services import lanes
+
+    root = lanes.root_of(db, task)
+    stages = stages_of(db, task.project_id)
+    if root.work_mode != "sdd":
+        return None
+    if stages and task.stage_id != stages[0].id:  # without pipeline its one agent is the first
+        return None
+    if not root.spec_path:  # the person asked for SDD: the folder is still to be chosen
+        return (
+            "La tarea va con SDD pero falta la carpeta de su spec: escríbela y márcala con "
+            "set_work_mode (mode «sdd» y spec_path) antes de terminar."
+        )
+    project = db.get(Project, task.project_id)
+    base = task.worktree_path or (project.path if project else None)
+    if base is None or (Path(base) / root.spec_path).is_dir():
+        return None
+    return (
+        f"La tarea va con SDD pero la carpeta de su spec ({root.spec_path}) no existe todavía. "
+        "Escribe la spec allí antes de terminar, o cambia el modo con set_work_mode."
+    )
+
+
+def change_work_mode(db: Session, task: Task, mode: str) -> None:
+    """The person changes the mode (in the task or in the review of the requirements): it is
+    kept and the task goes back to the first stage to redo the requirements that way. Not once
+    it has forked: its lanes would have to be stopped."""
+    from agentic_os.services import lanes
+
+    if mode not in WORK_MODES:
+        raise ApiError(422, "invalid_work_mode", "mode is sdd or direct", "mode")
+    if task.lane_of_id is not None or lanes.lanes_of(db, task):
+        raise ApiError(409, "work_mode_forked", "the task has already forked", "mode")
+    if task.status in (TaskStatus.DONE, TaskStatus.CANCELLED):
+        raise ApiError(409, "task_status", "the task is finished", "status")
+    if is_live(task):
+        raise ApiError(409, "task_live", "the task's agent is still running", "status")
+    stages = stages_of(db, task.project_id)
+    if task.work_mode == mode:
+        return
+    task.work_mode = mode
+    task.work_mode_reason = "Lo cambió la persona"
+    task.spec_path = None  # with SDD, the requirements stage chooses the folder again
+    add_event(
+        db,
+        task,
+        TaskEventKind.WORK_MODE,
+        f"{WORK_MODE_TEXT[mode]}: lo cambió la persona; hay que rehacer los requisitos así",
+    )
+    if not stages:
+        return
+    inbox.resolve_pending(db, Resolution.DISMISSED, task_id=task.id, kinds=(InboxKind.REVIEW,))
+    task.exit_stage_id = None
+    task.waiting_reason = task.waiting_detail = None
+    move_to_stage(db, task, stages[0], front=True)

@@ -53,15 +53,20 @@ Mejoras el agente existente **{target}**. Su ficha actual ya está cargada (`get
 Cambia solo lo que el usuario pida o lo que haga falta para eso, y di qué has cambiado y por qué. El usuario
 verá los cambios campo a campo y decidirá cuáles aplica; mientras tanto el agente sigue trabajando como está.""",
     ArchitectMode.TEAM: """## Ahora
-Diseñas **un equipo completo con su pipeline** para un proyecto existente:
+Diseñas **un equipo de agentes** y, si el usuario lo pide o hay un proyecto elegido, **el pipeline** de ese proyecto:
 1. El equipo (`set_team`: uno nuevo o uno existente).
 2. Sus agentes: **reutiliza** los que ya existan para un rol (`use_existing_agent`) y crea solo los que falten
    (`update_sheet` con un `agent_ref` corto por agente, p. ej. «redactor»).
-3. El pipeline del proyecto (`set_pipeline`): etapas con su agente, revisión humana donde haya que validar,
+3. El pipeline (`set_pipeline`), solo si toca: etapas con su agente, revisión humana donde haya que validar,
    `reject_to` para devolver trabajo a una etapa anterior (nunca un enlace hacia atrás) y bifurcaciones solo si
    hay trabajos que van por caminos distintos, cada rama con una condición clara que un modelo pueda evaluar
    leyendo la tarea. Las ramas de una bifurcación se vuelven a unir en una misma etapa.
-Antes de dar por cerrado el diseño, comprueba con `get_sheet` que no quedan problemas.""",
+   - Pon una salida «Terminar aquí» (`exit_condition` en la etapa) donde haya tareas que acaben antes, por
+     ejemplo las que solo piden requisitos. Solo fuera de las bifurcaciones abiertas y nunca en la última etapa.
+   - Para un equipo de desarrollo de software, parte de la plantilla «Desarrollo» (`get_pipeline_templates`) y de
+     las plantillas de agentes de sus roles (`get_template`), ajústala a lo que pida el usuario y dilo.
+Un equipo sin pipeline también es una propuesta válida. Antes de dar por cerrado el diseño, comprueba con
+`get_sheet` que no quedan problemas.""",
     ArchitectMode.IMPROVE_TEAM: """## Ahora
 Mejoras el equipo **{target}**: sus agentes (`get_sheet`) y, si el usuario lo pide, el pipeline de un proyecto.
 Reutiliza agentes existentes, crea solo los que falten y di qué cambias y por qué.""",
@@ -76,4 +81,10 @@ def instructions(base: str | None, mode: str, target: str = "") -> str:
     """The instructions of a conversation: the base ones (the person's, or ours) with the
     block of its mode."""
     text = base if base and "{mode}" in base else BASE if not base else f"{base}\n\n{{mode}}\n"
-    return text.replace("{mode}", MODES[mode].replace("{target}", target))
+    block = MODES[mode].replace("{target}", target)
+    if mode == ArchitectMode.TEAM and target:  # phase 24: designing for one project
+        block += (
+            f"\n\nEl proyecto elegido es **{target}**: diseña su pipeline (`set_pipeline` con "
+            f"project «{target}») además del equipo."
+        )
+    return text.replace("{mode}", block)

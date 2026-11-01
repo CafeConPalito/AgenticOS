@@ -9,14 +9,18 @@ from agentic_os.api.tasks import SchedulerDep
 from agentic_os.db.session import get_session
 from agentic_os.models import Agent, Pipeline
 from agentic_os.schemas.pipeline import (
+    CopyRead,
+    CopyRequest,
     GraphIssue,
     LinkRead,
     PipelineRead,
+    PipelineTemplate,
     PipelineWrite,
     PreviewBranchResult,
     PreviewRead,
     PreviewRequest,
     StageRead,
+    TemplatePlanStage,
     TemplateRequest,
 )
 from agentic_os.services import decider, pipelines
@@ -68,6 +72,9 @@ def read_pipeline(db: Session, pipeline: Pipeline) -> PipelineRead:
                 x=s.x,
                 y=s.y,
                 confirm_decision=s.confirm_decision,
+                exit_condition=s.exit_condition,
+                exit_x=s.exit_x,
+                exit_y=s.exit_y,
                 join_stage_id=graph.join_of(s.id),
                 active_tasks=active.get(s.id, 0),
             )
@@ -124,6 +131,8 @@ def preview_decision(
         payload.title,
         payload.description,
         request.app.state.settings.cli_command_overrides,
+        exit_condition=payload.exit_condition,
+        stage_name=payload.stage_name,
     )
     db.commit()
     return PreviewRead(
@@ -133,6 +142,13 @@ def preview_decision(
             )
             for b in views
         ],
+        exit=(
+            PreviewBranchResult(
+                name=decider.lane_ops.EXIT_LABEL, take=result.exit_taken, reason=result.exit_reason
+            )
+            if payload.exit_condition
+            else None
+        ),
         cli=asked.cli.value if asked else None,
         model=result.model or (asked.model if asked else None),
         cost_usd=result.usage.cost_usd,
@@ -146,9 +162,27 @@ def pipeline_from_template(
     project_id: str, payload: TemplateRequest, db: DbSession
 ) -> PipelineRead:
     project = get_project_or_404(db, project_id)
-    pipeline = pipelines.from_template(db, project, payload.template)
+    pipeline = pipelines.from_template(
+        db, project, payload.template, payload.assign, payload.create
+    )
     db.commit()
     return read_pipeline(db, pipeline)
+
+
+@router.get("/pipeline-templates/{template}/plan")
+def template_plan(template: PipelineTemplate, db: DbSession) -> list[TemplatePlanStage]:
+    """Phase 24: the agent each stage of the template would get (or that it needs one)."""
+    return pipelines.template_plan(db, template)
+
+
+@router.post("/projects/{project_id}/pipeline/copy", status_code=status.HTTP_201_CREATED)
+def copy_pipeline(project_id: str, payload: CopyRequest, db: DbSession) -> CopyRead:
+    """Phase 24: the pipeline of another project, with its agents and stage settings."""
+    project = get_project_or_404(db, project_id)
+    source = get_project_or_404(db, payload.from_project_id)
+    pipeline, warnings = pipelines.copy_from(db, project, source)
+    db.commit()
+    return CopyRead(**read_pipeline(db, pipeline).model_dump(), warnings=warnings)
 
 
 @router.delete("/projects/{project_id}/pipeline", status_code=status.HTTP_204_NO_CONTENT)

@@ -21,6 +21,7 @@ import { PipelineTab } from './tabs/PipelineTab'
 import { SettingsTab } from './tabs/SettingsTab'
 import { SummaryTab } from './tabs/SummaryTab'
 import { TasksTab } from './tabs/TasksTab'
+import { ProjectMark } from '@/components/agentic/primitives'
 
 const TABS = [
   'summary',
@@ -71,11 +72,7 @@ function ProjectDetail({ project, tab }: { project: Project; tab: Tab }) {
   return (
     <div className="flex min-h-full flex-col">
       <header className="flex items-center gap-4 px-6 pt-[22px] pb-4">
-        <span
-          aria-hidden
-          className="size-10 shrink-0 rounded-xl"
-          style={{ background: project.color }}
-        />
+        <ProjectMark name={project.name} color={project.color} avatar={project.avatar} size={40} />
         <div className="min-w-0 flex-1">
           <h1 className="truncate text-[20px] leading-[1.3] font-medium">{project.name}</h1>
           <div className="mt-1 flex items-center gap-3 text-[12.5px] text-muted-foreground">

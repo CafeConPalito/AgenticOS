@@ -160,7 +160,13 @@ export function RequestItem({
             )}
             {item.project_name && (
               <>
-                · <ProjectChip name={item.project_name} color={item.project_color} variant="dot" />
+                ·{' '}
+                <ProjectChip
+                  name={item.project_name}
+                  color={item.project_color}
+                  projectId={item.project_id}
+                  variant="dot"
+                />
               </>
             )}
             {item.task_id && (

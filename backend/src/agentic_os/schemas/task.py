@@ -1,6 +1,6 @@
 from datetime import datetime
 from enum import StrEnum
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_validator
 
@@ -111,6 +111,15 @@ class TaskRead(BaseModel):
     lane_name: str | None = None
     fork_stage_id: str | None = None
     lanes: list[LaneRead] = Field(default_factory=list)
+    # Phase 24 (ADR 0030): «Terminar aquí». The exit of the stage the task is at (its
+    # condition), and where the task ended if an exit ended it.
+    stage_exit_condition: str | None = None
+    exit_stage_id: str | None = None
+    exit_stage_name: str | None = None
+    # Phase 24: how the task is worked (its root's for a lane) and the folder of its spec.
+    work_mode: str | None = None
+    work_mode_reason: str | None = None
+    spec_path: str | None = None
 
 
 class TaskEventRead(BaseModel):
@@ -151,6 +160,14 @@ class ClashRead(BaseModel):
     name: str
     lane: str
     files: list[str]
+
+
+class WorkModeRequest(BaseModel):
+    """Phase 24: the person changes how the task is worked (SDD or direct)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    mode: Literal["sdd", "direct"]
 
 
 class DecisionRequest(BaseModel):

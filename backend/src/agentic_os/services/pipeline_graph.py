@@ -7,6 +7,11 @@ A pipeline is a *structured* graph: a stage with several outgoing links is a for
 links is a branch, and all the branches meet again in a single stage, the join (or all end in
 final stages). Forks nest inside a branch. Rejection arrows are not links: they go back to an
 earlier stage of the same path and are checked here too.
+
+Phase 24 (ADR 0030): a stage may also have an *exit* («Terminar aquí», with a condition the
+branch decider evaluates when the stage ends). An exit ends the whole task, so it is only
+allowed outside open forks (path `()`): before the task forks or after its branches meet, and
+never on a stage that is already final.
 """
 
 from __future__ import annotations
@@ -25,6 +30,10 @@ class GraphErrorCode(StrEnum):
     EMPTY_BRANCH = "empty_branch"
     REJECT_NOT_BACKWARDS = "reject_not_backwards"
     REJECT_OUTSIDE_PATH = "reject_outside_path"
+    # Phase 24 (ADR 0030): «Terminar aquí» exits.
+    EXIT_NO_CONDITION = "exit_no_condition"
+    EXIT_ON_FINAL = "exit_on_final"
+    EXIT_IN_BRANCH = "exit_in_branch"
 
 
 @dataclass(frozen=True)
@@ -48,15 +57,18 @@ Path = tuple[tuple[str, int], ...]
 
 class Graph:
     """`nodes` are stage ids in editor order, `rejects` maps a stage to the stage (or stages) it
-    can send tasks back to. Call `validate()` before trusting the structure queries."""
+    can send tasks back to, `exits` maps the stages with an exit to its condition. Call
+    `validate()` before trusting the structure queries."""
 
     def __init__(
         self,
         nodes: list[str],
         edges: list[Edge],
         rejects: Mapping[str, str | list[str]] | None = None,
+        exits: Mapping[str, str] | None = None,
     ) -> None:
         self.nodes = list(nodes)
+        self.exits: dict[str, str] = dict(exits or {})
         self.rejects: dict[str, list[str]] = {
             stage: [targets] if isinstance(targets, str) else list(targets)
             for stage, targets in (rejects or {}).items()
@@ -95,6 +107,20 @@ class Graph:
                 if n not in reached and not structure
             ]
         errors += self._reject_errors()
+        errors += self._exit_errors()
+        return errors
+
+    def _exit_errors(self) -> list[GraphError]:
+        errors: list[GraphError] = []
+        for stage in self.nodes:
+            if stage not in self.exits:
+                continue
+            if not self.exits[stage].strip():
+                errors.append(GraphError(GraphErrorCode.EXIT_NO_CONDITION, stage))
+            if not self.out[stage]:
+                errors.append(GraphError(GraphErrorCode.EXIT_ON_FINAL, stage))
+            elif self._structure_ok and self._paths.get(stage) != ():
+                errors.append(GraphError(GraphErrorCode.EXIT_IN_BRANCH, stage))
         return errors
 
     def _topological_order(self) -> list[str]:
@@ -187,6 +213,10 @@ class Graph:
     def start(self) -> str | None:
         starts = [n for n in self.nodes if not self.inc[n]]
         return starts[0] if len(starts) == 1 else None
+
+    def exit_of(self, stage: str) -> str | None:
+        """The condition of the stage's exit, if it has one."""
+        return self.exits.get(stage)
 
     def is_fork(self, stage: str) -> bool:
         return len(self.out[stage]) > 1

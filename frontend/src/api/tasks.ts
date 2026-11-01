@@ -232,6 +232,24 @@ export function useDecide(id: string) {
   })
 }
 
+/** Phase 24: the person changes the mode (SDD or direct); the task goes back to its start. */
+export function useChangeWorkMode(id: string) {
+  const invalidate = useInvalidateTasks()
+  return useMutation({
+    mutationFn: (mode: 'sdd' | 'direct') => api.put<Task>(`/api/tasks/${id}/work-mode`, { mode }),
+    onSuccess: (task) => invalidate(task),
+  })
+}
+
+/** Phase 24: «Seguir con el pipeline» for a task that ended at an exit. */
+export function useContinueTask(id: string) {
+  const invalidate = useInvalidateTasks()
+  return useMutation({
+    mutationFn: () => api.post<Task>(`/api/tasks/${id}/continue`),
+    onSuccess: (task) => invalidate(task),
+  })
+}
+
 export function useAddLane(id: string) {
   const invalidate = useInvalidateTasks()
   return useMutation({

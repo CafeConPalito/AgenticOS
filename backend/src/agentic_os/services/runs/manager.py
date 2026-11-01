@@ -1341,6 +1341,11 @@ class RunManager:
             if run is None:
                 return None
             target: str | None = None
+            task = db.get(Task, run.task_id) if run.task_id else None
+            if verdict == Verdict.APPROVED and task is not None:
+                problem = task_ops.spec_problem(db, task)
+                if problem:
+                    return problem
             if verdict == Verdict.REJECTED:
                 stage = db.get(Stage, run.stage_id) if run.stage_id else None
                 if stage is None or stage.reject_to_stage_id is None:
@@ -1380,6 +1385,20 @@ class RunManager:
             if name.casefold() == wanted.casefold():
                 return (None if stage_id == stage.reject_to_stage_id else stage_id), None
         return None, f"¿Qué etapa es «{wanted}»? Opciones de reject_to: {options}."
+
+    def set_work_mode(self, run_id: str, mode: str, reason: str, spec_path: str) -> str:
+        """Phase 24: the requirements stage says whether the task goes with SDD."""
+        with self._db() as db:
+            run = db.get(Run, run_id)
+            task = db.get(Task, run.task_id) if run and run.task_id else None
+            if task is None:
+                return "Esta ejecución no tiene tarea."
+            error = task_ops.set_work_mode(db, task, mode, reason, spec_path)
+            if error:
+                return error
+            db.commit()
+        self.add_event(run_id, EventKind.MCP, "set_work_mode", f"{mode} {spec_path}".strip())
+        return "Modo de trabajo guardado."
 
     def write_project_memory(self, run_id: str, note: str) -> None:
         with self._db() as db:

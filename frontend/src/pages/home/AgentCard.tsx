@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router'
 import type { AgentState, HomeAgent, HomeSession, TodayAgent } from '@/api/types'
 import { CliIcon } from '@/components/agentic/CliIcon'
-import { AgentAvatar } from '@/components/agentic/primitives'
+import { AgentAvatar, ProjectMark } from '@/components/agentic/primitives'
 import { useNow } from '@/hooks/use-now'
 import { formatTokens, formatUsd } from '@/lib/format'
 import { formatDuration } from '@/lib/time'
@@ -51,9 +51,11 @@ function SessionRow({ session, waiting }: { session: HomeSession; waiting: boole
       )}
       <span className="min-w-0 flex-1 truncate">{title}</span>
       {session.project_color && (
-        <span
-          className="size-[7px] shrink-0 rounded-[2px]"
-          style={{ background: session.project_color }}
+        <ProjectMark
+          name=""
+          color={session.project_color}
+          projectId={session.project_id}
+          size={7}
         />
       )}
       <span className="shrink-0 font-mono text-xs text-muted-foreground">{label}</span>

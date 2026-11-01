@@ -1,7 +1,7 @@
 from enum import StrEnum
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
 StageName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=80)]
 BranchName = Annotated[str, StringConstraints(strip_whitespace=True, max_length=80)]
@@ -25,6 +25,13 @@ class StageWrite(BaseModel):
     y: int | None = None
     # If the stage forks, its decision waits for the person to confirm it.
     confirm_decision: bool = False
+    # Phase 24: «Terminar aquí». Null: no exit; text: the condition the decider evaluates (an
+    # empty one is refused by the graph rules). The «Fin» node's place (null: beside the stage).
+    exit_condition: (
+        Annotated[str, StringConstraints(strip_whitespace=True, max_length=500)] | None
+    ) = None
+    exit_x: int | None = None
+    exit_y: int | None = None
 
 
 class LinkWrite(BaseModel):
@@ -57,14 +64,57 @@ class PipelineWrite(BaseModel):
 
 
 class PipelineTemplate(StrEnum):
-    WEB = "web"
-    WEB_SPLIT = "web_split"
+    # Phase 24: the one fixed template; «web» and «web_split» are gone (their saved pipelines
+    # stay as they were).
+    DEVELOPMENT = "development"
+
+
+class NewAgents(BaseModel):
+    """Phase 24: how the agents a template is missing are created (one CLI and account for
+    all of them; the model is each template's own unless one is given) and in which team."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    cli: Literal["claude", "agy"]
+    account_id: str | None = None
+    model: Annotated[str, StringConstraints(strip_whitespace=True, max_length=80)] | None = None
+    team_id: str | None = None  # an existing team…
+    team_name: Annotated[str, StringConstraints(strip_whitespace=True, max_length=80)] = (
+        "Desarrollo"  # …or a new one with this name
+    )
 
 
 class TemplateRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     template: PipelineTemplate
+    # Phase 24: an agent chosen by hand for a stage (by its index); null leaves it to the
+    # template (an agent made from it, or a new one with `create`).
+    assign: dict[int, str | None] = {}
+    # Without it, the stages with no agent are left empty, as before phase 24.
+    create: NewAgents | None = None
+
+
+class TemplatePlanStage(BaseModel):
+    """One stage of a template and the agent it would get here."""
+
+    index: int
+    name: str
+    template_id: str
+    template_name: str
+    agent_id: str | None  # an active agent made from that template, if any
+    agent_name: str | None
+
+
+class CopyRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    from_project_id: str
+
+
+class CopyWarning(BaseModel):
+    stage: str
+    agent: str
 
 
 class GraphIssue(BaseModel):
@@ -89,12 +139,24 @@ class PreviewRequest(BaseModel):
 
     title: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
     description: Annotated[str, StringConstraints(max_length=5_000)] = ""
-    branches: Annotated[list[PreviewBranch], Field(min_length=2, max_length=MAX_STAGES)]
+    branches: Annotated[list[PreviewBranch], Field(max_length=MAX_STAGES)] = []
+    # Phase 24: the stage's «Terminar aquí» (its condition) and name, to try the exit too.
+    exit_condition: (
+        Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)]
+        | None
+    ) = None
+    stage_name: Annotated[str, StringConstraints(strip_whitespace=True, max_length=80)] = ""
     decider_cli: Literal["claude", "agy"] | None = None
     decider_account_id: str | None = None
     decider_model: (
         Annotated[str, StringConstraints(strip_whitespace=True, max_length=80)] | None
     ) = None
+
+    @model_validator(mode="after")
+    def _something_to_ask(self) -> "PreviewRequest":
+        if len(self.branches) < 2 and self.exit_condition is None:
+            raise ValueError("try a fork (two branches or more) or an exit")
+        return self
 
 
 class PreviewBranchResult(BaseModel):
@@ -105,6 +167,7 @@ class PreviewBranchResult(BaseModel):
 
 class PreviewRead(BaseModel):
     branches: list[PreviewBranchResult]
+    exit: PreviewBranchResult | None = None  # phase 24: whether the task would end there
     cli: str | None
     model: str | None
     cost_usd: float | None
@@ -125,6 +188,9 @@ class StageRead(BaseModel):
     x: int
     y: int
     confirm_decision: bool
+    exit_condition: str | None = None  # phase 24: «Terminar aquí»
+    exit_x: int | None = None
+    exit_y: int | None = None
     join_stage_id: str | None  # for a fork: the stage where its branches meet
     active_tasks: int  # tasks that are at this stage and not finished
 
@@ -149,3 +215,9 @@ class PipelineRead(BaseModel):
     decider_model: str | None
     stages: list[StageRead]
     links: list[LinkRead]
+
+
+class CopyRead(PipelineRead):
+    """Phase 24: a copied pipeline, and the stages left without their (archived) agent."""
+
+    warnings: list[CopyWarning] = Field(default_factory=list)

@@ -63,7 +63,11 @@ export function SummaryTab({ agent }: { agent: Agent }) {
                       {task.code}
                     </span>
                     <span className="min-w-0 flex-1 truncate">{task.title}</span>
-                    <ProjectChip name={task.project_name} color={task.project_color} />
+                    <ProjectChip
+                      name={task.project_name}
+                      color={task.project_color}
+                      projectId={task.project_id}
+                    />
                     <TaskStatusBadge status={task.status} size="xs" />
                   </Link>
                 </li>

@@ -85,7 +85,11 @@ function RunDetail({ run }: { run: Run }) {
           {runTitle(run)}
         </h1>
         <RunStatusBadge run={run} />
-        <ProjectChip name={run.project_name} color={projectColor(run.project_id)} />
+        <ProjectChip
+          name={run.project_name}
+          color={projectColor(run.project_id)}
+          projectId={run.project_id}
+        />
         {run.task_id && (
           <Link
             to={`/tablero/tareas/${run.task_id}`}
