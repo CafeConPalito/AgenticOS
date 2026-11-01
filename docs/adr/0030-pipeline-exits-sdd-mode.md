@@ -1,6 +1,6 @@
 # ADR 0030: Salidas en el pipeline y modo de trabajo SDD por tarea
 
-- **Estado**: propuesto (plan aprobado el 2026-11-01)
+- **Estado**: aceptado (fase 24 cerrada el 2026-11-01, `v0.9.4`)
 - **Fecha**: 2026-11-01
 - **Contexto de decisión**: fase 24 ([spec](../phases/24-proyectos-pipelines-arquitecto/spec.md) · [plan](../phases/24-proyectos-pipelines-arquitecto/plan.md))
 - **Amplía**: [ADR 0020](0020-branching-pipelines.md) (pipelines con ramas)

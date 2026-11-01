@@ -1,8 +1,6 @@
 # Fase 24: Proyectos, pipelines y Arquitecto · Validación
 
-> **Estado (2026-11-01)**: en validación. Pendiente:
-> - las pruebas manuales con `claude` real (CA5 y CA7);
-> - el OK del usuario.
+> **Estado (2026-11-01)**: cerrada (`v0.9.4`). El usuario dio el OK tras las suites en verde.
 
 ## Tests automáticos
 ```
@@ -74,8 +72,8 @@ e2e      test_e2e_development (CLI falso en ConPTY): un proyecto nuevo con «Des
   - Fase 25 (GitHub): el README puede explicar «Desarrollo», las salidas y SDD.
 
 ## Cierre
-- [ ] OK del usuario
-- [ ] Merge a `main` (`--no-ff`)
-- [ ] Tag `v0.9.4`
-- [ ] Versión de la app a `0.9.4` (`package.json`, `tauri.conf.json`, `Cargo.toml`, `pyproject.toml`, `__init__.py`)
-- [ ] `docs/roadmap.md` actualizado
+- [x] OK del usuario (2026-11-01)
+- [x] Merge a `main` (`--no-ff`)
+- [x] Tag `v0.9.4`
+- [x] Versión de la app a `0.9.4` (`package.json`, `tauri.conf.json`, `Cargo.toml`, `pyproject.toml`, `__init__.py`)
+- [x] `docs/roadmap.md` actualizado
