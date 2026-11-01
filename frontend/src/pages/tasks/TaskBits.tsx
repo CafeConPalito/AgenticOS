@@ -86,7 +86,14 @@ export function TaskCard({
           color={task.project_color}
           projectId={task.project_id}
         />
-        {task.stage_name && <span className="truncate">{task.stage_name}</span>}
+        {task.status === 'done' && task.exit_stage_name ? (
+          // Phase 24: an exit ended it before the last stage.
+          <span className="truncate">
+            {t('tasks.exit.endedAt', { stage: task.exit_stage_name })}
+          </span>
+        ) : (
+          task.stage_name && <span className="truncate">{task.stage_name}</span>
+        )}
         {task.lane_name && (
           <span className="truncate rounded-full border px-1.5 text-[10.5px]">
             {t('tasks.lanes.laneTag', { name: task.lane_name })}

@@ -13,7 +13,7 @@ import {
   type NodeProps,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
-import { Eye, GitFork, Undo2 } from 'lucide-react'
+import { Eye, Flag, GitFork, Undo2 } from 'lucide-react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Agent } from '@/api/types'
@@ -35,6 +35,44 @@ interface StageData extends Record<string, unknown> {
 }
 
 type StageNodeType = Node<StageData, 'stage'>
+
+/** Phase 24: the «Fin» node of a stage's exit («Terminar aquí»). */
+interface ExitData extends Record<string, unknown> {
+  stage: string
+  condition: string
+  invalid: boolean
+}
+
+type ExitNodeType = Node<ExitData, 'exit'>
+type CanvasNode = StageNodeType | ExitNodeType
+const EXIT_PREFIX = 'exit:'
+
+function ExitNode({ data, selected }: NodeProps<ExitNodeType>) {
+  const { t } = useTranslation()
+  const condition = data.condition.trim()
+  return (
+    <div
+      role="img"
+      aria-label={t('pipeline.exit.nodeLabel', {
+        stage: data.stage,
+        condition: condition || t('pipeline.exit.noCondition'),
+      })}
+      title={condition || t('pipeline.exit.noCondition')}
+      className={cn(
+        'flex max-w-[200px] items-center gap-1.5 rounded-full border border-dashed px-3 py-1.5 text-[12px] shadow-card bg-card-grad',
+        selected ? 'border-ring ring-2 ring-ring/40' : 'border-sep',
+        data.invalid && 'border-status-failed',
+      )}
+    >
+      <Handle type="target" position={Position.Top} isConnectable={false} />
+      <Flag className="size-3.5 shrink-0" />
+      <span className="font-medium">{t('pipeline.exit.node')}</span>
+      <span className="truncate text-muted-foreground">
+        {condition || t('pipeline.exit.noCondition')}
+      </span>
+    </div>
+  )
+}
 
 function StageNode({ data, selected }: NodeProps<StageNodeType>) {
   const { t } = useTranslation()
@@ -101,11 +139,19 @@ function StageNode({ data, selected }: NodeProps<StageNodeType>) {
         isConnectable={false}
         style={{ left: '70%' }}
       />
+      {/* Phase 24: where the «Fin» node of its exit hangs. */}
+      <Handle
+        id="exit-out"
+        type="source"
+        position={Position.Bottom}
+        isConnectable={false}
+        style={{ left: '50%' }}
+      />
     </div>
   )
 }
 
-const nodeTypes = { stage: StageNode }
+const nodeTypes = { stage: StageNode, exit: ExitNode }
 const REJECT_PREFIX = 'reject:'
 
 interface CanvasProps {
@@ -134,7 +180,10 @@ export function PipelineCanvas({
     return count
   }, [draft.links])
 
-  const nodes: StageNodeType[] = draft.stages.map((s) => ({
+  const exitIssues = new Set(
+    issues.filter((i) => i.code.startsWith('exit_') && i.stage).map((i) => i.stage as string),
+  )
+  const stageNodes: StageNodeType[] = draft.stages.map((s) => ({
     id: s.key,
     type: 'stage',
     position: { x: s.x, y: s.y },
@@ -150,6 +199,20 @@ export function PipelineCanvas({
       activeTasks: s.activeTasks,
     },
   }))
+  const exitNodes: ExitNodeType[] = draft.stages.flatMap((s) =>
+    s.exit
+      ? [
+          {
+            id: `${EXIT_PREFIX}${s.key}`,
+            type: 'exit' as const,
+            position: { x: s.exit.x, y: s.exit.y },
+            selected: false,
+            data: { stage: s.name, condition: s.exit.condition, invalid: exitIssues.has(s.key) },
+          },
+        ]
+      : [],
+  )
+  const nodes: CanvasNode[] = [...stageNodes, ...exitNodes]
 
   const edges: Edge[] = [
     ...draft.links.map((l): Edge => {
@@ -184,18 +247,47 @@ export function PipelineCanvas({
           selectable: false,
         })),
     ),
+    ...draft.stages.flatMap((s) =>
+      s.exit
+        ? [
+            {
+              id: `${EXIT_PREFIX}edge:${s.key}`,
+              source: s.key,
+              sourceHandle: 'exit-out',
+              target: `${EXIT_PREFIX}${s.key}`,
+              markerEnd: { type: MarkerType.ArrowClosed },
+              style: { stroke: 'var(--muted-foreground)', strokeDasharray: '4 4' },
+              deletable: false,
+              selectable: false,
+            } satisfies Edge,
+          ]
+        : [],
+    ),
   ]
 
-  function onNodesChange(changes: NodeChange<StageNodeType>[]) {
+  function onNodesChange(changes: NodeChange<CanvasNode>[]) {
     for (const change of changes) {
+      // A «Fin» node belongs to its stage: moving it moves the exit, picking it picks the stage.
+      const exitOf =
+        'id' in change && change.id.startsWith(EXIT_PREFIX)
+          ? change.id.slice(EXIT_PREFIX.length)
+          : null
       if (change.type === 'position' && change.position) {
         const { x, y } = change.position
         onChange((d) => ({
           ...d,
-          stages: d.stages.map((s) => (s.key === change.id ? { ...s, x, y } : s)),
+          stages: d.stages.map((s) =>
+            exitOf
+              ? s.key === exitOf && s.exit
+                ? { ...s, exit: { ...s.exit, x, y } }
+                : s
+              : s.key === change.id
+                ? { ...s, x, y }
+                : s,
+          ),
         }))
       } else if (change.type === 'select' && change.selected) {
-        onSelect({ kind: 'stage', key: change.id })
+        onSelect({ kind: 'stage', key: exitOf ?? change.id })
       }
     }
   }
@@ -234,7 +326,18 @@ export function PipelineCanvas({
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
-        onNodesDelete={(deleted) => deleted.forEach((n) => onRemoveStage(n.id))}
+        onNodesDelete={(deleted) =>
+          deleted.forEach((n) =>
+            n.id.startsWith(EXIT_PREFIX)
+              ? onChange((d) => ({
+                  ...d,
+                  stages: d.stages.map((s) =>
+                    s.key === n.id.slice(EXIT_PREFIX.length) ? { ...s, exit: null } : s,
+                  ),
+                }))
+              : onRemoveStage(n.id),
+          )
+        }
         onEdgesDelete={(deleted) =>
           onChange((d) => ({
             ...d,

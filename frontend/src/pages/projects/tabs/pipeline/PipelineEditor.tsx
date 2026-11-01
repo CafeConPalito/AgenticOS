@@ -53,7 +53,8 @@ export function PipelineEditor({
 
   const issues = useMemo(() => validateGraph(graphOf(draft)), [draft])
   const emptyNames = draft.stages.some((s) => !s.name.trim())
-  const forks = draft.stages.filter((s) => linksFrom(draft, s.key).length > 1)
+  // Phase 24: a stage with an exit asks the decider too, so it can be tried as well.
+  const forks = draft.stages.filter((s) => linksFrom(draft, s.key).length > 1 || s.exit)
 
   const change = (update: (d: Draft) => Draft) => setDraft((d) => tidy(update(d)))
   const removeStage = (key: string) => {
@@ -191,7 +192,7 @@ export function PipelineEditor({
             <SettingsPanel
               draft={draft}
               onChange={change}
-              forks={forks.map((s) => ({ key: s.key, name: s.name }))}
+              forks={forks.map((s) => ({ key: s.key, name: s.name, exit: Boolean(s.exit) }))}
               direct={project.workspace_mode === 'direct'}
               onTry={setTrying}
             />

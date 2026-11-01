@@ -717,6 +717,17 @@
       "join_conflict": "Conflictos al unir las ramas",
       "lanes_cancelled": "Se cancelaron todas las ramas"
     },
+    "exit": {
+      "endedAt": "Terminó en {{stage}}",
+      "continue": "Seguir con el pipeline",
+      "continued": "La tarea sigue con el pipeline",
+      "option": "Terminar aquí",
+      "choose": "Elige si la tarea termina aquí o sigue",
+      "confirm": "Confirma si la tarea termina aquí",
+      "goOn": "Seguir a {{stage}}",
+      "goOnButton": "Seguir",
+      "end": "Terminar la tarea aquí"
+    },
     "lanes": {
       "title": "Ramas",
       "phase": {
@@ -1022,6 +1033,20 @@
     "inUse": "{{count}} tareas en esta etapa",
     "hasProblem": "Tiene un problema",
     "problems": "Problemas del pipeline",
+    "exit": {
+      "title": "Terminar aquí",
+      "add": "Añadir salida «Terminar aquí»",
+      "finalStage": "Es una etapa final: la tarea ya termina aquí.",
+      "condition": "La tarea termina aquí si…",
+      "placeholder": "La tarea solo pide definir los requisitos",
+      "help": "Al acabar esta etapa (y su revisión, si la tiene), el decisor comprueba la condición: si se cumple, la tarea termina aquí; si no, sigue con el pipeline.",
+      "remove": "Quitar salida",
+      "node": "Fin",
+      "nodeLabel": "Salida de {{stage}}: {{condition}}",
+      "noCondition": "Sin condición",
+      "badge": "Salida",
+      "try": "Probar la salida de {{name}}"
+    },
     "issues": {
       "no_start": "No hay ninguna etapa inicial.",
       "many_starts": "Hay más de una etapa inicial: {{stage}} no tiene entrada.",

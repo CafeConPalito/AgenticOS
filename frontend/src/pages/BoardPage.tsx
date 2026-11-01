@@ -575,7 +575,9 @@ function QueueCard({
         {task.title}
       </Link>
       <div className="text-[11.5px] text-muted-foreground">
-        {task.stage_name ?? t('tasks.noStage')}
+        {task.status === 'done' && task.exit_stage_name
+          ? t('tasks.exit.endedAt', { stage: task.exit_stage_name })
+          : (task.stage_name ?? t('tasks.noStage'))}
         {task.lane_name && ` · ${t('tasks.lanes.laneTag', { name: task.lane_name })}`} ·{' '}
         <PriorityLabel priority={task.priority} />
         {task.blocked && (

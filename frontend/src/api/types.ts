@@ -341,6 +341,11 @@ export interface Task {
   lane_name: string | null
   fork_stage_id: string | null
   lanes: Lane[]
+  /** Phase 24: the exit of the stage the task is at (its condition), if it has one. */
+  stage_exit_condition: string | null
+  /** Phase 24: where an exit ended the task («Terminar aquí»). */
+  exit_stage_id: string | null
+  exit_stage_name: string | null
 }
 
 export type TaskEventKind =
@@ -511,6 +516,9 @@ export interface PreviewRequest {
   title: string
   description: string
   branches: { name: string; condition: string }[]
+  /** Phase 24: to also try the stage's «Terminar aquí». */
+  exit_condition?: string | null
+  stage_name?: string
   decider_cli?: DeciderCli | null
   decider_account_id?: string | null
   decider_model?: string | null
@@ -518,6 +526,8 @@ export interface PreviewRequest {
 
 export interface PreviewResult {
   branches: { name: string; take: boolean; reason: string }[]
+  /** Phase 24: whether the task would end at the stage. */
+  exit?: { name: string; take: boolean; reason: string } | null
   cli: string | null
   model: string | null
   cost_usd: number | null

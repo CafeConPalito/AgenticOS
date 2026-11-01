@@ -232,6 +232,15 @@ export function useDecide(id: string) {
   })
 }
 
+/** Phase 24: «Seguir con el pipeline» for a task that ended at an exit. */
+export function useContinueTask(id: string) {
+  const invalidate = useInvalidateTasks()
+  return useMutation({
+    mutationFn: () => api.post<Task>(`/api/tasks/${id}/continue`),
+    onSuccess: (task) => invalidate(task),
+  })
+}
+
 export function useAddLane(id: string) {
   const invalidate = useInvalidateTasks()
   return useMutation({

@@ -1,4 +1,4 @@
-import { Plus, Trash2, X } from 'lucide-react'
+import { Flag, Plus, Trash2, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { Agent, DeciderCli } from '@/api/types'
 import { AgentAvatar } from '@/components/agentic/primitives'
@@ -13,7 +13,15 @@ import {
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
-import { graphOf, linksFrom, newLink, type Draft, type DraftLink, type DraftStage } from './model'
+import {
+  EXIT_OFFSET,
+  graphOf,
+  linksFrom,
+  newLink,
+  type Draft,
+  type DraftLink,
+  type DraftStage,
+} from './model'
 import { rejectCandidates } from './validate'
 import { StageConnections } from '@/components/connections/AgentConnections'
 import { SkillModes } from '@/components/skills/SkillModes'
@@ -216,7 +224,9 @@ export function StagePanel({
         )}
       </div>
 
-      {outs.length > 1 && (
+      <ExitField stage={stage} final={outs.length === 0} onChange={onChange} />
+
+      {(outs.length > 1 || stage.exit) && (
         <label className="flex items-center gap-2 text-[13px]">
           <Switch
             checked={stage.confirmDecision}
@@ -237,6 +247,64 @@ export function StagePanel({
         {t('pipeline.remove')}
       </Button>
     </section>
+  )
+}
+
+/** Phase 24: the stage's «Terminar aquí» — the condition under which the task ends here. */
+function ExitField({
+  stage,
+  final,
+  onChange,
+}: {
+  stage: DraftStage
+  final: boolean
+  onChange: PanelProps['onChange']
+}) {
+  const { t } = useTranslation()
+  if (!stage.exit)
+    return (
+      <Button
+        variant="outline"
+        size="sm"
+        className="border-dashed"
+        disabled={final}
+        title={final ? t('pipeline.exit.finalStage') : undefined}
+        onClick={() =>
+          onChange(
+            patchStage(stage.key, {
+              exit: { condition: '', x: stage.x, y: stage.y + EXIT_OFFSET },
+            }),
+          )
+        }
+      >
+        <Flag />
+        {t('pipeline.exit.add')}
+      </Button>
+    )
+  const exit = stage.exit
+  return (
+    <div className="grid gap-2 rounded-lg border border-dashed p-2.5">
+      <Field label={t('pipeline.exit.condition')}>
+        <Textarea
+          value={exit.condition}
+          rows={3}
+          maxLength={500}
+          placeholder={t('pipeline.exit.placeholder')}
+          onChange={(e) =>
+            onChange(patchStage(stage.key, { exit: { ...exit, condition: e.target.value } }))
+          }
+        />
+      </Field>
+      <p className="text-[12.5px] text-muted-foreground">{t('pipeline.exit.help')}</p>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => onChange(patchStage(stage.key, { exit: null }))}
+      >
+        <Trash2 />
+        {t('pipeline.exit.remove')}
+      </Button>
+    </div>
   )
 }
 
@@ -309,8 +377,8 @@ export function SettingsPanel({
   direct,
   onTry,
 }: PanelProps & {
-  /** The stages that fork: each one’s branches can be tried. */
-  forks: { key: string; name: string }[]
+  /** The stages that fork or have an exit: each one’s decision can be tried. */
+  forks: { key: string; name: string; exit?: boolean }[]
   direct: boolean
   onTry: (fork: string) => void
 }) {
@@ -367,7 +435,11 @@ export function SettingsPanel({
           </Field>
           {forks.map((fork) => (
             <Button key={fork.key} variant="outline" size="sm" onClick={() => onTry(fork.key)}>
-              {forks.length > 1 ? t('pipeline.tryFork', { name: fork.name }) : t('pipeline.try')}
+              {fork.exit && linksFrom(draft, fork.key).length < 2
+                ? t('pipeline.exit.try', { name: fork.name })
+                : forks.length > 1
+                  ? t('pipeline.tryFork', { name: fork.name })
+                  : t('pipeline.try')}
             </Button>
           ))}
           {direct && (

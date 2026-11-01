@@ -489,6 +489,9 @@ export function makeTask(overrides: Partial<Task> = {}): Task {
     lane_name: null,
     fork_stage_id: null,
     lanes: [],
+    stage_exit_condition: null,
+    exit_stage_id: null,
+    exit_stage_name: null,
     ...overrides,
   }
 }
@@ -1348,6 +1351,10 @@ export function createFakeBackend(
           200,
           previewResult ?? {
             branches,
+            // Phase 24: an exit is tried too.
+            exit: body.exit_condition
+              ? { name: 'Terminar aquí', take: true, reason: 'Solo pide requisitos' }
+              : null,
             cli: 'claude',
             model: 'claude-haiku-5-5',
             cost_usd: 0.0003,
@@ -1513,7 +1520,7 @@ export function createFakeBackend(
     const treeMatch = path.match(/^\/api\/tasks\/([^/]+)\/tree$/)
     if (treeMatch) return json(200, trees[treeMatch[1]] ?? [])
     const forkMatch = path.match(
-      /^\/api\/tasks\/([^/]+)\/(decisions|decision|lanes|join(?:\/editor(?:\/finish)?|\/agent)?)$/,
+      /^\/api\/tasks\/([^/]+)\/(decisions|decision|continue|lanes|join(?:\/editor(?:\/finish)?|\/agent)?)$/,
     )
     if (forkMatch) {
       const forked = tasks.find((t) => t.id === forkMatch[1])
@@ -1522,7 +1529,19 @@ export function createFakeBackend(
         case 'decisions':
           return json(200, decisions[forked.id] ?? [])
         case 'decision':
-          Object.assign(forked, { status: 'running', phase: 'forked', waiting_reason: null })
+          // Phase 24: «Terminar aquí» ends the task at its stage.
+          if ((body.chosen as string[] | undefined)?.includes('exit'))
+            Object.assign(forked, {
+              status: 'done',
+              phase: null,
+              waiting_reason: null,
+              exit_stage_id: forked.stage_id,
+              exit_stage_name: forked.stage_name,
+            })
+          else Object.assign(forked, { status: 'running', phase: 'forked', waiting_reason: null })
+          return json(200, forked)
+        case 'continue':
+          Object.assign(forked, { status: 'queued', exit_stage_id: null, exit_stage_name: null })
           return json(200, forked)
         case 'lanes':
           return json(201, forked)
