@@ -99,7 +99,6 @@ describe('AppHeader', () => {
     seedBusy()
     const user = userEvent.setup()
     const { router } = renderApp('/')
-    // The main navigation's tabs: Inicio's shortcuts (phase 23) have the same names.
     const nav = await screen.findByRole('navigation', { name: es.nav.main })
     await user.click(within(nav).getByRole('link', { name: new RegExp(es.nav.runs) }))
     await user.click(screen.getByRole('button', { name: es.header.back }))
@@ -119,6 +118,24 @@ describe('AppHeader', () => {
     await user.click(link)
     expect(router.state.location.pathname).toBe('/inbox')
     expect(screen.getByRole('link', { name: 'Inbox · 2 pendientes' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
+  })
+
+  it('has Conocimiento and Conexiones next to the Inbox (phase 23, CA1)', async () => {
+    createFakeBackend({})
+    const user = userEvent.setup()
+    const { router } = renderApp('/')
+    const knowledge = await screen.findByRole('link', { name: es.header.knowledge })
+    expect(knowledge).toHaveAttribute('title', es.header.knowledge)
+    expect(screen.getByRole('link', { name: es.header.connections })).toHaveAttribute(
+      'href',
+      '/conexiones',
+    )
+    await user.click(knowledge)
+    expect(router.state.location.pathname).toBe('/conocimiento')
+    expect(screen.getByRole('link', { name: es.header.knowledge })).toHaveAttribute(
       'aria-current',
       'page',
     )

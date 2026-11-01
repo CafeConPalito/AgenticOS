@@ -1,6 +1,6 @@
 # Fase 23: Inicio, CLIs y voz · Validación
 
-> **Estado (2026-11-01)**: desarrollo, suites, lint y `/code-review` terminados. Falta el instalador y la prueba del usuario en la app instalada (CA2, CA7, CA8), y después su OK para cerrar: merge, versión `0.9.3` y tag `v0.9.3`.
+> **Estado (2026-11-01)**: el usuario probó el instalador: terminal propio y dictado en vivo bien. Pidió llevar los accesos directos a la barra superior, junto al Inbox, y unir Contexto y Skills (hecho). Falta su OK para cerrar: merge, versión `0.9.3` y tag `v0.9.3`. CA7 queda cubierto por los tests (no hay una máquina sin los CLIs a mano).
 
 ## Tests automáticos
 ```
@@ -23,14 +23,14 @@ Backend  (uv run pytest, backend/.test-progress.log): la suite completa no cabí
 ## Criterios de aceptación
 | # | Criterio | Estado | Evidencia |
 |---|---|---|---|
-| CA1 | Seis accesos con emoji y *tooltip* | ✅ | `home.test.tsx` |
-| CA2 | Terminal propio con CLI, cuenta y carpeta | ⏳ falta la prueba en la app | `test_terminals.py`, `TerminalDock.test.tsx` |
+| CA1 | Accesos directos (cambiados en la validación: Conocimiento y Conexiones en la barra superior, junto al Inbox) | ✅ | `AppHeader.test.tsx`; el usuario pidió el cambio al probar el instalador |
+| CA2 | Terminal propio con CLI, cuenta y carpeta | ✅ probado por el usuario en la app instalada (2026-11-01) | `test_terminals.py`, `TerminalDock.test.tsx` |
 | CA3 | Varios terminales en pestañas | ✅ | `TerminalDock.test.tsx` |
 | CA4 | Fuera del panel y de Ejecuciones; gasto en Consumo, no en el límite | ✅ | `test_terminals.py`, `TerminalDock.test.tsx` |
 | CA5 | Iconos propios de los CLIs | ✅ | `cli-icon.test.tsx` |
 | CA6 | «Añadir CLI» solo con CLIs que faltan | ✅ | `clis.test.tsx` |
 | CA7 | Instalación desde la app | ⏳ falta la prueba en una máquina sin el CLI | `test_cli_install.py`, `test_cli_paths.py`, `clis.test.tsx` |
-| CA8 | Dictado en vivo y «Probar micrófono» | ⏳ falta la prueba en la app | `dictation-live.test.ts`, `dictation.test.tsx`, `dictation-settings.test.tsx`, `test_dictation_api.py`, `test_dictation_real.py` |
+| CA8 | Dictado en vivo y «Probar micrófono» | ✅ probado por el usuario en la app instalada (2026-11-01) | `dictation-live.test.ts`, `dictation.test.tsx`, `dictation-settings.test.tsx`, `test_dictation_api.py`, `test_dictation_real.py` |
 | CA9 | Suites, lint y `/code-review` | ✅ | arriba y en la tabla siguiente |
 
 ## Code review

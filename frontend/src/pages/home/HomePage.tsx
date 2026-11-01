@@ -13,7 +13,6 @@ import { useUiPrefs } from '@/stores/ui-prefs'
 import { AgentGrid } from './AgentGrid'
 import { buildCliAlerts, SYSTEM_KINDS, sortRequests } from './alerts'
 import { Greeting } from './Greeting'
-import { HomeShortcuts } from './HomeShortcuts'
 import { NeedsYouPanel } from './NeedsYouPanel'
 import { SummaryAside } from './SummaryAside'
 
@@ -82,7 +81,6 @@ export default function HomePage() {
           cost={today?.cost_usd ?? 0}
           tokens={today?.tokens ?? 0}
         />
-        <HomeShortcuts />
         <NeedsYouPanel requests={requests} alerts={alerts} onHoverAgent={setHighlighted} />
         <AgentGrid
           agents={agents}

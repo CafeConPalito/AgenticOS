@@ -34,7 +34,9 @@
     "forward": "Adelante",
     "forwardHint": "Adelante (Alt+→)",
     "inbox_one": "Inbox · {{count}} pendiente",
-    "inbox_other": "Inbox · {{count}} pendientes"
+    "inbox_other": "Inbox · {{count}} pendientes",
+    "knowledge": "Conocimiento (documentos y skills)",
+    "connections": "Conexiones (MCPs)"
   },
   "backend": {
     "connected": "Conectado · v{{version}}",
@@ -1549,15 +1551,6 @@
       "dailyTitle": "Límite diario: {{percent}}",
       "quotaWindow": "{{window}}: {{percent}}",
       "addAccount": "Añadir cuenta"
-    },
-    "shortcuts": {
-      "label": "Accesos directos",
-      "context": "Contexto (biblioteca de conocimiento)",
-      "skills": "Skills",
-      "mcps": "MCPs (conexiones)",
-      "board": "Tablero",
-      "runs": "Ejecuciones",
-      "settings": "Ajustes"
     }
   },
   "dictation": {

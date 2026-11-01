@@ -203,45 +203,6 @@ describe('Inicio · greeting and summary', () => {
   })
 })
 
-describe('Inicio · shortcuts (phase 23, CA1)', () => {
-  it('has the six shortcuts, each to its place, with its name in a tooltip', async () => {
-    createFakeBackend()
-    const user = userEvent.setup()
-    const { router } = renderApp('/')
-    const nav = await screen.findByRole('navigation', { name: es.home.shortcuts.label })
-    const links = within(nav).getAllByRole('link')
-    expect(links.map((l) => l.getAttribute('aria-label'))).toEqual([
-      es.home.shortcuts.context,
-      es.home.shortcuts.skills,
-      es.home.shortcuts.mcps,
-      es.home.shortcuts.board,
-      es.home.shortcuts.runs,
-      es.home.shortcuts.settings,
-    ])
-    expect(links.map((l) => l.getAttribute('href'))).toEqual([
-      '/conocimiento?vista=documentos',
-      '/conocimiento?vista=skills',
-      '/conexiones',
-      '/tablero',
-      '/ejecuciones',
-      '/ajustes',
-    ])
-    // The name shows with the mouse and with the keyboard.
-    await user.hover(links[2])
-    expect(await screen.findByRole('tooltip')).toHaveTextContent(es.home.shortcuts.mcps)
-    await user.unhover(links[2])
-    links[0].focus()
-    await user.tab()
-    expect(links[1]).toHaveFocus()
-    await waitFor(() =>
-      expect(screen.getByRole('tooltip')).toHaveTextContent(es.home.shortcuts.skills),
-    )
-    await user.click(links[1])
-    expect(router.state.location.pathname).toBe('/conocimiento')
-    expect(router.state.location.search).toBe('?vista=skills')
-  })
-})
-
 describe('Inicio · «Te necesitan»', () => {
   it('orders the requests, shows three and expands the rest in place', async () => {
     const { dev } = team()

@@ -26,6 +26,9 @@ Llegar antes a lo que más se usa y quitar pasos fuera de la app:
 ## Alcance
 ### Dentro
 **A. Accesos directos en Inicio**
+
+> **Cambio en la validación (2026-11-01, a petición del usuario):** los accesos pasan a la barra superior, junto al Inbox y con sus mismos iconos. Tablero, Ejecuciones y Ajustes ya son pestañas de esa barra, y Contexto y Skills llevan a la misma página, así que quedan dos iconos: Conocimiento (documentos y skills) y Conexiones (MCPs). Inicio ya no tiene la fila de emojis.
+
 1. Inicio tiene una fila de accesos directos con un emoji cada uno: Contexto (la biblioteca de Conocimiento), Skills, MCPs (Conexiones), Tablero, Ejecuciones y Ajustes.
 2. El nombre de cada acceso sale en un *tooltip* al pasar el ratón o al llegar con el teclado. Cada botón tiene además su nombre accesible para lectores de pantalla.
 
@@ -73,7 +76,7 @@ Llegar antes a lo que más se usa y quitar pasos fuera de la app:
 ## Criterios de aceptación
 | # | Criterio | Cómo se verifica |
 |---|---|---|
-| CA1 | Inicio tiene los seis accesos con emoji; cada uno lleva a su sitio y muestra su nombre en un *tooltip*, también con el teclado | Test de la interfaz |
+| CA1 | (Cambiado en la validación: Conocimiento y Conexiones en la barra superior, junto al Inbox, con nombre en el *tooltip*.) Inicio tiene los seis accesos con emoji; cada uno lleva a su sitio y muestra su nombre en un *tooltip*, también con el teclado | Test de la interfaz |
 | CA2 | El icono de terminal abre un terminal propio con el CLI, la cuenta y la carpeta elegidos (un proyecto, la carpeta personal o cualquier otra); el CLI usa la sesión de esa cuenta | Tests del backend y de la interfaz + prueba en la app instalada |
 | CA3 | Hay varios terminales propios en pestañas; siguen al cambiar de página y se cierran con su pestaña | Test de la interfaz |
 | CA4 | El panel ya no lista las ejecuciones; un terminal propio no sale en Ejecuciones ni cuenta en los límites, pero su gasto sale en Consumo como «Terminal» de su cuenta | Tests del backend y de la interfaz |
