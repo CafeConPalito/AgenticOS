@@ -383,6 +383,10 @@ def continue_after_exit(db: Session, task: Task) -> None:
     task.finished_at = None
     task.stage_id = stage.id
     task.agent_id = None
+    # Code review: it is not delivered any more. Its worktree, if it was released, is made
+    # again by the next run; whatever was integrated stays, and the rest is integrated at the
+    # new end.
+    inbox.resolve_pending(db, Resolution.DISMISSED, task_id=task.id)
     undecided, always = open_links(db, stage)
     if undecided:
         task_ops.add_event(

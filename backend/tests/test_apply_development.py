@@ -213,3 +213,18 @@ def test_a_pipeline_is_copied_with_its_agents_and_stage_settings(api: TestClient
     nothing = api.post(f"/api/projects/{target}/pipeline/copy", json={"from_project_id": empty})
     assert nothing.status_code in (409, 422)
     assert pipelines.TEMPLATES  # the module still exposes its templates
+
+
+def test_an_agent_of_another_workspace_cannot_be_assigned(api: TestClient, tmp_path: Path):
+    """Code review (phase 24): a hand-picked agent must belong to the project's workspace."""
+    with api.app.state.sessionmaker() as db:
+        foreign = Agent(workspace_id="otro", name="Ajeno", status="active")
+        db.add(foreign)
+        db.commit()
+        foreign_id = foreign.id
+    project_id = project(api, tmp_path)
+    refused = api.post(
+        f"/api/projects/{project_id}/pipeline/template",
+        json={"template": "development", "assign": {"0": foreign_id}},
+    )
+    assert refused.status_code == 422

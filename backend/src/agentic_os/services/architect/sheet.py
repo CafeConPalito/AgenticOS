@@ -721,9 +721,8 @@ def pipeline_write(sheet: Mapping, agent_ids: Mapping[str, str] | None = None) -
 
 def _exit_condition(value: object) -> str | None:
     """A stage's exit as the model wrote it: null (none) or its condition, trimmed."""
-    if value is None:
-        return None
-    return str(value).strip()[:500]
+    text = "" if value is None else str(value).strip()[:500]
+    return text or None  # empty: no exit
 
 
 def pipeline_issues(sheet: Mapping) -> list[Issue]:

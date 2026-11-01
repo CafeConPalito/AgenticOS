@@ -234,3 +234,41 @@ def test_set_work_mode_through_the_mcp_and_the_change_through_the_api(
     assert changed.status_code == 200, changed.text
     assert changed.json()["work_mode"] == "direct"
     assert httpx.put(f"{api}/work-mode", json={"mode": "x"}).status_code == 422
+
+
+# --------------------------------------------------------------- code review (phase 24)
+def test_only_the_requirements_stage_sets_the_mode(db_factory, scheduler, launcher):
+    setup_split(db_factory, conditions=False)
+    new_task(db_factory)
+    scheduler.step()
+    finish_stage(db_factory, scheduler, launcher, "T-1")
+    lane = task_row(db_factory, key="backend")
+    with db_factory() as db:
+        refused = task_ops.set_work_mode(db, db.get(Task, lane.id), "direct", "no hace falta")
+        assert refused is not None and "toma los requisitos" in refused
+        assert db.get(Task, _task(db_factory).id).work_mode is None
+
+
+def test_switching_to_sdd_by_hand_asks_the_requirements_stage_for_the_folder(
+    db_factory, scheduler, launcher
+):
+    setup_split(db_factory)
+    new_task(db_factory)
+    scheduler.step()
+    with db_factory() as db:
+        task = db.get(Task, _task(db_factory).id)
+        task_ops.set_work_mode(db, task, "direct", "Es pequeño")
+        db.commit()
+    with db_factory() as db:
+        task = db.get(Task, _task(db_factory).id)
+        task.status = TaskStatus.REVIEW  # not live
+        task_ops.change_work_mode(db, task, "sdd")
+        db.commit()
+    scheduler.step()
+    with db_factory() as db:
+        task = db.get(Task, _task(db_factory).id)
+        assert (task.work_mode, task.spec_path) == ("sdd", None)
+        text = context.task_section(task_ops.task_context(db, task))
+        assert "falta la carpeta de la spec" in text and "`None`" not in text
+        problem = task_ops.spec_problem(db, task)
+        assert problem is not None and "set_work_mode" in problem

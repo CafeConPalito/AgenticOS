@@ -267,6 +267,15 @@ def test_a_task_that_ended_goes_on_with_the_pipeline(db_factory, scheduler, laun
     going = task_row(db_factory)
     assert going.status == TaskStatus.RUNNING and going.stage_id == ids["stages"]["Diseño"]
     assert going.exit_stage_id is None and going.finished_at is None
+    with db_factory() as db:  # it is not delivered any more
+        pending = db.scalars(
+            select(InboxItem).where(
+                InboxItem.task_id == going.id,
+                InboxItem.kind == InboxKind.DELIVERY,
+                InboxItem.status == "pending",
+            )
+        )
+        assert list(pending) == []
 
     # At a stage that forks, going on asks the person for the branches.
     finish_stage(db_factory, scheduler, launcher, "T-1", "diseño")

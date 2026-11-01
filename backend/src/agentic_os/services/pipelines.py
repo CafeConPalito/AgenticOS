@@ -477,7 +477,12 @@ def from_template(
         template_id = stage.agent_id
         if index in assign and assign[index] is not None:
             chosen = db.get(Agent, assign[index])
-            if chosen is None or chosen.status != AgentStatus.ACTIVE or chosen.archived_at:
+            if (
+                chosen is None
+                or chosen.workspace_id != project.workspace_id
+                or chosen.status != AgentStatus.ACTIVE
+                or chosen.archived_at
+            ):
                 raise ApiError(
                     422, "unknown_agent", "the agent does not exist or is not active", "assign"
                 )

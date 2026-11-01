@@ -125,6 +125,15 @@ def task_section(task: TaskContext) -> str:
 def work_mode_lines(task: TaskContext) -> list[str]:
     """Phase 24 (ADR 0030): how the task is worked, for every stage; at the first stage of a
     task still undecided, what SDD format the project uses."""
+    if task.work_mode == "sdd" and not task.spec_path:
+        return [
+            "",
+            "## Modo de trabajo: con SDD (falta la carpeta de la spec)",
+            "La persona ha pedido que la tarea se haga con SDD. Si tomas los requisitos, escribe "
+            "la spec y marca su carpeta con `set_work_mode` (mode «sdd» y spec_path) antes de "
+            "terminar.",
+            *([task.sdd_hint] if task.sdd_hint else []),
+        ]
     if task.work_mode == "sdd":
         why = f" ({task.work_mode_reason})" if task.work_mode_reason else ""
         return [

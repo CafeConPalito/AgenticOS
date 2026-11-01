@@ -400,3 +400,13 @@ def test_a_stage_exit_goes_into_the_payload_and_counts_as_a_change(world):
     after["stages"][0]["exit_condition"] = None
     assert S.pipeline_diff(before, after)["changed"] == ["A"]
     assert not S.same_pipeline(before, after)
+
+
+def test_an_empty_exit_from_the_architect_means_no_exit(world):
+    """Code review (phase 24): exit_condition "" is no exit, not an exit without condition."""
+    sheet = S.set_pipeline(
+        world["catalog"],
+        _team_sheet(world),
+        {"project": "Tienda", "stages": [{"name": "A", "agent": "QA", "exit_condition": "  "}]},
+    ).sheet
+    assert sheet["pipeline"]["stages"][0]["exit_condition"] is None

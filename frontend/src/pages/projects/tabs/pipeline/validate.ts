@@ -178,7 +178,8 @@ export function analyse(graph: GraphInput): Structure {
     if (condition === undefined) continue
     if (!condition.trim()) issues.push({ code: 'exit_no_condition', stage: key })
     if (!out.get(key)?.length) issues.push({ code: 'exit_on_final', stage: key })
-    else if (structured && (paths.get(key)?.length ?? 0) > 0)
+    else if (structured && (paths.get(key)?.length ?? 1) > 0)
+      // Not reached from the start counts as inside, as on the server (`path != ()`).
       issues.push({ code: 'exit_in_branch', stage: key })
   }
   return { issues, paths, joins, lanes }

@@ -613,7 +613,8 @@ def task_context(db: Session, task: Task) -> TaskContext:
 
     root = lanes.root_of(db, task)
     hint = None
-    if stage is not None and stages and stage.id == stages[0].id and root.work_mode is None:
+    undecided = root.work_mode is None or (root.work_mode == "sdd" and not root.spec_path)
+    if stage is not None and stages and stage.id == stages[0].id and undecided:
         project = db.get(Project, task.project_id)
         hint = sdd.describe(sdd.detect(project.path)) if project else None
     return TaskContext(
@@ -701,6 +702,12 @@ def set_work_mode(
 
     if mode not in WORK_MODES:
         return 'mode debe ser "sdd" o "direct".'
+    stages = stages_of(db, task.project_id)
+    if stages and task.stage_id != stages[0].id:
+        return (
+            "El modo de trabajo lo marca la etapa que toma los requisitos. Si crees que no "
+            "encaja, dilo en tu resumen o pídelo con request_human."
+        )
     root = lanes.root_of(db, task)
     path = None
     if mode == "sdd":
@@ -727,10 +734,15 @@ def spec_problem(db: Session, task: Task) -> str | None:
 
     root = lanes.root_of(db, task)
     stages = stages_of(db, task.project_id)
-    if root.work_mode != "sdd" or not root.spec_path:
+    if root.work_mode != "sdd":
         return None
     if stages and task.stage_id != stages[0].id:  # without pipeline its one agent is the first
         return None
+    if not root.spec_path:  # the person asked for SDD: the folder is still to be chosen
+        return (
+            "La tarea va con SDD pero falta la carpeta de su spec: escríbela y márcala con "
+            "set_work_mode (mode «sdd» y spec_path) antes de terminar."
+        )
     project = db.get(Project, task.project_id)
     base = task.worktree_path or (project.path if project else None)
     if base is None or (Path(base) / root.spec_path).is_dir():
@@ -760,8 +772,7 @@ def change_work_mode(db: Session, task: Task, mode: str) -> None:
         return
     task.work_mode = mode
     task.work_mode_reason = "Lo cambió la persona"
-    if mode == "direct":
-        task.spec_path = None
+    task.spec_path = None  # with SDD, the requirements stage chooses the folder again
     add_event(
         db,
         task,

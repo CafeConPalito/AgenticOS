@@ -173,10 +173,17 @@ def read_tasks(db: Session, tasks: list[Task]) -> list[TaskRead]:
         gates = usage_limits.blocked_all(db)
         index = account_ops.AccountIndex(db)
         deciding = switching.decisions_pending(db)
-    # Phase 24: a lane works the way its root does.
+    # Phase 24: a lane works the way its root does (usually already in this batch).
+    by_id = {t.id: t for t in tasks}
     modes: dict[str, tuple[str | None, str | None, str | None]] = {}
     for task in tasks:
-        root = lane_ops.root_of(db, task) if task.lane_of_id else task
+        root = task
+        while root.lane_of_id:
+            parent = by_id.get(root.lane_of_id)
+            if parent is None:
+                root = lane_ops.root_of(db, root)
+                break
+            root = parent
         modes[task.id] = (root.work_mode, root.work_mode_reason, root.spec_path)
     result = []
     for task in tasks:
@@ -214,9 +221,9 @@ def read_tasks(db: Session, tasks: list[Task]) -> list[TaskRead]:
                 stage_exit_condition=stage.exit_condition if stage else None,
                 exit_stage_id=task.exit_stage_id,
                 exit_stage_name=ended_at.name if ended_at else None,
-                work_mode=modes.get(task.id, (None, None, None))[0],
-                work_mode_reason=modes.get(task.id, (None, None, None))[1],
-                spec_path=modes.get(task.id, (None, None, None))[2],
+                work_mode=modes[task.id][0],
+                work_mode_reason=modes[task.id][1],
+                spec_path=modes[task.id][2],
                 stage_id=task.stage_id,
                 stage_name=stage.name if stage else None,
                 stage_index=(project_stages.index(stage) + 1) if stage else 0,
