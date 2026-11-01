@@ -1,3 +1,4 @@
+import { CliIcon } from '@/components/agentic/CliIcon'
 import { Bot, ChevronRight, FileUp, LayoutTemplate, Plus, Sparkles, Users } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -7,7 +8,7 @@ import { useTeams } from '@/api/teams'
 import { useMonthBreakdown } from '@/api/usage'
 import { formatTokens, formatUsd } from '@/lib/format'
 import type { Agent, Team } from '@/api/types'
-import { AgentAvatar, CliTag, StatusBadge } from '@/components/agentic/primitives'
+import { AgentAvatar, StatusBadge } from '@/components/agentic/primitives'
 import { EmptyState } from '@/components/EmptyState'
 import { PageContainer, PageHeader } from '@/components/page'
 import { Button } from '@/components/ui/button'
@@ -213,7 +214,7 @@ function AgentsTable({ agents, teams }: { agents: Agent[]; teams: Team[] }) {
                 )}
                 <TableCell>
                   <div className="flex items-center gap-2">
-                    <CliTag cli={agent.cli} label={t(`cli.${agent.cli}`)} />
+                    <CliIcon cli={agent.cli} label={t(`cli.${agent.cli}`)} />
                     <span className="font-medium">{t(`cli.${agent.cli}`)}</span>
                   </div>
                 </TableCell>

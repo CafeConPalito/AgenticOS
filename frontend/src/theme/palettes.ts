@@ -24,3 +24,14 @@ export const DEFAULT_AGENT_COLOR = '#8FB4FF'
 export const DRAFT_AGENT_COLOR = '#B39CFF'
 /** A task or lane without an agent, and the person in the project memory. */
 export const NEUTRAL_COLOR = '#C9D4E8'
+
+/**
+ * The icons of the CLIs (phase 23, ADR 0029): the color each CLI goes with, the same in every
+ * theme, and a white symbol on it. Not their logos.
+ */
+export const CLI_COLORS = {
+  claude: { from: '#D97757', to: '#B4532F' },
+  agy: { from: '#4F7CF7', to: '#8B5CF6' },
+  generic: { from: '#5B6B86', to: '#3B4A63' },
+  glyph: '#FFFFFF',
+} as const

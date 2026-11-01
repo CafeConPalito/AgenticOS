@@ -249,7 +249,7 @@ def test_probe_of_agy_lists_its_models_and_a_failure_is_not_a_logout(db: Session
 def test_probe_of_a_cli_that_is_not_installed_changes_nothing(db: Session, monkeypatch):
     from agentic_os.services.runs import launcher
 
-    monkeypatch.setattr(launcher.shutil, "which", lambda name: None)
+    monkeypatch.setattr(launcher.cli_paths.shutil, "which", lambda name: None)
     account = accounts.default_for(db, Cli.CLAUDE)
     accounts.probe(db, account, {}, lambda *a, **k: pytest.fail("must not run"))
     assert account.session_state == SessionState.UNKNOWN and account.session_checked_at is None

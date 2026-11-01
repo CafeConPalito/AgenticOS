@@ -16,7 +16,7 @@ from agentic_os.services.runs import launcher
 
 @pytest.fixture(autouse=True)
 def fake_which(monkeypatch):
-    monkeypatch.setattr(launcher.shutil, "which", lambda name: f"C:/bin/{name}.exe")
+    monkeypatch.setattr(launcher.cli_paths.shutil, "which", lambda name: f"C:/bin/{name}.exe")
 
 
 def context(

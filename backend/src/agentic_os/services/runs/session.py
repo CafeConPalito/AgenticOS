@@ -98,9 +98,13 @@ class RunSession:
         redactor: Redactor | None = None,
         mcp_grace: float = 0.0,
         conversation: bool = False,
+        manual: bool = False,
     ) -> None:
         self.run_id = run_id
         self.cli = cli
+        # A terminal of the person's own (phase 23): nobody else drives it, so the viewer that
+        # opens it takes the keyboard without interrupting anything or changing its status.
+        self.manual = manual
         self.launch = launch
         self.cwd = cwd
         self.log_path = log_path
@@ -442,6 +446,11 @@ class RunSession:
         self._publish(self.state_message())
 
     def take_control(self, client_id: str) -> None:
+        if self.manual:
+            with self._lock:
+                self.controller = client_id  # the last view opened has the keyboard
+            self._publish(self.state_message())
+            return
         with self._lock:
             if self.controller not in (None, client_id):
                 raise ControlConflict(self.controller)
@@ -459,6 +468,12 @@ class RunSession:
         self._set(status=RunStatus.INTERVENING)
 
     def release_control(self, client_id: str) -> None:
+        if self.manual:
+            with self._lock:
+                if self.controller == client_id:
+                    self.controller = None
+            self._publish(self.state_message())
+            return
         with self._lock:
             if self.controller != client_id:
                 raise ControlConflict(self.controller)

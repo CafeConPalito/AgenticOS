@@ -8,6 +8,7 @@ import { ApiError } from '@/lib/api'
 import i18n from '@/i18n'
 import { useDictation, type DictationError } from '@/stores/dictation'
 import { insertText, trackAnchor, type Field } from './insert'
+import { LiveTranscript, TICK_MS } from './live'
 import { MicrophoneError, microphone, type Recorder, type Recording } from './recorder'
 
 /** A hold shorter than this was an accident, not a dictation. */
@@ -35,13 +36,18 @@ interface Session {
   startedAt: number
   timers: ReturnType<typeof setTimeout>[]
   onKey: (event: KeyboardEvent) => void
+  /** Phase 23: the text as it is spoken (null when the recorder cannot be read while it goes). */
+  live: LiveTranscript | null
+  ticker: ReturnType<typeof setInterval> | null
 }
 
 interface Job {
   id: number
   fieldId: string
   field: Field
-  wav: Blob
+  /** The whole recording, or (`live`) only what was left after the last piece. */
+  wav: Blob | null
+  live: LiveTranscript | null
   tracker: ReturnType<typeof trackAnchor>
 }
 
@@ -73,9 +79,14 @@ export function fieldIdOf(element: Element | null): string | null {
 export function resetDictation(): void {
   session?.recording.cancel()
   session?.tracker.stop()
+  session?.live?.stop()
+  if (session?.ticker) clearInterval(session.ticker)
   for (const timer of session?.timers ?? []) clearTimeout(timer)
   if (session) window.removeEventListener('keydown', session.onKey, true)
-  for (const job of queue) job.tracker.stop()
+  for (const job of queue) {
+    job.tracker.stop()
+    job.live?.stop()
+  }
   session = null
   queue = []
   running = false
@@ -146,11 +157,14 @@ async function begin(fieldId: string, field: Field, options: StartOptions): Prom
     end: field.selectionEnd ?? field.value.length,
   })
   let recording: Recording
+  let live: LiveTranscript | null = null
   try {
     recording = await recorder.start({
       deviceId: options.deviceId,
-      onLevel: (level) =>
-        useDictation.setState((s) => (s.recording ? { recording: { ...s.recording, level } } : s)),
+      onLevel: (level) => {
+        live?.level(level)
+        useDictation.setState((s) => (s.recording ? { recording: { ...s.recording, level } } : s))
+      },
     })
   } catch (error) {
     tracker.stop()
@@ -175,6 +189,8 @@ async function begin(fieldId: string, field: Field, options: StartOptions): Prom
     ),
     setTimeout(() => void stopDictation(), limit),
   ]
+  if (recording.peek) live = new LiveTranscript(field, tracker.read(), recording)
+  const current = live
   session = {
     fieldId,
     field,
@@ -184,6 +200,8 @@ async function begin(fieldId: string, field: Field, options: StartOptions): Prom
     startedAt: Date.now(),
     timers,
     onKey,
+    live,
+    ticker: current ? setInterval(() => current.tick(), TICK_MS) : null,
   }
   useDictation.setState({
     recording: {
@@ -201,6 +219,7 @@ function endSession(): Session | null {
   const ended = session
   if (!ended) return null
   session = null
+  if (ended.ticker) clearInterval(ended.ticker)
   for (const timer of ended.timers) clearTimeout(timer)
   window.removeEventListener('keydown', ended.onKey, true)
   useDictation.setState({ recording: null })
@@ -215,14 +234,18 @@ export async function stopDictation(): Promise<void> {
   if (ended.mode === 'hold' && heldFor < MIN_HOLD_MS) {
     ended.recording.cancel()
     ended.tracker.stop()
+    ended.live?.discard()
     return
   }
-  const wav = await ended.recording.stop()
+  // Live: the microphone is released now; the rest of the audio is read when the job runs.
+  if (ended.live) await ended.live.end()
+  const wav = ended.live ? null : await ended.recording.stop()
   const job: Job = {
     id: nextJobId++,
     fieldId: ended.fieldId,
     field: ended.field,
     wav,
+    live: ended.live,
     tracker: ended.tracker,
   }
   queue.push(job)
@@ -238,6 +261,7 @@ export function cancelDictation(): void {
   if (!ended) return
   ended.recording.cancel()
   ended.tracker.stop()
+  ended.live?.discard()
 }
 
 function finish(job: Job): void {
@@ -254,9 +278,19 @@ async function drain(): Promise<void> {
         jobs: s.jobs.map((j) => (j.id === job!.id ? { ...j, status: 'transcribing' } : j)),
       }))
       try {
-        const result = await transcribe(job.wav)
-        deliver(job, result.text)
+        if (job.live) {
+          const text = await job.live.finish()
+          if (!text) {
+            job.live.discard()
+            reportError(job.fieldId, 'no_speech')
+          } else if (!job.live.deliver(text)) toClipboard(text)
+        } else {
+          const result = await transcribe(job.wav!)
+          deliver(job, result.text)
+        }
       } catch (error) {
+        // What was already fixed and shown stays; only the last piece is lost.
+        job.live?.keep()
         if (error instanceof ApiError) reportError(job.fieldId, error.code, error.message)
         else reportError(job.fieldId, 'failed', error instanceof Error ? error.message : undefined)
       }
@@ -273,6 +307,10 @@ function deliver(job: Job, text: string): void {
     insertText(job.field, job.tracker.read(), text)
     return
   }
+  toClipboard(text)
+}
+
+function toClipboard(text: string): void {
   void navigator.clipboard?.writeText(text).catch(() => undefined)
   toast.info(i18n.t('dictation.copied'))
 }

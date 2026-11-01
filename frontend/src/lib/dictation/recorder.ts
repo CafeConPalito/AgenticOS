@@ -14,8 +14,11 @@ export class MicrophoneError extends Error {
 }
 
 export interface Recording {
-  /** Ends the recording and gives the WAV (16 kHz, mono, 16 bit). */
-  stop(): Promise<Blob>
+  /** Ends the recording and gives the WAV (16 kHz, mono, 16 bit), from sample `from` on. */
+  stop(from?: number): Promise<Blob>
+  /** Phase 23: the WAV recorded so far from sample `from`, while it goes on, and where it ends
+   * (the next `from`). Without it a recording is transcribed only at the end. */
+  peek?(from: number): { wav: Blob; end: number; rate: number }
   /** Throws the recording away and releases the microphone. */
   cancel(): void
 }
@@ -97,8 +100,34 @@ export const microphone: Recorder = {
       release()
       throw problemOf(error)
     }
+    const joined = (from: number) => {
+      const total = chunks.reduce((sum, chunk) => sum + chunk.length, 0)
+      const samples = new Float32Array(Math.max(0, total - from))
+      let offset = 0
+      let skip = from
+      for (const chunk of chunks) {
+        if (skip >= chunk.length) {
+          skip -= chunk.length
+          continue
+        }
+        const part = skip > 0 ? chunk.subarray(skip) : chunk
+        skip = 0
+        samples.set(part, offset)
+        offset += part.length
+      }
+      return { samples, total }
+    }
     return {
-      async stop() {
+      peek(from) {
+        const { samples, total } = joined(from)
+        const rate = context.sampleRate
+        return {
+          wav: new Blob([encodeWav(samples, rate)], { type: 'audio/wav' }),
+          end: total,
+          rate,
+        }
+      },
+      async stop(from = 0) {
         const rate = context.sampleRate
         // The end of the last word is still in the worklet: ask for it before closing.
         const pending = node
@@ -110,14 +139,7 @@ export const microphone: Recorder = {
           })
         }
         release()
-        const total = chunks.reduce((sum, chunk) => sum + chunk.length, 0)
-        const samples = new Float32Array(total)
-        let offset = 0
-        for (const chunk of chunks) {
-          samples.set(chunk, offset)
-          offset += chunk.length
-        }
-        return new Blob([encodeWav(samples, rate)], { type: 'audio/wav' })
+        return new Blob([encodeWav(joined(from).samples, rate)], { type: 'audio/wav' })
       },
       cancel: release,
     }

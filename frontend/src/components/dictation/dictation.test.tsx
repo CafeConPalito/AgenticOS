@@ -89,6 +89,87 @@ describe('the microphone of a field', () => {
     expect(await mic()).toBeEnabled()
   })
 
+  it('shows the text while it is spoken and leaves the final one (phase 23, CA8)', async () => {
+    const user = userEvent.setup()
+    let samples = 0
+    const stops: number[] = []
+    setRecorder({
+      start: vi.fn(async ({ onLevel }: { onLevel: (level: number) => void }) => {
+        onLevel(0.6)
+        return {
+          peek: () => {
+            onLevel(0.6) // still speaking: no pause, so nothing is fixed yet
+            return { wav: new Blob(['wav']), end: samples, rate: 16_000 }
+          },
+          stop: async (from = 0) => {
+            stops.push(from)
+            return new Blob(['wav'], { type: 'audio/wav' })
+          },
+          cancel: vi.fn(),
+        }
+      }),
+    })
+    const { field, backend } = mount({ dictation: { answers: ['hola', 'hola mundo'] } }, 'Dije:')
+    field.focus()
+    field.setSelectionRange(5, 5)
+    await user.click(await mic())
+    samples = 16_000 * 2 // two seconds said
+    // The guess arrives while still recording.
+    await waitFor(() => expect(field.value).toBe('Dije: hola'), { timeout: 4000 })
+    expect(screen.getByRole('button', { name: MIC.stop })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: MIC.stop }))
+    await waitFor(() => expect(field.value).toBe('Dije: hola mundo'))
+    expect(stops).toEqual([0]) // nothing was fixed: the whole recording, once more
+    expect(transcriptions(backend)).toHaveLength(2)
+  })
+
+  it('live: the microphone is released when the person stops, even if the text takes a while', async () => {
+    const user = userEvent.setup()
+    let release: () => void = () => {}
+    const gate = () => new Promise<void>((resolve) => (release = resolve))
+    const stops: number[] = []
+    setRecorder({
+      start: vi.fn(async ({ onLevel }: { onLevel: (level: number) => void }) => {
+        onLevel(0.6)
+        return {
+          peek: () => ({ wav: new Blob(['wav']), end: 32_000, rate: 16_000 }),
+          stop: async (from = 0) => {
+            stops.push(from)
+            return new Blob(['wav'])
+          },
+          cancel: vi.fn(),
+        }
+      }),
+    })
+    const { field } = mount({ dictation: { answers: ['ya está'], gate } }, '')
+    field.focus()
+    await user.click(await mic())
+    await user.click(await screen.findByRole('button', { name: MIC.stop }))
+    await waitFor(() => expect(stops).toEqual([0])) // before the text arrives
+    expect(field.value).toBe('')
+    release()
+    await waitFor(() => expect(field.value).toBe('ya está'))
+  })
+
+  it('live: nothing said is reported, and nothing is written', async () => {
+    const user = userEvent.setup()
+    setRecorder({
+      start: vi.fn(async () => ({
+        peek: () => ({ wav: new Blob(['wav']), end: 32_000, rate: 16_000 }),
+        stop: async () => new Blob(['wav']),
+        cancel: vi.fn(),
+      })),
+    })
+    const { field } = mount(
+      { dictation: { answers: [{ error: { status: 422, code: 'no_speech' } }] } },
+      'intacto',
+    )
+    field.focus()
+    await dictate(user)
+    expect(await screen.findByText(MIC.errors.no_speech)).toBeVisible()
+    expect(field.value).toBe('intacto')
+  })
+
   it('replaces the selection and leaves the rest of the text alone', async () => {
     const user = userEvent.setup()
     fakeRecorder()

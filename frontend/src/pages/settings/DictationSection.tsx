@@ -1,11 +1,13 @@
 import { Mic, X } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router'
 import { toast } from 'sonner'
 import {
   useDictationSettings,
   useDictationStatus,
   useSaveDictationSettings,
+  transcribe,
   type DictationSettings,
 } from '@/api/dictation'
 import { useLocalModels } from '@/api/local-models'
@@ -22,6 +24,7 @@ import {
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Switch } from '@/components/ui/switch'
+import { ApiError } from '@/lib/api'
 import { currentRecorder } from '@/lib/dictation/controller'
 import { MicrophoneError } from '@/lib/dictation/recorder'
 import { fromEvent, keycaps } from '@/lib/dictation/shortcut'
@@ -31,7 +34,7 @@ import { Kbd } from '@/components/palette/Kbd'
 
 const LANGUAGES = ['es', 'en', 'ca', 'gl', 'eu', 'fr', 'de', 'it', 'pt'] as const
 const DEFAULT_SHORTCUT = 'Ctrl+Space'
-const TEST_SECONDS = 3
+const TEST_SECONDS = 5
 const SYSTEM_DEFAULT = '__default__'
 /** A shortcut that would type something is not allowed: it needs Ctrl, Alt or Meta (Shift alone
  * types capitals; Ctrl+Alt is AltGr, which types symbols) or to be a function key. */
@@ -147,20 +150,44 @@ function useMicrophones() {
   return { devices, hidden, denied, allow, refresh }
 }
 
+/** Errors of the transcription that mean «the engine or a speech model is missing». */
+const SPEECH_MISSING = new Set(['engine_missing', 'model_missing', 'no_model'])
+
+type TestState =
+  | { phase: 'idle' }
+  | { phase: 'testing'; level: number; left: number; text: string }
+  | { phase: 'done'; heard: boolean; text: string; missing: boolean }
+  | { phase: 'denied' }
+
+/**
+ * «Probar» (phases 16 and 23): records a few seconds with the chosen microphone and shows what
+ * the dictation understands, while it is said and at the end. Without the engine or a speech
+ * model it shows only the level, and says where to get them.
+ */
 function MicrophoneTest({ deviceId, onDone }: { deviceId: string | null; onDone: () => void }) {
   const { t } = useTranslation()
-  const [state, setState] = useState<
-    | { phase: 'idle' }
-    | { phase: 'testing'; level: number; left: number }
-    | { phase: 'done'; heard: boolean }
-    | { phase: 'denied' }
-  >({ phase: 'idle' })
+  const [state, setState] = useState<TestState>({ phase: 'idle' })
   const peak = useRef(0)
   const last = useRef(0)
 
   async function run() {
     peak.current = 0
     last.current = 0
+    let text = ''
+    let missing = false
+    let busy = false
+    const show = (next: string) => {
+      text = next
+      setState((s) => (s.phase === 'testing' ? { ...s, text } : s))
+    }
+    const listen = async (wav: Blob, partial: boolean) => {
+      try {
+        show((await transcribe(wav, undefined, partial)).text)
+      } catch (error) {
+        if (error instanceof ApiError && SPEECH_MISSING.has(error.code)) missing = true
+        else if (!(error instanceof ApiError)) throw error // `busy`, `no_speech`: no text yet
+      }
+    }
     try {
       const recording = await currentRecorder().start({
         deviceId: deviceId ?? undefined,
@@ -175,11 +202,21 @@ function MicrophoneTest({ deviceId, onDone }: { deviceId: string | null; onDone:
           phase: 'testing',
           level: s.phase === 'testing' ? s.level : last.current,
           left,
+          text,
         }))
+        // A guess of what is being said, one at a time (phase 23).
+        if (left < TEST_SECONDS && !missing && !busy && recording.peek) {
+          busy = true
+          void listen(recording.peek(0).wav, true).finally(() => {
+            busy = false
+          })
+        }
         await new Promise((resolve) => setTimeout(resolve, 1000))
       }
-      await recording.stop()
-      setState({ phase: 'done', heard: peak.current > 0.05 })
+      const wav = await recording.stop()
+      const heard = peak.current > 0.05
+      if (heard && !missing) await listen(wav, false)
+      setState({ phase: 'done', heard, text, missing })
       // With the permission now given, the microphones have their names.
       onDone()
     } catch (error) {
@@ -194,6 +231,7 @@ function MicrophoneTest({ deviceId, onDone }: { deviceId: string | null; onDone:
     }
   }
 
+  const heardText = state.phase === 'testing' || state.phase === 'done' ? state.text : ''
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex items-center gap-2">
@@ -228,10 +266,28 @@ function MicrophoneTest({ deviceId, onDone }: { deviceId: string | null; onDone:
           </>
         )}
       </div>
+      {heardText && (
+        <p
+          aria-live="polite"
+          aria-label={t('settings.dictation.microphoneHeardLabel')}
+          className="rounded-lg border border-sep bg-subtle px-3 py-2 text-[13px]"
+        >
+          «{heardText}»
+        </p>
+      )}
       {state.phase === 'done' && (
         <p role="status" className="text-xs text-muted-foreground">
           {t(
             state.heard ? 'settings.dictation.microphoneOk' : 'settings.dictation.microphoneSilent',
+          )}
+          {state.heard && state.missing && (
+            <>
+              {' '}
+              {t('settings.dictation.microphoneNoEngine')}{' '}
+              <Link to="/ajustes#models" className="underline">
+                {t('settings.dictation.microphoneModels')}
+              </Link>
+            </>
           )}
         </p>
       )}

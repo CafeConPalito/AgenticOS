@@ -1213,6 +1213,8 @@ export function createFakeBackend(
   const agents = [...(seed.agents ?? [])]
   const projects = [...(seed.projects ?? [])]
   const runs = [...(seed.runs ?? [])]
+  // The CLIs the backend reports; a test flips `installed` once its installer ends.
+  const clis = (seed.clis ?? CLIS).map((cli) => ({ ...cli }))
 
   /** GET /api/home, derived from the seed the way the backend derives it. */
   function homeFor(): Home {
@@ -1820,6 +1822,7 @@ export function createFakeBackend(
           200,
           runs.filter(
             (r) =>
+              r.kind !== 'terminal' &&
               (!query.get('agent_id') || r.agent_id === query.get('agent_id')) &&
               (!query.get('project_id') || r.project_id === query.get('project_id')) &&
               (active === null ||
@@ -1853,6 +1856,41 @@ export function createFakeBackend(
       })
       runs.unshift(run)
       return json(201, run)
+    }
+    // Phase 23: the person's own terminals, runs of kind «terminal» (not in /api/runs).
+    if (path === '/api/terminals') {
+      if (method === 'GET')
+        return json(
+          200,
+          runs.filter((r) => r.kind === 'terminal' && ['starting', 'running'].includes(r.status)),
+        )
+      const request = body as { cli: Run['cli']; account_id: string | null; cwd: string }
+      const account =
+        accounts.find((a) => a.id === request.account_id) ??
+        accounts.find((a) => a.cli === request.cli && a.is_default)
+      const terminal = makeRun({
+        kind: 'terminal',
+        agent_id: null,
+        project_id: null,
+        task_id: null,
+        agent_name: 'Terminal',
+        project_name: '',
+        prompt: '',
+        cli: request.cli,
+        cwd: request.cwd,
+        status: 'running',
+        account_id: account?.id ?? null,
+        account_label: account?.name ?? '',
+      })
+      runs.push(terminal)
+      return json(201, terminal)
+    }
+    const terminalMatch = path.match(/^\/api\/terminals\/([^/]+)$/)
+    if (terminalMatch && method === 'DELETE') {
+      const run = runs.find((r) => r.id === terminalMatch[1] && r.kind === 'terminal')
+      if (!run) return apiError(404, 'terminal_not_found')
+      Object.assign(run, { status: 'stopped', ended_at: now(), controller: null })
+      return json(204, null)
     }
     const eventsMatch = path.match(/^\/api\/runs\/([^/]+)\/events$/)
     if (eventsMatch)
@@ -1895,7 +1933,11 @@ export function createFakeBackend(
       return json(202, run)
     }
     if (match[2] === 'control') {
-      if (body.action === 'take') {
+      if (run.kind === 'terminal') {
+        // A terminal of one's own: the last view takes the keyboard, nothing is interrupted.
+        if (body.action === 'take') run.controller = String(body.client_id)
+        else if (run.controller === body.client_id) run.controller = null
+      } else if (body.action === 'take') {
         if (run.controller && run.controller !== body.client_id)
           return apiError(409, 'control_taken')
         Object.assign(run, { controller: body.client_id, status: 'intervening' })
@@ -1954,7 +1996,9 @@ export function createFakeBackend(
       agents.push(agent)
       return json(201, { agent, notes: ['La skill «seo-basico» no existe aquí.'] })
     }
-    if (path.startsWith('/api/clis')) return json(200, seed.clis ?? CLIS)
+    // Phase 23: «Añadir CLI» runs the installer (its terminal is a WebSocket of the test).
+    if (/^\/api\/clis\/[^/]+\/install$/.test(path) && method === 'POST') return json(202, null)
+    if (path.startsWith('/api/clis')) return json(200, clis)
 
     if (path === '/api/agents') {
       if (method === 'GET') return json(200, agents)
@@ -2689,6 +2733,7 @@ export function createFakeBackend(
     skills: skillsBackend,
     connections: connectionsBackend,
     architect: architectBackend,
+    clis,
     callsTo: (method: string, path: string) =>
       calls.filter((c) => c.method === method && c.path === path),
   }

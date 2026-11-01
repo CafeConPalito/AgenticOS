@@ -29,6 +29,7 @@ from agentic_os.models import (
     InboxKind,
     InboxStatus,
     Resolution,
+    RunKind,
     SessionState,
 )
 from agentic_os.schemas.usage import LimitState
@@ -51,11 +52,14 @@ def unit_of(account: CliAccount) -> str:
 def used_by_account(db: Session, today: date, tz: tzinfo | None = None) -> dict[str, float]:
     """What counts for each account's limit today, from a single read of today's runs: USD for
     Claude Code, tokens without cache for agy. A run whose account was removed counts for the
-    default one of its CLI."""
+    default one of its CLI. The person's own terminals (phase 23) are left out: what they spend
+    by hand does not stop the agents (ADR 0029)."""
     accounts = account_ops.list_accounts(db)
     default = {a.cli: a.id for a in accounts if a.is_default}
     used = {a.id: 0.0 for a in accounts}
     for run in runs_between(db, today, today, tz=tz):
+        if run.kind == RunKind.TERMINAL:
+            continue
         account_id = run.account_id if run.account_id in used else default.get(run.cli)
         if account_id is None:
             continue

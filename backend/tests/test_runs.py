@@ -463,7 +463,7 @@ def test_launch_validation(app_client: TestClient, tmp_path: Path, monkeypatch):
     app_client.app.state.settings.cli_command_overrides = {}
     from agentic_os.services.runs import launcher
 
-    monkeypatch.setattr(launcher.shutil, "which", lambda name: None)
+    monkeypatch.setattr(launcher.cli_paths.shutil, "which", lambda name: None)
     response = app_client.post(
         "/api/runs", json={"agent_id": agent_id, "project_id": project_id, "prompt": "x"}
     )

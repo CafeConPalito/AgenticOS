@@ -34,7 +34,9 @@
     "forward": "Adelante",
     "forwardHint": "Adelante (Alt+→)",
     "inbox_one": "Inbox · {{count}} pendiente",
-    "inbox_other": "Inbox · {{count}} pendientes"
+    "inbox_other": "Inbox · {{count}} pendientes",
+    "knowledge": "Conocimiento (documentos y skills)",
+    "connections": "Conexiones (MCPs)"
   },
   "backend": {
     "connected": "Conectado · v{{version}}",
@@ -95,7 +97,8 @@
     "required": "Obligatorio",
     "back": "Volver",
     "yes": "Sí",
-    "no": "No"
+    "no": "No",
+    "close": "Cerrar"
   },
   "markdown": {
     "edit": "Editar",
@@ -646,13 +649,32 @@
   },
   "dock": {
     "label": "Terminal",
-    "tabs": "Ejecuciones activas",
+    "tabs": "Terminales abiertos",
     "toggle": "Abrir o cerrar la terminal (Ctrl+`)",
     "toBottom": "Acoplar abajo",
     "toRight": "Acoplar a la derecha",
-    "expand": "Abrir detalle",
-    "close": "Cerrar terminal",
-    "empty": "No hay ninguna ejecución activa. Lanza un agente para verlo trabajar aquí."
+    "close": "Ocultar el panel",
+    "closeTab": "Cerrar el terminal {{name}}",
+    "empty": "Abre un CLI con la cuenta y la carpeta que quieras, sin agente. Las ejecuciones de los agentes están en Ejecuciones.",
+    "ended": "El CLI ha terminado.",
+    "closeEnded": "Cerrar la pestaña",
+    "new": {
+      "open": "Nuevo terminal",
+      "title": "Nuevo terminal",
+      "description": "Un CLI interactivo, sin agente ni tarea. Lo que gaste sale en Consumo como «Terminal».",
+      "noCli": "No hay ningún CLI instalado. Instálalo en CLIs y cuentas.",
+      "cli": "CLI",
+      "account": "Cuenta",
+      "defaultAccount": "La predeterminada",
+      "folder": "Carpeta",
+      "project": "Proyecto",
+      "places": {
+        "home": "Carpeta personal",
+        "project": "La carpeta de un proyecto",
+        "other": "Otra carpeta…"
+      },
+      "submit": "Abrir terminal"
+    }
   },
   "tasks": {
     "status": {
@@ -1331,7 +1353,10 @@
         "no_model": "Falta descargar un modelo de voz",
         "engine_missing": "Falta descargar el motor de voz"
       },
-      "shortcutInvalid": "Usa una combinación con Ctrl, Alt o Mayús, o una tecla de función; si no, escribiría en el campo."
+      "shortcutInvalid": "Usa una combinación con Ctrl, Alt o Mayús, o una tecla de función; si no, escribiría en el campo.",
+      "microphoneHeardLabel": "Lo que ha entendido",
+      "microphoneNoEngine": "Para ver lo que entiende, descarga el motor de voz y un modelo.",
+      "microphoneModels": "Ir a Modelos locales"
     }
   },
   "usage": {
@@ -1939,7 +1964,6 @@
     "subtitle": "Cada cuenta tiene su sesión, su límite diario y la cuota de su suscripción. Puedes tener varias cuentas del mismo CLI y asignar a cada agente la que debe usar.",
     "check": "Comprobar",
     "checked": "CLIs y cuentas comprobados",
-    "addAccount": "Añadir cuenta",
     "installed": "Instalado",
     "noVersion": "v—",
     "notDetected": "No detectado",
@@ -1959,6 +1983,22 @@
       "running": "Cierra Antigravity para cambiar sus ajustes (los reescribe mientras está abierto).",
       "on": "Leyendo la cuota de Antigravity",
       "off": "Línea de estado de Antigravity quitada"
+    },
+    "addCli": {
+      "action": "Añadir CLI",
+      "title": "Añadir CLI",
+      "description": "Instala un CLI que la app admite y no tienes. Se usa su instalador oficial, solo para tu usuario.",
+      "choose": "CLI que instalar",
+      "willRun": "Se va a ejecutar en PowerShell:",
+      "official": "Es el instalador oficial, sacado de su guía de instalación.",
+      "docs": "Guía oficial",
+      "noInstaller": "En este sistema no se puede instalar desde la app: sigue su guía oficial.",
+      "install": "Instalar",
+      "terminal": "Instalación",
+      "installed": "{{name}} está instalado.",
+      "notFound": "El instalador terminó, pero {{name}} no aparece. Prueba «Comprobar» o reinicia la app.",
+      "failed": "La instalación falló (código {{code}}).",
+      "login": "Iniciar sesión"
     }
   },
   "accounts": {

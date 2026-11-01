@@ -26,6 +26,9 @@ Llegar antes a lo que más se usa y quitar pasos fuera de la app:
 ## Alcance
 ### Dentro
 **A. Accesos directos en Inicio**
+
+> **Cambio en la validación (2026-11-01, a petición del usuario):** los accesos pasan a la barra superior, junto al Inbox y con sus mismos iconos. Tablero, Ejecuciones y Ajustes ya son pestañas de esa barra, y Contexto y Skills llevan a la misma página, así que quedan dos iconos: Conocimiento (documentos y skills) y Conexiones (MCPs). Inicio ya no tiene la fila de emojis. Tablero, Ejecuciones y Ajustes pasan también a iconos; el contador de Tablero y Ejecuciones va dentro de la misma píldora que su icono. Orden, en tres grupos separados por una raya: el trabajo (Tablero, Ejecuciones, Inbox), lo que usan los agentes (Conocimiento, Conexiones) y Ajustes.
+
 1. Inicio tiene una fila de accesos directos con un emoji cada uno: Contexto (la biblioteca de Conocimiento), Skills, MCPs (Conexiones), Tablero, Ejecuciones y Ajustes.
 2. El nombre de cada acceso sale en un *tooltip* al pasar el ratón o al llegar con el teclado. Cada botón tiene además su nombre accesible para lectores de pantalla.
 
@@ -41,7 +44,7 @@ Llegar antes a lo que más se usa y quitar pasos fuera de la app:
 7. Lo que se gasta en un terminal propio **sí sale en Consumo**, como uso de su cuenta sin agente («Terminal»). Es gasto real de la cuenta.
 
 **C. CLIs y cuentas**
-8. Cada CLI se muestra con su **logo** (Claude Code y Antigravity), en CLIs y cuentas y en los demás sitios donde hoy sale la etiqueta del CLI.
+8. Cada CLI se muestra con un **icono propio y neutro** que lo hace reconocible (su color y un símbolo simple, sin usar los logos registrados), en CLIs y cuentas y en los demás sitios donde hoy sale la etiqueta del CLI. Decidido con el usuario al planificar (2026-10-31).
 9. El botón general de la cabecera pasa a llamarse **«Añadir CLI»** y solo ofrece los CLIs que admite la app y no están instalados. Si están todos, no se muestra.
 10. Desde «Añadir CLI» se **instala** el CLI elegido con su instalador oficial:
    - Antes de empezar, la app enseña qué va a ejecutar y pide confirmación.
@@ -73,11 +76,11 @@ Llegar antes a lo que más se usa y quitar pasos fuera de la app:
 ## Criterios de aceptación
 | # | Criterio | Cómo se verifica |
 |---|---|---|
-| CA1 | Inicio tiene los seis accesos con emoji; cada uno lleva a su sitio y muestra su nombre en un *tooltip*, también con el teclado | Test de la interfaz |
+| CA1 | (Cambiado en la validación: Conocimiento y Conexiones en la barra superior, junto al Inbox, con nombre en el *tooltip*.) Inicio tiene los seis accesos con emoji; cada uno lleva a su sitio y muestra su nombre en un *tooltip*, también con el teclado | Test de la interfaz |
 | CA2 | El icono de terminal abre un terminal propio con el CLI, la cuenta y la carpeta elegidos (un proyecto, la carpeta personal o cualquier otra); el CLI usa la sesión de esa cuenta | Tests del backend y de la interfaz + prueba en la app instalada |
 | CA3 | Hay varios terminales propios en pestañas; siguen al cambiar de página y se cierran con su pestaña | Test de la interfaz |
 | CA4 | El panel ya no lista las ejecuciones; un terminal propio no sale en Ejecuciones ni cuenta en los límites, pero su gasto sale en Consumo como «Terminal» de su cuenta | Tests del backend y de la interfaz |
-| CA5 | Los logos de Claude Code y Antigravity salen en CLIs y cuentas y donde antes estaba la etiqueta | Test de la interfaz + captura |
+| CA5 | Los iconos propios de Claude Code y Antigravity salen en CLIs y cuentas y donde antes estaba la etiqueta | Test de la interfaz + captura |
 | CA6 | «Añadir CLI» solo ofrece los CLIs no instalados y desaparece si están todos; «Añadir cuenta» de Claude Code sigue igual | Test de la interfaz |
 | CA7 | Instalar un CLI desde la app enseña el comando, pide confirmación, se ve en un terminal, lo detecta al acabar y ofrece iniciar sesión; si falla, dice por qué | Tests del backend con un instalador simulado + prueba en una máquina sin el CLI |
 | CA8 | Al dictar, el texto va apareciendo mientras se habla y se completa al parar; «Probar micrófono» lo muestra igual; sin motor o modelo, dice cómo instalarlos | Tests del backend y de la interfaz + prueba en la app instalada |

@@ -33,15 +33,16 @@ def _api(error: DictationError) -> ApiError:
 
 
 @router.post("/dictation/transcribe")
-async def transcribe(request: Request) -> TranscriptRead:
-    """The body is the WAV itself (16 kHz, mono, 16 bit): no multipart, nothing on disk."""
+async def transcribe(request: Request, partial: bool = False) -> TranscriptRead:
+    """The body is the WAV itself (16 kHz, mono, 16 bit): no multipart, nothing on disk.
+    `partial` (phase 23): the text so far while the person speaks; 409 when the engine is busy."""
     declared = request.headers.get("content-length")
     if declared and declared.isdigit() and int(declared) > audio.MAX_BYTES:
         raise ApiError(413, "too_large", "the recording is too big")
     wav = await request.body()
     try:
         # A worker thread: the API keeps answering while the engine works.
-        result = await anyio.to_thread.run_sync(service(request).transcribe, wav)
+        result = await anyio.to_thread.run_sync(service(request).transcribe, wav, partial)
     except DictationError as error:
         raise _api(error) from error
     return TranscriptRead(text=result.text, seconds=result.seconds, model=result.model)

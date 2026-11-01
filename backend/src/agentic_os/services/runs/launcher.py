@@ -7,13 +7,13 @@ executable and a prompt that cannot be read as an option.
 from __future__ import annotations
 
 import os
-import shutil
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
 from agentic_os.errors import ApiError
 from agentic_os.models.agent import Cli
+from agentic_os.services import cli_paths
 
 # Markers a running Claude Code session sets for its children. Inherited by a spawned CLI they
 # disable transcripts and alter behaviour. User configuration (CLAUDE_CONFIG_DIR,
@@ -53,7 +53,7 @@ def resolve_executable(cli: Cli, overrides: Mapping[str, list[str]] | None = Non
     """argv prefix that starts the CLI (an override replaces it, e.g. the fake CLI in tests)."""
     if overrides and cli.value in overrides:
         return list(overrides[cli.value])
-    path = shutil.which(EXECUTABLES[cli])
+    path = cli_paths.which(EXECUTABLES[cli])
     if not path:
         raise ApiError(422, "cli_not_installed", f"{EXECUTABLES[cli]} is not installed", "cli")
     if Path(path).suffix.lower() in (".cmd", ".bat"):

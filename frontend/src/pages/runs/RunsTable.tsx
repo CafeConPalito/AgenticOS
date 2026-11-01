@@ -1,10 +1,11 @@
+import { CliIcon } from '@/components/agentic/CliIcon'
 import { Sparkles } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
 import { useProjects } from '@/api/projects'
 import { isActive } from '@/api/runs'
 import type { Run } from '@/api/types'
-import { AgentAvatar, CliTag, ProjectChip } from '@/components/agentic/primitives'
+import { AgentAvatar, ProjectChip } from '@/components/agentic/primitives'
 import { ChangesBadge } from '@/components/changes/ChangesBadge'
 import {
   Table,
@@ -89,7 +90,7 @@ export function RunsTable({ runs, showAgent = true }: { runs: Run[]; showAgent?:
                 )}
                 <TableCell className="max-w-[420px]">
                   <div className="flex items-center gap-2">
-                    <CliTag cli={run.cli} label={t(`cli.${run.cli}`)} size={20} />
+                    <CliIcon cli={run.cli} label={t(`cli.${run.cli}`)} size={20} />
                     <div className="min-w-0">
                       <div className="truncate">{run.prompt}</div>
                       {run.last_status ? (

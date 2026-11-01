@@ -72,6 +72,9 @@ class WhisperServer(ManagedServer):
             str(program), "-m", str(model), "-t", str(self.threads),
             "--host", "127.0.0.1", "--port", str(port),
             "--vad", "-vm", str(vad),
+            # Phase 23 (spike S1): a ~10 s window, a third of the time; the dictation service
+            # sends pieces of at most 9 s (audio.split).
+            "-ac", "512",
         ]  # fmt: skip
 
     def _check(self) -> None:

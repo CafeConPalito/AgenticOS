@@ -8,11 +8,16 @@ import { newViewerId } from '@/lib/client-id'
 import { TerminalSocket } from '@/lib/terminal-socket'
 
 /**
- * Mounts the terminal where an account logs in (`claude auth login`…). Unlike a run's terminal
- * it is always interactive and fitted: the person types the code the CLI asks for, or just
- * follows the browser. `onExit` fires once when the CLI ends.
+ * Mounts the terminal where an account logs in (`claude auth login`…), or where a CLI installs
+ * (phase 23: `path` is then the installation's). Unlike a run's terminal it is always
+ * interactive and fitted: the person types what the CLI asks for, or just follows the browser.
+ * `onExit` fires once when the process ends, with its exit code.
  */
-export function useLoginTerminal(accountId: string, onExit: () => void) {
+export function useLoginTerminal(
+  accountId: string,
+  onExit: (code: number | null) => void,
+  path = `/api/accounts/${accountId}/login/terminal`,
+) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const [viewerId] = useState(newViewerId)
   const [exited, setExited] = useState(false)
@@ -53,13 +58,13 @@ export function useLoginTerminal(accountId: string, onExit: () => void) {
         },
         onOutput: (data) => term.write(data),
         onState: () => {},
-        onExit: () => {
+        onExit: (code) => {
           setExited(true)
-          onExitRef.current()
+          onExitRef.current(code)
         },
         onConnection: setConnected,
       },
-      `/api/accounts/${accountId}/login/terminal`,
+      path,
     )
     void socket.connect()
     const input = term.onData((data) => socket.sendInput(data))
@@ -89,7 +94,7 @@ export function useLoginTerminal(accountId: string, onExit: () => void) {
       term.dispose()
       termRef.current = null
     }
-  }, [accountId, viewerId, xtermTheme])
+  }, [accountId, path, viewerId, xtermTheme])
 
   return { containerRef, exited, connected }
 }

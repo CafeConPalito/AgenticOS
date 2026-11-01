@@ -2,7 +2,8 @@ import { Plus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router'
 import type { AgentState, HomeAgent, HomeSession, TodayAgent } from '@/api/types'
-import { AgentAvatar, CLI_TAG } from '@/components/agentic/primitives'
+import { CliIcon } from '@/components/agentic/CliIcon'
+import { AgentAvatar } from '@/components/agentic/primitives'
 import { useNow } from '@/hooks/use-now'
 import { formatTokens, formatUsd } from '@/lib/format'
 import { formatDuration } from '@/lib/time'
@@ -155,7 +156,7 @@ export function AgentCard({
         <div className="col-start-1 row-start-1 flex h-7 items-center gap-1.5 overflow-hidden text-xs whitespace-nowrap text-muted-foreground transition-opacity duration-150 group-focus-within:opacity-0 group-hover:opacity-0">
           <span className="truncate">{agent.role}</span>
           <span>·</span>
-          <span className="font-mono">{CLI_TAG[agent.cli]}</span>
+          <CliIcon cli={agent.cli} label={t(`cli.${agent.cli}`)} size={14} />
           {agent.using_fallback && (
             <span className="rounded-full bg-subtle px-1.5 text-[10.5px] font-medium text-status-waiting">
               {t('home.agents.usingFallback')}

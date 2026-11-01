@@ -1,8 +1,11 @@
 import subprocess
+import sys
 
 import pytest
 from fastapi.testclient import TestClient
 
+from agentic_os.models import Cli
+from agentic_os.services import clis
 from agentic_os.services.clis import CliCatalog
 
 AGY_MODELS = "Fetching available models...\ngemini-x-low\tGemini X (Low)\nclaude-y\tClaude Y\n"
@@ -68,6 +71,10 @@ def test_missing_cli_is_reported_without_error(client: TestClient):
     assert response.status_code == 200
     agy = response.json()[1]
     assert agy.pop("checked_at")
+    # Phase 23: how to install it (its official installer, on Windows).
+    assert agy.pop("installer") == (
+        clis.installer_for(Cli.AGY).model_dump() if sys.platform == "win32" else None
+    )
     assert agy == {
         "id": "agy",
         "name": "Antigravity CLI",

@@ -156,25 +156,29 @@ export function AppHeader({
         </BreadcrumbList>
       </Breadcrumb>
 
-      <TopNav active={section} counts={{ board: counts?.open_tasks, runs: counts?.active_runs }} />
-
-      <Link
-        to="/inbox"
-        aria-label={t('header.inbox', { count: inboxPending })}
-        title={t('header.inbox', { count: inboxPending })}
-        aria-current={section === 'inbox' ? 'page' : undefined}
-        className={cn(ICON_BUTTON, 'relative', section === 'inbox' && 'bg-accent')}
-      >
-        <Inbox className="size-[15px]" />
-        {inboxPending > 0 && (
-          <span
-            aria-hidden
-            className="absolute -top-0.5 -right-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-status-intervening px-1 font-mono text-[10px] font-bold text-status-intervening-foreground"
+      <TopNav
+        active={section}
+        counts={{ board: counts?.open_tasks, runs: counts?.active_runs }}
+        inbox={
+          <Link
+            to="/inbox"
+            aria-label={t('header.inbox', { count: inboxPending })}
+            title={t('header.inbox', { count: inboxPending })}
+            aria-current={section === 'inbox' ? 'page' : undefined}
+            className={cn(ICON_BUTTON, 'relative', section === 'inbox' && 'bg-accent')}
           >
-            {inboxPending > 99 ? '99+' : inboxPending}
-          </span>
-        )}
-      </Link>
+            <Inbox className="size-[15px]" />
+            {inboxPending > 0 && (
+              <span
+                aria-hidden
+                className="absolute -top-0.5 -right-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-status-intervening px-1 font-mono text-[10px] font-bold text-status-intervening-foreground"
+              >
+                {inboxPending > 99 ? '99+' : inboxPending}
+              </span>
+            )}
+          </Link>
+        }
+      />
       <button
         type="button"
         onClick={openPalette}

@@ -27,13 +27,17 @@ describe('AppHeader', () => {
     renderApp('/')
     const nav = await screen.findByRole('navigation', { name: es.nav.main })
     const links = within(nav).getAllByRole('link')
-    expect(links.map((l) => l.textContent?.replace(/\d+$/, ''))).toEqual([
-      `${es.nav.board}`,
-      `${es.nav.runs}`,
-      `${es.nav.settings}`,
-    ])
     expect(await within(nav).findByRole('link', { name: `${es.nav.board}2` })).toBeVisible()
     expect(within(nav).getByRole('link', { name: `${es.nav.runs}1` })).toBeVisible()
+    // Icons (phase 23), in order: the work, what the agents use, Ajustes; the name in the tooltip.
+    expect(links.map((l) => l.getAttribute('title'))).toEqual([
+      es.nav.board,
+      es.nav.runs,
+      'Inbox · 0 pendientes',
+      es.header.knowledge,
+      es.header.connections,
+      es.nav.settings,
+    ])
     expect(document.querySelector('[data-sidebar]')).toBeNull()
   })
 
@@ -99,10 +103,10 @@ describe('AppHeader', () => {
     seedBusy()
     const user = userEvent.setup()
     const { router } = renderApp('/')
-    await screen.findByRole('navigation', { name: es.nav.main })
-    await user.click(screen.getByRole('link', { name: new RegExp(es.nav.runs) }))
+    const nav = await screen.findByRole('navigation', { name: es.nav.main })
+    await user.click(within(nav).getByRole('link', { name: new RegExp(es.nav.runs) }))
     await user.click(screen.getByRole('button', { name: es.header.back }))
-    await user.click(screen.getByRole('link', { name: new RegExp(es.nav.board) }))
+    await user.click(within(nav).getByRole('link', { name: new RegExp(es.nav.board) }))
     expect(router.state.location.pathname).toBe('/tablero')
     expect(screen.getByRole('button', { name: es.header.forward })).toBeDisabled()
   })
@@ -118,6 +122,24 @@ describe('AppHeader', () => {
     await user.click(link)
     expect(router.state.location.pathname).toBe('/inbox')
     expect(screen.getByRole('link', { name: 'Inbox · 2 pendientes' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
+  })
+
+  it('has Conocimiento and Conexiones next to the Inbox (phase 23, CA1)', async () => {
+    createFakeBackend({})
+    const user = userEvent.setup()
+    const { router } = renderApp('/')
+    const knowledge = await screen.findByRole('link', { name: es.header.knowledge })
+    expect(knowledge).toHaveAttribute('title', es.header.knowledge)
+    expect(screen.getByRole('link', { name: es.header.connections })).toHaveAttribute(
+      'href',
+      '/conexiones',
+    )
+    await user.click(knowledge)
+    expect(router.state.location.pathname).toBe('/conocimiento')
+    expect(screen.getByRole('link', { name: es.header.knowledge })).toHaveAttribute(
       'aria-current',
       'page',
     )

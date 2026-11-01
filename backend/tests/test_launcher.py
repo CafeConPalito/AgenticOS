@@ -7,7 +7,7 @@ from agentic_os.services.runs import launcher
 
 @pytest.fixture(autouse=True)
 def fake_which(monkeypatch):
-    monkeypatch.setattr(launcher.shutil, "which", lambda name: f"C:/bin/{name}.exe")
+    monkeypatch.setattr(launcher.cli_paths.shutil, "which", lambda name: f"C:/bin/{name}.exe")
 
 
 def test_executable_and_overrides():
@@ -17,7 +17,7 @@ def test_executable_and_overrides():
 
 
 def test_missing_cli(monkeypatch):
-    monkeypatch.setattr(launcher.shutil, "which", lambda name: None)
+    monkeypatch.setattr(launcher.cli_paths.shutil, "which", lambda name: None)
     with pytest.raises(ApiError) as error:
         launcher.resolve_executable(Cli.CLAUDE)
     assert error.value.code == "cli_not_installed"
@@ -42,7 +42,7 @@ def test_env_drops_session_markers_but_keeps_user_config():
 
 def test_batch_shims_are_refused(monkeypatch):
     # cmd.exe would re-parse the prompt: `&` or `%VAR%` could run other commands.
-    monkeypatch.setattr(launcher.shutil, "which", lambda name: f"C:/npm/{name}.CMD")
+    monkeypatch.setattr(launcher.cli_paths.shutil, "which", lambda name: f"C:/npm/{name}.CMD")
     with pytest.raises(ApiError) as error:
         launcher.resolve_executable(Cli.CLAUDE)
     assert error.value.code == "cli_shim_unsupported"

@@ -105,8 +105,8 @@ def test_an_agy_run_gets_the_address_to_report_to(tmp_path: Path, monkeypatch):
     from agentic_os.services.adapters import LaunchContext, adapter_for
     from agentic_os.services.runs import launcher
 
-    # `launcher.shutil` is the real module: restored after the test so git is found again.
-    monkeypatch.setattr(launcher.shutil, "which", lambda name: f"C:/bin/{name}.exe")
+    # `launcher.cli_paths.shutil` is the real module: restored after the test so git is found again.
+    monkeypatch.setattr(launcher.cli_paths.shutil, "which", lambda name: f"C:/bin/{name}.exe")
     project = tmp_path / "project"
     project.mkdir()
     ctx = LaunchContext(

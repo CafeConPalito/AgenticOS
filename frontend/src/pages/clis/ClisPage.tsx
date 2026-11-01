@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 import { useAccounts, useProbeAccount } from '@/api/accounts'
 import { useAgyQuota, useClis, useRefreshClis, useSetAgyQuota } from '@/api/clis'
 import type { Account, CliId, CliInfo } from '@/api/types'
-import { CliTag } from '@/components/agentic/primitives'
+import { CliIcon } from '@/components/agentic/CliIcon'
 import { PageContainer, PageHeader } from '@/components/page'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils'
 import { AccountCard } from './AccountCard'
 import { AccountLoginDialog } from './AccountLoginDialog'
 import { AddAccountDialog } from './AddAccountDialog'
+import { AddCliDialog } from './AddCliDialog'
 
 /** Only Claude Code can have several logins: agy keeps its single one in the system's store. */
 const MULTI_ACCOUNT: CliId[] = ['claude']
@@ -34,13 +35,16 @@ export default function ClisPage() {
   const [login, setLogin] = useState<{ id: string; email: string } | null>(null)
   const [adding, setAdding] = useState<CliId | null>(null)
   const [checking, setChecking] = useState(false)
+  // Phase 23: «Añadir CLI» offers the supported CLIs that are not installed.
+  const [addingCli, setAddingCli] = useState(false)
+  const missing = (clis ?? []).filter((cli) => !cli.installed)
 
   // `?reconectar=<account>` (a logged-out notice) opens that account's login and `?nueva=1`
   // (Ctrl+K, the summary's «+») opens «Añadir cuenta»: the page follows the URL.
   const reconnect = params.get('reconectar')
   const loginId =
     login?.id ?? (reconnect && accounts?.some((a) => a.id === reconnect) ? reconnect : null)
-  const addingCli: CliId | null = adding ?? (params.get('nueva') ? 'claude' : null)
+  const addingAccount: CliId | null = adding ?? (params.get('nueva') ? 'claude' : null)
 
   function clearLinks() {
     if (params.has('reconectar') || params.has('nueva')) setParams({}, { replace: true })
@@ -70,13 +74,15 @@ export default function ClisPage() {
               <RefreshCw className={cn(checking && 'animate-spin')} />
               {t('clis.check')}
             </Button>
-            <Button
-              onClick={() => setAdding('claude')}
-              className="rounded-full bg-primary-action text-white hover:bg-primary-action-hover"
-            >
-              <Plus />
-              {t('clis.addAccount')}
-            </Button>
+            {missing.length > 0 && (
+              <Button
+                onClick={() => setAddingCli(true)}
+                className="rounded-full bg-primary-action text-white hover:bg-primary-action-hover"
+              >
+                <Plus />
+                {t('clis.addCli.action')}
+              </Button>
+            )}
           </>
         }
       />
@@ -93,8 +99,20 @@ export default function ClisPage() {
           />
         ))
       )}
+      <AddCliDialog
+        open={addingCli}
+        missing={missing}
+        onClose={() => setAddingCli(false)}
+        onLogin={(cli) => {
+          setAddingCli(false)
+          // Claude Code: a new account and its login; agy: the login of its only session.
+          const agy = accounts?.find((a) => a.cli === cli)
+          if (cli === 'agy' && agy) setLogin({ id: agy.id, email: agy.email })
+          else setAdding(cli)
+        }}
+      />
       <AddAccountDialog
-        cli={addingCli}
+        cli={addingAccount}
         onClose={() => {
           setAdding(null)
           clearLinks()
@@ -133,7 +151,7 @@ function CliSection({
       className="overflow-hidden rounded-2xl border border-sep shadow-card bg-card-grad"
     >
       <header className="flex flex-wrap items-center gap-3 border-b border-sep px-4 py-3.5">
-        <CliTag cli={cli.id} label={t(`cli.${cli.id}`)} size={32} />
+        <CliIcon cli={cli.id} label={t(`cli.${cli.id}`)} size={32} />
         <div className="min-w-0 flex-1">
           <h2 className="text-[14px] font-medium">{cli.name}</h2>
           <p className="text-xs text-muted-foreground">

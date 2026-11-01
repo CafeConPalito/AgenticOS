@@ -8,10 +8,18 @@ from fastapi.testclient import TestClient
 
 from agentic_os.app import create_app
 from agentic_os.config import Settings
+from agentic_os.services import cli_paths
 from agentic_os.services.connections import secrets as connection_secrets
 
 # The MCP servers of the connection tests (phase 18) import each other by name.
 sys.path.insert(0, str(Path(__file__).parent / "fixtures" / "mcp_servers"))
+
+
+@pytest.fixture(autouse=True)
+def only_the_process_path(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The CLIs are looked for in the tests' PATH only, never in the person's registry or the
+    installers' folders (phase 23): a test that removes a CLI must not find the real one."""
+    monkeypatch.setattr(cli_paths, "search_path", lambda: "")
 
 
 @pytest.fixture(autouse=True)

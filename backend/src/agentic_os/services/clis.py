@@ -8,8 +8,8 @@ so results are cached for a while; callers can force a refresh.
 from __future__ import annotations
 
 import json
-import shutil
 import subprocess
+import sys
 import threading
 import time
 from collections.abc import Callable
@@ -21,7 +21,7 @@ from pydantic import BaseModel
 
 from agentic_os.db.base import utcnow
 from agentic_os.models.agent import Cli
-from agentic_os.services import proc
+from agentic_os.services import cli_paths, proc
 
 CACHE_TTL = 600.0
 VERSION_TIMEOUT = 15
@@ -35,6 +35,40 @@ class ModelOption(BaseModel):
     label: str | None = None
 
 
+class Installer(BaseModel):
+    """How a CLI is installed on this system, shown as is to the person."""
+
+    command: str
+    docs_url: str
+
+
+@dataclass(frozen=True)
+class _Official:
+    windows: str
+    docs_url: str
+
+
+OFFICIAL = {
+    Cli.CLAUDE: _Official(
+        "irm https://claude.ai/install.ps1 | iex",
+        "https://code.claude.com/docs/en/install",
+    ),
+    Cli.AGY: _Official(
+        "irm https://antigravity.google/cli/install.ps1 | iex",
+        "https://antigravity.google/",
+    ),
+}
+
+
+def installer_for(cli: Cli) -> Installer | None:
+    """The official installer of a CLI for this system; None where the app has none (only
+    Windows for now: elsewhere the person follows the guide)."""
+    official = OFFICIAL.get(cli)
+    if official is None or sys.platform != "win32":
+        return None
+    return Installer(command=official.windows, docs_url=official.docs_url)
+
+
 class CliInfo(BaseModel):
     id: Cli
     name: str
@@ -46,6 +80,8 @@ class CliInfo(BaseModel):
     # True / False when the CLI says so; None when it cannot be told (not installed, error).
     logged_in: bool | None = None
     checked_at: datetime | None = None
+    # Phase 23: its official installer on this system, for «Añadir CLI» (None: follow the guide).
+    installer: Installer | None = None
 
 
 Runner = Callable[[list[str], int], subprocess.CompletedProcess[str]]
@@ -111,7 +147,7 @@ SPECS = [
 
 @dataclass
 class CliCatalog:
-    which: Callable[[str], str | None] = shutil.which
+    which: Callable[[str], str | None] = cli_paths.which
     run: Runner = run_command
     ttl: float = CACHE_TTL
     _cache: list[CliInfo] | None = None
@@ -120,9 +156,23 @@ class CliCatalog:
 
     def probe(self, spec: CliSpec) -> CliInfo:
         path = self.which(spec.executable)
+        installer = installer_for(spec.id)
         if not path:
-            return CliInfo(id=spec.id, name=spec.name, installed=False, checked_at=utcnow())
-        info = CliInfo(id=spec.id, name=spec.name, installed=True, path=path, checked_at=utcnow())
+            return CliInfo(
+                id=spec.id,
+                name=spec.name,
+                installed=False,
+                checked_at=utcnow(),
+                installer=installer,
+            )
+        info = CliInfo(
+            id=spec.id,
+            name=spec.name,
+            installed=True,
+            path=path,
+            checked_at=utcnow(),
+            installer=installer,
+        )
         try:
             info.version = parse_version(self.run([path, "--version"], VERSION_TIMEOUT))
         except (OSError, subprocess.TimeoutExpired):

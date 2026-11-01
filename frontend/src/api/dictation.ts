@@ -67,8 +67,11 @@ export function useSaveDictationSettings() {
 }
 
 /** Sends the recording (a 16 kHz mono WAV) to be transcribed on this machine. */
-export function transcribe(wav: Blob, signal?: AbortSignal): Promise<Transcript> {
-  return apiFetch<Transcript>('/api/dictation/transcribe', {
+/** `partial` (phase 23): the text so far while the person speaks; the backend answers 409
+ * `busy` when the engine is at work, and that turn is skipped. */
+export function transcribe(wav: Blob, signal?: AbortSignal, partial = false): Promise<Transcript> {
+  const query = partial ? '?partial=true' : ''
+  return apiFetch<Transcript>(`/api/dictation/transcribe${query}`, {
     method: 'POST',
     headers: { 'Content-Type': 'audio/wav' },
     body: wav,
