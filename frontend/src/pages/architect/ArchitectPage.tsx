@@ -51,8 +51,10 @@ function Conversations() {
   const improve = params.get('mejorar')
   const team = params.get('equipo')
   const pipeline = params.get('pipeline')
+  // Phase 24: `?disenar=<project>` designs the pipeline (and team) of a project without one.
+  const design = params.get('disenar')
   const fresh = params.has('nueva') || params.has('equipo')
-  const requested = Boolean(improve || pipeline || fresh)
+  const requested = Boolean(improve || pipeline || design || fresh)
   useEffect(() => {
     if (started.current || !requested) return
     started.current = true
@@ -61,11 +63,13 @@ function Conversations() {
         ? { mode: 'improve_agent', agent_id: improve }
         : pipeline
           ? { mode: 'improve_pipeline', project_id: pipeline }
-          : team
-            ? { mode: 'improve_team', team_id: team }
-            : params.has('equipo')
-              ? { mode: 'team' }
-              : { mode: 'agent' },
+          : design
+            ? { mode: 'team', project_id: design }
+            : team
+              ? { mode: 'improve_team', team_id: team }
+              : params.has('equipo')
+                ? { mode: 'team' }
+                : { mode: 'agent' },
     )
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [requested])

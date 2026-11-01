@@ -346,6 +346,11 @@ export interface Task {
   /** Phase 24: where an exit ended the task («Terminar aquí»). */
   exit_stage_id: string | null
   exit_stage_name: string | null
+  /** Phase 24: SDD or direct, as its requirements stage chose (a lane shows its root's). */
+  work_mode: 'sdd' | 'direct' | null
+  work_mode_reason: string | null
+  /** With SDD: the folder of its spec, relative to the project. */
+  spec_path: string | null
 }
 
 export type TaskEventKind =
@@ -504,7 +509,39 @@ export interface PipelineWrite {
   decider_model?: string | null
 }
 
-export type PipelineTemplateId = 'web' | 'web_split'
+/** Phase 24: the one fixed pipeline template. */
+export type PipelineTemplateId = 'development'
+
+/** Phase 24: how the agents a template is missing are created, and in which team. */
+export interface NewAgents {
+  cli: CliId
+  account_id?: string | null
+  model?: string | null
+  team_id?: string | null
+  team_name?: string
+}
+
+export interface TemplateApply {
+  template: PipelineTemplateId
+  /** An agent picked by hand per stage index. */
+  assign?: Record<string, string>
+  create?: NewAgents | null
+}
+
+/** One stage of a template and the active agent made from its agent template, if any. */
+export interface TemplatePlanStage {
+  index: number
+  name: string
+  template_id: string
+  template_name: string
+  agent_id: string | null
+  agent_name: string | null
+}
+
+export interface CopiedPipeline extends Pipeline {
+  /** Stages left without their agent (archived or a draft). */
+  warnings: { stage: string; agent: string }[]
+}
 
 export interface GraphIssue {
   code: string

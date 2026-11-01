@@ -11,6 +11,49 @@ function seed() {
   return { dev, qa, tienda }
 }
 
+/** Requisitos → Desarrollo → QA (QA rejects to Desarrollo). */
+function chain(projectId: string) {
+  return makePipeline(projectId, [
+    { id: 's-req', name: 'Requisitos' },
+    { id: 's-dev', name: 'Desarrollo' },
+    { id: 's-qa', name: 'QA', reject_to_stage_id: 's-dev' },
+  ])
+}
+
+/** Requisitos → (Dev backend | Dev frontend) → QA; QA rejects to either branch. */
+function split(projectId: string) {
+  return makePipeline(
+    projectId,
+    [
+      { id: 's-req', name: 'Requisitos' },
+      { id: 's-back', name: 'Dev backend' },
+      { id: 's-front', name: 'Dev frontend' },
+      {
+        id: 's-qa',
+        name: 'QA',
+        reject_to_stage_id: 's-back',
+        reject_extra_stage_ids: ['s-front'],
+      },
+    ],
+    {
+      links: [
+        ['l1', 's-req', 's-back', 'Backend', 'Toca la API'],
+        ['l2', 's-req', 's-front', 'Frontend', 'Toca la UI'],
+        ['l3', 's-back', 's-qa', 'QA', ''],
+        ['l4', 's-front', 's-qa', 'QA', ''],
+      ].map(([id, from, to, name, condition], i) => ({
+        id,
+        from_stage_id: from,
+        to_stage_id: to,
+        name,
+        condition,
+        always: false,
+        position: i < 2 ? i : 0,
+      })),
+    },
+  )
+}
+
 const stagesNav = () => screen.findByRole('navigation', { name: es.pipeline.stages })
 
 async function pick(user: ReturnType<typeof userEvent.setup>, name: string) {
@@ -19,15 +62,48 @@ async function pick(user: ReturnType<typeof userEvent.setup>, name: string) {
 }
 
 describe('Pipeline editor', () => {
-  it('starts from the template, edits a stage and saves the graph', async () => {
+  it('starts from «Desarrollo»: its dialog says which agents exist and creates the rest', async () => {
     const { dev, qa, tienda } = seed()
-    const backend = createFakeBackend({ agents: [dev, qa], projects: [tienda] })
+    const analyst = { ...dev, id: 'a-analyst', name: 'Ana', template: 'analyst' }
+    const backend = createFakeBackend({ agents: [analyst, qa], projects: [tienda] })
     const user = userEvent.setup()
     renderApp(`/proyectos/${tienda.id}/pipeline`)
 
     await user.click(await screen.findByRole('button', { name: es.pipeline.useTemplate }))
+    const dialog = await screen.findByRole('dialog', { name: es.pipeline.development.title })
+    const stages = await within(dialog).findByRole('list', {
+      name: es.pipeline.development.stages,
+    })
+    expect(within(stages).getAllByRole('listitem')).toHaveLength(8)
+    expect(stages).toHaveTextContent('Ana (ya existe)')
+    expect(stages).toHaveTextContent('Se creará: Arquitecto de software')
+    await user.click(
+      within(dialog).getByRole('button', {
+        name: es.pipeline.development.applyAndCreate_other.replace('{{count}}', '7'),
+      }),
+    )
+    await waitFor(() =>
+      expect(backend.callsTo('POST', `/api/projects/${tienda.id}/pipeline/template`)).toHaveLength(
+        1,
+      ),
+    )
+    const body = backend.callsTo('POST', `/api/projects/${tienda.id}/pipeline/template`)[0]
+      .body as { template: string; create: { cli: string; team_name: string } }
+    expect(body.template).toBe('development')
+    expect(body.create).toMatchObject({ cli: 'claude', team_name: 'Desarrollo' })
     const nav = await stagesNav()
-    expect(within(nav).getAllByRole('listitem')).toHaveLength(3)
+    expect(within(nav).getAllByRole('listitem')).toHaveLength(8)
+  })
+
+  it('edits a stage of a pipeline and saves the graph', async () => {
+    const { dev, qa, tienda } = seed()
+    const backend = createFakeBackend({
+      agents: [dev, qa],
+      projects: [tienda],
+      pipelines: { [tienda.id]: chain(tienda.id) },
+    })
+    const user = userEvent.setup()
+    renderApp(`/proyectos/${tienda.id}/pipeline`)
 
     await pick(user, 'Desarrollo')
     const name = screen.getByLabelText(es.pipeline.stageName.replace('{{n}}', '2'))
@@ -39,7 +115,7 @@ describe('Pipeline editor', () => {
       expect(backend.callsTo('PUT', `/api/projects/${tienda.id}/pipeline`)).toHaveLength(1),
     )
     const body = backend.callsTo('PUT', `/api/projects/${tienda.id}/pipeline`)[0].body as {
-      stages: { name: string; reject_to: number | null; reject_also: number[] }[]
+      stages: { name: string; reject_to: number | null }[]
       links: { source: number; target: number }[]
     }
     expect(body.stages.map((s) => [s.name, s.reject_to])).toEqual([
@@ -53,18 +129,16 @@ describe('Pipeline editor', () => {
     ])
   })
 
-  it('offers the split template and shows its fork, its branches and QA’s two rejection targets', async () => {
+  it('shows a fork, its branches and QA’s two rejection targets', async () => {
     const { dev, tienda } = seed()
-    const backend = createFakeBackend({ agents: [dev], projects: [tienda] })
+    createFakeBackend({
+      agents: [dev],
+      projects: [tienda],
+      pipelines: { [tienda.id]: split(tienda.id) },
+    })
     const user = userEvent.setup()
     renderApp(`/proyectos/${tienda.id}/pipeline`)
 
-    await user.click(await screen.findByRole('button', { name: es.pipeline.useTemplateSplit }))
-    expect(backend.callsTo('POST', `/api/projects/${tienda.id}/pipeline/template`)[0].body).toEqual(
-      {
-        template: 'web_split',
-      },
-    )
     await pick(user, 'Requisitos')
     const panel = await screen.findByRole('region', {
       name: es.pipeline.stagePanel.replace('{{name}}', 'Requisitos'),
@@ -87,10 +161,13 @@ describe('Pipeline editor', () => {
 
   it('edits a branch: name, condition and «always»', async () => {
     const { dev, tienda } = seed()
-    const backend = createFakeBackend({ agents: [dev], projects: [tienda] })
+    const backend = createFakeBackend({
+      agents: [dev],
+      projects: [tienda],
+      pipelines: { [tienda.id]: split(tienda.id) },
+    })
     const user = userEvent.setup()
     renderApp(`/proyectos/${tienda.id}/pipeline`)
-    await user.click(await screen.findByRole('button', { name: es.pipeline.useTemplateSplit }))
 
     await pick(user, 'Requisitos')
     const panel = await screen.findByRole('region', { name: /Etapa Requisitos/ })
@@ -116,10 +193,13 @@ describe('Pipeline editor', () => {
 
   it('a branch without a condition is always taken and can be saved (phase 21)', async () => {
     const { dev, tienda } = seed()
-    const backend = createFakeBackend({ agents: [dev], projects: [tienda] })
+    const backend = createFakeBackend({
+      agents: [dev],
+      projects: [tienda],
+      pipelines: { [tienda.id]: split(tienda.id) },
+    })
     const user = userEvent.setup()
     renderApp(`/proyectos/${tienda.id}/pipeline`)
-    await user.click(await screen.findByRole('button', { name: es.pipeline.useTemplateSplit }))
 
     await pick(user, 'Requisitos')
     const panel = await screen.findByRole('region', { name: /Etapa Requisitos/ })
@@ -145,10 +225,13 @@ describe('Pipeline editor', () => {
 
   it('shows the problems of a graph that is not well built and goes to where they are', async () => {
     const { dev, tienda } = seed()
-    createFakeBackend({ agents: [dev], projects: [tienda] })
+    createFakeBackend({
+      agents: [dev],
+      projects: [tienda],
+      pipelines: { [tienda.id]: chain(tienda.id) },
+    })
     const user = userEvent.setup()
     renderApp(`/proyectos/${tienda.id}/pipeline`)
-    await user.click(await screen.findByRole('button', { name: es.pipeline.useTemplate }))
 
     // Requisitos → QA besides Requisitos → Desarrollo → QA: a branch with no stages of its own
     await pick(user, 'Requisitos')
@@ -164,10 +247,13 @@ describe('Pipeline editor', () => {
 
   it('tries the conditions with an example task and shows what would be taken', async () => {
     const { dev, tienda } = seed()
-    const backend = createFakeBackend({ agents: [dev], projects: [tienda] })
+    const backend = createFakeBackend({
+      agents: [dev],
+      projects: [tienda],
+      pipelines: { [tienda.id]: split(tienda.id) },
+    })
     const user = userEvent.setup()
     renderApp(`/proyectos/${tienda.id}/pipeline`)
-    await user.click(await screen.findByRole('button', { name: es.pipeline.useTemplateSplit }))
 
     // With nothing selected the pipeline’s settings show the decider and «Probar»
     const nav = await stagesNav()
@@ -216,10 +302,12 @@ describe('Pipeline editor', () => {
 
   it('warns that branches go one after the other in a direct folder', async () => {
     const { dev, tienda } = seed()
-    createFakeBackend({ agents: [dev], projects: [{ ...tienda, workspace_mode: 'direct' }] })
-    const user = userEvent.setup()
+    createFakeBackend({
+      agents: [dev],
+      projects: [{ ...tienda, workspace_mode: 'direct' }],
+      pipelines: { [tienda.id]: split(tienda.id) },
+    })
     renderApp(`/proyectos/${tienda.id}/pipeline`)
-    await user.click(await screen.findByRole('button', { name: es.pipeline.useTemplateSplit }))
     expect(await screen.findByRole('note')).toHaveTextContent(es.pipeline.directWarning)
   })
 })

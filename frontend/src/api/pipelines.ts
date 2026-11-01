@@ -2,12 +2,15 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { taskKeys } from './tasks'
 import type {
+  CopiedPipeline,
   GraphIssue,
   Pipeline,
   PipelineTemplateId,
   PipelineWrite,
   PreviewRequest,
   PreviewResult,
+  TemplateApply,
+  TemplatePlanStage,
 } from './types'
 
 export const pipelineKeys = {
@@ -40,25 +43,40 @@ export function useSavePipeline(projectId: string) {
   })
 }
 
+/** Phase 24: applies a template; with `create`, the missing agents are made in one step. */
 export function usePipelineFromTemplate(projectId: string) {
+  const queryClient = useQueryClient()
   const set = useSetPipeline(projectId)
   return useMutation({
-    mutationFn: (template: PipelineTemplateId) =>
-      api.post<Pipeline>(`/api/projects/${projectId}/pipeline/template`, { template }),
-    onSuccess: (pipeline) => set(pipeline),
+    mutationFn: (body: TemplateApply) =>
+      api.post<Pipeline>(`/api/projects/${projectId}/pipeline/template`, body),
+    onSuccess: async (pipeline) => {
+      await set(pipeline)
+      // New agents and maybe a new team.
+      await queryClient.invalidateQueries({ queryKey: ['agents'] })
+      return queryClient.invalidateQueries({ queryKey: ['teams'] })
+    },
   })
 }
 
-/** Applies a template to a project given at call time (a project that was just created). */
-export function useApplyPipelineTemplate() {
-  const queryClient = useQueryClient()
+/** Phase 24: the agent each stage of a template would get here. */
+export function useTemplatePlan(template: PipelineTemplateId, enabled = true) {
+  return useQuery({
+    queryKey: ['pipeline-template-plan', template],
+    queryFn: () => api.get<TemplatePlanStage[]>(`/api/pipeline-templates/${template}/plan`),
+    enabled,
+  })
+}
+
+/** Phase 24: copies the pipeline of another project. */
+export function useCopyPipeline(projectId: string) {
+  const set = useSetPipeline(projectId)
   return useMutation({
-    mutationFn: ({ projectId, template }: { projectId: string; template: PipelineTemplateId }) =>
-      api.post<Pipeline>(`/api/projects/${projectId}/pipeline/template`, { template }),
-    onSuccess: (pipeline, { projectId }) => {
-      queryClient.setQueryData(pipelineKeys.project(projectId), pipeline)
-      return queryClient.invalidateQueries({ queryKey: taskKeys.all })
-    },
+    mutationFn: (fromProjectId: string) =>
+      api.post<CopiedPipeline>(`/api/projects/${projectId}/pipeline/copy`, {
+        from_project_id: fromProjectId,
+      }),
+    onSuccess: (pipeline) => set(pipeline),
   })
 }
 

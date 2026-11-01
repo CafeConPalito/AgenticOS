@@ -11,6 +11,7 @@ import {
 } from '@/components/agentic/primitives'
 import { cn } from '@/lib/utils'
 import { NEUTRAL_COLOR } from '@/theme/palettes'
+import { WorkModeTag } from './WorkModeSection'
 
 export const TASK_TONE: Record<TaskStatus, StatusTone> = {
   backlog: 'cancelled',
@@ -104,6 +105,7 @@ export function TaskCard({
             {t('tasks.lanes.lanesTag', { count: task.lanes.length })}
           </span>
         )}
+        <WorkModeTag task={task} />
         <span className="ml-auto font-mono">{task.code}</span>
       </div>
       <div className="mt-1.5 line-clamp-2 text-[13.5px] font-medium">{task.title}</div>

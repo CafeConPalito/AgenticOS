@@ -63,6 +63,7 @@ import { RunEventsPanel } from '@/pages/runs/RunEventsPanel'
 import { RunStatusBadge } from '@/pages/runs/RunStatusBadge'
 import { IntegrationBlock } from './IntegrationBlock'
 import { DecisionBlock } from './lanes/DecisionBlock'
+import { WorkModeSection } from './WorkModeSection'
 import { JoinBlock } from './lanes/JoinBlock'
 import { LanesPanel } from './lanes/LanesPanel'
 import { TaskPathGraph } from './lanes/TaskPathGraph'
@@ -517,6 +518,7 @@ function TaskSidePanel({
           <LanesPanel task={task} pipeline={pipeline} />
         </>
       )}
+      <WorkModeSection task={task} />
       {task.parent_task_id && (
         <Link
           to={`/tablero/tareas/${task.parent_task_id}`}

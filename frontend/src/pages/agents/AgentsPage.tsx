@@ -64,6 +64,13 @@ export default function AgentsPage() {
                 {t('agents.architect')}
               </Link>
             </Button>
+            {/* Phase 24: a team of agents designed by the Architect, with or without pipeline. */}
+            <Button variant="outline" asChild>
+              <Link to="/agentes/arquitecto?equipo">
+                <Users className="text-status-review" />
+                {t('teams.withArchitect')}
+              </Link>
+            </Button>
             <Button
               onClick={() => openNewAgent()}
               className="bg-primary-action text-white hover:bg-primary-action-hover"

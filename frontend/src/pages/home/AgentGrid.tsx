@@ -95,6 +95,12 @@ export function AgentGrid({
                 <Users />
                 {t('teams.new')}
               </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/agentes/arquitecto?equipo">
+                  <Sparkles className="text-status-review" />
+                  {t('teams.withArchitect')}
+                </Link>
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         )}
@@ -120,6 +126,12 @@ export function AgentGrid({
             <Button variant="outline" onClick={() => openTeam()}>
               <Users />
               {t('teams.new')}
+            </Button>
+            <Button variant="outline" asChild>
+              <Link to="/agentes/arquitecto?equipo">
+                <Sparkles />
+                {t('teams.withArchitect')}
+              </Link>
             </Button>
           </div>
         </EmptyState>

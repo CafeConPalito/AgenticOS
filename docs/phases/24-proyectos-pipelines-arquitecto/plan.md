@@ -227,10 +227,10 @@
 3. [x] **Bloque 2 · Salidas en el grafo**: reglas en Python y en `validate.ts`, con los mismos casos en los dos; guardar y cargar las salidas (también en la hoja del Arquitecto, para que mejorar un pipeline no las pierda); migración `0025` con los campos de las salidas y del modo SDD; ADR 0030 y nota en el 0020.
 4. [x] **Bloque 3 · Salidas en el motor**: `start_decision`, decisor con salida (prompt de S1 y su esquema), `exit_at`, revisión final, confirmación, «Terminar aquí» y «Seguir con el pipeline» (`POST /tasks/{id}/continue`); la tarea expone la salida de su etapa y dónde terminó.
 5. [x] **Bloque 4 · Salidas en la interfaz**: nodo Fin en el editor (se mueve y se borra con su etapa), panel de la salida, «Probar» también para la salida (el backend de la vista previa la admite), `DecisionBlock` con «Terminar aquí» excluyente y «Seguir con el pipeline», y «Terminó en …» en las tarjetas del Tablero y de las colas.
-6. [ ] **Bloque 5 · SDD**: detección, `set_work_mode`, contexto por etapa, cambio a mano y en la revisión, interfaz.
-7. [ ] **Bloque 6 · Plantillas**: las ocho plantillas de agentes y la plantilla «Desarrollo»; fuera las antiguas.
-8. [ ] **Bloque 7 · Aplicar y copiar**: plan de la plantilla, aplicar con agentes nuevos en una transacción, copiar; `ApplyDevelopmentDialog`, `CopyPipelineDialog`, Nuevo proyecto y pestaña Pipeline.
-9. [ ] **Bloque 8 · Arquitecto**: `team` con proyecto, pipeline opcional, salidas en la hoja, `get_pipeline_templates`, accesos.
+6. [x] **Bloque 5 · SDD**: detección (`services/sdd.py`), `set_work_mode` en el MCP, contexto por etapa (pista del formato en la primera etapa sin decidir), carpeta de la spec obligatoria al cerrar la primera etapa, cambio a mano (`PUT /tasks/{id}/work-mode`, también desde la revisión porque la sección está en la tarea) e interfaz (sección «Modo de trabajo» y etiqueta en las tarjetas).
+7. [x] **Bloque 6 · Plantillas**: las ocho plantillas de agentes (el Analista con las pautas de SDD de S2) y la plantilla «Desarrollo»; fuera «web» y «web_split» (el e2e de ramas guarda ese mismo pipeline a mano).
+8. [x] **Bloque 7 · Aplicar y copiar**: plan de la plantilla, aplicar con agentes nuevos en una transacción, copiar (con los ajustes de skills y conexiones de cada etapa); `ApplyDevelopmentDialog`, `CopyPipelineDialog`, Nuevo proyecto (la elección se abre en la pestaña Pipeline del proyecto recién creado, `?empezar=…`) y pestaña Pipeline vacía.
+9. [x] **Bloque 8 · Arquitecto**: `team` con proyecto (título y prompt con el proyecto), pipeline opcional, salidas en la hoja, `get_pipeline_templates`, accesos (`?disenar=<proyecto>` desde la pestaña Pipeline y Nuevo proyecto; «Nuevo equipo con el Arquitecto» en Agentes e Inicio).
 10. [ ] **Bloque 9 · e2e y cierre**: e2e con el CLI falso (CA7 y CA9), prueba manual con `claude` real (CA5 y CA7), suites completas, lint, `/code-review`, `validacion.md`.
 
 ## Tests previstos
