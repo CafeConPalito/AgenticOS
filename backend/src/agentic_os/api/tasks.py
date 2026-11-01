@@ -177,6 +177,7 @@ def read_tasks(db: Session, tasks: list[Task]) -> list[TaskRead]:
         project = projects[task.project_id]
         project_stages = stages.get(task.project_id, [])
         stage = next((s for s in project_stages if s.id == task.stage_id), None)
+        ended_at = next((s for s in project_stages if s.id == task.exit_stage_id), None)
         agent = agents.get(task.agent_id) if task.agent_id else None
         blocked = blocked_by = None
         if task.status == TaskStatus.QUEUED:
@@ -204,6 +205,9 @@ def read_tasks(db: Session, tasks: list[Task]) -> list[TaskRead]:
                 lane_name=link_names.get(task.lane_link_id or ""),
                 fork_stage_id=task.fork_stage_id,
                 lanes=lanes_by_parent.get(task.id, []),
+                stage_exit_condition=stage.exit_condition if stage else None,
+                exit_stage_id=task.exit_stage_id,
+                exit_stage_name=ended_at.name if ended_at else None,
                 stage_id=task.stage_id,
                 stage_name=stage.name if stage else None,
                 stage_index=(project_stages.index(stage) + 1) if stage else 0,
@@ -448,6 +452,16 @@ def decide_branches(
     """The person picks the branches of a task that waits at a fork."""
     task = _get(db, task_id)
     lane_ops.decide(db, task, payload.chosen)
+    db.commit()
+    scheduler.poke()
+    return read_task(db, task)
+
+
+@router.post("/tasks/{task_id}/continue")
+def continue_task(task_id: str, db: DbSession, scheduler: SchedulerDep) -> TaskRead:
+    """Phase 24: «Seguir con el pipeline» for a task that ended at an exit."""
+    task = _get(db, task_id)
+    lane_ops.continue_after_exit(db, task)
     db.commit()
     scheduler.poke()
     return read_task(db, task)

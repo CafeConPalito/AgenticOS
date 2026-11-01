@@ -225,8 +225,8 @@
 1. [x] **Bloque 0**: spikes S1–S3 y resultados en este plan.
 2. [x] **Bloque 1 · Foto del proyecto**: migración `0024` (solo `projects.avatar`), API, limpieza y `ProjectMark` en todas las pantallas.
 3. [x] **Bloque 2 · Salidas en el grafo**: reglas en Python y en `validate.ts`, con los mismos casos en los dos; guardar y cargar las salidas (también en la hoja del Arquitecto, para que mejorar un pipeline no las pierda); migración `0025` con los campos de las salidas y del modo SDD; ADR 0030 y nota en el 0020.
-4. [ ] **Bloque 3 · Salidas en el motor**: `start_decision`, decisor con salida, `finish_at_exit`, revisión final, confirmación, «Terminar aquí» y «Seguir con el pipeline».
-5. [ ] **Bloque 4 · Salidas en la interfaz**: nodo Fin en el editor, `TryDecisionDialog`, `DecisionBlock`, tarjeta y tarea.
+4. [x] **Bloque 3 · Salidas en el motor**: `start_decision`, decisor con salida (prompt de S1 y su esquema), `exit_at`, revisión final, confirmación, «Terminar aquí» y «Seguir con el pipeline» (`POST /tasks/{id}/continue`); la tarea expone la salida de su etapa y dónde terminó.
+5. [x] **Bloque 4 · Salidas en la interfaz**: nodo Fin en el editor (se mueve y se borra con su etapa), panel de la salida, «Probar» también para la salida (el backend de la vista previa la admite), `DecisionBlock` con «Terminar aquí» excluyente y «Seguir con el pipeline», y «Terminó en …» en las tarjetas del Tablero y de las colas.
 6. [ ] **Bloque 5 · SDD**: detección, `set_work_mode`, contexto por etapa, cambio a mano y en la revisión, interfaz.
 7. [ ] **Bloque 6 · Plantillas**: las ocho plantillas de agentes y la plantilla «Desarrollo»; fuera las antiguas.
 8. [ ] **Bloque 7 · Aplicar y copiar**: plan de la plantilla, aplicar con agentes nuevos en una transacción, copiar; `ApplyDevelopmentDialog`, `CopyPipelineDialog`, Nuevo proyecto y pestaña Pipeline.

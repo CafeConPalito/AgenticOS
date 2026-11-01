@@ -451,6 +451,7 @@ def review(
     inbox.resolve_pending(
         db, Resolution.REJECTED, task_id=task.id, kinds=(InboxKind.REVIEW,), response=reason
     )
+    task.exit_stage_id = None  # phase 24: a rejected final review undoes the exit
     if target is None:  # no pipeline: the same agent does it again
         requeue(db, task, front=True)
         return
@@ -470,7 +471,7 @@ def retry(db: Session, task: Task) -> None:
     stage = db.get(Stage, task.stage_id) if task.stage_id else None
     forking = task.waiting_reason in (WaitingReason.CHOOSE_BRANCH, WaitingReason.LANES_CANCELLED)
     if forking and stage is not None:
-        lanes.start_fork(db, task, stage)  # decide again
+        lanes.start_decision(db, task, stage)  # decide again
         return
     if task.waiting_reason == WaitingReason.JOIN_CONFLICT:
         task.status = TaskStatus.FORKED

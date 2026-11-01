@@ -77,3 +77,4 @@ filterwarnings = ["ignore:Using `httpx` with `starlette.testclient` is deprecate
 "tests/test_knowledge_describe.py" = ["F811"]
 "tests/test_decider.py" = ["F811"]
 "tests/test_lanes_git.py" = ["F811"]
+"tests/test_pipeline_exits.py" = ["F811"]

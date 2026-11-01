@@ -1,7 +1,7 @@
 from enum import StrEnum
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
 StageName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=80)]
 BranchName = Annotated[str, StringConstraints(strip_whitespace=True, max_length=80)]
@@ -96,12 +96,24 @@ class PreviewRequest(BaseModel):
 
     title: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
     description: Annotated[str, StringConstraints(max_length=5_000)] = ""
-    branches: Annotated[list[PreviewBranch], Field(min_length=2, max_length=MAX_STAGES)]
+    branches: Annotated[list[PreviewBranch], Field(max_length=MAX_STAGES)] = []
+    # Phase 24: the stage's «Terminar aquí» (its condition) and name, to try the exit too.
+    exit_condition: (
+        Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)]
+        | None
+    ) = None
+    stage_name: Annotated[str, StringConstraints(strip_whitespace=True, max_length=80)] = ""
     decider_cli: Literal["claude", "agy"] | None = None
     decider_account_id: str | None = None
     decider_model: (
         Annotated[str, StringConstraints(strip_whitespace=True, max_length=80)] | None
     ) = None
+
+    @model_validator(mode="after")
+    def _something_to_ask(self) -> "PreviewRequest":
+        if len(self.branches) < 2 and self.exit_condition is None:
+            raise ValueError("try a fork (two branches or more) or an exit")
+        return self
 
 
 class PreviewBranchResult(BaseModel):
@@ -112,6 +124,7 @@ class PreviewBranchResult(BaseModel):
 
 class PreviewRead(BaseModel):
     branches: list[PreviewBranchResult]
+    exit: PreviewBranchResult | None = None  # phase 24: whether the task would end there
     cli: str | None
     model: str | None
     cost_usd: float | None

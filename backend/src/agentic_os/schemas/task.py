@@ -111,6 +111,11 @@ class TaskRead(BaseModel):
     lane_name: str | None = None
     fork_stage_id: str | None = None
     lanes: list[LaneRead] = Field(default_factory=list)
+    # Phase 24 (ADR 0030): «Terminar aquí». The exit of the stage the task is at (its
+    # condition), and where the task ended if an exit ended it.
+    stage_exit_condition: str | None = None
+    exit_stage_id: str | None = None
+    exit_stage_name: str | None = None
 
 
 class TaskEventRead(BaseModel):

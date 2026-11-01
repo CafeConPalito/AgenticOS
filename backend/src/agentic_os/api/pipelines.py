@@ -127,6 +127,8 @@ def preview_decision(
         payload.title,
         payload.description,
         request.app.state.settings.cli_command_overrides,
+        exit_condition=payload.exit_condition,
+        stage_name=payload.stage_name,
     )
     db.commit()
     return PreviewRead(
@@ -136,6 +138,13 @@ def preview_decision(
             )
             for b in views
         ],
+        exit=(
+            PreviewBranchResult(
+                name=decider.lane_ops.EXIT_LABEL, take=result.exit_taken, reason=result.exit_reason
+            )
+            if payload.exit_condition
+            else None
+        ),
         cli=asked.cli.value if asked else None,
         model=result.model or (asked.model if asked else None),
         cost_usd=result.usage.cost_usd,
