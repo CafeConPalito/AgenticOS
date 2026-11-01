@@ -31,20 +31,21 @@ def test_template_assigns_agents_made_from_the_agent_templates(api: TestClient, 
     project_id = project(api, tmp_path)
     assert api.get(f"/api/projects/{project_id}/pipeline").json() is None
 
-    created = api.post(f"/api/projects/{project_id}/pipeline/template", json={"template": "web"})
+    url = f"/api/projects/{project_id}/pipeline/template"
+    created = api.post(url, json={"template": "development"})
     assert created.status_code == 201
     pipeline = created.json()
-    assert pipeline["name"] == "Desarrollo web"
-    stages = pipeline["stages"]
-    assert [(s["name"], s["agent_id"]) for s in stages] == [
-        ("Requisitos", analyst["id"]),
-        ("Desarrollo", None),  # no agent was created from the developer template
-        ("QA", qa["id"]),
-    ]
-    assert stages[2]["reject_to_stage_id"] == stages[1]["id"]
-    assert stages[0]["agent_name"] == analyst["name"]
-    again = api.post(f"/api/projects/{project_id}/pipeline/template", json={"template": "web"})
+    assert pipeline["name"] == "Desarrollo"
+    stages = {s["name"]: s for s in pipeline["stages"]}
+    assert stages["Toma de requisitos"]["agent_id"] == analyst["id"]
+    assert stages["QA"]["agent_id"] == qa["id"]
+    assert stages["Arquitectura"]["agent_id"] is None  # no agent made from that template
+    assert stages["Toma de requisitos"]["agent_name"] == analyst["name"]
+    again = api.post(url, json={"template": "development"})
     assert again.json()["detail"]["code"] == "pipeline_exists"
+    # Phase 24: the old templates are gone.
+    for old in ("web", "web_split"):
+        assert api.post(url, json={"template": old}).status_code == 422
 
 
 def test_validation(api: TestClient, tmp_path: Path):

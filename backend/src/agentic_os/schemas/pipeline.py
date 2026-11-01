@@ -64,14 +64,57 @@ class PipelineWrite(BaseModel):
 
 
 class PipelineTemplate(StrEnum):
-    WEB = "web"
-    WEB_SPLIT = "web_split"
+    # Phase 24: the one fixed template; «web» and «web_split» are gone (their saved pipelines
+    # stay as they were).
+    DEVELOPMENT = "development"
+
+
+class NewAgents(BaseModel):
+    """Phase 24: how the agents a template is missing are created (one CLI and account for
+    all of them; the model is each template's own unless one is given) and in which team."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    cli: Literal["claude", "agy"]
+    account_id: str | None = None
+    model: Annotated[str, StringConstraints(strip_whitespace=True, max_length=80)] | None = None
+    team_id: str | None = None  # an existing team…
+    team_name: Annotated[str, StringConstraints(strip_whitespace=True, max_length=80)] = (
+        "Desarrollo"  # …or a new one with this name
+    )
 
 
 class TemplateRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     template: PipelineTemplate
+    # Phase 24: an agent chosen by hand for a stage (by its index); null leaves it to the
+    # template (an agent made from it, or a new one with `create`).
+    assign: dict[int, str | None] = {}
+    # Without it, the stages with no agent are left empty, as before phase 24.
+    create: NewAgents | None = None
+
+
+class TemplatePlanStage(BaseModel):
+    """One stage of a template and the agent it would get here."""
+
+    index: int
+    name: str
+    template_id: str
+    template_name: str
+    agent_id: str | None  # an active agent made from that template, if any
+    agent_name: str | None
+
+
+class CopyRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    from_project_id: str
+
+
+class CopyWarning(BaseModel):
+    stage: str
+    agent: str
 
 
 class GraphIssue(BaseModel):
@@ -172,3 +215,9 @@ class PipelineRead(BaseModel):
     decider_model: str | None
     stages: list[StageRead]
     links: list[LinkRead]
+
+
+class CopyRead(PipelineRead):
+    """Phase 24: a copied pipeline, and the stages left without their (archived) agent."""
+
+    warnings: list[CopyWarning] = Field(default_factory=list)

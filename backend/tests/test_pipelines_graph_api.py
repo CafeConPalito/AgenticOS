@@ -171,25 +171,47 @@ def test_the_decider_is_saved_with_the_pipeline(api: TestClient, tmp_path: Path)
     assert api.put(url, json={**body, "decider_cli": "gemini"}).status_code == 422
 
 
-def test_the_split_template_forks_and_lets_qa_reject_to_either_branch(
+def test_the_development_template_has_its_stages_branches_exits_and_reviews(
     api: TestClient, tmp_path: Path
 ):
-    analyst = api.post("/api/agents", json={"template": "analyst"}).json()["id"]
-    dev = api.post("/api/agents", json={"template": "developer"}).json()["id"]
-    qa_agent = api.post("/api/agents", json={"template": "qa"}).json()["id"]
+    """Phase 24 (CA4): requirements → validation → architecture → (Frontend | Backend | Datos)
+    → QA → IT; exits at the validation, the architecture and QA; reviews at the validation,
+    the architecture and the end."""
     project_id = project(api, tmp_path)
     created = api.post(
-        f"/api/projects/{project_id}/pipeline/template", json={"template": "web_split"}
+        f"/api/projects/{project_id}/pipeline/template", json={"template": "development"}
     )
     assert created.status_code == 201, created.json()
     pipeline = created.json()
-    start, backend, frontend, qa = pipeline["stages"]
-    assert [s["agent_id"] for s in pipeline["stages"]] == [analyst, dev, dev, qa_agent]
-    assert start["join_stage_id"] == qa["id"]
-    assert (qa["reject_to_stage_id"], qa["reject_extra_stage_ids"]) == (
-        backend["id"],
-        [frontend["id"]],
-    )
-    branches = [x for x in pipeline["links"] if x["from_stage_id"] == start["id"]]
-    assert [x["name"] for x in branches] == ["Backend", "Frontend"]
+    names = [s["name"] for s in pipeline["stages"]]
+    assert names == [
+        "Toma de requisitos",
+        "Validación de requisitos",
+        "Arquitectura",
+        "Frontend",
+        "Backend",
+        "Datos",
+        "QA",
+        "IT / despliegue",
+    ]
+    by = {s["name"]: s for s in pipeline["stages"]}
+    assert [n for n in names if by[n]["requires_review"]] == [
+        "Validación de requisitos",
+        "Arquitectura",
+        "IT / despliegue",
+    ]
+    assert [n for n in names if by[n]["exit_condition"]] == [
+        "Validación de requisitos",
+        "Arquitectura",
+        "QA",
+    ]
+    arch, qa = by["Arquitectura"], by["QA"]
+    assert arch["join_stage_id"] == qa["id"]  # the three branches meet at QA
+    branches = [x for x in pipeline["links"] if x["from_stage_id"] == arch["id"]]
+    assert [x["name"] for x in branches] == ["Frontend", "Backend", "Datos"]
     assert all(x["condition"] for x in branches)
+    assert qa["reject_to_stage_id"] == by["Frontend"]["id"]
+    assert qa["reject_extra_stage_ids"] == [by["Backend"]["id"], by["Datos"]["id"]]
+    for stage in ("Validación de requisitos", "Arquitectura"):
+        assert by[stage]["reject_to_stage_id"] == by["Toma de requisitos"]["id"]
+    assert by["IT / despliegue"]["reject_to_stage_id"] == qa["id"]

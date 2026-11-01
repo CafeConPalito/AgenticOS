@@ -6,72 +6,101 @@ from __future__ import annotations
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from agentic_os.db.base import DEFAULT_WORKSPACE
 from agentic_os.errors import ApiError
 from agentic_os.models import (
     FINISHED_TASK_STATUSES,
     Agent,
     AgentStatus,
     CliAccount,
+    McpExclusion,
     Pipeline,
     Project,
+    SkillMode,
     Stage,
     StageLink,
     Task,
     TaskStatus,
+    Team,
 )
 from agentic_os.schemas.pipeline import (
+    CopyWarning,
     GraphIssue,
     LinkWrite,
+    NewAgents,
     PipelineTemplate,
     PipelineWrite,
     StageWrite,
+    TemplatePlanStage,
 )
 from agentic_os.services import tasks as task_ops
 from agentic_os.services.pipeline_graph import Edge, Graph, GraphErrorCode
 
-BRANCH_BACKEND = "La tarea toca la API, la base de datos o el backend"
+# Phase 24: the conditions of the «Desarrollo» template (its branches and exits).
 BRANCH_FRONTEND = "La tarea toca la interfaz de usuario o el frontend"
-
+BRANCH_BACKEND = "La tarea toca la API, la base de datos, la lógica de negocio o el backend"
+BRANCH_DATA = "La tarea pide análisis de datos, modelos, métricas o informes"
+EXIT_REQUIREMENTS = "La tarea solo pide definir o revisar requisitos"
+EXIT_ARCHITECTURE = "La tarea solo pide definir o revisar la arquitectura"
+EXIT_NO_DEPLOY = "La tarea no necesita despliegue"
 
 # Where a new «Fin» node goes when the editor does not say: under its stage.
 EXIT_OFFSET = 110
 
 
-def _web() -> PipelineWrite:
-    """«Desarrollo web»: Requisitos → Desarrollo → QA, and QA can send the task back."""
+def _development() -> PipelineWrite:
+    """«Desarrollo» (phase 24): requirements → their validation → architecture → (frontend |
+    backend | data) → QA → IT. Requirements, architecture and QA can end the task early; the
+    reviews are at the validation, the architecture and the end."""
     return PipelineWrite(
-        name="Desarrollo web",
+        name="Desarrollo",
         stages=[
-            StageWrite(name="Requisitos", agent_id="analyst"),
-            StageWrite(name="Desarrollo", agent_id="developer"),
-            StageWrite(name="QA", agent_id="qa", reject_to=1),
-        ],
-    )
-
-
-def _web_split() -> PipelineWrite:
-    """Requisitos → (Dev backend | Dev frontend) → QA: the decider picks the branches, QA waits
-    for the ones taken and can send the task back to whichever failed."""
-    return PipelineWrite(
-        name="Desarrollo web con backend y frontend",
-        stages=[
-            StageWrite(name="Requisitos", agent_id="analyst"),
-            StageWrite(name="Dev backend", agent_id="developer"),
-            StageWrite(name="Dev frontend", agent_id="developer"),
-            StageWrite(name="QA", agent_id="qa", reject_to=1, reject_also=[2]),
+            StageWrite(name="Toma de requisitos", agent_id="analyst"),
+            StageWrite(
+                name="Validación de requisitos",
+                agent_id="requirements_validator",
+                requires_review=True,
+                reject_to=0,
+                exit_condition=EXIT_REQUIREMENTS,
+            ),
+            StageWrite(
+                name="Arquitectura",
+                agent_id="software_architect",
+                requires_review=True,
+                reject_to=0,
+                exit_condition=EXIT_ARCHITECTURE,
+            ),
+            StageWrite(name="Frontend", agent_id="frontend_developer"),
+            StageWrite(name="Backend", agent_id="backend_developer"),
+            StageWrite(name="Datos", agent_id="data_scientist"),
+            StageWrite(
+                name="QA",
+                agent_id="qa",
+                reject_to=3,
+                reject_also=[4, 5],
+                exit_condition=EXIT_NO_DEPLOY,
+            ),
+            StageWrite(
+                name="IT / despliegue", agent_id="devops", requires_review=True, reject_to=6
+            ),
         ],
         links=[
-            LinkWrite(source=0, target=1, name="Backend", condition=BRANCH_BACKEND),
-            LinkWrite(source=0, target=2, name="Frontend", condition=BRANCH_FRONTEND),
-            LinkWrite(source=1, target=3),
-            LinkWrite(source=2, target=3),
+            LinkWrite(source=0, target=1),
+            LinkWrite(source=1, target=2),
+            LinkWrite(source=2, target=3, name="Frontend", condition=BRANCH_FRONTEND),
+            LinkWrite(source=2, target=4, name="Backend", condition=BRANCH_BACKEND),
+            LinkWrite(source=2, target=5, name="Datos", condition=BRANCH_DATA),
+            LinkWrite(source=3, target=6),
+            LinkWrite(source=4, target=6),
+            LinkWrite(source=5, target=6),
+            LinkWrite(source=6, target=7),
         ],
     )
 
 
 # The `agent_id` of a template stage names an agent template: it gets the first active agent
 # created from it, if any.
-TEMPLATES = {PipelineTemplate.WEB: _web, PipelineTemplate.WEB_SPLIT: _web_split}
+TEMPLATES = {PipelineTemplate.DEVELOPMENT: _development}
 
 
 def active_tasks_by_stage(db: Session, stage_ids: list[str]) -> dict[str, int]:
@@ -346,23 +375,198 @@ def delete(db: Session, project: Project) -> None:
     db.delete(pipeline)
 
 
-def from_template(db: Session, project: Project, template: PipelineTemplate) -> Pipeline:
-    if task_ops.pipeline_of(db, project.id) is not None:
-        raise ApiError(409, "pipeline_exists", "the project already has a pipeline")
-    payload = TEMPLATES[template]()
-    agents = list(
+def _active_agents(db: Session, workspace_id: str) -> list[Agent]:
+    return list(
         db.scalars(
             select(Agent)
-            .where(Agent.workspace_id == project.workspace_id, Agent.status == AgentStatus.ACTIVE)
+            .where(
+                Agent.workspace_id == workspace_id,
+                Agent.status == AgentStatus.ACTIVE,
+                Agent.archived_at.is_(None),
+            )
             .order_by(Agent.created_at)
         )
     )
 
-    def agent_for(template_id: str | None) -> str | None:
-        if template_id is None:
-            return None
-        return next((a.id for a in agents if a.template == template_id), None)
 
-    for stage in payload.stages:
-        stage.agent_id = agent_for(stage.agent_id)
+def template_plan(
+    db: Session, template: PipelineTemplate, workspace_id: str = DEFAULT_WORKSPACE
+) -> list[TemplatePlanStage]:
+    """Phase 24: each stage of a template with the active agent made from its agent template
+    (the one it would get), or none (one would be created)."""
+    from agentic_os.services.templates import BY_ID
+
+    agents = _active_agents(db, workspace_id)
+    plan = []
+    for index, stage in enumerate(TEMPLATES[template]().stages):
+        template_id = stage.agent_id or ""
+        agent = next((a for a in agents if a.template == template_id), None)
+        plan.append(
+            TemplatePlanStage(
+                index=index,
+                name=stage.name,
+                template_id=template_id,
+                template_name=BY_ID[template_id].name if template_id in BY_ID else template_id,
+                agent_id=agent.id if agent else None,
+                agent_name=agent.name if agent else None,
+            )
+        )
+    return plan
+
+
+def _team_for(db: Session, workspace_id: str, create: NewAgents) -> Team:
+    if create.team_id:
+        team = db.get(Team, create.team_id)
+        if team is None or team.workspace_id != workspace_id:
+            raise ApiError(422, "team_not_found", "the team does not exist", "create.team_id")
+        return team
+    team = Team(workspace_id=workspace_id, name=create.team_name or "Desarrollo")
+    db.add(team)
+    db.flush()
+    return team
+
+
+def _agent_from_template(db: Session, template_id: str, create: NewAgents, team: Team) -> Agent:
+    """A new active agent made from a fixed agent template, with the chosen CLI and account."""
+    from agentic_os.services.templates import BY_ID
+
+    template = BY_ID[template_id]
+    values = template.model_dump(exclude={"id", "own", "skills", "connections", "documents"})
+    model = create.model or (template.model if template.cli == create.cli else "")
+    values.update(
+        cli=create.cli,
+        model=model,
+        account_id=create.account_id,
+        team_id=team.id,
+        template=template.id,
+        status=AgentStatus.ACTIVE,
+    )
+    agent = Agent(workspace_id=team.workspace_id, **values)
+    db.add(agent)
+    db.flush()
+    return agent
+
+
+def from_template(
+    db: Session,
+    project: Project,
+    template: PipelineTemplate,
+    assign: dict[int, str | None] | None = None,
+    create: NewAgents | None = None,
+) -> Pipeline:
+    """The template's pipeline for the project. Each stage gets the agent chosen by hand
+    (`assign`), else an active agent made from its agent template, else (with `create`) a new
+    one made from it, in one team. Whoever calls it commits once: all or nothing."""
+    if task_ops.pipeline_of(db, project.id) is not None:
+        raise ApiError(409, "pipeline_exists", "the project already has a pipeline")
+    payload = TEMPLATES[template]()
+    assign = assign or {}
+    agents = _active_agents(db, project.workspace_id)
+    if create is not None and create.account_id:
+        account = db.get(CliAccount, create.account_id)
+        if account is None:
+            raise ApiError(
+                422, "account_not_found", "the account does not exist", "create.account_id"
+            )
+        if account.cli != create.cli:
+            raise ApiError(
+                422, "account_cli_mismatch", "the account is of another CLI", "create.account_id"
+            )
+    team: Team | None = None
+    for index, stage in enumerate(payload.stages):
+        template_id = stage.agent_id
+        if index in assign and assign[index] is not None:
+            chosen = db.get(Agent, assign[index])
+            if chosen is None or chosen.status != AgentStatus.ACTIVE or chosen.archived_at:
+                raise ApiError(
+                    422, "unknown_agent", "the agent does not exist or is not active", "assign"
+                )
+            stage.agent_id = chosen.id
+            continue
+        found = next((a for a in agents if a.template == template_id), None)
+        if found is not None:
+            stage.agent_id = found.id
+        elif create is not None and template_id:
+            team = team or _team_for(db, project.workspace_id, create)
+            made = _agent_from_template(db, template_id, create, team)
+            agents.append(made)
+            stage.agent_id = made.id
+        else:
+            stage.agent_id = None
     return save(db, project, payload)
+
+
+def _write_of(
+    pipeline: Pipeline, agents: dict[str, Agent]
+) -> tuple[PipelineWrite, list[CopyWarning]]:
+    """A saved pipeline as a new payload (no ids), with its agents kept if they still work."""
+    stages = list(pipeline.stages)
+    index = {s.id: i for i, s in enumerate(stages)}
+    warnings: list[CopyWarning] = []
+    rows = []
+    for s in stages:
+        agent = agents.get(s.agent_id or "")
+        usable = agent is not None and agent.status == AgentStatus.ACTIVE and not agent.archived_at
+        if agent is not None and not usable:
+            warnings.append(CopyWarning(stage=s.name, agent=agent.name))
+        rows.append(
+            StageWrite(
+                name=s.name,
+                agent_id=agent.id if usable and agent else None,
+                requires_review=s.requires_review,
+                reject_to=index.get(s.reject_to_stage_id) if s.reject_to_stage_id else None,
+                reject_also=[index[x] for x in s.reject_extra_ids if x in index],
+                x=s.x,
+                y=s.y,
+                confirm_decision=s.confirm_decision,
+                exit_condition=s.exit_condition,
+                exit_x=s.exit_x,
+                exit_y=s.exit_y,
+            )
+        )
+    links = [
+        LinkWrite(
+            source=index[x.from_stage_id],
+            target=index[x.to_stage_id],
+            name=x.name,
+            condition=x.condition,
+            always=x.always,
+        )
+        for x in pipeline.links
+    ]
+    payload = PipelineWrite(
+        name=pipeline.name,
+        max_rejections=pipeline.max_rejections,
+        stages=rows,
+        links=links,
+        decider_cli=pipeline.decider_cli,  # type: ignore[arg-type]
+        decider_account_id=pipeline.decider_account_id,
+        decider_model=pipeline.decider_model,
+    )
+    return payload, warnings
+
+
+def copy_from(db: Session, project: Project, source: Project) -> tuple[Pipeline, list[CopyWarning]]:
+    """Phase 24: the pipeline of another project, with the same agents and the skills and
+    connections set on each stage; no tasks, history or usage. A stage whose agent is archived
+    or a draft is left without one, with a warning."""
+    if task_ops.pipeline_of(db, project.id) is not None:
+        raise ApiError(409, "pipeline_exists", "the project already has a pipeline")
+    original = task_ops.pipeline_of(db, source.id)
+    if original is None or source.id == project.id:
+        raise ApiError(
+            422, "no_pipeline", "that project has no pipeline to copy", "from_project_id"
+        )
+    ids = {s.agent_id for s in original.stages if s.agent_id}
+    agents = {a.id: a for a in db.scalars(select(Agent).where(Agent.id.in_(ids)))}
+    payload, warnings = _write_of(original, agents)
+    old_ids = [s.id for s in original.stages]
+    pipeline = save(db, project, payload)
+    db.refresh(pipeline)
+    new_ids = dict(zip(old_ids, [s.id for s in pipeline.stages], strict=True))
+    for mode in db.scalars(select(SkillMode).where(SkillMode.stage_id.in_(old_ids))):
+        db.add(SkillMode(skill_id=mode.skill_id, stage_id=new_ids[mode.stage_id], mode=mode.mode))
+    for gone in db.scalars(select(McpExclusion).where(McpExclusion.stage_id.in_(old_ids))):
+        db.add(McpExclusion(connection_id=gone.connection_id, stage_id=new_ids[gone.stage_id]))
+    db.flush()
+    return pipeline, warnings
