@@ -135,3 +135,37 @@ def test_its_usage_shows_in_consumo_but_not_in_the_accounts_limit(app_client: Te
     costs = {row["name"]: row["cost_usd"] for row in rows}
     assert costs["Terminal"] == pytest.approx(4.0)
     assert costs["Dev"] == pytest.approx(1.5)
+
+
+def test_one_agy_at_a_time_in_a_folder_as_for_the_agents_runs(
+    app_client: TestClient, tmp_path: Path
+):
+    folder = tmp_path / "web"
+    folder.mkdir()
+    first = app_client.post("/api/terminals", json={"cli": "agy", "cwd": str(folder)})
+    assert first.status_code == 201, first.text
+    # agy reads its hooks from a plugin in the folder: a second one there would replace it.
+    second = app_client.post("/api/terminals", json={"cli": "agy", "cwd": str(folder)})
+    assert second.status_code == 409
+    assert second.json()["detail"]["code"] == "agy_folder_busy"
+    app_client.delete(f"/api/terminals/{first.json()['id']}")
+    deadline = time.monotonic() + 20
+    while app_client.get("/api/terminals").json() and time.monotonic() < deadline:
+        time.sleep(0.2)
+    again = app_client.post("/api/terminals", json={"cli": "agy", "cwd": str(folder)})
+    assert again.status_code == 201
+    app_client.delete(f"/api/terminals/{again.json()['id']}")
+
+
+def test_a_cli_that_cannot_start_is_an_error(tmp_path: Path):
+    settings = Settings(
+        _env_file=None,
+        data_dir=tmp_path / "data",
+        cli_command_overrides={"claude": [str(tmp_path / "no-existe.exe")]},
+        check_sessions_at_startup=False,
+    )
+    with TestClient(create_app(settings)) as client:
+        failed = client.post("/api/terminals", json={"cli": "claude", "cwd": str(tmp_path)})
+        assert failed.status_code == 500
+        assert failed.json()["detail"]["code"] == "terminal_failed"
+        assert client.get("/api/terminals").json() == []

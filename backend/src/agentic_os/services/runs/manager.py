@@ -569,6 +569,8 @@ class RunManager:
             raise ValueError(f"not a folder: {cwd}")
         adapter = terminal_adapter(cli)
         resolve_executable(cli, self._settings.cli_command_overrides)
+        # agy reads its hooks from a plugin in the folder: one agy at a time there, as for runs.
+        folder = self._reserve_agy_folder(cwd) if cli == Cli.AGY else None
         run = Run(
             workspace_id=DEFAULT_WORKSPACE,
             kind=RunKind.TERMINAL,
@@ -609,6 +611,7 @@ class RunManager:
         except Exception:
             self.tokens.revoke(run.id)
             adapter.cleanup(ctx)
+            self._release_agy_folder(folder)
             raise
         run.cli_session_id = spec.session_id
         db.commit()
@@ -623,7 +626,7 @@ class RunManager:
             lambda changes, run_id=run.id: self._persist(run_id, changes),
             run.cols,
             run.rows,
-            on_end=lambda run_id=run.id: self._on_terminal_end(run_id, adapter, ctx),
+            on_end=lambda run_id=run.id: self._on_terminal_end(run_id, adapter, ctx, folder),
             on_system_event=lambda name, detail="", run_id=run.id: self.add_event(
                 run_id, EventKind.SYSTEM, name, detail
             ),
@@ -636,19 +639,24 @@ class RunManager:
             self.tokens.revoke(run.id)
             self._terminal_runs.pop(run.id, None)
             adapter.cleanup(ctx)
+            self._release_agy_folder(folder)
             run.status, run.error, run.ended_at = RunStatus.FAILED, str(error), utcnow()
             db.commit()
-            return run
+            # Nothing opened: the person must hear why, not get a tab that never shows.
+            raise ApiError(500, "terminal_failed", str(error)) from error
         with self._live_lock:
             if session.alive:
                 self._live[run.id] = session
         db.refresh(run)
         return run
 
-    def _on_terminal_end(self, run_id: str, adapter: CliAdapter, ctx: LaunchContext) -> None:
+    def _on_terminal_end(
+        self, run_id: str, adapter: CliAdapter, ctx: LaunchContext, folder: str | None
+    ) -> None:
         try:
             adapter.cleanup(ctx)
         finally:
+            self._release_agy_folder(folder)
             self._terminal_runs.pop(run_id, None)
             self.tokens.revoke(run_id)
             self.usage.request(run_id, final=True)

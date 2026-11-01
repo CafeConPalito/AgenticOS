@@ -104,12 +104,30 @@ def plugin_rules(instructions: str, prompt: str) -> str:
     return f"{instructions.rstrip()}\n\n# Tarea\n{prompt.strip()}\n"
 
 
+def write_hooks(ctx: LaunchContext, folder: Path, matcher: str = AGY_TOOL_MATCHER) -> None:
+    """Our hooks in the workspace plugin. Shared by the agents' runs and the terminals of one's
+    own (phase 23)."""
+
+    # agy runs hooks through cmd.exe and mangles quoted paths: the short path, unquoted.
+    # Tool events take a matcher and nested hooks (spike P9); the others, a flat list.
+    def hook(event: str) -> dict:
+        return {"type": "command", "command": f"{ctx.hook_command} {event}"}
+
+    hooks = {
+        "agentic-os": {
+            event: [
+                {"matcher": matcher, "hooks": [hook(event)]}
+                if event in TOOL_EVENTS
+                else hook(event)
+            ]
+            for event in HOOK_EVENTS[Cli.AGY]
+        }
+    }
+    write_json(folder / "hooks.json", hooks)
+
+
 class AgyAdapter(CliAdapter):
     cli = Cli.AGY
-
-    @staticmethod
-    def _hook(ctx: LaunchContext, event: str) -> dict:
-        return {"type": "command", "command": f"{ctx.hook_command} {event}"}
 
     def prepare(self, ctx: LaunchContext) -> LaunchSpec:
         prefix = resolve_executable(self.cli, ctx.overrides)
@@ -126,19 +144,7 @@ class AgyAdapter(CliAdapter):
         write_json(folder / "mcp_config.json", {"mcpServers": servers})
         # With skills, reading their SKILL.md is how agy loads one: that read is watched too.
         matcher = f"{AGY_TOOL_MATCHER}|read_file" if ctx.native_skills else AGY_TOOL_MATCHER
-        # agy runs hooks through cmd.exe and mangles quoted paths: the short path, unquoted.
-        # Tool events take a matcher and nested hooks (spike P9); the others, a flat list.
-        hooks = {
-            "agentic-os": {
-                event: [
-                    {"matcher": matcher, "hooks": [self._hook(ctx, event)]}
-                    if event in TOOL_EVENTS
-                    else self._hook(ctx, event)
-                ]
-                for event in HOOK_EVENTS[self.cli]
-            }
-        }
-        write_json(folder / "hooks.json", hooks)
+        write_hooks(ctx, folder, matcher)
         # Phase 17, spike S2: our skills inside the plugin (agy skips a SKILL.md over 24 KB:
         # those are only reachable with use_skill).
         for skill in ctx.native_skills:

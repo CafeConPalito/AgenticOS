@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from pathlib import Path
 
 from agentic_os.models import Cli
 from agentic_os.services.adapters.base import (
@@ -19,6 +20,25 @@ from agentic_os.services.runs.launcher import (
     safe_prompt,
 )
 from agentic_os.services.skills.runtime import PLUGIN_NAME
+
+
+def write_hook_settings(ctx: LaunchContext) -> Path:
+    """The run's settings file: our hooks and the status line (phase 07), which report the
+    session's state, transcript and cost. Shared by the agents' runs and the terminals of one's
+    own (phase 23)."""
+    # Claude runs hooks through a shell (Git Bash on Windows): a quoted path keeps the
+    # backslashes literal.
+    hooks = {
+        event: [
+            {"hooks": [{"type": "command", "command": f'"{ctx.hook_command}" {event}'}]}
+            | ({"matcher": CLAUDE_TOOL_MATCHER} if event in TOOL_EVENTS else {})
+        ]
+        for event in HOOK_EVENTS[Cli.CLAUDE]
+    }
+    # The status line reports the session's cost after every turn (phase 07): Claude only
+    # writes its exact totals to the transcript when the session closes.
+    status_line = {"type": "command", "command": f'"{ctx.hook_command}" {STATUS_LINE}'}
+    return write_json(ctx.run_dir / "settings.json", {"hooks": hooks, "statusLine": status_line})
 
 
 class ClaudeAdapter(CliAdapter):
@@ -52,21 +72,7 @@ class ClaudeAdapter(CliAdapter):
         instructions = run_dir / "instructions.md"
         instructions.parent.mkdir(parents=True, exist_ok=True)
         instructions.write_text(ctx.instructions, "utf-8")
-        # Claude runs hooks through a shell (Git Bash on Windows): a quoted path keeps the
-        # backslashes literal.
-        hooks = {
-            event: [
-                {"hooks": [{"type": "command", "command": f'"{ctx.hook_command}" {event}'}]}
-                | ({"matcher": CLAUDE_TOOL_MATCHER} if event in TOOL_EVENTS else {})
-            ]
-            for event in HOOK_EVENTS[self.cli]
-        }
-        # The status line reports the session's cost after every turn (phase 07): Claude only
-        # writes its exact totals to the transcript when the session closes.
-        status_line = {"type": "command", "command": f'"{ctx.hook_command}" {STATUS_LINE}'}
-        settings = write_json(
-            run_dir / "settings.json", {"hooks": hooks, "statusLine": status_line}
-        )
+        settings = write_hook_settings(ctx)
         mcp = write_json(run_dir / "mcp.json", {"mcpServers": self.mcp_servers(ctx)})
         # A resumed session keeps its id and transcript; the configuration below is the new
         # run's (evidence R1: hooks and MCP are not stored in the session).
