@@ -95,11 +95,15 @@ def watch_parent(
 
     def run() -> None:
         wait_for_parent()
+        # Armed before anything else: a write to a full (but still open) pipe blocks inside
+        # logging while holding its lock, and nothing may stop the hard exit.
+        hard_exit = threading.Timer(grace, os._exit, args=(0,))
+        hard_exit.daemon = True
+        hard_exit.start()
         on_exit()
         with contextlib.suppress(Exception):
             log.warning("parent process gone, shutting down", parent_pid=pid)
-        threading.Event().wait(grace)
-        os._exit(0)
+        hard_exit.join()
 
     thread = threading.Thread(target=run, name="parent-watchdog", daemon=True)
     thread.start()
