@@ -34,6 +34,12 @@ describe('AppHeader', () => {
     ])
     expect(await within(nav).findByRole('link', { name: `${es.nav.board}2` })).toBeVisible()
     expect(within(nav).getByRole('link', { name: `${es.nav.runs}1` })).toBeVisible()
+    // Icons (phase 23): the name in the tooltip.
+    expect(links.map((l) => l.getAttribute('title'))).toEqual([
+      es.nav.board,
+      es.nav.runs,
+      es.nav.settings,
+    ])
     expect(document.querySelector('[data-sidebar]')).toBeNull()
   })
 

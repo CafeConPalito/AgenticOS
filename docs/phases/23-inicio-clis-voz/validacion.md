@@ -23,7 +23,7 @@ Backend  (uv run pytest, backend/.test-progress.log): la suite completa no cabí
 ## Criterios de aceptación
 | # | Criterio | Estado | Evidencia |
 |---|---|---|---|
-| CA1 | Accesos directos (cambiados en la validación: Conocimiento y Conexiones en la barra superior, junto al Inbox) | ✅ | `AppHeader.test.tsx`; el usuario pidió el cambio al probar el instalador |
+| CA1 | Accesos directos (cambiados en la validación: Conocimiento y Conexiones en la barra superior, junto al Inbox; Tablero, Ejecuciones y Ajustes como iconos, con el contador junto al icono) | ✅ | `AppHeader.test.tsx`; el usuario pidió el cambio al probar el instalador |
 | CA2 | Terminal propio con CLI, cuenta y carpeta | ✅ probado por el usuario en la app instalada (2026-11-01) | `test_terminals.py`, `TerminalDock.test.tsx` |
 | CA3 | Varios terminales en pestañas | ✅ | `TerminalDock.test.tsx` |
 | CA4 | Fuera del panel y de Ejecuciones; gasto en Consumo, no en el límite | ✅ | `test_terminals.py`, `TerminalDock.test.tsx` |
