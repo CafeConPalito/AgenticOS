@@ -1,6 +1,6 @@
 # Fase 23: Inicio, CLIs y voz · Validación
 
-> **Estado (2026-11-01)**: el usuario probó el instalador: terminal propio y dictado en vivo bien. Pidió llevar los accesos directos a la barra superior, junto al Inbox, y unir Contexto y Skills (hecho). Falta su OK para cerrar: merge, versión `0.9.3` y tag `v0.9.3`. CA7 queda cubierto por los tests (no hay una máquina sin los CLIs a mano).
+> **Estado (2026-11-01)**: cerrada (`v0.9.3`). El usuario probó el instalador (terminal propio y dictado en vivo) y pidió cambiar los accesos directos (ver Retro).
 
 ## Tests automáticos
 ```
@@ -48,3 +48,21 @@ Backend  (uv run pytest, backend/.test-progress.log): la suite completa no cabí
 | Un CLI que no arranca respondía 201 sin pestaña ni aviso | media | Error 500 `terminal_failed`; test |
 | La construcción de los *hooks* del terminal duplicaba la de los agentes | baja | Funciones compartidas (`write_hook_settings`, `write_hooks`) |
 | Al acabar una instalación se comprobaban los CLIs dos veces | baja | La interfaz lee lo que el backend ya comprobó |
+
+## Retro
+- **Cambios respecto a la spec y el plan**:
+  - Los iconos de los CLIs son propios y neutros, reconocibles por color y forma, sin logos registrados (decisión del usuario al aprobar el plan).
+  - Tras probar el instalador, los accesos directos dejaron Inicio: toda la navegación es ahora una fila de iconos en la barra superior, en tres grupos (Tablero, Ejecuciones e Inbox; Conocimiento y Conexiones; Ajustes), con el contador de Tablero y Ejecuciones dentro de la píldora de su icono. Contexto y Skills se unieron en Conocimiento porque llevaban a la misma página.
+- **Lo aprendido**:
+  - Whisper tarda casi lo mismo con 1 s que con 10 s de audio si la ventana de audio es corta (`-ac 512`): el texto en vivo sale por trozos pequeños fijados en las pausas.
+  - Buscar los CLIs solo en el `PATH` del proceso falla justo después de instalarlos: hay que leer también el `PATH` del registro y las carpetas conocidas.
+  - La suite completa del backend no cabe en memoria con un archivo de paginación pequeño: se pasa por partes.
+- **Impacto en fases futuras**:
+  - `test_switching.py::test_alert_at_the_threshold_once_per_agent` falla a veces (dos comprobaciones de cuota en paralelo): anotado.
+  - Codex y OpenCode (fase 29) se suman al catálogo de instaladores oficiales (`OFFICIAL` en `clis.py`).
+
+## Cierre
+- [x] OK del usuario (2026-11-01, tras probar la app instalada y ver la barra nueva)
+- [x] Merge a `main` (`--no-ff`)
+- [x] Tag `v0.9.3` y versión `0.9.3` en los manifiestos
+- [x] `docs/roadmap.md` actualizado

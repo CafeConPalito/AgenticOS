@@ -1,6 +1,6 @@
 # ADR 0029: Terminales propios, instalación de CLIs y dictado en vivo
 
-- **Estado**: propuesto (plan aprobado el 2026-10-31; se acepta al cerrar la fase 23)
+- **Estado**: aceptado (plan aprobado el 2026-10-31 y fase 23 cerrada el 2026-11-01)
 - **Fecha**: 2026-10-31
 - **Contexto de decisión**: fase 23 ([spec](../phases/23-inicio-clis-voz/spec.md) · [plan](../phases/23-inicio-clis-voz/plan.md))
 
