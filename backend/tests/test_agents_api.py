@@ -32,7 +32,19 @@ def test_crud_roundtrip(client: TestClient):
 
 def test_templates_are_listed_and_used(client: TestClient):
     templates = client.get("/api/agent-templates").json()
-    assert [t["id"] for t in templates] == ["analyst", "developer", "qa", "writer", "sales"]
+    assert [t["id"] for t in templates] == [
+        "analyst",
+        "requirements_validator",
+        "software_architect",
+        "frontend_developer",
+        "backend_developer",
+        "data_scientist",
+        "developer",
+        "qa",
+        "devops",
+        "writer",
+        "sales",
+    ]  # phase 24: the «Desarrollo» roles
 
     agent = create(client, template="developer", name="Dev · Desarrollador")
     assert agent["template"] == "developer"
