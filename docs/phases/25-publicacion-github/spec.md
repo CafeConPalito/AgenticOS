@@ -1,6 +1,6 @@
 # Fase 25: Publicación en GitHub · Spec
 
-- **Estado**: borrador
+- **Estado**: aprobada (2026-11-02)
 - **Rama**: `phase/25-publicacion-github`
 
 ## Objetivo
