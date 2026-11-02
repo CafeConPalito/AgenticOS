@@ -1,5 +1,7 @@
 # Agentic OS
 
+> **In English:** Agentic OS is a Windows desktop app that runs a team of AI agents on top of the AI coding CLIs you already use (Claude Code, Antigravity CLI…). It gives them per-agent queues, pipelines, live terminals with human-in-the-loop, a knowledge library and skills. The interface and the documentation are in Spanish. Download the installer from the [latest release](https://github.com/CafeConPalito/AgenticOS/releases/latest). It is free software under the GNU GPLv3.
+
 App de escritorio para orquestar un equipo de agentes de IA (Claude Code, Antigravity CLI…) que trabajan como empleados: colas por agente, pipelines (Requisitos → Desarrollo → QA), terminales en vivo con *human-in-the-loop*, conocimiento y skills.
 
 - Visión: [`docs/vision.md`](docs/vision.md)
@@ -9,11 +11,20 @@ App de escritorio para orquestar un equipo de agentes de IA (Claude Code, Antigr
 - Licencia: GNU GPLv3 o posterior ([`LICENSE`](LICENSE))
 
 ## Instalar
-1. Ejecuta `Agentic OS_0.9.0_x64-setup.exe`. Se instala **para tu usuario**, sin permisos de administrador, en `%LOCALAPPDATA%\Agentic OS`. Si falta WebView2, el instalador lo descarga.
-2. **SmartScreen**: el instalador no está firmado, así que Windows puede mostrar «Windows protegió su PC». Pulsa «Más información» → «Ejecutar de todas formas». Si el antivirus bloquea `agentic-os-backend.exe`, añádelo como excepción: es el backend de la app, empaquetado con PyInstaller.
-3. Instala y abre los CLIs que quieras usar: Claude Code (`irm https://claude.ai/install.ps1 | iex` en PowerShell, luego `claude` y `/login`) y Antigravity CLI (`agy`). En **Ajustes › CLIs detectados** verás si los encuentra y si tienen sesión iniciada.
+De momento solo hay instalador para Windows 10/11 de 64 bits.
 
-- **Actualizar**: instala la versión nueva encima. Se conservan la base de datos, los logs y los ajustes; antes de migrar la base de datos se guarda una copia en `<carpeta de datos>\backups\` (las 3 últimas).
+1. Descarga `Agentic OS_<versión>_x64-setup.exe` de la [última release](https://github.com/CafeConPalito/AgenticOS/releases/latest).
+2. Si quieres, comprueba que el fichero es el publicado. Su SHA-256 está en el `.sha256` de la release, y en PowerShell se calcula así:
+   ```powershell
+   (Get-FileHash '.\Agentic OS_<versión>_x64-setup.exe' -Algorithm SHA256).Hash
+   ```
+3. Ejecútalo. Se instala **para tu usuario**, sin permisos de administrador, en `%LOCALAPPDATA%\Agentic OS`. Si falta WebView2, el instalador lo descarga.
+4. **SmartScreen**: el instalador no está firmado, así que Windows puede mostrar «Windows protegió su PC». Pulsa «Más información» → «Ejecutar de todas formas». Si el antivirus bloquea `agentic-os-backend.exe`, añádelo como excepción: es el backend de la app, empaquetado con PyInstaller.
+5. Instala y abre los CLIs que quieras usar: Claude Code (`irm https://claude.ai/install.ps1 | iex` en PowerShell, luego `claude` y `/login`) y Antigravity CLI (`agy`). En **Ajustes › CLIs detectados** verás si los encuentra y si tienen sesión iniciada.
+
+Si prefieres compilarlo tú, más abajo están los requisitos y `npm run build:desktop`.
+
+- **Actualizar**: descarga la versión nueva de la release e instálala encima. Se conservan la base de datos, los logs y los ajustes; antes de migrar la base de datos se guarda una copia en `<carpeta de datos>\backups\` (las 3 últimas).
 - **Desinstalar**: desde «Aplicaciones instaladas» de Windows. La casilla «Borrar los datos de la aplicación» (desmarcada por defecto) borra también `%APPDATA%\AgenticOS`. Si moviste la carpeta de datos a otro sitio, esa carpeta hay que borrarla a mano.
 - **Una sola instancia**: abrir la app otra vez trae al frente la ventana que ya está abierta.
 - **Si el backend se cae**, la app lo vuelve a abrir sola («Reconectando…»). Si falla tres veces seguidas, muestra «Reintentar» y «Abrir logs».
@@ -55,6 +66,7 @@ uv sync --project backend       # dependencias del backend
 | `npm run build:backend` | Empaqueta el backend con PyInstaller como sidecar (`desktop/src-tauri/binaries/`) |
 | `npm run build:desktop` | Sidecar + frontend + instalador NSIS (`desktop/src-tauri/target/release/bundle/nsis/`) |
 | `npm run test:packaged` | Construye el sidecar y pasa los e2e (scheduler, HITL, consumo, reanudación) contra él |
+| `npm run check:public` | Busca datos personales, secretos y ficheros que no deben publicarse antes de subir nada al repositorio público. Con `-- --history` revisa todo el historial. Los datos que busca están en `.public-check.local`, que no se versiona ([ADR 0031](docs/adr/0031-public-repository-history-rewrite.md)) |
 | `npm run smoke:installed` | Prueba de humo de la app instalada: arranca, el backend responde, los datos están en su sitio y al cerrar no queda ningún proceso |
 
 **Firma de código**: `scripts/sign.ps1` firma el sidecar, la app y el instalador si existe `AGENTIC_OS_SIGN_CERT` (huella SHA-1 de un certificado del almacén del usuario; `signtool` del Windows SDK). Sin esa variable no firma nada.
@@ -272,4 +284,4 @@ Copyright (C) 2026 Albano Díez de Paulino
 
 Agentic OS es software libre: puedes redistribuirlo y modificarlo bajo los términos de la **GNU General Public License**, publicada por la Free Software Foundation, en su versión 3 o (a tu elección) cualquier versión posterior. Se distribuye con la esperanza de que sea útil, pero **sin ninguna garantía**, ni siquiera la implícita de comerciabilidad o idoneidad para un fin concreto. El texto completo está en [`LICENSE`](LICENSE).
 
-Errores y sugerencias: [contacto@cafeconpalito.com](mailto:contacto@cafeconpalito.com).
+Errores y sugerencias: en los [issues](https://github.com/CafeConPalito/AgenticOS/issues) o en [contacto@cafeconpalito.com](mailto:contacto@cafeconpalito.com). Las vulnerabilidades, mejor por correo: ver [`SECURITY.md`](SECURITY.md).
