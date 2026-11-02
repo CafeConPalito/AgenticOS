@@ -1,6 +1,6 @@
 # Fase 25, bloque 3: imágenes revisadas (CA1)
 
-Revisión una a una, el 2026-11-02, de las 80 imágenes del repo que no son iconos ni búhos (`frontend/src/assets` y `desktop/src-tauri/icons` no se revisan). Cada ruta solo ha tenido una versión en el historial.
+Revisión una a una, el 2026-11-02, de las 81 imágenes del repo que no son iconos ni búhos (`frontend/src/assets` y `desktop/src-tauri/icons` no se revisan). Cada ruta solo ha tenido una versión en el historial.
 
 ## Pixeladas (12): mostraban la ruta con el usuario de Windows; `ca2-agy.jpg` también el email
 Se pixelan las zonas con bloques de 10 px. La versión anterior de cada una se quita del historial al reescribirlo (`--strip-blobs-with-ids`, con los ids guardados en `.public-strip-blobs.local`, que no se versiona).
@@ -18,7 +18,7 @@ Se pixelan las zonas con bloques de 10 px. La versión anterior de cada una se q
 - `docs/phases/22-temas-apariencia/evidencias/menu-ajustes.png`
 - `docs/phases/22-temas-apariencia/evidencias/menu-ajustes-estrecho.png`
 
-## Sin datos personales (68)
+## Sin datos personales (69)
 Los diseños usan datos ficticios («Marta», `marta@estudio.es`, `D:\proyectos\…`, `C:\Users\marta\…`).
 
 - `backend/tests/fixtures/knowledge/captura_error.png`
