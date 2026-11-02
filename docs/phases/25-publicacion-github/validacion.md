@@ -45,7 +45,7 @@ Tras subir la versión a 0.9.5 (y regenerar las licencias de terceros): en verde
 
 ## Retro
 - **Cambios respecto a la spec**:
-  - el usuario pidió quitar su usuario de Windows en cualquier parte, también dentro de otras palabras («costra» pasó a «la costra»);
+  - el usuario pidió quitar su usuario de Windows en cualquier parte, también dentro de otras palabras (una palabra del corpus de pruebas pasó a «la costra»). Esta misma validación la contenía al reescribir y `filter-repo` la sustituyó, así que la reescritura cubre también lo escrito después de la última comprobación del árbol;
   - también se buscan cadenas UTF-16 en los binarios.
 - **Lo que no se esperaba**: 12 capturas de evidencias mostraban rutas con el usuario y una el email. Solo se ven revisando las imágenes, porque la comprobación de texto no las detecta.
 - **Impacto en fases futuras**: `npm run check:public -- --history` antes de cada *push* al repo público. Los commits ya salen con el autor noreply. La fase 26 (instaladores firmados y GitHub Actions) puede añadir la comprobación del árbol a la CI.
@@ -53,7 +53,7 @@ Tras subir la versión a 0.9.5 (y regenerar las licencias de terceros): en verde
 ## Cierre
 - [x] OK del usuario para cerrar («continúa», 2026-11-02), con la suite del backend en verde
 - [x] Versión `0.9.5` en los manifiestos, merge a `main` (`--no-ff`) y tag `v0.9.5`
-- [ ] Copia de seguridad, reescritura y comprobaciones CA2–CA4 sobre el repo real
+- [x] Copia de seguridad (`D:\agentic_os-backup-2026-11-02\`: bundle verificado y restaurado, y copia de `.git`), reescritura y comprobaciones CA2–CA4 sobre el repo real: 499 commits, 28 merges y 26 etiquetas, igual que antes; `check-public --history --expect-identity` con 4183 blobs y 0 hallazgos; las 12 imágenes originales eliminadas; un único autor (noreply)
 - [ ] Publicación: *push*, metadatos y release (CA5, CA6)
 - [ ] Repo público tras la confirmación del usuario y CA7
 - [ ] `docs/roadmap.md` actualizado
