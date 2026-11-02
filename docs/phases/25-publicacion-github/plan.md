@@ -6,7 +6,8 @@
 ## Lo que ya se sabe (revisado al escribir el plan)
 - **Datos personales en texto**: 16 ficheros fuera de las evidencias (14 fixtures de `backend/tests/fixtures/`, `test_adapters.py` y `spikes/knowledge-graph/corpus.py`) y los de las evidencias de las fases 00, 01, 04, 05–08, 10, 12, 13, 17–19.
   - El usuario de Windows aparece como `C:\Users\…`, `C:\\Users\\…`, `/c/Users/…` y `C--Users-…`, que es la forma de las carpetas de proyecto de Claude Code.
-  - Esa misma cadena forma parte de «costra» en el corpus del grafo de conocimiento, así que **no se puede sustituir sin contexto**.
+  - La misma cadena aparece también dentro de una palabra del corpus del grafo de conocimiento (el nombre de la capa de arroz tostado de la paella), en la fixture y en el spike.
+  - **Regla: la cadena del usuario no puede aparecer en ningún sitio**, ni siquiera dentro de otra palabra, sin distinguir mayúsculas. Esto vale para el contenido de todas las versiones, los nombres de ficheros y los mensajes de commits y etiquetas. Esa palabra del corpus pasa a ser «la costra». Ningún test depende de ella.
 - **Imágenes**: 88 en el árbol, y las mismas 88 rutas son todas las que ha habido en el historial:
   - 24 en `docs/design/screenshots`, 14 en `docs/design/v2` y 26 en las evidencias de la fase 20, más las de las fases 00, 02–04, 07, 08 y 22;
   - iconos y búhos (`frontend/src/assets`, `desktop/src-tauri/icons`), que no tienen riesgo;
@@ -31,10 +32,11 @@ Es Python de la biblioteca estándar y se ejecuta con `uv run --project backend 
 
 ### Sustituciones
 Se usan las mismas en el árbol (bloque 2) y en el historial (bloque 6). El fichero `.public-replacements.local` (ignorado por git) tiene el formato de `--replace-text`, con reglas `regex:`:
-- el email real (cubre también `166m<email>`) → `usuario@example.com`;
-- `(Users[\\/]{1,2})<usuario>` → `\1usuario`;
-- `(Users-)<usuario>` → `\1usuario`;
-- `(/c/Users/)<usuario>` → `\1usuario`.
+1. el email real (cubre también `166m<email>`) → `usuario@example.com`;
+2. la palabra del corpus con su artículo («el …») → «la costra»;
+3. cualquier otra aparición de la cadena del usuario, sin distinguir mayúsculas → `usuario`. Así, las rutas quedan como `C:\Users\usuario\…`, `C--Users-usuario-…`, etc.
+
+`check-public.py` busca la cadena del usuario como subcadena, sin distinguir mayúsculas y sin contexto. Cualquier aparición hace fallar la comprobación, y las excepciones de `public-allowlist.txt` no se aplican a los patrones personales.
 
 `scripts/apply-replacements.py` aplica ese fichero al árbol de trabajo en el bloque 2, para que el árbol y el historial queden igual.
 

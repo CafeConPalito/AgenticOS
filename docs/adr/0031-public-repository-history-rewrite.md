@@ -15,7 +15,7 @@ No incluye secretos reales. Los commits y las etiquetas sirven como registro de 
 1. Se publica el **historial completo, reescrito** con `git filter-repo`:
    - `--replace-text` sustituye el email y la ruta del usuario en todo el contenido de texto de todas las versiones;
    - `--mailmap` pone como autor y *committer* (y *tagger* de las etiquetas anotadas) `TerciodeMarte <111312600+TerciodeMarte@users.noreply.github.com>`.
-2. **Sustituciones con contexto**: el usuario de Windows solo se cambia cuando forma parte de una ruta (`Users\…`, `Users/…`, `Users\\…`, `-Users-…`). Así no se tocan palabras que lo contienen, como «costra» en un corpus de pruebas.
+2. **Ninguna aparición del usuario de Windows**: su cadena se elimina en todas partes, sin distinguir mayúsculas y aunque forme parte de otra palabra. Lo que la contenía se reescribe: una palabra del corpus de pruebas pasa a ser «la costra» y las rutas pasan a `…Users…usuario…`. La comprobación la busca como subcadena y no admite excepciones.
 3. **Comprobación** (`scripts/check-public.py`):
    - Los patrones personales se leen de un fichero local no versionado (`.public-check.local`). El repo no publica lo que busca.
    - Los patrones genéricos (tokens de API, claves privadas, ficheros prohibidos) sí están versionados.
