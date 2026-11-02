@@ -24,8 +24,8 @@ Tras subir la versión a 0.9.5 (y regenerar las licencias de terceros): en verde
 | CA2 | Todo el historial pasa la comprobación y todos los commits tienen el autor noreply | ✅ en el ensayo | Clon temporal tras `git filter-repo`: `check-public.py --history --expect-identity "TerciodeMarte <…noreply…>"` da 4164 blobs y 0 hallazgos. Commits, *committers* y *taggers*: todos `TerciodeMarte <111312600+TerciodeMarte@users.noreply.github.com>`. La cadena del usuario no aparece en ningún contenido, nombre ni mensaje (`git grep -i` sobre los 494 commits: 0). Las 12 imágenes originales ya no están (`git cat-file -e`: 0 de 12) |
 | CA3 | Se conservan los commits, los merges y las etiquetas, y los tests pasan | ✅ en el ensayo | Antes y después: 494 commits, 26 merges y 25 etiquetas (con `v0.9.5` serán 26). El árbol de `HEAD` reescrito es idéntico al de la rama (mismo hash `f68c944…`), así que los tests de arriba valen para él |
 | CA4 | Copia de seguridad restaurable | ✅ en el ensayo | `git bundle create --all` (17,5 MiB), `git bundle verify` correcto y clon desde el bundle con 494 commits y 25 etiquetas |
-| CA5 | Repo con `main`, etiquetas, licencia, README y `SECURITY.md` | pendiente | Tras el merge |
-| CA6 | Release `v0.9.5` con el instalador y su SHA-256 | pendiente | Tras el merge |
+| CA5 | Repo con `main`, etiquetas, licencia, README y `SECURITY.md` | ✅ | `git push` de `main` y de las 26 etiquetas (sin las ramas `phase/*`). `gh repo view`: rama por defecto `main`, licencia `gpl-3.0` detectada, *issues* activados, descripción y 8 *topics* |
+| CA6 | Release `v0.9.5` con el instalador y su SHA-256 | ✅ | [Release `v0.9.5`](https://github.com/CafeConPalito/AgenticOS/releases/tag/v0.9.5) (*pre-release*): `AgenticOS_0.9.5_x64-setup.exe` (167 944 299 bytes) y su `.sha256`. El *digest* que calcula GitHub (`sha256:b4abfff8…f947c486`) es igual al local. En las releases el instalador se llama `AgenticOS_…` porque GitHub cambia los espacios por puntos (README actualizado) |
 | CA7 | Instalación desde la release en una máquina limpia | pendiente | Tras publicar, con `clean-machine.ps1 -Url … -Sha256 …` |
 
 ## Code review
