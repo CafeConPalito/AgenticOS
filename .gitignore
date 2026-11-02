@@ -52,3 +52,4 @@ frontend/.vitest.log
 # Phase 25: personal patterns and replacements for scripts/check-public.py (never committed)
 .public-check.local
 .public-replacements.local
+.public-strip-blobs.local
