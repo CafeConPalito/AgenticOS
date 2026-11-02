@@ -1,0 +1,5 @@
+# Known false positives of scripts/check-public.py: path<TAB>pattern name<TAB>reason.
+# Only generic secret patterns can be allowed; personal patterns admit no exceptions.
+backend/tests/test_support.py	github-token	fake token to test that logs hide secrets
+backend/tests/test_support.py	anthropic-key	fake key to test that logs hide secrets
+desktop/src-tauri/src/desklog.rs	github-token	fake token to test that desktop logs hide secrets

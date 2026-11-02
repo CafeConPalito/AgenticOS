@@ -15,10 +15,10 @@
     "dev:backend": "uv run --project backend agentic-os-backend --reload",
     "dev:frontend": "npm -w frontend run dev",
     "dev:desktop": "concurrently -k -n backend,desktop -c blue,green \"npm:dev:backend\" \"npm -w desktop run tauri dev\"",
-    "test": "npm run test:backend && npm run test:frontend && npm run test:desktop && npm run test:spikes",
+    "test": "npm run test:backend && npm run test:frontend && npm run test:desktop && npm run test:spikes && npm run test:scripts",
     "test:backend": "uv run --project backend pytest backend",
     "test:frontend": "npm -w frontend run test",
-    "lint": "npm run lint:backend && npm run lint:frontend && npm run lint:desktop && npm run lint:spikes",
+    "lint": "npm run lint:backend && npm run lint:frontend && npm run lint:desktop && npm run lint:spikes && npm run lint:scripts",
     "lint:backend": "uv run --project backend ruff check backend && uv run --project backend ruff format --check backend",
     "lint:frontend": "npm -w frontend run lint && npm -w frontend run format:check && npm -w frontend run typecheck",
     "check": "npm run lint && npm run test",
@@ -30,7 +30,10 @@
     "test:desktop": "cargo test --manifest-path desktop/src-tauri/Cargo.toml",
     "lint:desktop": "cargo fmt --manifest-path desktop/src-tauri/Cargo.toml --check",
     "lint:spikes": "uv run --project spikes ruff check spikes && uv run --project spikes ruff format --check spikes",
-    "test:spikes": "uv run --project spikes pytest spikes"
+    "test:spikes": "uv run --project spikes pytest spikes",
+    "lint:scripts": "uv run --project backend ruff check scripts/check-public.py scripts/tests && uv run --project backend ruff format --check scripts/check-public.py scripts/tests",
+    "test:scripts": "uv run --project backend pytest scripts/tests -p no:cacheprovider",
+    "check:public": "uv run --project backend python scripts/check-public.py"
   },
   "devDependencies": {
     "concurrently": "^10.0.6",
