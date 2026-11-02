@@ -4,7 +4,7 @@
 
 # Agentic OS
 
-> **In English:** Agentic OS is a Windows desktop app that runs a team of AI agents on top of the AI coding CLIs you already use (Claude Code, Antigravity CLI…). It gives them per-agent queues, pipelines, live terminals with human-in-the-loop, a knowledge library and skills. The interface and the documentation are in Spanish. Download the installer from the [latest release](https://github.com/CafeConPalito/AgenticOS/releases/latest). It is free software under the GNU GPLv3.
+> **In English:** Agentic OS is a Windows desktop app that runs a team of AI agents on top of the AI coding CLIs you already use (Claude Code, Antigravity CLI…). It gives them per-agent queues, pipelines, live terminals with human-in-the-loop, a knowledge library and skills. The interface and the documentation are in Spanish. Download the installer from the newest version in [Releases](https://github.com/CafeConPalito/AgenticOS/releases). It is free software under the GNU GPLv3.
 
 App de escritorio para orquestar un equipo de agentes de IA (Claude Code, Antigravity CLI…) que trabajan como empleados: colas por agente, pipelines (Requisitos → Desarrollo → QA), terminales en vivo con *human-in-the-loop*, conocimiento y skills.
 
@@ -17,7 +17,7 @@ App de escritorio para orquestar un equipo de agentes de IA (Claude Code, Antigr
 ## Instalar
 De momento solo hay instalador para Windows 10/11 de 64 bits.
 
-1. Descarga `AgenticOS_<versión>_x64-setup.exe` de la [última release](https://github.com/CafeConPalito/AgenticOS/releases/latest).
+1. Descarga `AgenticOS_<versión>_x64-setup.exe` de la versión más reciente en [Releases](https://github.com/CafeConPalito/AgenticOS/releases). Mientras no salga la `1.0.0` son *pre-releases*.
 2. Si quieres, comprueba que el fichero es el publicado. Su SHA-256 está en el `.sha256` de la release, y en PowerShell se calcula así:
    ```powershell
    (Get-FileHash '.\AgenticOS_<versión>_x64-setup.exe' -Algorithm SHA256).Hash
