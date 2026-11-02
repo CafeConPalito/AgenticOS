@@ -17,8 +17,8 @@ Publicar Agentic OS en un repositorio público de GitHub, [CafeConPalito/Agentic
 - **Licencia**: `LICENSE` es la GNU GPLv3, que GitHub detecta sola.
 - **Secretos**: no hay ninguno real en el árbol ni en el historial. Solo hay tokens falsos en los tests del filtrado de logs (`test_support.py`, `desklog.rs`).
 - **Datos personales**: hay unos 35 ficheros con datos reales, todos en evidencias de fases (`docs/phases/*/evidencias/`), en fixtures de tests (`backend/tests/fixtures/`) y en `spikes/knowledge-graph`. Contienen:
-  - el email real del usuario, también con la secuencia de color ANSI delante (`166musuario@…`);
-  - el usuario de Windows en rutas (`C:\Users\usuario\…`, `/c/Users/usuario/…`).
+  - el email real del usuario, también con la secuencia de color ANSI delante (`166m<email>`);
+  - el usuario de Windows en rutas (`C:\Users\<usuario>\…`, `/c/Users/<usuario>/…`) y, como subcadena, dentro de una palabra del corpus de pruebas.
 
   Las demás direcciones (`marta.personal@…`, `marta@estudio.es`, `trabajo@empresa.com`…) son datos de ejemplo, y `contacto@cafeconpalito.com` es el contacto público del proyecto.
 - **Autor de los commits**: `terciodemarte <you@example.com>`, un email de relleno que GitHub no asocia a ninguna cuenta.

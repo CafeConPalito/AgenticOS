@@ -91,7 +91,7 @@ Se usan las mismas en el árbol (bloque 2) y en el historial (bloque 6). El fich
 **Bloque 6: cierre y reescritura** (después del OK)
 14. [ ] Versión `0.9.5` en los manifiestos, merge `--no-ff` a `main` y tag `v0.9.5`.
 15. [ ] Copia de seguridad (`git bundle create … --all`, `git bundle verify` y copia de `.git`) en `D:\agentic_os-backup-<fecha>\`.
-16. [ ] `git filter-repo --replace-text .public-replacements.local --mailmap <mailmap> [--strip-blobs-with-ids …]`.
+16. [ ] `git filter-repo --replace-text .public-replacements.local --replace-message .public-replacements.local --mailmap <mailmap> [--strip-blobs-with-ids …]`. Se sustituyen también los mensajes de commits y etiquetas: hoy ninguno contiene los datos, y así tampoco los tendrán los de esta fase.
 17. [ ] `check-public.py --history` en verde; mismos commits y etiquetas que antes; lint y suite sobre el resultado (CA2–CA4).
 
 **Bloque 7: publicación**
