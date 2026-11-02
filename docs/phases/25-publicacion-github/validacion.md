@@ -26,7 +26,7 @@ Tras subir la versión a 0.9.5 (y regenerar las licencias de terceros): en verde
 | CA4 | Copia de seguridad restaurable | ✅ en el ensayo | `git bundle create --all` (17,5 MiB), `git bundle verify` correcto y clon desde el bundle con 494 commits y 25 etiquetas |
 | CA5 | Repo con `main`, etiquetas, licencia, README y `SECURITY.md` | ✅ | `git push` de `main` y de las 26 etiquetas (sin las ramas `phase/*`). `gh repo view`: rama por defecto `main`, licencia `gpl-3.0` detectada, *issues* activados, descripción y 8 *topics* |
 | CA6 | Release `v0.9.5` con el instalador y su SHA-256 | ✅ | [Release `v0.9.5`](https://github.com/CafeConPalito/AgenticOS/releases/tag/v0.9.5) (*pre-release*): `AgenticOS_0.9.5_x64-setup.exe` (167 944 299 bytes) y su `.sha256`. El *digest* que calcula GitHub (`sha256:b4abfff8…f947c486`) es igual al local. En las releases el instalador se llama `AgenticOS_…` porque GitHub cambia los espacios por puntos (README actualizado) |
-| CA7 | Instalación desde la release en una máquina limpia | pendiente | Tras publicar, con `clean-machine.ps1 -Url … -Sha256 …` |
+| CA7 | Instalación desde la release en una máquina limpia | ⏳ en parte | Repo público el 2026-11-02 con la confirmación del usuario, tras `check-public --history` en verde (4188 blobs, 0 hallazgos). Sin sesión se descargaron de la release pública el instalador (167 944 299 bytes) y su `.sha256`, y el SHA-256 coincide. **Falta** la instalación en Windows Sandbox: no está activado en este equipo, y activarlo requiere administrador y reiniciar (lo hace el usuario). Después: `scripts/clean-machine.ps1 -Url https://github.com/CafeConPalito/AgenticOS/releases/download/v0.9.5/AgenticOS_0.9.5_x64-setup.exe -Sha256 B4ABFFF8B661F1DD22BA775D4B92292E9BF2BA89541D664BC6452DDAF947C486` |
 
 ## Code review
 `/code-review` (medium) sobre `main...phase/25-publicacion-github`: 9 hallazgos.
@@ -54,6 +54,7 @@ Tras subir la versión a 0.9.5 (y regenerar las licencias de terceros): en verde
 - [x] OK del usuario para cerrar («continúa», 2026-11-02), con la suite del backend en verde
 - [x] Versión `0.9.5` en los manifiestos, merge a `main` (`--no-ff`) y tag `v0.9.5`
 - [x] Copia de seguridad (`D:\agentic_os-backup-2026-11-02\`: bundle verificado y restaurado, y copia de `.git`), reescritura y comprobaciones CA2–CA4 sobre el repo real: 499 commits, 28 merges y 26 etiquetas, igual que antes; `check-public --history --expect-identity` con 4183 blobs y 0 hallazgos; las 12 imágenes originales eliminadas; un único autor (noreply)
-- [ ] Publicación: *push*, metadatos y release (CA5, CA6)
-- [ ] Repo público tras la confirmación del usuario y CA7
+- [x] Publicación: *push*, metadatos, release (CA5, CA6), icono en el README e imagen de vista previa social
+- [x] Repo público tras la confirmación del usuario
+- [ ] CA7: instalación en Windows Sandbox desde la release pública
 - [ ] `docs/roadmap.md` actualizado
