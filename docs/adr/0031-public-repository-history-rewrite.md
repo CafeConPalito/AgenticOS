@@ -1,6 +1,6 @@
 # ADR 0031: Repositorio público con el historial reescrito
 
-- **Estado**: propuesto
+- **Estado**: aceptado
 - **Fecha**: 2026-11-02
 - **Fase**: 25
 

@@ -1,7 +1,7 @@
 # Fase 25: Publicación en GitHub · Plan técnico
 
 - **Spec**: [spec.md](spec.md)
-- **Estado**: borrador
+- **Estado**: aprobado (2026-11-02)
 
 ## Lo que ya se sabe (revisado al escribir el plan)
 - **Datos personales en texto**: 16 ficheros fuera de las evidencias (14 fixtures de `backend/tests/fixtures/`, `test_adapters.py` y `spikes/knowledge-graph/corpus.py`) y los de las evidencias de las fases 00, 01, 04, 05–08, 10, 12, 13, 17–19.
