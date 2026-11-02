@@ -1,6 +1,6 @@
 # Fase 25: Publicación en GitHub · Validación
 
-> **Estado (2026-11-02)**: OK del usuario y merge a `main` (`v0.9.5`). CA1 está cumplido en la rama. CA2–CA4 están medidos en un ensayo de la reescritura sobre un clon temporal y se repiten sobre el repo real al cerrar. CA5–CA7 se hacen después del merge (bloque 7 del plan), porque necesitan el historial reescrito y publicado.
+> **Estado (2026-11-02)**: cerrada (`v0.9.5`). El repositorio [CafeConPalito/AgenticOS](https://github.com/CafeConPalito/AgenticOS) es público y tiene el historial reescrito y la release `v0.9.5`. El usuario comprobó en su equipo que el instalador descargado de la release se instala y funciona.
 
 ## Tests automáticos
 ```
@@ -26,7 +26,7 @@ Tras subir la versión a 0.9.5 (y regenerar las licencias de terceros): en verde
 | CA4 | Copia de seguridad restaurable | ✅ en el ensayo | `git bundle create --all` (17,5 MiB), `git bundle verify` correcto y clon desde el bundle con 494 commits y 25 etiquetas |
 | CA5 | Repo con `main`, etiquetas, licencia, README y `SECURITY.md` | ✅ | `git push` de `main` y de las 26 etiquetas (sin las ramas `phase/*`). `gh repo view`: rama por defecto `main`, licencia `gpl-3.0` detectada, *issues* activados, descripción y 8 *topics* |
 | CA6 | Release `v0.9.5` con el instalador y su SHA-256 | ✅ | [Release `v0.9.5`](https://github.com/CafeConPalito/AgenticOS/releases/tag/v0.9.5) (*pre-release*): `AgenticOS_0.9.5_x64-setup.exe` (167 944 299 bytes) y su `.sha256`. El *digest* que calcula GitHub (`sha256:b4abfff8…f947c486`) es igual al local. En las releases el instalador se llama `AgenticOS_…` porque GitHub cambia los espacios por puntos (README actualizado) |
-| CA7 | Instalación desde la release en una máquina limpia | ⏳ en parte | Repo público el 2026-11-02 con la confirmación del usuario, tras `check-public --history` en verde (4188 blobs, 0 hallazgos). Sin sesión se descargaron de la release pública el instalador (167 944 299 bytes) y su `.sha256`, y el SHA-256 coincide. **Falta** la instalación en Windows Sandbox: no está activado en este equipo, y activarlo requiere administrador y reiniciar (lo hace el usuario). Después: `scripts/clean-machine.ps1 -Url https://github.com/CafeConPalito/AgenticOS/releases/download/v0.9.5/AgenticOS_0.9.5_x64-setup.exe -Sha256 B4ABFFF8B661F1DD22BA775D4B92292E9BF2BA89541D664BC6452DDAF947C486` |
+| CA7 | Instalación desde la release en una máquina limpia | ✅ con una diferencia | Repo público el 2026-11-02 con la confirmación del usuario, tras `check-public --history` en verde (4188 blobs, 0 hallazgos). Sin sesión se descargaron de la release pública el instalador (167 944 299 bytes) y su `.sha256`, y el SHA-256 coincide. **El usuario instaló en su equipo el instalador descargado de GitHub y funciona.** Diferencia con la spec: esa prueba no es en una máquina limpia, porque Windows Sandbox no está activado en el equipo (activarlo exige administrador y reiniciar). Lo cubre la prueba del usuario sobre lo descargado de GitHub en la fase 27, y la fase 26 prueba en máquinas limpias de cada sistema. Para hacerlo cuando se active el Sandbox: `scripts/clean-machine.ps1 -Url https://github.com/CafeConPalito/AgenticOS/releases/download/v0.9.5/AgenticOS_0.9.5_x64-setup.exe -Sha256 B4ABFFF8B661F1DD22BA775D4B92292E9BF2BA89541D664BC6452DDAF947C486` |
 
 ## Code review
 `/code-review` (medium) sobre `main...phase/25-publicacion-github`: 9 hallazgos.
@@ -56,5 +56,6 @@ Tras subir la versión a 0.9.5 (y regenerar las licencias de terceros): en verde
 - [x] Copia de seguridad (`D:\agentic_os-backup-2026-11-02\`: bundle verificado y restaurado, y copia de `.git`), reescritura y comprobaciones CA2–CA4 sobre el repo real: 499 commits, 28 merges y 26 etiquetas, igual que antes; `check-public --history --expect-identity` con 4183 blobs y 0 hallazgos; las 12 imágenes originales eliminadas; un único autor (noreply)
 - [x] Publicación: *push*, metadatos, release (CA5, CA6), icono en el README e imagen de vista previa social
 - [x] Repo público tras la confirmación del usuario
-- [ ] CA7: instalación en Windows Sandbox desde la release pública
-- [ ] `docs/roadmap.md` actualizado
+- [x] CA7: el usuario instaló en su equipo el instalador de la release pública y funciona (sin Windows Sandbox, que no está activado)
+- [x] Topics del repo centrados en IA (`rag`, `llm`, `mcp`, `knowledge-graph`…) a petición del usuario; el icono del repo sigue siendo el avatar de la organización
+- [x] `docs/roadmap.md` actualizado: fase cerrada
