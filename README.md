@@ -13,10 +13,10 @@ App de escritorio para orquestar un equipo de agentes de IA (Claude Code, Antigr
 ## Instalar
 De momento solo hay instalador para Windows 10/11 de 64 bits.
 
-1. Descarga `Agentic OS_<versión>_x64-setup.exe` de la [última release](https://github.com/CafeConPalito/AgenticOS/releases/latest).
+1. Descarga `AgenticOS_<versión>_x64-setup.exe` de la [última release](https://github.com/CafeConPalito/AgenticOS/releases/latest).
 2. Si quieres, comprueba que el fichero es el publicado. Su SHA-256 está en el `.sha256` de la release, y en PowerShell se calcula así:
    ```powershell
-   (Get-FileHash '.\Agentic OS_<versión>_x64-setup.exe' -Algorithm SHA256).Hash
+   (Get-FileHash '.\AgenticOS_<versión>_x64-setup.exe' -Algorithm SHA256).Hash
    ```
 3. Ejecútalo. Se instala **para tu usuario**, sin permisos de administrador, en `%LOCALAPPDATA%\Agentic OS`. Si falta WebView2, el instalador lo descarga.
 4. **SmartScreen**: el instalador no está firmado, así que Windows puede mostrar «Windows protegió su PC». Pulsa «Más información» → «Ejecutar de todas formas». Si el antivirus bloquea `agentic-os-backend.exe`, añádelo como excepción: es el backend de la app, empaquetado con PyInstaller.
