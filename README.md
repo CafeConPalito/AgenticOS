@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="desktop/src-tauri/icons/128x128@2x.png" alt="Icono de Agentic OS" width="128" height="128">
+</p>
+
 # Agentic OS
 
 > **In English:** Agentic OS is a Windows desktop app that runs a team of AI agents on top of the AI coding CLIs you already use (Claude Code, Antigravity CLI…). It gives them per-agent queues, pipelines, live terminals with human-in-the-loop, a knowledge library and skills. The interface and the documentation are in Spanish. Download the installer from the [latest release](https://github.com/CafeConPalito/AgenticOS/releases/latest). It is free software under the GNU GPLv3.
