@@ -14,11 +14,11 @@ sys.modules["apply_replacements"] = mod
 spec.loader.exec_module(mod)
 
 RULES = mod.parse_rules(
-    "# comment\n"
-    "me@mail.test==>user@example.com\n"
     "regex:el sobaxyz==>la costra\n"
     "regex:(?i)sobaxyz==>costra\n"
     "regex:(?i)xyz==>usuario\n"
+    "me@mail.test==>user@example.com\n"
+    "\n"
     "gone\n"
 )
 
@@ -32,6 +32,12 @@ def test_rules_apply_in_order_and_case_insensitively() -> None:
         b"C:\\Users\\usuario\\a  C:\\\\Users\\\\usuario  C--Users-usuario-proj  "
         b"166muser@example.com\nformar la costra, la capa. costra. ***REMOVED***\n"
     )
+
+
+def test_parsing_matches_git_filter_repo() -> None:
+    # Literals first (even when listed later), split on the last ==>, no comments, globs.
+    rules = mod.parse_rules("regex:b+==>R\nab==>L\n# note\na==>b==>c\nglob:x?z==>G\n")
+    assert mod.apply(b"abb a==>b # note xyz", rules) == b"LR c ***REMOVED*** G"
 
 
 def test_literal_replacement_keeps_backslashes() -> None:

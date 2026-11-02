@@ -50,13 +50,12 @@ FORBIDDEN_FILES = [
     "*.pem",
     "*.key",
     "spikes/out/*",
-    ".public-check.local",
-    ".public-replacements.local",
+    ".public-*.local",
 ]
 
 PERSONAL_FILE = ".public-check.local"
 ALLOWLIST_FILE = "scripts/public-allowlist.txt"
-BINARY_SNIFF = 8000
+BINARY_SNIFF = 8192  # the same window git filter-repo uses to skip binaries
 
 
 @dataclass
@@ -78,11 +77,17 @@ def load_personal(root: Path) -> list[bytes]:
         )
         return []
     lines = path.read_text(encoding="utf-8").splitlines()
-    return [
-        ln.strip().lower().encode()
-        for ln in lines
-        if ln.strip() and not ln.startswith("#")
+    literals = [
+        ln.strip().lower() for ln in lines if ln.strip() and not ln.startswith("#")
     ]
+    if any(not lit.isascii() for lit in literals):
+        # bytes.lower() only folds ASCII: a non-ASCII pattern only matches with its own casing.
+        print(
+            f"aviso: {PERSONAL_FILE} tiene patrones no ASCII; en ellos no se ignoran las mayúsculas",
+            file=sys.stderr,
+        )
+    # UTF-8 and UTF-16LE (Windows strings inside binaries such as executables or metadata).
+    return [enc for lit in literals for enc in (lit.encode(), lit.encode("utf-16-le"))]
 
 
 def load_allowlist(root: Path) -> set[tuple[str, str]]:
@@ -104,9 +109,9 @@ def load_allowlist(root: Path) -> set[tuple[str, str]]:
     return allowed
 
 
-def personal_hits(data: bytes, personal: list[bytes]) -> list[bytes]:
+def personal_hits(data: bytes, personal: list[bytes]) -> bool:
     low = data.lower()
-    return [p for p in personal if p in low]
+    return any(p in low for p in personal)
 
 
 def is_forbidden(path: str) -> bool:
@@ -120,21 +125,22 @@ def is_forbidden(path: str) -> bool:
 def scan_content(
     report: Report,
     where: str,
-    path: str,
+    paths: set[str],
     data: bytes,
     personal: list[bytes],
     allowed: set[tuple[str, str]],
 ) -> None:
+    """`paths`: every path the content had; an exception applies only if it covers all of them."""
     report.scanned += 1
     if b"\0" in data[:BINARY_SNIFF]:
         report.binaries += 1
     # Personal data is searched in binaries too (EXIF, PNG text chunks, embedded paths).
-    for _ in personal_hits(data, personal):
+    if personal_hits(data, personal):
         report.add(where, "dato personal")
     if b"\0" in data[:BINARY_SNIFF]:
         return
     for name, pattern in SECRET_PATTERNS.items():
-        if (path, name) in allowed:
+        if all((path, name) in allowed for path in paths):
             continue
         for m in pattern.finditer(data):
             line = data.count(b"\n", 0, m.start()) + 1
@@ -169,7 +175,7 @@ def scan_tree(
         scan_path_name(report, path, personal)
         file = root / path
         if file.is_file():
-            scan_content(report, path, path, file.read_bytes(), personal, allowed)
+            scan_content(report, path, {path}, file.read_bytes(), personal, allowed)
     return report
 
 
@@ -180,11 +186,7 @@ def scan_history(
     expect_identity: str | None,
 ) -> Report:
     report = Report()
-    blobs: dict[str, str] = {}
-    for line in git(root, "rev-list", "--objects", "--all").decode().splitlines():
-        sha, _, path = line.partition(" ")
-        if path:
-            blobs.setdefault(sha, path)
+    blobs = history_blobs(root)
     kinds = git(
         root,
         "cat-file",
@@ -194,11 +196,12 @@ def scan_history(
     blob_ids = [
         ln.split()[0] for ln in kinds.decode().splitlines() if ln.endswith(" blob")
     ]
-    for path in sorted(set(blobs.values())):
+    for path in sorted(set().union(*blobs.values())):
         scan_path_name(report, path, personal)
     for sha, data in cat_blobs(root, blob_ids):
-        path = blobs[sha]
-        scan_content(report, f"{path} (blob {sha[:10]})", path, data, personal, allowed)
+        paths = blobs[sha]
+        where = f"{min(paths)} (blob {sha[:10]})"
+        scan_content(report, where, paths, data, personal, allowed)
 
     identities = (
         git(root, "log", "--all", "--format=%an <%ae>%n%cn <%ce>").decode().splitlines()
@@ -229,7 +232,42 @@ def scan_history(
     return report
 
 
-def input_lines(blobs: dict[str, str]) -> str:
+def history_blobs(root: Path) -> dict[str, set[str]]:
+    """Every blob of every reachable commit with every path it ever had.
+
+    `rev-list --objects` names each object once, so a blob reused under another name (a rename,
+    two empty files) would hide that name. The raw diffs of every commit (merges against each
+    parent, root commits in full) list every path a commit added or changed.
+    """
+    out = git(
+        root,
+        "log",
+        "--all",
+        "--root",
+        "-m",
+        "--no-renames",
+        "--raw",
+        "--no-abbrev",
+        "-z",
+        "--format=",
+    )
+    blobs: dict[str, set[str]] = {}
+    fields = out.split(b"\0")
+    i = 0
+    while i < len(fields):
+        meta = fields[i].strip(b"\n")
+        if not meta.startswith(b":"):
+            i += 1
+            continue
+        new_sha = meta.split()[3].decode()
+        path = fields[i + 1].decode()
+        i += 2
+        if set(new_sha) != {"0"}:  # a deletion has no new blob
+            blobs.setdefault(new_sha, set()).add(path)
+    return blobs
+
+
+def input_lines(blobs: dict[str, set[str]]) -> str:
     return "".join(f"{sha}\n" for sha in blobs)
 
 

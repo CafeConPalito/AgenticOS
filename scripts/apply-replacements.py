@@ -1,16 +1,21 @@
 """Applies a `git filter-repo --replace-text` file to the tracked text files of the working tree.
 
 The same file is later given to `git filter-repo` (ADR 0031), so the tree and the rewritten
-history end up identical. Rules, applied in order, one per line:
-    literal==>replacement
+history end up identical. The rules are read and applied as filter-repo does (first every literal,
+then every regex or glob, each group in file order), one per line:
+    literal==>replacement            (`literal:` prefix optional)
+    glob:pattern==>replacement
     regex:pattern==>replacement      (Python `re`, on bytes; `\\1` back references work)
-A line without `==>` is replaced with `***REMOVED***`, as filter-repo does.
+The line is split on its last `==>`; without one the text becomes `***REMOVED***`. There are no
+comments: filter-repo would take a `#` line as a literal. Binary files (a NUL in the first 8192
+bytes) are skipped, as filter-repo skips them.
 
 Usage: uv run --project backend python scripts/apply-replacements.py .public-replacements.local
 """
 
 from __future__ import annotations
 
+import fnmatch
 import re
 import subprocess
 import sys
@@ -20,21 +25,36 @@ Rule = tuple[re.Pattern[bytes], bytes]
 
 
 def parse_rules(text: str) -> list[Rule]:
-    rules: list[Rule] = []
+    literals: list[Rule] = []
+    regexes: list[Rule] = []
     for line in text.splitlines():
-        if not line.strip() or line.startswith("#"):
-            continue
-        source, sep, repl = line.partition("==>")
-        if not sep:
-            repl = "***REMOVED***"
+        if "==>" in line:
+            source, repl = line.rsplit("==>", 1)
+        else:
+            source, repl = line, "***REMOVED***"
         if source.startswith("regex:"):
-            pattern = re.compile(source[len("regex:") :].encode())
+            regexes.append(
+                (re.compile(source[len("regex:") :].encode()), repl.encode())
+            )
+        elif source.startswith("glob:"):
+            # The same translation as filter-repo's glob_to_regex (the replacement stays a
+            # regex template, as there).
+            regex = fnmatch.translate(source[len("glob:") :])
+            if regex.startswith("(?s:") and regex.endswith(r")\Z"):
+                regex = regex[4:-3]
+            regexes.append((re.compile(regex.encode()), repl.encode()))
         else:
             source = source.removeprefix("literal:")
-            pattern = re.compile(re.escape(source.encode()))
-            repl = repl.replace("\\", "\\\\")
-        rules.append((pattern, repl.encode()))
-    return rules
+            if not source:
+                continue
+            # A literal is a plain bytes.replace in filter-repo: escape it for re.sub.
+            literals.append(
+                (
+                    re.compile(re.escape(source.encode())),
+                    repl.replace("\\", "\\\\").encode(),
+                )
+            )
+    return literals + regexes
 
 
 def apply(data: bytes, rules: list[Rule]) -> bytes:
@@ -57,7 +77,7 @@ def main(argv: list[str]) -> int:
         if path is None or not path.is_file():
             continue
         data = path.read_bytes()
-        if b"\0" in data[:8000]:
+        if b"\0" in data[:8192]:
             continue
         new = apply(data, rules)
         if new != data:

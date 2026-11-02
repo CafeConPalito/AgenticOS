@@ -1,4 +1,4 @@
-﻿﻿# Opens a Windows Sandbox (a clean Windows with no development tools) with the release
+﻿# Opens a Windows Sandbox (a clean Windows with no development tools) with the release
 # installer mapped read-only, to check that the app installs without admin rights, starts,
 # creates its data folder and guides to install the CLIs (CA1 of phase 08, CA7 of phase 25).
 #
@@ -28,6 +28,7 @@ if ($Url) {
     $name = [Uri]::UnescapeDataString(([Uri]$Url).Segments[-1])
     $target = Join-Path $bundle $name
     Write-Host "Descargando $Url"
+    $ProgressPreference = 'SilentlyContinue'  # the progress bar slows big downloads in PS 5.1
     Invoke-WebRequest -Uri $Url -OutFile $target -UseBasicParsing
     $actual = (Get-FileHash $target -Algorithm SHA256).Hash
     if ($actual -ne $Sha256.Trim().ToUpperInvariant()) {

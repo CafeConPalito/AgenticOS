@@ -167,3 +167,42 @@ def test_history_expected_identity(repo: Path, capsys) -> None:
     commit(repo, {"z.txt": "1"}, email="you@example.com")
     assert run(repo, "--history", "--expect-identity", IDENTITY) == 1
     assert "you@example.com" in capsys.readouterr().out
+
+
+def test_history_sees_every_name_of_a_reused_blob(repo: Path, capsys) -> None:
+    # The same content under a second name (a rename, or two equal files) must not hide it.
+    commit(repo, {"notes.txt": "same"})
+    git(repo, "mv", "notes.txt", "SecretUser.txt")
+    git(repo, "commit", "-q", "-m", "rename")
+    commit(repo, {"empty.txt": "", ".env": ""})
+    git(repo, "rm", "-q", "SecretUser.txt", ".env")
+    git(repo, "commit", "-q", "-m", "clean")
+    assert run(repo) == 0
+    assert run(repo, "--history") == 1
+    out = capsys.readouterr().out
+    assert "SecretUser.txt: dato personal en el nombre del fichero" in out
+    assert ".env: fichero que no debe publicarse" in out
+
+
+def test_history_exception_must_cover_every_path(repo: Path) -> None:
+    commit(
+        repo,
+        {
+            "scripts/public-allowlist.txt": "a.py\tgithub-token\tfake\n",
+            "a.py": FAKE_TOKEN,
+        },
+    )
+    assert run(repo, "--history") == 0
+    commit(
+        repo, {"b.py": FAKE_TOKEN}
+    )  # the same blob, now also under a path not allowed
+    assert run(repo, "--history") == 1
+
+
+def test_utf16_and_local_files(repo: Path, capsys) -> None:
+    commit(repo, {"app.exe": b"MZ\0\0" + "C:\\Users\\SECRETUSER".encode("utf-16-le")})
+    commit(repo, {".public-strip-blobs.local": "abc"})
+    assert run(repo) == 1
+    out = capsys.readouterr().out
+    assert "app.exe: dato personal" in out
+    assert ".public-strip-blobs.local: fichero que no debe publicarse" in out
